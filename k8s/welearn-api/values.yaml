@@ -1,0 +1,53 @@
+fullName: welearn-api
+
+commonLabels:
+  app.kubernetes.io/name: welearn-api
+  app.kubernetes.io/component: api
+  app.kubernetes.io/part-of: welearn
+  app.kubernetes.io/managed-by: helm
+  app.kubernetes.io/version: "{{ .Chart.AppVersion }}"
+
+image:
+  repository: criprodprod.azurecr.io
+  path: welearn-api
+  tag: "{{ .Values.application.revision }}"
+
+replicaCount: 1
+
+ingress:
+  path: /
+
+sablier:
+  enabled: false
+  groupName: welearn
+  traefikMiddleware: "{{.Values.namespace}}-{{.Values.sablier.groupName}}-sablier@kubernetescrd"
+
+resources:
+  requests:
+    cpu: 10m
+    memory: 1471M
+  limits:
+    memory: 1508M
+
+config:
+  nonSensitive:
+    QDRANT_HOST: "http://qdrant.qdrant"
+    QDRANT_PORT: "6333"
+    AZURE_API_TYPE: "azure"
+    AZURE_API_VERSION: "2024-08-01-preview"
+    CORPUS: conversation
+    MODELS_FOLDER_ROOTS: "/models"
+    AZURE_API_BASE: "https://welearn-openai.openai.azure.com/openai/"
+    CLIENT_ORIGINS_REGEX: '^{{ join "|" (values .Values.allowedHostsRegexes | sortAlpha ) }}$'
+    PG_USER: welearn_datastack
+    PG_DATABASE: welearn_datastack
+    PG_PORT: "5432"
+    PG_DRIVER: postgresql+psycopg2
+
+shareName: ml-models
+
+runOnGpu: false # Schedule on the GPU node pool to lower its cost
+
+allowedHostsRegexes:
+  localhost: |-
+    http:\/\/localhost:5173

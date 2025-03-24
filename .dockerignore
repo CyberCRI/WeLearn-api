@@ -1,0 +1,19 @@
+.git/
+.github/
+.gitignore
+.gitmodules
+.sops.yaml
+.venv/
+docker-compose.yaml
+Dockerfile
+fill_db.py
+k8s/
+README.md
+sops
+.env
+
+# Following files are required for tests / lint inside docker
+# TODO: Create a discrete configuration for tests
+# Makefile
+#.flake8
+# .isort.cfg

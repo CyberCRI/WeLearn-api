@@ -1,0 +1,14 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ tpl .Values.fullName . }}
+  labels:
+    {{- (tpl ($.Values.commonLabels | toYaml ) $) | nindent 4 }}
+spec:
+  selector:
+    {{- (tpl ($.Values.commonLabels | toYaml ) $) | nindent 4 }}
+  ports:
+    - protocol: TCP
+      port: 80
+      targetPort: http
+      name: http

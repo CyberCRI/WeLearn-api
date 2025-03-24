@@ -1,0 +1,89 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+    {{- (tpl ($.Values.commonLabels | toYaml ) $) | nindent 4 }}
+    {{- if .Values.sablier.enabled }}
+    sablier.enable: "true"
+    sablier.group: {{ .Values.sablier.groupName }}
+    {{- end }}
+  name: {{ tpl .Values.fullName . }}
+spec:
+  replicas: {{ .Values.replicaCount }}
+  selector:
+    matchLabels:
+      {{- (tpl ($.Values.commonLabels | toYaml ) $) | nindent 6 }}
+  template:
+    metadata:
+      labels:
+        {{- (tpl ($.Values.commonLabels | toYaml ) $) | nindent 8 }}
+      annotations:
+        {{- include "common.config.checksum" (dict "filePath" "/config.yaml" "root" $)  | nindent 8 }}
+    spec:
+    {{- if .Values.runOnGpu }}
+      affinity:
+        nodeAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+          - weight: 1
+            preference:
+              matchExpressions:
+              - key: gpu-node
+                operator: In
+                values:
+                - "true"
+      tolerations:
+      - key: "Gpu"
+        operator: "Equal"
+        value: "true"
+        effect: "NoSchedule"
+      {{- end }}
+      securityContext:
+        {{- include "common.security.podSecurityContext.restricted" dict | nindent 8 }}
+      containers:
+      {{- with $.Values.image }}
+      - image: {{ tpl (printf "%s/%s:%s" .repository .path .tag) $ }}
+      {{- end }}
+        imagePullPolicy: IfNotPresent
+        name: welearn-api
+        ports:
+          - name: http
+            containerPort: 8080
+        envFrom:
+        {{- if .Values.config.nonSensitive }}
+        - configMapRef:
+            name: {{ tpl .Values.fullName . }}
+        {{- end }}
+        securityContext:
+          {{- include "common.security.containerSecurityContext.restricted" dict | nindent 10 }}
+
+        resources: {{ toYaml .Values.resources | nindent 10 }}
+
+        volumeMounts:
+        # still needed ?
+        - name: cache
+          mountPath: "/.cache"
+        # /still needed ?
+        {{- if .Values.config.sensitive }}
+        - name: secrets
+          mountPath: "/secrets"
+          readOnly: true
+        {{- end }}
+        - name: azure
+          mountPath: {{ .Values.config.nonSensitive.MODELS_FOLDER_ROOTS}}
+      volumes:
+      # still needed ?
+      - name: cache
+        emptyDir: {}
+      # /still needed ?
+        {{- if .Values.config.sensitive }}
+      - name: secrets
+        secret:
+          secretName: {{ tpl $.Values.fullName $ }}
+        {{- end }}
+      - name: azure
+        csi:
+          driver: file.csi.azure.com
+          readOnly: true
+          volumeAttributes:
+            secretName: {{ printf "%s-azure-storage" (tpl $.Values.fullName $) }}
+            shareName: {{ $.Values.shareName }}

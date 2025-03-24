@@ -1,0 +1,32 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: {{ tpl .Values.fullName . }}
+  annotations:
+    kubernetes.io/ingress.class: traefik
+    cert-manager.io/cluster-issuer: letsencrypt-prod-traefik
+    {{- $middlewares := .Values.ingress.middlewares }}
+
+    {{- if .Values.sablier.enabled }}
+    {{- $middlewares = append $middlewares (tpl .Values.sablier.traefikMiddleware .) }}
+    {{- end }}
+
+    {{- if $middlewares }}
+    traefik.ingress.kubernetes.io/router.middlewares: {{ join "," $middlewares }}
+    {{- end }}
+spec:
+  rules:
+    - host: {{ .Values.ingress.hostname }}
+      http:
+        paths:
+          - path: {{ .Values.ingress.path }}
+            pathType: Prefix
+            backend:
+              service:
+                name: {{ tpl .Values.fullName . }}
+                port:
+                  name: http
+  tls:
+    - hosts:
+        - {{ .Values.ingress.hostname }}
+      secretName: {{ printf "%s-tls" .Values.ingress.hostname }}

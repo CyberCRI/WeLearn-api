@@ -1,0 +1,5 @@
+[run]
+
+omit =
+    src/app/api/api_v1/endpoints/tutor.py
+    src/crews/*

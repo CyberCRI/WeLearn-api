@@ -1,0 +1,41 @@
+name: Build image and push to registry
+on:
+  push:
+    branches:
+      - "**"
+    tags:
+      - "**"
+      - "!**_deploy"
+
+concurrency:
+  group: ${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build-docker:
+    uses: CyberCRI/github-workflows/.github/workflows/build-push.yaml@main
+    with:
+      registry-name: ${{ vars.DOCKER_PROD_REGISTRY }}
+      image-name: welearn-api
+      image-tag: ${{ github.sha }}
+    secrets:
+      registry-username: ${{ secrets.DOCKER_PROD_USERNAME }}
+      registry-password: ${{ secrets.DOCKER_PROD_PASSWORD }}
+
+  lint-and-test:
+    uses: ./.github/workflows/lint-and-test.yml
+    with:
+      registry-name: ${{ vars.DOCKER_PROD_REGISTRY }}
+      image-name: welearn-api
+      image-tag: ${{ github.sha }}
+    secrets:
+      registry-username: ${{ secrets.DOCKER_PROD_USERNAME }}
+      registry-password: ${{ secrets.DOCKER_PROD_PASSWORD }}
+    needs:
+      - build-docker
+
+  tag-deploy:
+    needs:
+      - build-docker
+      - lint-and-test
+    uses: CyberCRI/github-workflows/.github/workflows/tag-deploy.yaml@main

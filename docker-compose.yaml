@@ -1,0 +1,10 @@
+services:
+  web:
+    container_name: welearn-api
+    build: .
+    command: uvicorn src.main:app --host 0.0.0.0
+    network_mode: host
+    volumes:
+      - .:/app
+    ports:
+      - 8000:8000

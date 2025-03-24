@@ -1,0 +1,11 @@
+ingress:
+  hostname: dummy-host
+
+application:
+  revision: dummy-revision
+
+vpnIp: 0.0.0.0/32
+
+runOnGpu: true
+
+namespace: nom-espace

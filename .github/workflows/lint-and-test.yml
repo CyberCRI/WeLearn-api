@@ -1,0 +1,40 @@
+name: Tests
+
+on:
+  workflow_call:
+    inputs:
+      registry-name:
+        type: string
+        required: true
+        description: 'The name of the registry to push to'
+      image-name:
+        type: string
+        required: true
+        description: 'The name of the image to push'
+      image-tag:
+        type: string
+        required: true
+        description: 'The tag of the image to push'
+    secrets:
+      registry-username:
+        required: true
+        description: 'The username on the registry'
+      registry-password:
+        required: true
+        description: 'The password on the registry'
+jobs:
+  test:
+    defaults:
+      run:
+        working-directory: /app
+    runs-on: wla-lint-and-test-runner
+    container:
+      image: ${{ inputs.registry-name }}/${{ inputs.image-name }}:${{ inputs.image-tag }}
+      credentials:
+        username: ${{ secrets.registry-username }}
+        password: ${{ secrets.registry-password }}
+    steps:
+      - name: linting and styling
+        run: make lint
+      - name: unit tests
+        run: make test

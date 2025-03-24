@@ -1,0 +1,8 @@
+{{ include "common.security.networkPolicy" (dict
+  "name" (tpl .Values.fullName .)
+  "podSelector" (dict "matchLabels" (tpl (.Values.commonLabels | toJson) .| fromJson) )
+  "allowFromReverseProxy" true
+  "reverseProxyNamespace" "traefik"
+  "enableEgress" false
+  "commonLabels" (tpl (.Values.commonLabels | toJson) . | fromJson)
+) }}
