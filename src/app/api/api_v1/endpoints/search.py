@@ -6,7 +6,7 @@ from sqlalchemy.sql import select
 from src.app.models.db_models import CorpusEmbedding
 from src.app.models.documents import Collection_schema, Document
 from src.app.models.search import EnhancedSearchQuery, SearchFilter, SearchQuery
-from src.app.services.exceptions import EmptyQueryError, bad_request
+from src.app.services.exceptions import EmptyQueryError, NoResultsError, bad_request
 from src.app.services.search import SearchService
 from src.app.services.search_helpers import (
     search_all_base,
@@ -127,14 +127,18 @@ async def multi_search_all_slices_by_lang(
     if isinstance(qp.query, str):
         qp.query = [qp.query]
 
-    return await search_multi_inputs(
-        response=response,
-        nb_results=qp.nb_results,
-        sdg_filter=qp.sdg_filter,
-        collections=qp.corpora,
-        inputs=qp.query,
-        callback_function=sp.search,
-    )
+    try:
+        results = await search_multi_inputs(
+            response=response,
+            nb_results=qp.nb_results,
+            sdg_filter=qp.sdg_filter,
+            collections=qp.corpora,
+            inputs=qp.query,
+            callback_function=sp.search,
+        )
+        return results
+    except NoResultsError:
+        response.status_code = 404
 
 
 @router.post(

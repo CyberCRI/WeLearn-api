@@ -66,9 +66,14 @@ async def search_all_base(
         lang = detect_language_from_entry(qp.query)
         subject_vector = get_subject_vector(qp.subject)
 
-        collections = await sp.get_collections_aliases_by_language(
-            lang=lang, collections=qp.corpora
-        )
+        try:
+            collections = await sp.get_collections_aliases_by_language(
+                lang=lang, collections=qp.corpora
+            )
+        except CollectionNotFoundError as e:
+            logger.error(e.message)
+            raise CollectionNotFoundError()
+
         collections_to_search = [
             sp.get_collection_dict_with_embed(
                 collection_alias=col,
@@ -78,9 +83,6 @@ async def search_all_base(
             )
             for col in collections
         ]
-
-        if not collections_to_search:
-            raise CollectionNotFoundError()
 
         logger.info(
             "Found %s collections to search: %s",
@@ -137,8 +139,16 @@ async def search_multi_inputs(
             for qp in qps
         ]
 
-        data = await asyncio.gather(*tasks)
-        all_data = [*data[0], *data[1]]
+        for coroutine in asyncio.as_completed(tasks):
+            try:
+                all_data = await coroutine
+            except CollectionNotFoundError as e:
+                response.status_code = 206
+                response.reason_phrase = f"Partial Content {e.message}"
+
+        if not all_data:
+            response.status_code = 404
+            raise NoResultsError()
 
         doc: list[Document] = [
             Document(
