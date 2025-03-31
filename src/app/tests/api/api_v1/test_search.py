@@ -203,9 +203,14 @@ class SearchTestsSlices(IsolatedAsyncioTestCase):
                 },
             )
 
+    # patch should raise
     @patch(
         f"{search_pipeline_path}.get_collections_aliases_by_language",
-        new=mock.AsyncMock(return_value=()),
+        new=mock.AsyncMock(
+            side_effect=CollectionNotFoundError(
+                "Collection not found", "COLL_NOT_FOUND"
+            )
+        ),
     )
     async def test_search_all_slices_no_collections(self, *mocks):
         with self.assertRaises(CollectionNotFoundError):
@@ -299,7 +304,11 @@ class SearchTestsAll(IsolatedAsyncioTestCase):
 
     @patch(
         f"{search_pipeline_path}.get_collections_aliases_by_language",
-        new=mock.AsyncMock(return_value=()),
+        new=mock.AsyncMock(
+            side_effect=CollectionNotFoundError(
+                "Collection not found", "COLL_NOT_FOUND"
+            )
+        ),
     )
     @patch(
         f"{search_pipeline_path}._get_info_from_collection_alias",
