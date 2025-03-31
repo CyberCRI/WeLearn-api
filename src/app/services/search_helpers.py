@@ -114,13 +114,16 @@ async def search_multi_inputs(
     response: Response,
     inputs: List[str],
     nb_results: int,
+    sdg_filter: Optional[SearchFilter],
+    collections: List[str],
     callback_function: Callable[..., Awaitable[List[ScoredPoint]]],
 ):
     try:
         qps: list[EnhancedSearchQuery] = [
             EnhancedSearchQuery(
                 nb_results=nb_results,
-                sdg_filter=None,
+                sdg_filter=sdg_filter,
+                corpora=collections,
                 query=input,
             )
             for input in inputs

@@ -130,6 +130,8 @@ async def multi_search_all_slices_by_lang(
     return await search_multi_inputs(
         response=response,
         nb_results=qp.nb_results,
+        sdg_filter=qp.sdg_filter,
+        collections=qp.corpora,
         inputs=qp.query,
         callback_function=sp.search,
     )
