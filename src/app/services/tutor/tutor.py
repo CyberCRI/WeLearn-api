@@ -1,44 +1,50 @@
 import asyncio
-import os
-from typing import Dict, List
 
-from autogen_agentchat.agents import AssistantAgent
-from autogen_agentchat.messages import TextMessage
 from autogen_core import (
     AgentId,
+    ClosureAgent,
+    ClosureContext,
+    MessageContext,
     SingleThreadedAgentRuntime,
+    TypeSubscription,
 )
 from autogen_core.memory import ListMemory, MemoryContent, MemoryMimeType
 from autogen_ext.models.openai import AzureOpenAIChatCompletionClient
-from dotenv import load_dotenv
-from pydantic import BaseModel
 
+from src.app.api.dependencies import get_settings
 from src.app.services.tutor.agents import (
-    UniversityTeacherAgent,
-    university_teacher_topic_type,
-    SDGExpertAgent,
-    sdg_expert_topic_type,
+    CLOSURE_AGENT_TYPE,
+    TASK_RESULTS_TOPIC_TYPE,
     PedagogicalEngineerAgent,
+    SDGExpertAgent,
+    UniversityTeacherAgent,
     pedagogical_engineer_topic_type,
+    sdg_expert_topic_type,
+    university_teacher_topic_type,
 )
-from src.app.services.tutor.models import Message, TutorSearchResponse
+from src.app.services.tutor.models import Message, TaskResponse, TutorSearchResponse
 
-
-load_dotenv()
+settings = get_settings()
 
 
 llm_4o_mini = AzureOpenAIChatCompletionClient(
     azure_deployment="gpt-4o-mini",
     model="gpt-4o-mini",
-    api_version=os.environ.get("AZURE_GPT_4O_MINI_API_VERSION"),
-    azure_endpoint=os.environ.get("AZURE_GPT_4O_MINI_API_BASE"),
-    api_key=os.environ.get("AZURE_GPT_4O_MINI_API_KEY"),
+    api_version=settings.AZURE_API_VERSION,
+    azure_endpoint=settings.AZURE_API_BASE,
+    api_key=settings.AZURE_API_KEY,
 )
 
 
-async def tutor_manager(content: TutorSearchResponse) -> None:
-    greencomp_memory = ListMemory()
+async def tutor_manager(content: TutorSearchResponse) -> Message:
+    queue = asyncio.Queue[TaskResponse]()
 
+    async def collect_result(
+        _agent: ClosureContext, message: TaskResponse, ctx: MessageContext
+    ) -> None:
+        await queue.put(message)
+
+    greencomp_memory = ListMemory()
     await greencomp_memory.add(
         MemoryContent(
             content="Here are the GreenComp competencies: "
@@ -69,7 +75,9 @@ async def tutor_manager(content: TutorSearchResponse) -> None:
     await SDGExpertAgent.register(
         runtime,
         type=sdg_expert_topic_type,
-        factory=lambda: SDGExpertAgent(model_client=llm_4o_mini),
+        factory=lambda: SDGExpertAgent(
+            model_client=llm_4o_mini, memory=greencomp_memory
+        ),
     )
 
     await PedagogicalEngineerAgent.register(
@@ -82,20 +90,26 @@ async def tutor_manager(content: TutorSearchResponse) -> None:
 
     runtime.start()
 
-    # response = await runtime.publish_message(
-    #     content,
-    #     topic_id=TopicId(university_teacher_topic_type, source="default"),
-    # )
-    response = await runtime.send_message(
+    await ClosureAgent.register_closure(
+        runtime,
+        CLOSURE_AGENT_TYPE,
+        collect_result,
+        subscriptions=lambda: [
+            TypeSubscription(
+                topic_type=TASK_RESULTS_TOPIC_TYPE, agent_type=CLOSURE_AGENT_TYPE
+            )
+        ],
+    )
+
+    await runtime.send_message(
         content,
         recipient=AgentId(university_teacher_topic_type, "default"),
     )
-    print('!!!!!!!!!!!!!!!', response)
 
     await runtime.stop_when_idle()
-    
+    response: TaskResponse = TaskResponse(task_id="", result="")
+    if not queue.empty():
+        response = await queue.get()
+
     await runtime.close()
-    return response
-
-
-# asyncio.run(main())
+    return Message(content=response.result)

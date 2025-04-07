@@ -143,6 +143,7 @@ async def search_multi_inputs(
             try:
                 all_data = await coroutine
             except CollectionNotFoundError as e:
+                logger.error(e.message)
                 response.status_code = 206
 
         if not all_data:

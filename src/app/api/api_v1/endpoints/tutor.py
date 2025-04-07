@@ -3,11 +3,14 @@ from typing import Annotated
 from fastapi import APIRouter, File, Response, UploadFile
 
 from src.app.api.dependencies import get_settings
-
 from src.app.services.abst_chat import AbstractChat, ChatFactory
 from src.app.services.search import SearchService
 from src.app.services.search_helpers import search_multi_inputs
-from src.app.services.tutor.models import ExtractorOuputList, TutorSearchResponse
+from src.app.services.tutor.models import (
+    ExtractorOuputList,
+    SyllabusResponse,
+    TutorSearchResponse,
+)
 from src.app.services.tutor.tutor import tutor_manager
 from src.app.utils.logger import logger as utils_logger
 
@@ -37,7 +40,15 @@ async def tutor_search(
     response: Response,
 ):
     file_content: list[bytes] = [await file.read() for file in files]
-    file_content_str = [f"Document {index+1}: {content.decode("utf-8")}" for index, content in enumerate(file_content)]
+    doc_list_to_string = "Document {doc_nb}: {content}"
+
+    file_content_str = [
+        doc_list_to_string.format(
+            doc_nb=index + 1,
+            content=content.decode("utf-8", errors="ignore"),
+        )
+        for index, content in enumerate(file_content)
+    ]
     file_content_str = "\n\n".join(file_content_str)
 
     messages = [
@@ -48,7 +59,7 @@ async def tutor_search(
     themes_extracted = await chatfactory.chat_schema(
         model="gpt-4o-mini", messages=messages, response_format=ExtractorOuputList  # type: ignore
     )
-    
+
     if not themes_extracted or not themes_extracted.extracts:
         # handle error
         return TutorSearchResponse(
@@ -65,7 +76,7 @@ async def tutor_search(
         nb_results=5,
         sdg_filter=None,
         collections=None,
-        callback_function=sp.search
+        callback_function=sp.search,
     )
 
     if not search_results:
@@ -76,10 +87,10 @@ async def tutor_search(
         )
 
     resp = TutorSearchResponse(
-            extracts=themes_extracted.extracts,
-            nb_results=len(search_results),
-            documents=search_results
-            )
+        extracts=themes_extracted.extracts,
+        nb_results=len(search_results),
+        documents=search_results,
+    )
 
     # TODO: handle duplicates
 
@@ -87,10 +98,7 @@ async def tutor_search(
 
 
 @router.post("/syllabus")
-async def create_syllabus(body: TutorSearchResponse):
-    syllabus = await tutor_manager(body)
+async def create_syllabus(body: TutorSearchResponse) -> SyllabusResponse:
+    result = await tutor_manager(body)
 
-    #TODO: fix error AgentChat
-    
-
-    return syllabus
+    return SyllabusResponse(syllabus=result.content, documents=body.documents)

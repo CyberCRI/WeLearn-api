@@ -9,9 +9,11 @@ from autogen_core import (
 )
 from autogen_core.memory import ListMemory
 from autogen_core.models import ChatCompletionClient, SystemMessage, UserMessage
+
 from src.app.services.tutor.models import (
     Message,
     MessageWithResources,
+    TaskResponse,
     TutorSearchResponse,
 )
 from src.app.services.tutor.utils import build_system_message
@@ -25,6 +27,10 @@ sdg_expert_topic_type = "SDGExpertAgent"
 pedagogical_engineer_topic_type = "PedagogicalEngineerAgent"
 user_input_topic_type = "UserInputAgent"
 user_topic_type = "User"
+
+CLOSURE_AGENT_TYPE = "collect_result_agent"
+TASK_RESULTS_TOPIC_TYPE = "task-results"
+task_results_topic_id = TopicId(type=TASK_RESULTS_TOPIC_TYPE, source="default")
 
 
 @type_subscription(topic_type=university_teacher_topic_type)
@@ -42,7 +48,6 @@ class UniversityTeacherAgent(RoutedAgent):
     """
 
     def __init__(self, model_client: ChatCompletionClient) -> None:
-        print("UniversityTeacherAgent")
         super().__init__("A university teacher agent.")
         self._system_message = SystemMessage(
             content=(
@@ -73,7 +78,6 @@ class UniversityTeacherAgent(RoutedAgent):
     async def handle_documents_and_themes(
         self, message: TutorSearchResponse, ctx: MessageContext
     ) -> None:
-        print("handle_documents_and_themes")
         prompt = f"Using the content in TEXT CONTENTS, you generate a syllabus that is engaging and coherent in relation to the THEMES extracted from these contents. \n\nTEXT CONTENTS:\n{message.extracts[0].original_document}\n\nTHEMES:\n{message.extracts[0].themes}"
 
         llm_result = await self._model_client.create(
@@ -106,7 +110,7 @@ class SDGExpertAgent(RoutedAgent):
             Handles messages from university professors and integrates sustainability concepts in a thematically linked and relevant manner.
     """
 
-    def __init__(self, model_client: ChatCompletionClient) -> None:
+    def __init__(self, model_client: ChatCompletionClient, memory: ListMemory) -> None:
         super().__init__("An SDG expert agent.")
         self._delegate = AssistantAgent(
             "SDGExpert",
@@ -123,23 +127,20 @@ class SDGExpertAgent(RoutedAgent):
                     "Competencies Developed: If relevant, integrate sustainability competencies."
                     "Course Schedule: Introduce sustainability-related themes into weekly topics where appropriate."
                     "References: NEVER delete, summarize, or modify any references already present in the syllabus. Only append this section with any additional sources that you use to construct the syllabus. "
-                    "3. Save a file to the current directory:"
-                    f"Revised syllabus File: The updated syllabus with integrated sustainability elements. Name the file: SDG-exp_syllabus.md"
                 ),
                 expected_output=(
                     f"1. Final Syllabus File: The revised syllabus, ready for the pedagogical engineer's review. You must follow this template :\n {TEMPLATES['template0']}. Name the file: SDG-exp_syllabus.md"
                     "When you are done with generating the final output, reply with SDG EXPERT DONE."
                 ),
             ),
+            memory=[memory],
         )
         self._model_client = model_client
 
     @message_handler(match=lambda msg, ctx: msg.source.startswith("UniversityTeacher"))  # type: ignore
     async def handle_syllabus(
         self, message: MessageWithResources, ctx: MessageContext
-    ) -> Message:
-        print("handle_syllabus", ctx)
-        print("handle_syllabus")
+    ) -> None:
         """
         Handles the syllabus by integrating SDG content from the documents in the WeLearn resources.
         Args:
@@ -159,25 +160,16 @@ class SDGExpertAgent(RoutedAgent):
             print("Error in SDGExpertAgent:", e)
             raise e
         response = llm_result.chat_message.content
-        
-        assert isinstance(response, str)
-        
-        print(f"\n\n{'-'*80}\n{self.id.type}\n{'-'*80}\n\n{response}")
 
-        # await self.publish_message(
-        #     Message(content=response, source=self.id.type),
-        #     topic_id=TopicId(pedagogical_engineer_topic_type, source=self.id.key),
-        # )
-        toto = Message(content=response, source=self.id.type)
-        return Message(
-                content=response,
-                source=self.id.type,
-                )
+        assert isinstance(response, str)
+        await self.publish_message(
+            Message(content=response, source=self.id.type),
+            topic_id=TopicId(pedagogical_engineer_topic_type, source=self.id.key),
+        )
 
 
 @type_subscription(topic_type=pedagogical_engineer_topic_type)
 class PedagogicalEngineerAgent(RoutedAgent):
-    print("PedagogicalEngineerAgent")
     """
     A pedagogical engineer agent that assists university professors in constructing their syllabus. This agent ensures that the syllabus contains appropriate learning objectives, learning outcomes, and a corresponding course plan. It focuses specifically on teaching methodologies and pedagogical approaches. It integrates the European sustainability competence framework GreenComp into existing courses.
     Attributes:
@@ -221,7 +213,6 @@ class PedagogicalEngineerAgent(RoutedAgent):
 
     @message_handler(match=lambda msg, ctx: msg.source.startswith("SDGExpert"))  # type: ignore
     async def handle_syllabus(self, message: Message, ctx: MessageContext) -> Message:
-        print("handle_syllabus final")
         """
         Handles the syllabus by improving on the pedagogical aspects and ensures that the competencies cited in the EU GreenComp framework are present in a coherent manner with the discipline and course content.
         Args:
@@ -238,11 +229,10 @@ class PedagogicalEngineerAgent(RoutedAgent):
         )
         response = llm_result.chat_message.content
         assert isinstance(response, str)
-        # print(f"\n\n{'-'*80}\n{self.id.type}\n{'-'*80}\n\n{response}")
 
-        # await self.publish_message(
-        #     Message(content=response),
-        #     topic_id=TopicId(user_input_topic_type, source=self.id.key),
-        # )
+        await self.publish_message(
+            TaskResponse(result=response, task_id="pedagogical"),
+            task_results_topic_id,
+        )
 
         return Message(content=response)
