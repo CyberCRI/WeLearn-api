@@ -61,7 +61,6 @@ async def tutor_search(
     )
 
     if not themes_extracted or not themes_extracted.extracts:
-        # handle error
         return TutorSearchResponse(
             extracts=[],
             nb_results=0,
@@ -100,5 +99,7 @@ async def tutor_search(
 @router.post("/syllabus")
 async def create_syllabus(body: TutorSearchResponse) -> SyllabusResponse:
     result = await tutor_manager(body)
+    # TODO: handle errors
+    # TODO: mae sure documents are used
 
     return SyllabusResponse(syllabus=result.content, documents=body.documents)
