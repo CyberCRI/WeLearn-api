@@ -98,7 +98,7 @@ async def search_all_base(
         )
 
         if not data:
-            raise NoResultsError()
+            return []
 
         sorted_data = sorted(data, key=lambda x: x.score, reverse=True)
         sorted_data = sort_slices_using_mmr(sorted_data, theta=qp.relevance_factor)
