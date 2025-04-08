@@ -227,6 +227,21 @@ tests = ["cloudpickle ; platform_python_implementation == \"CPython\"", "hypothe
 tests-mypy = ["mypy (>=1.11.1) ; platform_python_implementation == \"CPython\" and python_version >= \"3.9\"", "pytest-mypy-plugins ; platform_python_implementation == \"CPython\" and python_version >= \"3.9\" and python_version < \"3.13\""]
 
 [[package]]
+name = "autogen-agentchat"
+version = "0.4.9.3"
+description = "AutoGen agents and teams library"
+optional = false
+python-versions = ">=3.10"
+groups = ["main"]
+files = [
+    {file = "autogen_agentchat-0.4.9.3-py3-none-any.whl", hash = "sha256:574956e65fad2029ec267ed143388c81f8fd308a06ca08773e63c2757ed9a1d1"},
+    {file = "autogen_agentchat-0.4.9.3.tar.gz", hash = "sha256:d101fa3d536df3aef845f6038ba77a1603e06fdd4e2547a89accc59128d5aaa1"},
+]
+
+[package.dependencies]
+autogen-core = "0.4.9.3"
+
+[[package]]
 name = "autogen-core"
 version = "0.4.9.3"
 description = "Foundational interfaces and agent runtime implementation for AutoGen"
@@ -5944,4 +5959,4 @@ testing = ["coverage[toml]", "zope.event", "zope.testing"]
 [metadata]
 lock-version = "2.1"
 python-versions = ">=3.10,<3.13"
-content-hash = "743de02862850b50b3b724bfe53e9fe325654533c29b8828efa8c6f9f6caff77"
+content-hash = "395a5f09607b7ca5550b4f6f6002fdd8104f1e374f41e83701f8991c59198242"
