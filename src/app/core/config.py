@@ -48,7 +48,10 @@ class Settings(BaseSettings):
     AZURE_API_KEY: str
     AZURE_API_BASE: str
     AZURE_API_VERSION: str
-    # AZURE_API_TYPE: str
+
+    AZURE_GPT_4O_API_KEY: str
+    AZURE_GPT_4O_API_BASE: str
+    AZURE_GPT_4O_API_VERSION: str
 
     # PG
     PG_USER: Optional[str] = None

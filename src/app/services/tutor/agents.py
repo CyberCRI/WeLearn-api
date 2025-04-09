@@ -1,3 +1,5 @@
+import time
+
 from autogen_agentchat.agents import AssistantAgent
 from autogen_agentchat.messages import TextMessage
 from autogen_core import (
@@ -17,6 +19,9 @@ from src.app.services.tutor.models import (
     TutorSearchResponse,
 )
 from src.app.services.tutor.utils import build_system_message
+from src.app.utils.logger import logger as utils_logger
+
+logger = utils_logger(__name__)
 
 # TODO: add template file mouve this to utils
 TEMPLATES = {"template0": open("src/app/services/tutor/template.md").read()}
@@ -80,6 +85,7 @@ class UniversityTeacherAgent(RoutedAgent):
     ) -> None:
         prompt = f"Using the content in TEXT CONTENTS, you generate a syllabus that is engaging and coherent in relation to the THEMES extracted from these contents. \n\nTEXT CONTENTS:\n{message.extracts[0].original_document}\n\nTHEMES:\n{message.extracts[0].themes}"
 
+        start_time = time.time()
         llm_result = await self._model_client.create(
             messages=[
                 self._system_message,
@@ -88,6 +94,10 @@ class UniversityTeacherAgent(RoutedAgent):
             cancellation_token=ctx.cancellation_token,
         )
         response = llm_result.content
+        end_time = time.time()
+        logger.debug(
+            "agent_type=%s response_time=%s", self.id.type, end_time - start_time
+        )
         assert isinstance(response, str)
 
         await self.publish_message(
@@ -152,6 +162,7 @@ class SDGExpertAgent(RoutedAgent):
 
         prompt = f"Use these WeLearn documents: {message.resources} to integrate sustainability in this syllabus: {message.content}. You do not need to use ALL the information in the WeLearn documents, but ensure that sustainability integration is done in a way that is relevant and thematically linked to the discipline and the topics of the syllabus, that they are deeply embedded in the course content, and aligned with both the discipline and the broader educational goals. Add all WeLearn documents that you use in the REFERENCES section of the syllabus."
         try:
+            start_time = time.time()
             llm_result = await self._delegate.on_messages(
                 [TextMessage(content=prompt, source=self.id.key)],
                 ctx.cancellation_token,
@@ -159,8 +170,12 @@ class SDGExpertAgent(RoutedAgent):
         except Exception as e:
             print("Error in SDGExpertAgent:", e)
             raise e
+        end_time = time.time()
         response = llm_result.chat_message.content
 
+        logger.debug(
+            "agent_type=%s response_time=%s", self.id.type, end_time - start_time
+        )
         assert isinstance(response, str)
         await self.publish_message(
             Message(content=response, source=self.id.type),
@@ -223,13 +238,18 @@ class PedagogicalEngineerAgent(RoutedAgent):
         """
 
         prompt = f"Ensure that the syllabus is pedagogically sound, aligns with competency-based learning, and optimizes student engagement and learning effectiveness. Ensure that the learning objectives, outcomes and the competencies and related in a logical and meaningful way, and that these overarching goals are accomplished through the course plan and activities, also ensure that the competencies cited in the EU GreenComp framework are present in the syllabus in a way that is coherent with the discipline and the course content.\n\nSYLLABUS:\n{message.content}"
+        start_time = time.time()
         llm_result = await self._delegate.on_messages(
             [TextMessage(content=prompt, source=self.id.key)],
             ctx.cancellation_token,
         )
         response = llm_result.chat_message.content
+        end_time = time.time()
         assert isinstance(response, str)
 
+        logger.debug(
+            "agent_type=%s response_time=%s", self.id.type, end_time - start_time
+        )
         await self.publish_message(
             TaskResponse(result=response, task_id="pedagogical"),
             task_results_topic_id,

@@ -4,6 +4,7 @@ ingress:
 config:
   nonSensitive:
     AZURE_API_BASE: "https://apim-welearn-openai.azure-api.net"
+    AZURE_40_API_BASE: "https://apim-welearn-openai-sweden.azure-api.net"
     PG_HOST: dev-lab-projects-backend.postgres.database.azure.com
     AZURE_LLAMA_31_8B_API_BASE: https://meta-llama-3-1-8b-instruct-wl.swedencentral.models.ai.azure.com/
     AZURE_LLAMA_31_70B_API_BASE: https://meta-llama-3-1-70b-instruct-wl.swedencentral.models.ai.azure.com/

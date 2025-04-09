@@ -28,11 +28,11 @@ settings = get_settings()
 
 
 llm_4o_mini = AzureOpenAIChatCompletionClient(
-    azure_deployment="gpt-4o-mini",
-    model="gpt-4o-mini",
-    api_version=settings.AZURE_API_VERSION,
-    azure_endpoint=settings.AZURE_API_BASE,
-    api_key=settings.AZURE_API_KEY,
+    azure_deployment="gpt-4o",
+    model="gpt-4o",
+    api_version=settings.AZURE_GPT_4O_API_VERSION,
+    azure_endpoint=settings.AZURE_GPT_4O_API_BASE,
+    api_key=settings.AZURE_GPT_4O_API_KEY,
 )
 
 

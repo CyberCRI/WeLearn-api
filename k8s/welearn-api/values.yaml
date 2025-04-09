@@ -35,6 +35,7 @@ config:
     QDRANT_PORT: "6333"
     AZURE_API_TYPE: "azure"
     AZURE_API_VERSION: "2024-08-01-preview"
+    AZURE_4O_API_VERSION: "2025-01-01-preview"
     CORPUS: conversation
     MODELS_FOLDER_ROOTS: "/models"
     AZURE_API_BASE: "https://welearn-openai.openai.azure.com/openai/"
