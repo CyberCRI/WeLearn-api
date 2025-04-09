@@ -237,7 +237,6 @@ class SearchService:
         filters: Optional[List[int]] = None,
         nb_results: int = 100,
     ) -> List[http_models.ScoredPoint]:
-        logger.debug("method=search collection=%s", collection_info)
         try:
             resp = await self.client.search(
                 query_filter=self.build_filters(filters),
@@ -248,6 +247,7 @@ class SearchService:
                 with_payload=self.payload_keys,
                 score_threshold=0.5,
             )
+            logger.debug("method=search nb_results=%s", collection_info, len(resp))
         except qdrant_exceptions.ResponseHandlingException:
             return []
         return resp

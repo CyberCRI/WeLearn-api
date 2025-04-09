@@ -6,7 +6,7 @@ from sqlalchemy.sql import select
 from src.app.models.db_models import CorpusEmbedding
 from src.app.models.documents import Collection_schema, Document
 from src.app.models.search import EnhancedSearchQuery, SearchFilter, SearchQuery
-from src.app.services.exceptions import EmptyQueryError, NoResultsError, bad_request
+from src.app.services.exceptions import EmptyQueryError, bad_request
 from src.app.services.search import SearchService
 from src.app.services.search_helpers import (
     search_all_base,
@@ -107,11 +107,18 @@ async def search_all_slices_by_lang(
     response: Response,
     qp: EnhancedSearchQuery = Depends(get_params),
 ):
-    return await search_all_base(
+    res = await search_all_base(
         response=response,
         qp=qp,
         search_func=sp.search,
     )
+
+    if not res:
+        logger.error("No results found")
+        response.status_code = 404
+        return None
+
+    return res
 
 
 @router.post(
@@ -127,18 +134,20 @@ async def multi_search_all_slices_by_lang(
     if isinstance(qp.query, str):
         qp.query = [qp.query]
 
-    try:
-        results = await search_multi_inputs(
-            response=response,
-            nb_results=qp.nb_results,
-            sdg_filter=qp.sdg_filter,
-            collections=qp.corpora,
-            inputs=qp.query,
-            callback_function=sp.search,
-        )
-        return results
-    except NoResultsError:
+    results = await search_multi_inputs(
+        response=response,
+        nb_results=qp.nb_results,
+        sdg_filter=qp.sdg_filter,
+        collections=qp.corpora,
+        inputs=qp.query,
+        callback_function=sp.search,
+    )
+    if not results:
+        logger.error("No results found")
         response.status_code = 404
+        return None
+
+    return results
 
 
 @router.post(
@@ -151,8 +160,15 @@ async def search_all(
     response: Response,
     qp: EnhancedSearchQuery = Depends(get_params),
 ):
-    return await search_all_base(
+    res = await search_all_base(
         response=response,
         qp=qp,
         search_func=sp.search_group_by_document,
     )
+
+    if not res:
+        logger.error("No results found")
+        response.status_code = 404
+        return None
+
+    return res
