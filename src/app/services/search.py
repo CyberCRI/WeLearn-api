@@ -247,7 +247,9 @@ class SearchService:
                 with_payload=self.payload_keys,
                 score_threshold=0.5,
             )
-            logger.debug("method=search nb_results=%s", collection_info, len(resp))
+            logger.debug(
+                "method=search collection=%s nb_results=%s", collection_info, len(resp)
+            )
         except qdrant_exceptions.ResponseHandlingException:
             return []
         return resp

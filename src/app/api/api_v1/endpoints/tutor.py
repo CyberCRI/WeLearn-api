@@ -1,21 +1,18 @@
-from typing import Annotated, Optional
+from typing import Annotated
 
-from fastapi import APIRouter, File, UploadFile
-from pydantic import BaseModel
+from fastapi import APIRouter, File, Response, UploadFile
 
 from src.app.api.dependencies import get_settings
 from src.app.services.abst_chat import AbstractChat, ChatFactory
-from src.app.services.agents import (
-    theme_extractor,
-    theme_extractor_action,
-    university_teacher,
-    university_teacher_action,
-)
-from src.app.services.helpers import stringify_docs_content
 from src.app.services.search import SearchService
 from src.app.services.search_helpers import search_multi_inputs
+from src.app.services.tutor.models import (
+    ExtractorOuputList,
+    SyllabusResponse,
+    TutorSearchResponse,
+)
+from src.app.services.tutor.tutor import tutor_manager
 from src.app.utils.logger import logger as utils_logger
-from src.crews.crew_manager import kickoff
 
 logger = utils_logger(__name__)
 
@@ -29,58 +26,80 @@ chatfactory.init_client()
 sp = SearchService()
 
 
-class OddishParams(BaseModel):
-    file: Optional[UploadFile] = File(default=None)
+extractor_prompt = """
+role="An assistant to summarize a text and extract the main themes from it",
+backstory="You are specialised in analysing documents, summarizing them and extracting the main themes. You value precision and clarity.",
+goal="Analyse each document, summarize it and extract the main themes, explaining why each theme was identified.",
+expected_output="You must follow the following JSON schema: {extracts: [{'original_document': 'Document', 'summary': 'Summary', 'themes': ['Theme 1', 'Theme 2', ...]}, {'original_document': 'Document', 'summary': 'Sumamry', 'themes': ['Theme 1', 'Theme 2', ...]}, ...]} an entry by document",
+"""
 
 
-@router.post("/oddish_crew")
-async def kickoff_crew_endpoint(files: Annotated[list[UploadFile], File()]):
-    # get sources and use chat to classify text in parallel
+@router.post("/search")
+async def tutor_search(
+    files: Annotated[list[UploadFile], File()],
+    response: Response,
+):
     file_content: list[bytes] = [await file.read() for file in files]
-    file_content_str = [content.decode("utf-8") for content in file_content]
-    docs = await search_multi_inputs(
-        inputs=file_content_str, nb_results=5, callback_function=sp.search
+    doc_list_to_string = "Document {doc_nb}: {content}"
+
+    file_content_str = [
+        doc_list_to_string.format(
+            doc_nb=index + 1,
+            content=content.decode("utf-8", errors="ignore"),
+        )
+        for index, content in enumerate(file_content)
+    ]
+    file_content_str = "\n\n".join(file_content_str)
+
+    messages = [
+        {"role": "system", "content": extractor_prompt},
+        {"role": "assistant", "content": file_content_str},
+    ]
+
+    themes_extracted = await chatfactory.chat_schema(
+        model="gpt-4o-mini", messages=messages, response_format=ExtractorOuputList  # type: ignore
     )
 
-    result = await kickoff(text_contents=file_content_str, search_results=docs)
+    if not themes_extracted or not themes_extracted.extracts:
+        return TutorSearchResponse(
+            extracts=[],
+            nb_results=0,
+            documents=[],
+        )
 
-    return result
+    inputs = [doc.summary for doc in themes_extracted.extracts]  # type: ignore
 
-
-@router.post("/oddish")
-async def oddish(files: Annotated[list[UploadFile], File()]):
-    print(files)
-    file_content: list[bytes] = [await file.read() for file in files]
-    file_content_str = [content.decode("utf-8") for content in file_content]
-    docs = await search_multi_inputs(
-        inputs=file_content_str, nb_results=5, callback_function=sp.search
-    )
-    text_contents = "//n".join(file_content_str)
-
-    theme = await chatfactory.flex_chat(
-        messages=[
-            {"role": "system", "content": theme_extractor},
-            {
-                "role": "user",
-                "content": theme_extractor_action.format(text_contents=text_contents),
-            },
-        ]
+    search_results = await search_multi_inputs(
+        response=response,
+        inputs=inputs,
+        nb_results=5,
+        sdg_filter=None,
+        collections=None,
+        callback_function=sp.search,
     )
 
-    stringified_docs = stringify_docs_content(docs or [])
+    if not search_results:
+        return TutorSearchResponse(
+            extracts=themes_extracted.extracts,
+            nb_results=0,
+            documents=[],
+        )
 
-    plan = await chatfactory.flex_chat(
-        messages=[
-            {"role": "system", "content": university_teacher},
-            {
-                "role": "user",
-                "content": university_teacher_action.format(
-                    search_results=stringified_docs,
-                    text_contents=text_contents,
-                    theme=theme,
-                ),
-            },
-        ]
+    resp = TutorSearchResponse(
+        extracts=themes_extracted.extracts,
+        nb_results=len(search_results),
+        documents=search_results,
     )
 
-    return plan
+    # TODO: handle duplicates
+
+    return resp
+
+
+@router.post("/syllabus")
+async def create_syllabus(body: TutorSearchResponse) -> SyllabusResponse:
+    result = await tutor_manager(body)
+    # TODO: handle errors
+    # TODO: mae sure documents are used
+
+    return SyllabusResponse(syllabus=result.content, documents=body.documents)

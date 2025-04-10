@@ -116,9 +116,9 @@ async def search_multi_inputs(
     response: Response,
     inputs: List[str],
     nb_results: int,
-    sdg_filter: Optional[SearchFilter],
-    collections: List[str],
+    sdg_filter: list[int] | None,
     callback_function: Callable[..., Awaitable[List[ScoredPoint]]],
+    collections: tuple[str, ...] | None,
 ):
     try:
         qps: list[EnhancedSearchQuery] = [
@@ -143,8 +143,8 @@ async def search_multi_inputs(
             try:
                 all_data = await coroutine
             except CollectionNotFoundError as e:
+                logger.error(e.message)
                 response.status_code = 206
-                response.reason_phrase = f"Partial Content {e.message}"
 
         if not all_data:
             response.status_code = 404
