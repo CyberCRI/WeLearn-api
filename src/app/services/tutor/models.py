@@ -38,8 +38,8 @@ class MessageWithAnalysis(BaseModel):
 
 
 class MessageWithResources(BaseModel):
-    content: Dict | str
-    resources: List[Document]
+    content: list[ExtractorOutput] | str
+    resources: List[Dict]
     source: str = "default"
 
 
