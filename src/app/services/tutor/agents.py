@@ -70,8 +70,6 @@ class UniversityTeacherAgent(RoutedAgent):
                         "Assessment Methods: Propose methods to evaluate student progress."
                         "Course Schedule: Create a week-by-week breakdown with key topics and associated learning outcomes."
                         "References: Include all sources that you use to construct the syllabus."
-                        "3. Save a file to the current directory:"
-                        f"Syllabus File: Contains the drafted syllabus based on the provided template. You must follow this template :\n {TEMPLATES['template0']}. Name the file: uni-prof_syllabus.md"
                     ),
                     expected_output=f"You must follow this template :\n {TEMPLATES['template0']}",
                 )
@@ -81,9 +79,19 @@ class UniversityTeacherAgent(RoutedAgent):
 
     @message_handler
     async def handle_documents_and_themes(
-        self, message: TutorSearchResponse, ctx: MessageContext
+        self, message: MessageWithResources, ctx: MessageContext
     ) -> None:
-        prompt = f"Using the content in TEXT CONTENTS, you generate a syllabus that is engaging and coherent in relation to the THEMES extracted from these contents. \n\nTEXT CONTENTS:\n{message.extracts[0].original_document}\n\nTHEMES:\n{message.extracts[0].themes}"
+        contents = []
+        for curr_content in message.content:
+            if isinstance(curr_content, TutorSearchResponse):
+                contents.append(curr_content.extracts)
+
+        themes = []
+        for curr_content in contents:
+            if isinstance(curr_content, TutorSearchResponse):
+                themes.extend(curr_content.extracts)
+
+        prompt = f"Using the content in TEXT CONTENTS, you generate a syllabus that is engaging and coherent in relation to the THEMES extracted from these contents. \n\nTEXT CONTENTS:\n{contents}\n\nTHEMES:\n{themes}"
 
         start_time = time.time()
         llm_result = await self._model_client.create(
@@ -102,7 +110,7 @@ class UniversityTeacherAgent(RoutedAgent):
 
         await self.publish_message(
             MessageWithResources(
-                content=response, resources=message.documents, source=self.id.type
+                content=response, resources=message.resources, source=self.id.type
             ),
             topic_id=TopicId(sdg_expert_topic_type, source=self.id.key),
         )
@@ -139,8 +147,7 @@ class SDGExpertAgent(RoutedAgent):
                     "References: NEVER delete, summarize, or modify any references already present in the syllabus. Only append this section with any additional sources that you use to construct the syllabus. "
                 ),
                 expected_output=(
-                    f"1. Final Syllabus File: The revised syllabus, ready for the pedagogical engineer's review. You must follow this template :\n {TEMPLATES['template0']}. Name the file: SDG-exp_syllabus.md"
-                    "When you are done with generating the final output, reply with SDG EXPERT DONE."
+                    f"1. The revised syllabus, ready for the pedagogical engineer's review. You must follow this template :\n {TEMPLATES['template0']}."
                 ),
             ),
             memory=[memory],
@@ -217,9 +224,7 @@ class PedagogicalEngineerAgent(RoutedAgent):
                     "3. Check for consistency, clarity, and overall syllabus coherence to ensure usability for instructors."
                 ),
                 expected_output=(
-                    "Save a to the current directory:"
-                    f"1. Final Syllabus File: The polished syllabus, ready for user review. You must follow this template :\n {TEMPLATES['template0']}. Name the file: peda-eng_syllabus.md"
-                    "When you are done with generating the final output, reply with TERMINATE."
+                    f"1. Final Syllabus: The polished syllabus, ready for user review. You must follow this template :\n {TEMPLATES['template0']}."
                 ),
             ),
             memory=[memory],
