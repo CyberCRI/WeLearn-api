@@ -22,7 +22,12 @@ from src.app.services.tutor.agents import (
     sdg_expert_topic_type,
     university_teacher_topic_type,
 )
-from src.app.services.tutor.models import Message, TaskResponse, TutorSearchResponse, MessageWithResources
+from src.app.services.tutor.models import (
+    Message,
+    MessageWithResources,
+    TaskResponse,
+    TutorSearchResponse,
+)
 from src.app.services.tutor.utils import extract_doc_info
 
 settings = get_settings()
@@ -40,7 +45,9 @@ llm_4o_mini = AzureOpenAIChatCompletionClient(
 async def tutor_manager(content: TutorSearchResponse) -> Message:
     queue = asyncio.Queue[TaskResponse]()
 
-    formatted_content = MessageWithResources(content=content.extracts, resources=extract_doc_info(content.documents))
+    formatted_content = MessageWithResources(
+        content=content.extracts, resources=extract_doc_info(content.documents)
+    )
 
     async def collect_result(
         _agent: ClosureContext, message: TaskResponse, ctx: MessageContext
