@@ -1,6 +1,7 @@
 from typing import Annotated
 
 from fastapi import APIRouter, File, Response, UploadFile
+from pypdf import PdfReader
 
 from src.app.api.dependencies import get_settings
 from src.app.services.abst_chat import AbstractChat, ChatFactory
@@ -20,7 +21,7 @@ router = APIRouter()
 
 settings = get_settings()
 
-chatfactory: AbstractChat = ChatFactory().create_chat("openai")
+chatfactory: AbstractChat = ChatFactory().create_chat("openai", model="gpt-4o")
 chatfactory.init_client()
 
 sp = SearchService()
@@ -39,7 +40,21 @@ async def tutor_search(
     files: Annotated[list[UploadFile], File()],
     response: Response,
 ):
-    file_content: list[bytes] = [await file.read() for file in files]
+    files_content: list[bytes] = []
+    for file in files:
+        if (
+            file.content_type == "application/pdf"
+            or file.content_type == "application/x-pdf"
+        ):
+            file_content = ""
+            reader = PdfReader(file.file)
+            for page in reader.pages:
+                file_content += page.extract_text()
+            files_content.append(file_content.encode("utf-8", errors="ignore"))
+        else:
+            file_content = await file.read()
+            files_content.append(file_content)
+
     doc_list_to_string = "Document {doc_nb}: {content}"
 
     file_content_str = [
@@ -47,18 +62,29 @@ async def tutor_search(
             doc_nb=index + 1,
             content=content.decode("utf-8", errors="ignore"),
         )
-        for index, content in enumerate(file_content)
+        for index, content in enumerate(files_content)
     ]
     file_content_str = "\n\n".join(file_content_str)
+
+    print(file_content_str)
 
     messages = [
         {"role": "system", "content": extractor_prompt},
         {"role": "assistant", "content": file_content_str},
     ]
 
-    themes_extracted = await chatfactory.chat_schema(
-        model="gpt-4o-mini", messages=messages, response_format=ExtractorOuputList  # type: ignore
-    )
+    try:
+        themes_extracted = await chatfactory.chat_schema(
+            model="gpt-4o", messages=messages, response_format=ExtractorOuputList  # type: ignore
+        )
+    except Exception as e:
+        logger.error(f"Error in chat schema: {e}")
+        # todo: handle error
+        return TutorSearchResponse(
+            extracts=[],
+            nb_results=0,
+            documents=[],
+        )
 
     if not themes_extracted or not themes_extracted.extracts:
         return TutorSearchResponse(

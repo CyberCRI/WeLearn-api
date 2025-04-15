@@ -19,12 +19,12 @@ import json
 from abc import ABC, abstractmethod
 from typing import AsyncIterable, Dict, List, Literal, Optional
 
-import openai
 from azure.ai.inference import ChatCompletionsClient
 from azure.core.credentials import AzureKeyCredential
 
 # from ecologits import EcoLogits  # type: ignore
 from mistralai import Mistral
+from openai import AsyncAzureOpenAI
 from pydantic import BaseModel
 
 from src.app.api.dependencies import get_settings
@@ -456,7 +456,7 @@ class Open_Chat(AbstractChat):
             raise ValueError("API_BASE or API_VERSION not provided")
 
         try:
-            self.chat_client = openai.AsyncAzureOpenAI(
+            self.chat_client = AsyncAzureOpenAI(
                 api_key=self.API_KEY,
                 azure_endpoint=self.API_BASE,
                 api_version=self.API_VERSION,
@@ -507,7 +507,7 @@ class Open_Chat(AbstractChat):
     ):
         try:
             completion = await self.chat_client.beta.chat.completions.parse(
-                model=model,
+                model=self.model or model,
                 messages=messages,
                 temperature=0.2,
                 response_format=response_format,
@@ -653,6 +653,26 @@ class ChatFactory:
             raise ValueError(f"Unsupported chat type: {chat_type}")
 
         if chat_type == "openai":
+            openai_models = {
+                "gpt-4o-mini": (
+                    settings.AZURE_API_KEY,
+                    settings.AZURE_API_BASE,
+                    settings.AZURE_API_VERSION,
+                ),
+                "gpt-4o": (
+                    settings.AZURE_GPT_4O_API_KEY,
+                    settings.AZURE_GPT_4O_API_BASE,
+                    "2025-01-01-preview",
+                ),
+            }
+            if model:
+                key, base, version = openai_models.get(model, (None, None, None))
+                if not key or not base or not version:
+                    raise ValueError(f"Unsupported model: {model}")
+                return chat_classes[chat_type](
+                    API_KEY=key, API_BASE=base, API_VERSION=version, model=model
+                )
+
             return chat_classes[chat_type](
                 API_VERSION=settings.AZURE_API_VERSION,
                 API_KEY=settings.AZURE_API_KEY,
