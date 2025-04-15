@@ -13,9 +13,8 @@ from autogen_core.memory import ListMemory
 from autogen_core.models import ChatCompletionClient, SystemMessage, UserMessage
 
 from src.app.services.tutor.models import (
-    Message,
     MessageWithResources,
-    TaskResponse,
+    SyllabusResponseAgent,
     TutorSearchResponse,
 )
 from src.app.services.tutor.utils import build_system_message
@@ -115,6 +114,11 @@ class UniversityTeacherAgent(RoutedAgent):
             topic_id=TopicId(sdg_expert_topic_type, source=self.id.key),
         )
 
+        await self.publish_message(
+            SyllabusResponseAgent(content=response, source=self.id.type),
+            task_results_topic_id,
+        )
+
 
 @type_subscription(topic_type=sdg_expert_topic_type)
 class SDGExpertAgent(RoutedAgent):
@@ -185,8 +189,13 @@ class SDGExpertAgent(RoutedAgent):
         )
         assert isinstance(response, str)
         await self.publish_message(
-            Message(content=response, source=self.id.type),
+            SyllabusResponseAgent(content=response, source=self.id.type),
             topic_id=TopicId(pedagogical_engineer_topic_type, source=self.id.key),
+        )
+
+        await self.publish_message(
+            SyllabusResponseAgent(content=response, source=self.id.type),
+            task_results_topic_id,
         )
 
 
@@ -232,11 +241,13 @@ class PedagogicalEngineerAgent(RoutedAgent):
         self._model_client = model_client
 
     @message_handler(match=lambda msg, ctx: msg.source.startswith("SDGExpert"))  # type: ignore
-    async def handle_syllabus(self, message: Message, ctx: MessageContext) -> Message:
+    async def handle_syllabus(
+        self, message: SyllabusResponseAgent, ctx: MessageContext
+    ) -> None:
         """
         Handles the syllabus by improving on the pedagogical aspects and ensures that the competencies cited in the EU GreenComp framework are present in a coherent manner with the discipline and course content.
         Args:
-            message (Message): The message containing the syllabus content.
+            message (SyllabusResponseAgent): The message containing the syllabus content.
             ctx (MessageContext): The context of the message.
         Returns:
             None
@@ -256,8 +267,6 @@ class PedagogicalEngineerAgent(RoutedAgent):
             "agent_type=%s response_time=%s", self.id.type, end_time - start_time
         )
         await self.publish_message(
-            TaskResponse(result=response, task_id="pedagogical"),
+            SyllabusResponseAgent(content=response, source=self.id.type),
             task_results_topic_id,
         )
-
-        return Message(content=response)

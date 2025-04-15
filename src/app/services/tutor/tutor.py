@@ -23,9 +23,8 @@ from src.app.services.tutor.agents import (
     university_teacher_topic_type,
 )
 from src.app.services.tutor.models import (
-    Message,
     MessageWithResources,
-    TaskResponse,
+    SyllabusResponseAgent,
     TutorSearchResponse,
 )
 from src.app.services.tutor.utils import extract_doc_info
@@ -42,15 +41,15 @@ llm_4o_mini = AzureOpenAIChatCompletionClient(
 )
 
 
-async def tutor_manager(content: TutorSearchResponse) -> Message:
-    queue = asyncio.Queue[TaskResponse]()
+async def tutor_manager(content: TutorSearchResponse) -> list[SyllabusResponseAgent]:
+    queue = asyncio.Queue[SyllabusResponseAgent]()
 
     formatted_content = MessageWithResources(
         content=content.extracts, resources=extract_doc_info(content.documents)
     )
 
     async def collect_result(
-        _agent: ClosureContext, message: TaskResponse, ctx: MessageContext
+        _agent: ClosureContext, message: SyllabusResponseAgent, ctx: MessageContext
     ) -> None:
         await queue.put(message)
 
@@ -117,9 +116,13 @@ async def tutor_manager(content: TutorSearchResponse) -> Message:
     )
 
     await runtime.stop_when_idle()
-    response: TaskResponse = TaskResponse(task_id="", result="")
-    if not queue.empty():
+    responses = []
+    while not queue.empty():
         response = await queue.get()
+        responses.append(response)
 
     await runtime.close()
-    return Message(content=response.result)
+    return [
+        SyllabusResponseAgent(content=response.content, source=response.source)
+        for response in responses
+    ]
