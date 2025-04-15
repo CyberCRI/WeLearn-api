@@ -45,7 +45,10 @@ async def tutor_manager(content: TutorSearchResponse) -> list[SyllabusResponseAg
     queue = asyncio.Queue[SyllabusResponseAgent]()
 
     formatted_content = MessageWithResources(
-        content=content.extracts, resources=extract_doc_info(content.documents)
+        content=content.extracts,
+        resources=extract_doc_info(content.documents),
+        themes=[theme for extract in content.extracts for theme in extract.themes],
+        summary=[extract.summary for extract in content.extracts],
     )
 
     async def collect_result(

@@ -12,11 +12,7 @@ from autogen_core import (
 from autogen_core.memory import ListMemory
 from autogen_core.models import ChatCompletionClient, SystemMessage, UserMessage
 
-from src.app.services.tutor.models import (
-    MessageWithResources,
-    SyllabusResponseAgent,
-    TutorSearchResponse,
-)
+from src.app.services.tutor.models import MessageWithResources, SyllabusResponseAgent
 from src.app.services.tutor.utils import build_system_message
 from src.app.utils.logger import logger as utils_logger
 
@@ -80,15 +76,8 @@ class UniversityTeacherAgent(RoutedAgent):
     async def handle_documents_and_themes(
         self, message: MessageWithResources, ctx: MessageContext
     ) -> None:
-        contents = []
-        for curr_content in message.content:
-            if isinstance(curr_content, TutorSearchResponse):
-                contents.append(curr_content.extracts)
-
-        themes = []
-        for curr_content in contents:
-            if isinstance(curr_content, TutorSearchResponse):
-                themes.extend(curr_content.extracts)
+        contents = "summary :".join(message.summary)
+        themes = ",".join(message.themes)
 
         prompt = f"Using the content in TEXT CONTENTS, you generate a syllabus that is engaging and coherent in relation to the THEMES extracted from these contents. \n\nTEXT CONTENTS:\n{contents}\n\nTHEMES:\n{themes}"
 
@@ -109,7 +98,11 @@ class UniversityTeacherAgent(RoutedAgent):
 
         await self.publish_message(
             MessageWithResources(
-                content=response, resources=message.resources, source=self.id.type
+                content=response,
+                resources=message.resources,
+                source=self.id.type,
+                summary=message.summary,
+                themes=message.themes,
             ),
             topic_id=TopicId(sdg_expert_topic_type, source=self.id.key),
         )

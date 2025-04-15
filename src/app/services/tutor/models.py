@@ -39,6 +39,8 @@ class MessageWithAnalysis(BaseModel):
 
 class MessageWithResources(BaseModel):
     content: list[ExtractorOutput] | str
+    themes: list[str]
+    summary: list[str]
     resources: List[Dict]
     source: str = "default"
 
