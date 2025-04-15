@@ -41,10 +41,13 @@ llm_4o_mini = AzureOpenAIChatCompletionClient(
 )
 
 
-async def tutor_manager(content: TutorSearchResponse) -> list[SyllabusResponseAgent]:
+async def tutor_manager(
+    content: TutorSearchResponse, lang: str
+) -> list[SyllabusResponseAgent]:
     queue = asyncio.Queue[SyllabusResponseAgent]()
 
     formatted_content = MessageWithResources(
+        lang=lang,
         content=content.extracts,
         resources=extract_doc_info(content.documents),
         themes=[theme for extract in content.extracts for theme in extract.themes],

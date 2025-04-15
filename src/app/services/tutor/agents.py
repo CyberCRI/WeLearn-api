@@ -79,7 +79,7 @@ class UniversityTeacherAgent(RoutedAgent):
         contents = "summary :".join(message.summary)
         themes = ",".join(message.themes)
 
-        prompt = f"Using the content in TEXT CONTENTS, you generate a syllabus that is engaging and coherent in relation to the THEMES extracted from these contents. \n\nTEXT CONTENTS:\n{contents}\n\nTHEMES:\n{themes}"
+        prompt = f"Using the content in TEXT CONTENTS, you generate a syllabus that is engaging and coherent in relation to the THEMES extracted from these contents. The syllabus should be written in lang: {message.lang} \n\nTEXT CONTENTS:\n{contents}\n\nTHEMES:\n{themes}"
 
         start_time = time.time()
         llm_result = await self._model_client.create(
@@ -103,6 +103,7 @@ class UniversityTeacherAgent(RoutedAgent):
                 source=self.id.type,
                 summary=message.summary,
                 themes=message.themes,
+                lang=message.lang,
             ),
             topic_id=TopicId(sdg_expert_topic_type, source=self.id.key),
         )
@@ -164,7 +165,7 @@ class SDGExpertAgent(RoutedAgent):
             None
         """
 
-        prompt = f"Use these WeLearn documents: {message.resources} to integrate sustainability in this syllabus: {message.content}. You do not need to use ALL the information in the WeLearn documents, but ensure that sustainability integration is done in a way that is relevant and thematically linked to the discipline and the topics of the syllabus, that they are deeply embedded in the course content, and aligned with both the discipline and the broader educational goals. Add all WeLearn documents that you use in the REFERENCES section of the syllabus."
+        prompt = f"Use these WeLearn documents: {message.resources} to integrate sustainability in this syllabus: {message.content}. You do not need to use ALL the information in the WeLearn documents, but ensure that sustainability integration is done in a way that is relevant and thematically linked to the discipline and the topics of the syllabus, that they are deeply embedded in the course content, and aligned with both the discipline and the broader educational goals. Add all WeLearn documents that you use in the REFERENCES section of the syllabus. Keep the same language, lang: {message.lang}"
         try:
             start_time = time.time()
             llm_result = await self._delegate.on_messages(
@@ -246,7 +247,7 @@ class PedagogicalEngineerAgent(RoutedAgent):
             None
         """
 
-        prompt = f"Ensure that the syllabus is pedagogically sound, aligns with competency-based learning, and optimizes student engagement and learning effectiveness. Ensure that the learning objectives, outcomes and the competencies and related in a logical and meaningful way, and that these overarching goals are accomplished through the course plan and activities, also ensure that the competencies cited in the EU GreenComp framework are present in the syllabus in a way that is coherent with the discipline and the course content.\n\nSYLLABUS:\n{message.content}"
+        prompt = f"Ensure that the syllabus is pedagogically sound, aligns with competency-based learning, and optimizes student engagement and learning effectiveness. Ensure that the learning objectives, outcomes and the competencies and related in a logical and meaningful way, and that these overarching goals are accomplished through the course plan and activities, also ensure that the competencies cited in the EU GreenComp framework are present in the syllabus in a way that is coherent with the discipline and the course content. Make sure to use the same language as the current syllabus. \n\nSYLLABUS:\n{message.content}"
         start_time = time.time()
         llm_result = await self._delegate.on_messages(
             [TextMessage(content=prompt, source=self.id.key)],

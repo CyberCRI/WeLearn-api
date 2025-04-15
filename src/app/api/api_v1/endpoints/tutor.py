@@ -121,8 +121,10 @@ async def tutor_search(
 
 
 @router.post("/syllabus")
-async def create_syllabus(body: TutorSearchResponse) -> SyllabusResponse:
-    results = await tutor_manager(body)
+async def create_syllabus(
+    body: TutorSearchResponse, lang: str = "en"
+) -> SyllabusResponse:
+    results = await tutor_manager(body, lang)
 
     # TODO: handle errors
 

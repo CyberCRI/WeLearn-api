@@ -38,6 +38,7 @@ class MessageWithAnalysis(BaseModel):
 
 
 class MessageWithResources(BaseModel):
+    lang: str = "en"
     content: list[ExtractorOutput] | str
     themes: list[str]
     summary: list[str]
