@@ -12,12 +12,7 @@ from autogen_core import (
 from autogen_core.memory import ListMemory
 from autogen_core.models import ChatCompletionClient, SystemMessage, UserMessage
 
-from src.app.services.tutor.models import (
-    Message,
-    MessageWithResources,
-    TaskResponse,
-    TutorSearchResponse,
-)
+from src.app.services.tutor.models import MessageWithResources, SyllabusResponseAgent
 from src.app.services.tutor.utils import build_system_message
 from src.app.utils.logger import logger as utils_logger
 
@@ -81,17 +76,10 @@ class UniversityTeacherAgent(RoutedAgent):
     async def handle_documents_and_themes(
         self, message: MessageWithResources, ctx: MessageContext
     ) -> None:
-        contents = []
-        for curr_content in message.content:
-            if isinstance(curr_content, TutorSearchResponse):
-                contents.append(curr_content.extracts)
+        contents = "summary :".join(message.summary)
+        themes = ",".join(message.themes)
 
-        themes = []
-        for curr_content in contents:
-            if isinstance(curr_content, TutorSearchResponse):
-                themes.extend(curr_content.extracts)
-
-        prompt = f"Using the content in TEXT CONTENTS, you generate a syllabus that is engaging and coherent in relation to the THEMES extracted from these contents. \n\nTEXT CONTENTS:\n{contents}\n\nTHEMES:\n{themes}"
+        prompt = f"Using the content in TEXT CONTENTS, you generate a syllabus that is engaging and coherent in relation to the THEMES extracted from these contents. The syllabus should be written in lang: {message.lang} \n\nTEXT CONTENTS:\n{contents}\n\nTHEMES:\n{themes}"
 
         start_time = time.time()
         llm_result = await self._model_client.create(
@@ -110,9 +98,19 @@ class UniversityTeacherAgent(RoutedAgent):
 
         await self.publish_message(
             MessageWithResources(
-                content=response, resources=message.resources, source=self.id.type
+                content=response,
+                resources=message.resources,
+                source=self.id.type,
+                summary=message.summary,
+                themes=message.themes,
+                lang=message.lang,
             ),
             topic_id=TopicId(sdg_expert_topic_type, source=self.id.key),
+        )
+
+        await self.publish_message(
+            SyllabusResponseAgent(content=response, source=self.id.type),
+            task_results_topic_id,
         )
 
 
@@ -167,7 +165,7 @@ class SDGExpertAgent(RoutedAgent):
             None
         """
 
-        prompt = f"Use these WeLearn documents: {message.resources} to integrate sustainability in this syllabus: {message.content}. You do not need to use ALL the information in the WeLearn documents, but ensure that sustainability integration is done in a way that is relevant and thematically linked to the discipline and the topics of the syllabus, that they are deeply embedded in the course content, and aligned with both the discipline and the broader educational goals. Add all WeLearn documents that you use in the REFERENCES section of the syllabus."
+        prompt = f"Use these WeLearn documents: {message.resources} to integrate sustainability in this syllabus: {message.content}. You do not need to use ALL the information in the WeLearn documents, but ensure that sustainability integration is done in a way that is relevant and thematically linked to the discipline and the topics of the syllabus, that they are deeply embedded in the course content, and aligned with both the discipline and the broader educational goals. Add all WeLearn documents that you use in the REFERENCES section of the syllabus. Keep the same language, lang: {message.lang}"
         try:
             start_time = time.time()
             llm_result = await self._delegate.on_messages(
@@ -185,8 +183,13 @@ class SDGExpertAgent(RoutedAgent):
         )
         assert isinstance(response, str)
         await self.publish_message(
-            Message(content=response, source=self.id.type),
+            SyllabusResponseAgent(content=response, source=self.id.type),
             topic_id=TopicId(pedagogical_engineer_topic_type, source=self.id.key),
+        )
+
+        await self.publish_message(
+            SyllabusResponseAgent(content=response, source=self.id.type),
+            task_results_topic_id,
         )
 
 
@@ -232,17 +235,19 @@ class PedagogicalEngineerAgent(RoutedAgent):
         self._model_client = model_client
 
     @message_handler(match=lambda msg, ctx: msg.source.startswith("SDGExpert"))  # type: ignore
-    async def handle_syllabus(self, message: Message, ctx: MessageContext) -> Message:
+    async def handle_syllabus(
+        self, message: SyllabusResponseAgent, ctx: MessageContext
+    ) -> None:
         """
         Handles the syllabus by improving on the pedagogical aspects and ensures that the competencies cited in the EU GreenComp framework are present in a coherent manner with the discipline and course content.
         Args:
-            message (Message): The message containing the syllabus content.
+            message (SyllabusResponseAgent): The message containing the syllabus content.
             ctx (MessageContext): The context of the message.
         Returns:
             None
         """
 
-        prompt = f"Ensure that the syllabus is pedagogically sound, aligns with competency-based learning, and optimizes student engagement and learning effectiveness. Ensure that the learning objectives, outcomes and the competencies and related in a logical and meaningful way, and that these overarching goals are accomplished through the course plan and activities, also ensure that the competencies cited in the EU GreenComp framework are present in the syllabus in a way that is coherent with the discipline and the course content.\n\nSYLLABUS:\n{message.content}"
+        prompt = f"Ensure that the syllabus is pedagogically sound, aligns with competency-based learning, and optimizes student engagement and learning effectiveness. Ensure that the learning objectives, outcomes and the competencies and related in a logical and meaningful way, and that these overarching goals are accomplished through the course plan and activities, also ensure that the competencies cited in the EU GreenComp framework are present in the syllabus in a way that is coherent with the discipline and the course content. Make sure to use the same language as the current syllabus. \n\nSYLLABUS:\n{message.content}"
         start_time = time.time()
         llm_result = await self._delegate.on_messages(
             [TextMessage(content=prompt, source=self.id.key)],
@@ -256,8 +261,6 @@ class PedagogicalEngineerAgent(RoutedAgent):
             "agent_type=%s response_time=%s", self.id.type, end_time - start_time
         )
         await self.publish_message(
-            TaskResponse(result=response, task_id="pedagogical"),
+            SyllabusResponseAgent(content=response, source=self.id.type),
             task_results_topic_id,
         )
-
-        return Message(content=response)

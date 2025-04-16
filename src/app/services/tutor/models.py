@@ -22,14 +22,14 @@ class TutorSearchResponse(BaseModel):
     documents: list[Document]
 
 
-class SyllabusResponse(BaseModel):
-    syllabus: str
-    documents: list[Document]
-
-
-class Message(BaseModel):
+class SyllabusResponseAgent(BaseModel):
     content: str
     source: str = "default"
+
+
+class SyllabusResponse(BaseModel):
+    syllabus: list[SyllabusResponseAgent]
+    documents: list[Document]
 
 
 class MessageWithAnalysis(BaseModel):
@@ -38,7 +38,10 @@ class MessageWithAnalysis(BaseModel):
 
 
 class MessageWithResources(BaseModel):
+    lang: str = "en"
     content: list[ExtractorOutput] | str
+    themes: list[str]
+    summary: list[str]
     resources: List[Dict]
     source: str = "default"
 

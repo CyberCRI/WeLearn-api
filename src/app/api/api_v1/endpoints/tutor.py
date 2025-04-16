@@ -66,8 +66,6 @@ async def tutor_search(
     ]
     file_content_str = "\n\n".join(file_content_str)
 
-    print(file_content_str)
-
     messages = [
         {"role": "system", "content": extractor_prompt},
         {"role": "assistant", "content": file_content_str},
@@ -123,9 +121,11 @@ async def tutor_search(
 
 
 @router.post("/syllabus")
-async def create_syllabus(body: TutorSearchResponse) -> SyllabusResponse:
-    result = await tutor_manager(body)
-    # TODO: handle errors
-    # TODO: mae sure documents are used
+async def create_syllabus(
+    body: TutorSearchResponse, lang: str = "en"
+) -> SyllabusResponse:
+    results = await tutor_manager(body, lang)
 
-    return SyllabusResponse(syllabus=result.content, documents=body.documents)
+    # TODO: handle errors
+
+    return SyllabusResponse(syllabus=results, documents=body.documents)
