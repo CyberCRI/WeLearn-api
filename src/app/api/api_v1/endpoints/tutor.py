@@ -5,6 +5,7 @@ from pypdf import PdfReader
 
 from src.app.api.dependencies import get_settings
 from src.app.services.abst_chat import AbstractChat, ChatFactory
+from src.app.services.exceptions import NoResultsError
 from src.app.services.search import SearchService
 from src.app.services.search_helpers import search_multi_inputs
 from src.app.services.tutor.models import (
@@ -93,14 +94,23 @@ async def tutor_search(
 
     inputs = [doc.summary for doc in themes_extracted.extracts]  # type: ignore
 
-    search_results = await search_multi_inputs(
-        response=response,
-        inputs=inputs,
-        nb_results=5,
-        sdg_filter=None,
-        collections=None,
-        callback_function=sp.search,
-    )
+    try:
+        search_results = await search_multi_inputs(
+            response=response,
+            inputs=inputs,
+            nb_results=5,
+            sdg_filter=None,
+            collections=None,
+            callback_function=sp.search,
+        )
+    except NoResultsError as e:
+        response.status_code = 404
+        logger.error(f"No results found: {e}")
+        return TutorSearchResponse(
+            extracts=themes_extracted.extracts,
+            nb_results=0,
+            documents=[],
+        )
 
     if not search_results:
         return TutorSearchResponse(
