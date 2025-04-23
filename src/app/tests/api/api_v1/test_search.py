@@ -265,7 +265,6 @@ class SearchTestsSlices(IsolatedAsyncioTestCase):
             },
             headers={"X-API-Key": "test"},
         )
-        print(">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>", response.json())
 
         self.assertEqual(response.status_code, 200)
 
