@@ -1,10 +1,10 @@
 from typing import Annotated
 
-from fastapi import APIRouter, File, Response, UploadFile
-from pypdf import PdfReader
+from fastapi import APIRouter, File, HTTPException, Response, UploadFile
 
 from src.app.api.dependencies import get_settings
 from src.app.services.abst_chat import AbstractChat, ChatFactory
+from src.app.services.exceptions import NoResultsError
 from src.app.services.search import SearchService
 from src.app.services.search_helpers import search_multi_inputs
 from src.app.services.tutor.models import (
@@ -13,6 +13,7 @@ from src.app.services.tutor.models import (
     TutorSearchResponse,
 )
 from src.app.services.tutor.tutor import tutor_manager
+from src.app.services.tutor.utils import get_file_content
 from src.app.utils.logger import logger as utils_logger
 
 logger = utils_logger(__name__)
@@ -41,19 +42,14 @@ async def tutor_search(
     response: Response,
 ):
     files_content: list[bytes] = []
+
     for file in files:
-        if (
-            file.content_type == "application/pdf"
-            or file.content_type == "application/x-pdf"
-        ):
-            file_content = ""
-            reader = PdfReader(file.file)
-            for page in reader.pages:
-                file_content += page.extract_text()
-            files_content.append(file_content.encode("utf-8", errors="ignore"))
-        else:
-            file_content = await file.read()
-            files_content.append(file_content)
+        file_content = await get_file_content(file)
+
+        if not file_content:
+            raise HTTPException(status_code=400, detail="added files are empty")
+
+        files_content.append(file_content)
 
     doc_list_to_string = "Document {doc_nb}: {content}"
 
@@ -93,14 +89,23 @@ async def tutor_search(
 
     inputs = [doc.summary for doc in themes_extracted.extracts]  # type: ignore
 
-    search_results = await search_multi_inputs(
-        response=response,
-        inputs=inputs,
-        nb_results=5,
-        sdg_filter=None,
-        collections=None,
-        callback_function=sp.search,
-    )
+    try:
+        search_results = await search_multi_inputs(
+            response=response,
+            inputs=inputs,
+            nb_results=5,
+            sdg_filter=None,
+            collections=None,
+            callback_function=sp.search,
+        )
+    except NoResultsError as e:
+        response.status_code = 404
+        logger.error(f"No results found: {e}")
+        return TutorSearchResponse(
+            extracts=themes_extracted.extracts,
+            nb_results=0,
+            documents=[],
+        )
 
     if not search_results:
         return TutorSearchResponse(

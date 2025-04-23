@@ -1,3 +1,6 @@
+from fastapi import UploadFile
+from pypdf import PdfReader
+
 from src.app.models.documents import Document
 
 
@@ -34,3 +37,20 @@ def extract_doc_info(documents: list[Document]) -> list[dict]:
         }
         for doc in documents
     ]
+
+
+async def get_file_content(file: UploadFile):
+    if (
+        file.content_type == "application/pdf"
+        or file.content_type == "application/x-pdf"
+    ):
+        reader = PdfReader(file.file)
+        pages_content = ""
+        for page in reader.pages:
+            pages_content += page.extract_text()
+
+        file_content = pages_content.encode("utf-8", errors="ignore")
+    else:
+        file_content = await file.read()
+
+    return file_content
