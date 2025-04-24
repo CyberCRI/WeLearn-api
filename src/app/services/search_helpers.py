@@ -144,3 +144,7 @@ async def search_multi_inputs(
     except Exception as e:
         handle_error(response=response, exc=e)
     return None
+
+
+# todo: clean code
+# andle tests
