@@ -68,32 +68,27 @@ class SearchService:
 
     @log_time_and_error
     async def get_collections(self) -> Tuple[str, ...]:
-        aliases = await self.client.get_aliases()
-        self.collections = tuple(alias.alias_name for alias in aliases.aliases)
+        collections = await self.client.get_collections()
+        self.collections = tuple(collection.name for collection in collections.collections)
         logger.info("collections=%s", self.collections)
         return self.collections
 
     @log_time_and_error
     async def get_collections_aliases_by_language(
         self, lang: str, collections: Optional[Tuple[str, ...]] = None
-    ) -> List[str]:
+    ) -> str:
         col_to_iter = self.collections or await self.get_collections()
-        if collections is None:
-            return [
-                collection for collection in col_to_iter if f"_{lang}_" in collection
-            ]
 
         cols = [
             collection
-            for cur_col in collections
             for collection in col_to_iter
-            if collection.startswith(cur_col) and f"_{lang}_" in collection
+            if f"welearn_{lang}_" in collection
         ]
         if not cols:
             raise CollectionNotFoundError(
                 message=f"No collection found for this language {lang} and collections {collections}"
             )
-        return cols
+        return cols[0]
 
     @log_time_and_error
     async def get_collection_alias(self, collection_name: str, lang: str) -> str:
@@ -122,7 +117,7 @@ class SearchService:
         return collection
 
     def _get_info_from_collection_alias(self, collection_alias: str) -> Collection:
-        name, lang, model = collection_alias.split("_")
+        prefix, name, lang, model = collection_alias.split("_")
         corpus = Collection(name=name, lang=lang, model=model, alias=collection_alias)
         logger.debug(
             "info_from_collection collection=%s name=%s lang=%s model=%s",
@@ -189,25 +184,33 @@ class SearchService:
         return cast(np.ndarray, embeddings)
 
     def build_filters(
-        self, filters: Optional[List[int]] = None
+        self, filters: Optional[dict] = None
     ) -> Optional[qdrant_models.Filter]:
         if filters is None:
             return None
 
-        qdrant_filter: List[qdrant_models.Condition] = [
-            qdrant_models.FieldCondition(
-                key="document_sdg", match=qdrant_models.MatchValue(value=filt)
-            )
-            for filt in filters
-        ]
-        return qdrant_models.Filter(should=qdrant_filter)
+        qdrant_filter = []
+        for key, values in filters.items():
+            if not values:
+                continue
+
+            qdrant_filter.append(
+                    qdrant_models.FieldCondition(
+                        key=key,
+                        match=qdrant_models.MatchAny(any=values),
+                    )
+                )
+
+
+
+        return qdrant_models.Filter(must=qdrant_filter)
 
     @log_time_and_error
     async def search_group_by_document(
         self,
         collection_info: str,
         embedding: np.ndarray,
-        filters: Optional[List[int]] = None,
+        filters: Optional[dict] = None,
         nb_results: int = 100,
     ) -> Optional[List[http_models.ScoredPoint]]:
         logger.debug("search_group_by_document collection=%s", collection_info)
@@ -234,7 +237,7 @@ class SearchService:
         self,
         collection_info: str,
         embedding: np.ndarray,
-        filters: Optional[List[int]] = None,
+        filters: Optional[dict] = None,
         nb_results: int = 100,
     ) -> List[http_models.ScoredPoint]:
         try:

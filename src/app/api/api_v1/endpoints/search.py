@@ -134,6 +134,7 @@ async def multi_search_all_slices_by_lang(
     if isinstance(qp.query, str):
         qp.query = [qp.query]
 
+
     results = await search_multi_inputs(
         response=response,
         nb_results=qp.nb_results,
@@ -144,6 +145,7 @@ async def multi_search_all_slices_by_lang(
     )
     if not results:
         logger.error("No results found")
+        # todo switch to 204 no content
         response.status_code = 404
         return None
 

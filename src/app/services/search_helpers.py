@@ -16,7 +16,6 @@ from src.app.services.search import (
     SearchService,
     concatenate_same_doc_id_slices,
     get_subject_vector,
-    parallel_search,
     sort_slices_using_mmr,
 )
 from src.app.utils.logger import logger as logger_utils
@@ -74,28 +73,24 @@ async def search_all_base(
             logger.error(e.message)
             raise CollectionNotFoundError()
 
-        collections_to_search = [
-            sp.get_collection_dict_with_embed(
-                collection_alias=col,
+        collections_to_search = sp.get_collection_dict_with_embed(
+                collection_alias=collections,
                 query=qp.query,
                 subject_vector=subject_vector,
                 subject_influence_factor=qp.influence_factor,
             )
-            for col in collections
-        ]
 
         logger.info(
             "Found %s collections to search: %s",
             len(collections_to_search),
             collections,
         )
-
-        data = await parallel_search(
-            callback_function=search_func,
+        data = await search_func(
+            collection_info=collections_to_search["alias"],
+            embedding=collections_to_search["embed"],
             nb_results=qp.nb_results,
-            collections=collections_to_search,
-            sdg_filter=qp.sdg_filter,
-        )
+            filters={"slice_sdg": qp.sdg_filter, "document_corpus": qp.corpora},
+            ) 
 
         if not data:
             return []
@@ -139,28 +134,13 @@ async def search_multi_inputs(
             for qp in qps
         ]
 
+        all_data: list[ScoredPoint] = []
         for coroutine in asyncio.as_completed(tasks):
-            try:
-                all_data = await coroutine
-            except CollectionNotFoundError as e:
-                logger.error(e.message)
-                response.status_code = 206
+            data = await coroutine
+            if data:
+                all_data.extend(data)
 
-        if not all_data:
-            response.status_code = 404
-            raise NoResultsError()
-
-        doc: list[Document] = [
-            Document(
-                score=d.score,
-                payload=d.payload,
-            )
-            for d in all_data
-        ]
-
-        sorted_data = sorted(doc, key=lambda x: x.score, reverse=True)
-
-        return sorted_data
+        return all_data
     except Exception as e:
         handle_error(response=response, exc=e)
     return None
