@@ -11,7 +11,6 @@ class Collection_schema(BaseModel):
 
 
 class Collection(NamedTuple):
-    name: str
     lang: str
     model: str
-    alias: str
+    name: str

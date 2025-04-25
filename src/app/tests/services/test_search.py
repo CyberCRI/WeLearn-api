@@ -54,38 +54,38 @@ class SearchServiceTests(IsolatedAsyncioTestCase):
         self.assertEqual(db_sing1, db_sing2)
 
     async def test_search_pipeline_collection(self, *mocks):
-        collection = await self.sp.get_collection_alias("collection", "fr")
+        collection = await self.sp.get_collection_name("collection", "fr")
 
         self.assertEqual(collection, "collection_fr_exists")
 
-    async def test_get_collections_aliases_by_language(self, *mocks):
-        collections = await self.sp.get_collections_aliases_by_language("fr")
+    async def test_get_collection_by_language(self, *mocks):
+        collections = await self.sp.get_collection_by_language("fr")
 
         self.assertEqual(collections, ["collection_fr_exists"])
 
-    async def test_get_collections_aliases_by_language_without_sel_collection(
+    async def test_get_collection_by_language_without_sel_collection(
         self, *mocks
     ):
-        await self.sp.get_collections_aliases_by_language("fr")
+        await self.sp.get_collection_by_language("fr")
         assert mocks[0].called
 
-    async def test_get_collection_alias(self, *mocks):
-        collection = await self.sp.get_collection_alias("collection", "fr")
+    async def test_get_collection_name(self, *mocks):
+        collection = await self.sp.get_collection_name("collection", "fr")
         self.assertEqual(collection, "collection_fr_exists")
 
-    async def test_get_collection_alias_without_sel_collection(self, *mocks):
-        await self.sp.get_collection_alias("collection", "fr")
+    async def test_get_collection_name_without_sel_collection(self, *mocks):
+        await self.sp.get_collection_name("collection", "fr")
         assert mocks[0].called
 
-    def test_get_info_from_collection_alias(self, *mocks):
-        collection = self.sp._get_info_from_collection_alias("collection_fr_exists")
+    def test_get_info_from_collection_name(self, *mocks):
+        collection = self.sp._get_info_from_collection_name("collection_fr_exists")
 
         self.assertEqual(collection.alias, "collection_fr_exists")
         self.assertEqual(collection.lang, "fr")
         self.assertEqual(collection.model, "exists")
         self.assertEqual(collection.name, "collection")
 
-    async def test_get_collections_aliases_by_language_with_collection(self, *mocks):
+    async def test_get_collection_by_language_with_collection(self, *mocks):
         with mock.patch.object(
             SearchService,
             "get_collections",
@@ -95,9 +95,8 @@ class SearchServiceTests(IsolatedAsyncioTestCase):
                 "wiki_fr_exists",
             ),
         ):
-            collections = await self.sp.get_collections_aliases_by_language(
-                "fr", ("wiki")
-            )
+            collections = await self.sp.get_collection_by_language(
+                "fr"            )
             self.assertEqual(collections, ["wiki_fr_exists"])
 
     def test_concatenate_same_doc_id_slices(self, *mocks):

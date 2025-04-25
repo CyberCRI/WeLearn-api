@@ -5,17 +5,16 @@ from fastapi import Response
 from qdrant_client.http.models import ScoredPoint
 
 from src.app.models.documents import Document
-from src.app.models.search import EnhancedSearchQuery, SearchFilter
+from src.app.models.search import EnhancedSearchQuery, SDGFilter, SearchFilters
 from src.app.services.exceptions import (
-    CollectionNotFoundError,
     NoResultsError,
     handle_error,
 )
 from src.app.services.helpers import detect_language_from_entry
 from src.app.services.search import (
+    get_subject_vector,
     SearchService,
     concatenate_same_doc_id_slices,
-    get_subject_vector,
     sort_slices_using_mmr,
 )
 from src.app.utils.logger import logger as logger_utils
@@ -24,87 +23,38 @@ logger = logger_utils(__name__)
 sp = SearchService()
 
 
-async def search_items_base(
-    query: str,
-    collection_query: str,
-    nb_results: int,
-    sdg_filter: Optional[SearchFilter],
-    search_func: Callable[..., Awaitable[List[Document]]],
-) -> Optional[List[Document]]:
-    logger.info("search_query=%s searched_collection=%s", query, collection_query)
-
-    try:
-        lang = detect_language_from_entry(query)
-        collection_alias = await sp.get_collection_alias(
-            collection_name=collection_query, lang=lang
-        )
-        col = sp._get_info_from_collection_alias(collection_alias=collection_alias)
-        model_embedding = sp.embed_query(search_input=query, curr_model=col.model)
-
-        data = await search_func(
-            collection_info=col.alias,
-            embedding=model_embedding,
-            filters=sdg_filter.sdg_filter if sdg_filter else None,
-            nb_results=nb_results,
-        )
-
-        if not data:
-            raise NoResultsError()
-
-        return data
-    except Exception as e:
-        return handle_error(response=None, exc=e)
-
 
 async def search_all_base(
-    response: Response,
     qp: EnhancedSearchQuery,
     search_func: Callable[..., Awaitable[List[ScoredPoint]]],
 ) -> Optional[List[ScoredPoint]]:
-    try:
-        lang = detect_language_from_entry(qp.query)
-        subject_vector = get_subject_vector(qp.subject)
+    assert isinstance(qp.query, str)
 
-        try:
-            collections = await sp.get_collections_aliases_by_language(
-                lang=lang, collections=qp.corpora
-            )
-        except CollectionNotFoundError as e:
-            logger.error(e.message)
-            raise CollectionNotFoundError()
+    lang = detect_language_from_entry(qp.query)
+    subject_vector = get_subject_vector(qp.subject)
 
-        collections_to_search = sp.get_collection_dict_with_embed(
-                collection_alias=collections,
-                query=qp.query,
-                subject_vector=subject_vector,
-                subject_influence_factor=qp.influence_factor,
-            )
+    collection = await sp.get_collection_by_language(lang)
 
-        logger.info(
-            "Found %s collections to search: %s",
-            len(collections_to_search),
-            collections,
-        )
-        data = await search_func(
-            collection_info=collections_to_search["alias"],
-            embedding=collections_to_search["embed"],
-            nb_results=qp.nb_results,
-            filters={"slice_sdg": qp.sdg_filter, "document_corpus": qp.corpora},
-            ) 
+    embedding = sp.get_query_embed(
+        model=collection.model,
+        subject_vector=subject_vector,
+        query=qp.query,
+        subject_influence_factor=qp.influence_factor,
+    )
 
-        if not data:
-            return []
+    data = await search_func(
+        collection_info=collection.name,
+        embedding=embedding,
+        nb_results=qp.nb_results,
+        filters=SearchFilters(slice_sdg=qp.sdg_filter, document_corpus=qp.corpora),
+    )
 
-        sorted_data = sorted(data, key=lambda x: x.score, reverse=True)
-        sorted_data = sort_slices_using_mmr(sorted_data, theta=qp.relevance_factor)
+    sorted_data = sort_slices_using_mmr(data, theta=qp.relevance_factor)
 
-        if qp.concatenate:
-            sorted_data = concatenate_same_doc_id_slices(sorted_data)
+    if qp.concatenate:
+        sorted_data = concatenate_same_doc_id_slices(sorted_data)
 
-        return sorted_data
-    except Exception as e:
-        handle_error(response=response, exc=e)
-    return None
+    return sorted_data
 
 
 async def search_multi_inputs(
@@ -127,7 +77,6 @@ async def search_multi_inputs(
         ]
         tasks = [
             search_all_base(
-                response=response,
                 search_func=callback_function,
                 qp=qp,
             )

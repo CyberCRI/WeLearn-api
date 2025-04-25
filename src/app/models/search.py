@@ -1,7 +1,7 @@
 from pydantic import BaseModel, Field
 
 
-class SearchFilter(BaseModel):
+class SDGFilter(BaseModel):
     sdg_filter: list[int] | None = Field(
         None,
         max_length=17,
@@ -11,12 +11,12 @@ class SearchFilter(BaseModel):
     )
 
 
-class SearchQuery(SearchFilter):
+class SearchQuery(SDGFilter):
     query: str | list[str] | None
     corpora: list[str] | None = None
 
 
-class EnhancedSearchQuery(SearchFilter):
+class EnhancedSearchQuery(SDGFilter):
     query: str | list[str]
     corpora: tuple[str, ...] | None = None
     nb_results: int = 30
@@ -24,3 +24,7 @@ class EnhancedSearchQuery(SearchFilter):
     influence_factor: float = 2
     relevance_factor: float = 1
     concatenate: bool = True
+
+class SearchFilters(BaseModel):
+    slice_sdg: list[int] | None
+    document_corpus: tuple[str, ...] | list[str] | None

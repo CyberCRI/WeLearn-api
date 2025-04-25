@@ -72,7 +72,7 @@ mocked_document = documents.Document(
     new=mock.AsyncMock(return_value=("collection_fr_model", "collection_en_model")),
 )
 @patch(
-    f"{search_pipeline_path}._get_info_from_collection_alias",
+    f"{search_pipeline_path}._get_info_from_collection_name",
     new=mock.MagicMock(return_value=mocked_collection),
 )
 class SearchTests(IsolatedAsyncioTestCase):
@@ -204,7 +204,7 @@ class SearchTestsSlices(IsolatedAsyncioTestCase):
 
     # patch should raise
     @patch(
-        f"{search_pipeline_path}.get_collections_aliases_by_language",
+        f"{search_pipeline_path}.get_collection_by_language",
         new=mock.AsyncMock(
             side_effect=CollectionNotFoundError(
                 "Collection not found", "COLL_NOT_FOUND"
@@ -281,7 +281,7 @@ class SearchTestsSlices(IsolatedAsyncioTestCase):
         )
 
     @patch(
-        f"{search_pipeline_path}.get_collections_aliases_by_language",
+        f"{search_pipeline_path}.get_collection_by_language",
         return_value=("collection_fr_model"),
     )
     @patch(f"{search_pipeline_path}.get_collection_dict_with_embed")
@@ -324,7 +324,7 @@ class SearchTestsAll(IsolatedAsyncioTestCase):
             )
 
     @patch(
-        f"{search_pipeline_path}.get_collections_aliases_by_language",
+        f"{search_pipeline_path}.get_collection_by_language",
         new=mock.AsyncMock(
             side_effect=CollectionNotFoundError(
                 "Collection not found", "COLL_NOT_FOUND"
@@ -332,7 +332,7 @@ class SearchTestsAll(IsolatedAsyncioTestCase):
         ),
     )
     @patch(
-        f"{search_pipeline_path}._get_info_from_collection_alias",
+        f"{search_pipeline_path}._get_info_from_collection_name",
         new=mock.MagicMock(return_value=mocked_collection),
     )
     async def test_search_all_no_collections(self, *mocks):
@@ -351,14 +351,14 @@ class SearchTestsAll(IsolatedAsyncioTestCase):
             )
 
     @patch(
-        f"{search_pipeline_path}.get_collections_aliases_by_language",
+        f"{search_pipeline_path}.get_collection_by_language",
         return_value=["collection_fr_model"],
     )
     @patch(
-        f"{search_pipeline_path}._get_info_from_collection_alias",
+        f"{search_pipeline_path}._get_info_from_collection_name",
         new=mock.MagicMock(return_value=mocked_collection),
     )
-    @patch(f"{search_pipeline_path}.embed_query")
+    @patch(f"{search_pipeline_path}._embed_query")
     @patch(
         "src.app.services.search_helpers.parallel_search",
         return_value=[],
