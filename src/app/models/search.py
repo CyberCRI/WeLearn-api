@@ -25,6 +25,7 @@ class EnhancedSearchQuery(SDGFilter):
     relevance_factor: float = 1
     concatenate: bool = True
 
+
 class SearchFilters(BaseModel):
     slice_sdg: list[int] | None
     document_corpus: tuple[str, ...] | list[str] | None

@@ -6,11 +6,13 @@ from sqlalchemy.sql import select
 from src.app.models.db_models import CorpusEmbedding
 from src.app.models.documents import Collection_schema, Document
 from src.app.models.search import EnhancedSearchQuery, SDGFilter, SearchQuery
-from src.app.services.exceptions import EmptyQueryError, bad_request, CollectionNotFoundError
-from src.app.services.search import SearchService
-from src.app.services.search_helpers import (
-    search_multi_inputs,
+from src.app.services.exceptions import (
+    CollectionNotFoundError,
+    EmptyQueryError,
+    bad_request,
 )
+from src.app.services.search import SearchService
+from src.app.services.search_helpers import search_multi_inputs
 from src.app.services.sql_db import session_maker
 from src.app.utils.logger import logger as logger_utils
 
@@ -71,7 +73,7 @@ async def get_corpus():
 
 
 @router.post(
-    "/collections/{collection_query}",
+    "/collections/{collection}",
     summary="search documents in a specific collection",
     description="Search documents in a specific collection",
     response_model=Union[List[Document], str, None],
@@ -98,7 +100,6 @@ async def search_doc_by_collection(
             response.status_code = 206
             return "No results found"
 
-
         return res
     except CollectionNotFoundError as e:
         response.status_code = 404
@@ -116,7 +117,7 @@ async def search_all_slices_by_lang(
     qp: EnhancedSearchQuery = Depends(get_params),
 ):
     try:
-    
+
         res = await sp.search_handler(qp=qp, method="by_slices")
 
         if not res:
@@ -146,10 +147,6 @@ async def multi_search_all_slices_by_lang(
     results = await search_multi_inputs(
         qp=qp,
         response=response,
-        # nb_results=qp.nb_results,
-        # sdg_filter=qp.sdg_filter,
-        # collections=qp.corpora,
-        # inputs=qp.query,
         callback_function=sp.search_handler,
     )
     if not results:
@@ -165,20 +162,21 @@ async def multi_search_all_slices_by_lang(
     "/by_document",
     summary="search all documents",
     description="Search documents in all collections or in collections specified, results are grouped by documents",
-    response_model=Union[List[Document], None],
+    response_model=Union[List[Document], None, str],
 )
 async def search_all(
     response: Response,
     qp: EnhancedSearchQuery = Depends(get_params),
 ):
-    res = await sp.search_handler(
-        qp=qp,
-        method="by_document"
-    )
+    try:
+        res = await sp.search_handler(qp=qp, method="by_document")
 
-    if not res:
-        logger.error("No results found")
+        if not res:
+            logger.error("No results found")
+            response.status_code = 404
+            return None
+    except CollectionNotFoundError as e:
         response.status_code = 404
-        return None
+        return e.message
 
     return res

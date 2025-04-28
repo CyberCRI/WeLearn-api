@@ -1,7 +1,7 @@
 import json
 import time
 from functools import cache
-from typing import Literal, List, Optional, Tuple, cast
+from typing import List, Literal, Optional, Tuple, cast
 
 import numpy as np
 from qdrant_client import AsyncQdrantClient
@@ -14,10 +14,7 @@ from sklearn.metrics.pairwise import cosine_similarity
 from src.app.api.dependencies import get_settings
 from src.app.models.collections import Collection
 from src.app.models.search import EnhancedSearchQuery, SearchFilters
-from src.app.services.exceptions import (
-    CollectionNotFoundError,
-    ModelNotFoundError,
-)
+from src.app.services.exceptions import CollectionNotFoundError, ModelNotFoundError
 from src.app.services.helpers import detect_language_from_entry
 from src.app.utils.decorators import log_time_and_error
 from src.app.utils.logger import logger as logger_utils
@@ -179,26 +176,28 @@ class SearchService:
 
         return qdrant_models.Filter(must=qdrant_filter)
 
-    async def search_handler(self, qp: EnhancedSearchQuery, method: Literal['by_slices', 'by_document']) -> List[http_models.ScoredPoint]:
+    async def search_handler(
+        self, qp: EnhancedSearchQuery, method: Literal["by_slices", "by_document"]
+    ) -> List[http_models.ScoredPoint]:
         assert isinstance(qp.query, str)
 
         lang = detect_language_from_entry(qp.query)
         collection = await self.get_collection_by_language(lang)
         subject_vector = get_subject_vector(qp.subject)
         embedding = self.get_query_embed(
-                model=collection.model,
-                subject_vector=subject_vector,
-                query=qp.query,
-                subject_influence_factor=qp.influence_factor,
-                )
+            model=collection.model,
+            subject_vector=subject_vector,
+            query=qp.query,
+            subject_influence_factor=qp.influence_factor,
+        )
 
         filters = SearchFilters(slice_sdg=qp.sdg_filter, document_corpus=qp.corpora)
-        if method == 'by_slices':
+        if method == "by_slices":
             data = await self.search(
-            collection_info=collection.name,
-            embedding=embedding,
-            filters=filters,
-            nb_results=qp.nb_results,
+                collection_info=collection.name,
+                embedding=embedding,
+                filters=filters,
+                nb_results=qp.nb_results,
             )
         else:
             data = await self.search_group_by_document(
@@ -214,8 +213,6 @@ class SearchService:
             sorted_data = concatenate_same_doc_id_slices(sorted_data)
 
         return sorted_data
-
-
 
     @log_time_and_error
     async def search_group_by_document(

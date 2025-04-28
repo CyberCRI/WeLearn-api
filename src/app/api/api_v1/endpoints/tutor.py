@@ -3,6 +3,7 @@ from typing import Annotated
 from fastapi import APIRouter, File, HTTPException, Response, UploadFile
 
 from src.app.api.dependencies import get_settings
+from src.app.models.search import EnhancedSearchQuery
 from src.app.services.abst_chat import AbstractChat, ChatFactory
 from src.app.services.exceptions import NoResultsError
 from src.app.services.search import SearchService
@@ -90,13 +91,17 @@ async def tutor_search(
     inputs = [doc.summary for doc in themes_extracted.extracts]  # type: ignore
 
     try:
-        search_results = await search_multi_inputs(
-            response=response,
-            inputs=inputs,
+        qp = EnhancedSearchQuery(
+            query=inputs,
             nb_results=5,
             sdg_filter=None,
-            collections=None,
-            callback_function=sp.search,
+            corpora=None,
+        )
+
+        search_results = await search_multi_inputs(
+            response=response,
+            qp=qp,
+            callback_function=sp.search_handler,
         )
     except NoResultsError as e:
         response.status_code = 404
@@ -119,8 +124,6 @@ async def tutor_search(
         nb_results=len(search_results),
         documents=search_results,
     )
-
-    # TODO: handle duplicates
 
     return resp
 

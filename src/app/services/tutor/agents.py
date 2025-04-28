@@ -173,7 +173,6 @@ class SDGExpertAgent(RoutedAgent):
                 ctx.cancellation_token,
             )
         except Exception as e:
-            print("Error in SDGExpertAgent:", e)
             raise e
         end_time = time.time()
         response = llm_result.chat_message.content

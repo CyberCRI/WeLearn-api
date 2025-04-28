@@ -1,7 +1,6 @@
 from fastapi import UploadFile
 from pypdf import PdfReader
-
-from src.app.models.documents import Document
+from qdrant_client.models import ScoredPoint
 
 
 def build_system_message(
@@ -21,7 +20,7 @@ def build_system_message(
     return message
 
 
-def extract_doc_info(documents: list[Document]) -> list[dict]:
+def extract_doc_info(documents: list[ScoredPoint]) -> list[dict]:
     """
     Extracts the document information from a list of documents.
     Args:
@@ -31,11 +30,12 @@ def extract_doc_info(documents: list[Document]) -> list[dict]:
     """
     return [
         {
-            "title": doc.payload.document_title,
-            "url": doc.payload.document_url,
-            "content": doc.payload.slice_content,
+            "title": doc.payload.document_title,  # type: ignore
+            "url": doc.payload.document_url,  # type: ignore
+            "content": doc.payload.slice_content,  # type: ignore
         }
         for doc in documents
+        if doc.payload is not None
     ]
 
 
