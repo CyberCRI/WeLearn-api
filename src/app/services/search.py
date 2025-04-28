@@ -1,8 +1,7 @@
-import asyncio
 import json
 import time
 from functools import cache
-from typing import Annotated, Any, Callable, Dict, Literal, List, Optional, Tuple, cast
+from typing import Literal, List, Optional, Tuple, cast
 
 import numpy as np
 from qdrant_client import AsyncQdrantClient
@@ -126,6 +125,7 @@ class SearchService:
     def _get_model(self, curr_model: str) -> SentenceTransformer:
         try:
             time_start = time.time()
+            # TODO: path should be an env variable
             model = SentenceTransformer(f"../models/embedding/{curr_model}/")
             time_end = time.time()
             logger.info(
@@ -174,7 +174,8 @@ class SearchService:
                     match=qdrant_models.MatchAny(any=values),
                 )
             )
-        print(qdrant_filter)
+
+        logger.debug("build_filters=%s", qdrant_filter)
 
         return qdrant_models.Filter(must=qdrant_filter)
 
@@ -182,8 +183,8 @@ class SearchService:
         assert isinstance(qp.query, str)
 
         lang = detect_language_from_entry(qp.query)
-        subject_vector = get_subject_vector(qp.subject)
         collection = await self.get_collection_by_language(lang)
+        subject_vector = get_subject_vector(qp.subject)
         embedding = self.get_query_embed(
                 model=collection.model,
                 subject_vector=subject_vector,
@@ -267,43 +268,6 @@ class SearchService:
         except qdrant_exceptions.ResponseHandlingException:
             return []
         return resp
-
-
-# def search_items_method(
-#     callback_function: Callable,
-#     nb_results: int,
-#     embedding: np.ndarray,
-#     collection: str,
-#     filters: Optional[List[int]] = None,
-# ) -> Optional[List[http_models.ScoredPoint]]:
-#     return callback_function(
-#         collection_info=collection,
-#         embedding=embedding,
-#         filters=filters,
-#         nb_results=nb_results,
-#     )
-
-
-# @log_time_and_error
-# async def parallel_search(
-#     callback_function: Callable,
-#     nb_results: int,
-#     collections: List[Dict[str, Any]],
-#     sdg_filter: Optional[List[int]] = None,
-# ) -> List[http_models.ScoredPoint]:
-#     tasks = [
-#         callback_function(
-#             collection_info=col["alias"],
-#             embedding=col["embed"],
-#             nb_results=nb_results,
-#             filters=sdg_filter,
-#         )
-#         for col in collections
-#     ]
-#     data = await asyncio.gather(*tasks)
-#     if len(data) < len(collections):
-#         raise PartialResponseResultError()
-#     return [doc for source in data for doc in source]
 
 
 def sort_slices_using_mmr(

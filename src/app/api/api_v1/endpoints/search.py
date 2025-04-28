@@ -9,7 +9,6 @@ from src.app.models.search import EnhancedSearchQuery, SDGFilter, SearchQuery
 from src.app.services.exceptions import EmptyQueryError, bad_request, CollectionNotFoundError
 from src.app.services.search import SearchService
 from src.app.services.search_helpers import (
-    search_all_base,
     search_multi_inputs,
 )
 from src.app.services.sql_db import session_maker
@@ -145,12 +144,13 @@ async def multi_search_all_slices_by_lang(
         qp.query = [qp.query]
 
     results = await search_multi_inputs(
+        qp=qp,
         response=response,
-        nb_results=qp.nb_results,
-        sdg_filter=qp.sdg_filter,
-        collections=qp.corpora,
-        inputs=qp.query,
-        callback_function=sp.search,
+        # nb_results=qp.nb_results,
+        # sdg_filter=qp.sdg_filter,
+        # collections=qp.corpora,
+        # inputs=qp.query,
+        callback_function=sp.search_handler,
     )
     if not results:
         logger.error("No results found")
@@ -171,9 +171,9 @@ async def search_all(
     response: Response,
     qp: EnhancedSearchQuery = Depends(get_params),
 ):
-    res = await search_all_base(
+    res = await sp.search_handler(
         qp=qp,
-        search_func=sp.search_group_by_document,
+        method="by_document"
     )
 
     if not res:
