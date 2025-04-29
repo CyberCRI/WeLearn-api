@@ -2,8 +2,7 @@ from dataclasses import dataclass
 from typing import Dict, List
 
 from pydantic import BaseModel
-
-from src.app.models.documents import Document
+from qdrant_client.models import ScoredPoint
 
 
 class ExtractorOutput(BaseModel):
@@ -19,7 +18,7 @@ class ExtractorOuputList(BaseModel):
 class TutorSearchResponse(BaseModel):
     extracts: list[ExtractorOutput]
     nb_results: int
-    documents: list[Document]
+    documents: list[ScoredPoint]
 
 
 class SyllabusResponseAgent(BaseModel):
@@ -29,7 +28,7 @@ class SyllabusResponseAgent(BaseModel):
 
 class SyllabusResponse(BaseModel):
     syllabus: list[SyllabusResponseAgent]
-    documents: list[Document]
+    documents: list[ScoredPoint]
 
 
 class MessageWithAnalysis(BaseModel):

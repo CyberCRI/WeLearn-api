@@ -1,8 +1,7 @@
-import asyncio
 import json
 import time
 from functools import cache
-from typing import Any, Callable, Dict, List, Optional, Tuple, cast
+from typing import Tuple, cast
 
 import numpy as np
 from qdrant_client import AsyncQdrantClient
@@ -14,11 +13,9 @@ from sklearn.metrics.pairwise import cosine_similarity
 
 from src.app.api.dependencies import get_settings
 from src.app.models.collections import Collection
-from src.app.services.exceptions import (
-    CollectionNotFoundError,
-    ModelNotFoundError,
-    PartialResponseResultError,
-)
+from src.app.models.search import EnhancedSearchQuery, SearchFilters, SearchMethods
+from src.app.services.exceptions import CollectionNotFoundError, ModelNotFoundError
+from src.app.services.helpers import detect_language_from_entry
 from src.app.utils.decorators import log_time_and_error
 from src.app.utils.logger import logger as logger_utils
 
@@ -65,98 +62,67 @@ class SearchService:
             "document_details.readability",
             "document_details.source",
         ]
+        self.col_prefix = "collection_welearn_"
 
     @log_time_and_error
     async def get_collections(self) -> Tuple[str, ...]:
-        aliases = await self.client.get_aliases()
-        self.collections = tuple(alias.alias_name for alias in aliases.aliases)
+        collections = await self.client.get_collections()
+        self.collections = tuple(
+            collection.name for collection in collections.collections
+        )
         logger.info("collections=%s", self.collections)
         return self.collections
 
     @log_time_and_error
-    async def get_collections_aliases_by_language(
-        self, lang: str, collections: Optional[Tuple[str, ...]] = None
-    ) -> List[str]:
-        col_to_iter = self.collections or await self.get_collections()
-        if collections is None:
-            return [
-                collection for collection in col_to_iter if f"_{lang}_" in collection
-            ]
-
-        cols = [
-            collection
-            for cur_col in collections
-            for collection in col_to_iter
-            if collection.startswith(cur_col) and f"_{lang}_" in collection
-        ]
-        if not cols:
-            raise CollectionNotFoundError(
-                message=f"No collection found for this language {lang} and collections {collections}"
-            )
-        return cols
-
-    @log_time_and_error
-    async def get_collection_alias(self, collection_name: str, lang: str) -> str:
-        col_to_iter = self.collections or await self.get_collections()
-        if len(collection_name.split("_")) == 1:
-            collection_name = f"{collection_name}_{lang}"
+    async def get_collection_by_language(self, lang: str) -> Collection:
+        collections = self.collections or await self.get_collections()
 
         collection = next(
             (
-                c
-                for c in col_to_iter
-                if c.startswith(collection_name) or c == collection_name
+                collection
+                for collection in collections
+                if collection.startswith(f"{self.col_prefix}{lang}")
             ),
             None,
         )
+
         if not collection:
             raise CollectionNotFoundError(
-                message=f"Collection {collection_name} not found"
+                message=f"No collection found for this language {lang}"
             )
 
-        logger.debug(
-            "method=get_collection_alias collection_name=%s collection_alias=%s",
-            collection_name,
-            collection,
-        )
-        return collection
+        return self._get_info_from_collection_name(collection)
 
-    def _get_info_from_collection_alias(self, collection_alias: str) -> Collection:
-        name, lang, model = collection_alias.split("_")
-        corpus = Collection(name=name, lang=lang, model=model, alias=collection_alias)
-        logger.debug(
-            "info_from_collection collection=%s name=%s lang=%s model=%s",
-            collection_alias,
-            name,
-            lang,
-            model,
-        )
-        return corpus
+    def _get_info_from_collection_name(self, collection_name: str) -> Collection:
+        lang, model = collection_name.replace(self.col_prefix, "").split("_")
+        return Collection(lang=lang, model=model, name=collection_name)
 
-    def get_collection_dict_with_embed(
+    def get_query_embed(
         self,
-        collection_alias: str,
+        model: str,
         query: str,
-        subject_vector: Optional[List[float]] = None,
+        subject_vector: list[float] | None = None,
         subject_influence_factor: float = 1.0,
-    ) -> Dict[str, Any]:
-        col_info = self._get_info_from_collection_alias(collection_alias)._asdict()
-        col_info["embed"] = self.embed_query(query, col_info["model"])
+    ) -> np.ndarray:
+        embedding = self._embed_query(query, model)
+
         if subject_vector:
-            logger.debug(
-                "Adding subject vector collection=%s influence_factor=%s",
-                collection_alias,
-                subject_influence_factor,
-            )
-            col_info["embed"] = col_info["embed"] + [
+            embedding = embedding + [
                 subject_influence_factor * vec for vec in subject_vector
             ]
-        return col_info
+
+            logger.debug(
+                "Adding subject vector influence_factor=%s",
+                subject_influence_factor,
+            )
+
+        return embedding
 
     @cache
-    def get_model(self, curr_model: str) -> SentenceTransformer:
+    def _get_model(self, curr_model: str) -> SentenceTransformer:
         try:
             time_start = time.time()
+            # TODO: path should be an env variable
             model = SentenceTransformer(f"../models/embedding/{curr_model}/")
             time_end = time.time()
             logger.info(
@@ -170,10 +136,10 @@ class SearchService:
         return model
 
     @cache
-    def embed_query(self, search_input: str, curr_model: str) -> np.ndarray:
+    def _embed_query(self, search_input: str, curr_model: str) -> np.ndarray:
         logger.debug("Creating embeddings model=%s", curr_model)
         time_start = time.time()
-        model = self.get_model(curr_model)
+        model = self._get_model(curr_model)
         try:
             embeddings = model.encode(sentences=search_input)
         except Exception as ex:
@@ -188,32 +154,61 @@ class SearchService:
         )
         return cast(np.ndarray, embeddings)
 
-    def build_filters(
-        self, filters: Optional[List[int]] = None
-    ) -> Optional[qdrant_models.Filter]:
-        if filters is None:
-            return None
+    async def search_handler(
+        self, qp: EnhancedSearchQuery, method: SearchMethods = SearchMethods.BY_SLICES
+    ) -> list[http_models.ScoredPoint]:
+        assert isinstance(qp.query, str)
 
-        qdrant_filter: List[qdrant_models.Condition] = [
-            qdrant_models.FieldCondition(
-                key="document_sdg", match=qdrant_models.MatchValue(value=filt)
+        lang = detect_language_from_entry(qp.query)
+        collection = await self.get_collection_by_language(lang)
+        subject_vector = get_subject_vector(qp.subject)
+        embedding = self.get_query_embed(
+            model=collection.model,
+            subject_vector=subject_vector,
+            query=qp.query,
+            subject_influence_factor=qp.influence_factor,
+        )
+
+        filters = SearchFilters(
+            slice_sdg=qp.sdg_filter, document_corpus=qp.corpora
+        ).build_filters()
+        data = []
+        if method == "by_slices":
+            data = await self.search(
+                collection_info=collection.name,
+                embedding=embedding,
+                filters=filters,
+                nb_results=qp.nb_results,
             )
-            for filt in filters
-        ]
-        return qdrant_models.Filter(should=qdrant_filter)
+        elif method == "by_document":
+            data = await self.search_group_by_document(
+                collection_info=collection.name,
+                embedding=embedding,
+                filters=filters,
+                nb_results=qp.nb_results,
+            )
+        else:
+            raise ValueError(f"Unknown search method: {method}")
+
+        sorted_data = sort_slices_using_mmr(data, theta=qp.relevance_factor)
+
+        if qp.concatenate:
+            sorted_data = concatenate_same_doc_id_slices(sorted_data)
+
+        return sorted_data
 
     @log_time_and_error
     async def search_group_by_document(
         self,
         collection_info: str,
         embedding: np.ndarray,
-        filters: Optional[List[int]] = None,
+        filters: qdrant_models.Filter | None = None,
         nb_results: int = 100,
-    ) -> Optional[List[http_models.ScoredPoint]]:
+    ) -> list[http_models.ScoredPoint]:
         logger.debug("search_group_by_document collection=%s", collection_info)
         try:
             resp = await self.client.search_groups(
-                query_filter=self.build_filters(filters),
+                query_filter=filters,
                 collection_name=collection_info,
                 query_vector=embedding,
                 limit=nb_results,
@@ -234,12 +229,12 @@ class SearchService:
         self,
         collection_info: str,
         embedding: np.ndarray,
-        filters: Optional[List[int]] = None,
+        filters: qdrant_models.Filter | None = None,
         nb_results: int = 100,
-    ) -> List[http_models.ScoredPoint]:
+    ) -> list[http_models.ScoredPoint]:
         try:
             resp = await self.client.search(
-                query_filter=self.build_filters(filters),
+                query_filter=filters,
                 collection_name=collection_info,
                 query_vector=embedding,
                 limit=nb_results,
@@ -255,47 +250,13 @@ class SearchService:
         return resp
 
 
-def search_items_method(
-    callback_function: Callable,
-    nb_results: int,
-    embedding: np.ndarray,
-    collection: str,
-    filters: Optional[List[int]] = None,
-) -> Optional[List[http_models.ScoredPoint]]:
-    return callback_function(
-        collection_info=collection,
-        embedding=embedding,
-        filters=filters,
-        nb_results=nb_results,
-    )
-
-
-@log_time_and_error
-async def parallel_search(
-    callback_function: Callable,
-    nb_results: int,
-    collections: List[Dict[str, Any]],
-    sdg_filter: Optional[List[int]] = None,
-) -> List[http_models.ScoredPoint]:
-    tasks = [
-        callback_function(
-            collection_info=col["alias"],
-            embedding=col["embed"],
-            nb_results=nb_results,
-            filters=sdg_filter,
-        )
-        for col in collections
-    ]
-    data = await asyncio.gather(*tasks)
-    if len(data) < len(collections):
-        raise PartialResponseResultError()
-    return [doc for source in data for doc in source]
-
-
 def sort_slices_using_mmr(
-    qdrant_results: List[http_models.ScoredPoint],
+    qdrant_results: list[http_models.ScoredPoint],
     theta: float = 1.0,
-) -> List[http_models.ScoredPoint]:
+) -> list[http_models.ScoredPoint]:
+    if not qdrant_results:
+        return []
+
     logger.debug("sort_slices_using_mmr=start")
     reward = [r.score for r in qdrant_results]
     sim = cosine_similarity(np.array([r.vector for r in qdrant_results]))
@@ -315,8 +276,8 @@ def sort_slices_using_mmr(
 
 
 def concatenate_same_doc_id_slices(
-    qdrant_results: List[http_models.ScoredPoint],
-) -> List[http_models.ScoredPoint]:
+    qdrant_results: list[http_models.ScoredPoint],
+) -> list[http_models.ScoredPoint]:
     """
     Concatenate slices on the same document ID and remove duplicates.
 
@@ -356,7 +317,7 @@ def concatenate_same_doc_id_slices(
     return new_results
 
 
-def get_subject_vector(subject: str | None) -> List[float] | None:
+def get_subject_vector(subject: str | None) -> list[float] | None:
     if not subject:
         return None
     with open("src/app/services/subject_vectors.json") as f:
