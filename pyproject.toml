@@ -28,7 +28,7 @@ requests = "^2.31.0"
 scikit-learn = "^1.5.1"
 sentence-transformers = "^3.4.1"
 sqlalchemy = "^2.0.35"
-transformers="^4.48.0"
+transformers="^4.50.0"
 torch = {version = "^2.2.2+cpu", source = "pytorch_cpu"}
 torchvision = {version = "^0.17.2+cpu", source = "pytorch_cpu"}
 uvicorn = {extras = ["standard"], version = "^0.29.0"}
