@@ -1,11 +1,15 @@
-from typing import List, Optional, Union
-
 from fastapi import APIRouter, Depends, Response
+from qdrant_client.models import ScoredPoint
 from sqlalchemy.sql import select
 
 from src.app.models.db_models import CorpusEmbedding
-from src.app.models.documents import Collection_schema, Document
-from src.app.models.search import EnhancedSearchQuery, SDGFilter, SearchQuery
+from src.app.models.documents import Collection_schema
+from src.app.models.search import (
+    EnhancedSearchQuery,
+    SDGFilter,
+    SearchMethods,
+    SearchQuery,
+)
 from src.app.services.exceptions import (
     CollectionNotFoundError,
     EmptyQueryError,
@@ -25,7 +29,7 @@ sp = SearchService()
 def get_params(
     body: SearchQuery,
     nb_results: int = 30,
-    subject: Optional[str] = None,
+    subject: str | None = None,
     influence_factor: float = 2,
     relevance_factor: float = 1,
     concatenate: bool = True,
@@ -52,7 +56,7 @@ def get_params(
     "/collections",
     summary="get all collections",
     description="Get all collections available in the database",
-    response_model=List[Collection_schema],
+    response_model=list[Collection_schema],
 )
 async def get_corpus():
     statement = select(
@@ -76,15 +80,18 @@ async def get_corpus():
     "/collections/{collection}",
     summary="search documents in a specific collection",
     description="Search documents in a specific collection",
-    response_model=Union[List[Document], str, None],
+    response_model=list[ScoredPoint] | str | None,
 )
 async def search_doc_by_collection(
     response: Response,
     query: str,
     collection: str = "conversation",
     nb_results: int = 10,
-    sdg_filter: Optional[SDGFilter] = None,
+    sdg_filter: SDGFilter | None = None,
 ):
+    if not query:
+        e = EmptyQueryError()
+        return bad_request(message=e.message, msg_code=e.msg_code)
 
     qp = EnhancedSearchQuery(
         query=query,
@@ -94,11 +101,11 @@ async def search_doc_by_collection(
     )
 
     try:
-        res = await sp.search_handler(qp=qp, method="by_document")
+        res = await sp.search_handler(qp=qp, method=SearchMethods.BY_DOCUMENT)
 
         if not res:
             response.status_code = 206
-            return "No results found"
+            return []
 
         return res
     except CollectionNotFoundError as e:
@@ -110,7 +117,7 @@ async def search_doc_by_collection(
     "/by_slices",
     summary="search all slices",
     description="Search slices in all collections or in collections specified",
-    response_model=Union[List[Document], None, str],
+    response_model=list[ScoredPoint] | None | str,
 )
 async def search_all_slices_by_lang(
     response: Response,
@@ -118,12 +125,12 @@ async def search_all_slices_by_lang(
 ):
     try:
 
-        res = await sp.search_handler(qp=qp, method="by_slices")
+        res = await sp.search_handler(qp=qp, method=SearchMethods.BY_SLICES)
 
         if not res:
-            logger.error("No results found")
+            logger.debug("No results found")
             response.status_code = 404
-            return None
+            return []
 
         return res
     except CollectionNotFoundError as e:
@@ -135,7 +142,7 @@ async def search_all_slices_by_lang(
     "/multiple_by_slices",
     summary="search all slices",
     description="Search slices in all collections or in collections specified",
-    response_model=Union[List[Document], None],
+    response_model=list[ScoredPoint] | None,
 )
 async def multi_search_all_slices_by_lang(
     response: Response,
@@ -146,14 +153,13 @@ async def multi_search_all_slices_by_lang(
 
     results = await search_multi_inputs(
         qp=qp,
-        response=response,
         callback_function=sp.search_handler,
     )
     if not results:
         logger.error("No results found")
         # todo switch to 204 no content
         response.status_code = 404
-        return None
+        return []
 
     return results
 
@@ -161,20 +167,20 @@ async def multi_search_all_slices_by_lang(
 @router.post(
     "/by_document",
     summary="search all documents",
-    description="Search documents in all collections or in collections specified, results are grouped by documents",
-    response_model=Union[List[Document], None, str],
+    description="Search by documents, returns only one result by document id",
+    response_model=list[ScoredPoint] | None | str,
 )
 async def search_all(
     response: Response,
     qp: EnhancedSearchQuery = Depends(get_params),
 ):
     try:
-        res = await sp.search_handler(qp=qp, method="by_document")
+        res = await sp.search_handler(qp=qp, method=SearchMethods.BY_DOCUMENT)
 
         if not res:
             logger.error("No results found")
             response.status_code = 404
-            return None
+            return []
     except CollectionNotFoundError as e:
         response.status_code = 404
         return e.message

@@ -1,7 +1,7 @@
 import json
 import time
 from functools import cache
-from typing import List, Literal, Optional, Tuple, cast
+from typing import Tuple, cast
 
 import numpy as np
 from qdrant_client import AsyncQdrantClient
@@ -13,7 +13,7 @@ from sklearn.metrics.pairwise import cosine_similarity
 
 from src.app.api.dependencies import get_settings
 from src.app.models.collections import Collection
-from src.app.models.search import EnhancedSearchQuery, SearchFilters
+from src.app.models.search import EnhancedSearchQuery, SearchFilters, SearchMethods
 from src.app.services.exceptions import CollectionNotFoundError, ModelNotFoundError
 from src.app.services.helpers import detect_language_from_entry
 from src.app.utils.decorators import log_time_and_error
@@ -101,7 +101,7 @@ class SearchService:
         self,
         model: str,
         query: str,
-        subject_vector: Optional[List[float]] = None,
+        subject_vector: list[float] | None = None,
         subject_influence_factor: float = 1.0,
     ) -> np.ndarray:
         embedding = self._embed_query(query, model)
@@ -154,31 +154,9 @@ class SearchService:
         )
         return cast(np.ndarray, embeddings)
 
-    def build_filters(
-        self, filters: Optional[SearchFilters] = None
-    ) -> Optional[qdrant_models.Filter]:
-        if filters is None:
-            return None
-
-        qdrant_filter = []
-        for key, values in filters.model_dump().items():
-            if not values:
-                continue
-
-            qdrant_filter.append(
-                qdrant_models.FieldCondition(
-                    key=key,
-                    match=qdrant_models.MatchAny(any=values),
-                )
-            )
-
-        logger.debug("build_filters=%s", qdrant_filter)
-
-        return qdrant_models.Filter(must=qdrant_filter)
-
     async def search_handler(
-        self, qp: EnhancedSearchQuery, method: Literal["by_slices", "by_document"]
-    ) -> List[http_models.ScoredPoint]:
+        self, qp: EnhancedSearchQuery, method: SearchMethods = SearchMethods.BY_SLICES
+    ) -> list[http_models.ScoredPoint]:
         assert isinstance(qp.query, str)
 
         lang = detect_language_from_entry(qp.query)
@@ -191,7 +169,10 @@ class SearchService:
             subject_influence_factor=qp.influence_factor,
         )
 
-        filters = SearchFilters(slice_sdg=qp.sdg_filter, document_corpus=qp.corpora)
+        filters = SearchFilters(
+            slice_sdg=qp.sdg_filter, document_corpus=qp.corpora
+        ).build_filters()
+        data = []
         if method == "by_slices":
             data = await self.search(
                 collection_info=collection.name,
@@ -199,13 +180,15 @@ class SearchService:
                 filters=filters,
                 nb_results=qp.nb_results,
             )
-        else:
+        elif method == "by_document":
             data = await self.search_group_by_document(
                 collection_info=collection.name,
                 embedding=embedding,
                 filters=filters,
                 nb_results=qp.nb_results,
             )
+        else:
+            raise ValueError(f"Unknown search method: {method}")
 
         sorted_data = sort_slices_using_mmr(data, theta=qp.relevance_factor)
 
@@ -219,13 +202,13 @@ class SearchService:
         self,
         collection_info: str,
         embedding: np.ndarray,
-        filters: Optional[SearchFilters] = None,
+        filters: qdrant_models.Filter | None = None,
         nb_results: int = 100,
-    ) -> List[http_models.ScoredPoint]:
+    ) -> list[http_models.ScoredPoint]:
         logger.debug("search_group_by_document collection=%s", collection_info)
         try:
             resp = await self.client.search_groups(
-                query_filter=self.build_filters(filters),
+                query_filter=filters,
                 collection_name=collection_info,
                 query_vector=embedding,
                 limit=nb_results,
@@ -246,12 +229,12 @@ class SearchService:
         self,
         collection_info: str,
         embedding: np.ndarray,
-        filters: Optional[SearchFilters] = None,
+        filters: qdrant_models.Filter | None = None,
         nb_results: int = 100,
-    ) -> List[http_models.ScoredPoint]:
+    ) -> list[http_models.ScoredPoint]:
         try:
             resp = await self.client.search(
-                query_filter=self.build_filters(filters),
+                query_filter=filters,
                 collection_name=collection_info,
                 query_vector=embedding,
                 limit=nb_results,
@@ -268,9 +251,9 @@ class SearchService:
 
 
 def sort_slices_using_mmr(
-    qdrant_results: List[http_models.ScoredPoint],
+    qdrant_results: list[http_models.ScoredPoint],
     theta: float = 1.0,
-) -> List[http_models.ScoredPoint]:
+) -> list[http_models.ScoredPoint]:
     if not qdrant_results:
         return []
 
@@ -293,8 +276,8 @@ def sort_slices_using_mmr(
 
 
 def concatenate_same_doc_id_slices(
-    qdrant_results: List[http_models.ScoredPoint],
-) -> List[http_models.ScoredPoint]:
+    qdrant_results: list[http_models.ScoredPoint],
+) -> list[http_models.ScoredPoint]:
     """
     Concatenate slices on the same document ID and remove duplicates.
 
@@ -334,7 +317,7 @@ def concatenate_same_doc_id_slices(
     return new_results
 
 
-def get_subject_vector(subject: str | None) -> List[float] | None:
+def get_subject_vector(subject: str | None) -> list[float] | None:
     if not subject:
         return None
     with open("src/app/services/subject_vectors.json") as f:

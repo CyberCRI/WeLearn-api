@@ -1,10 +1,9 @@
 import asyncio
-from typing import Awaitable, Callable, List
+from typing import Awaitable, Callable
 
-from fastapi import Response
 from qdrant_client.http.models import ScoredPoint
 
-from src.app.models.search import EnhancedSearchQuery
+from src.app.models.search import EnhancedSearchQuery, SearchMethods
 from src.app.services.exceptions import handle_error
 from src.app.utils.logger import logger as logger_utils
 
@@ -12,10 +11,9 @@ logger = logger_utils(__name__)
 
 
 async def search_multi_inputs(
-    response: Response,
     qp: EnhancedSearchQuery,
-    callback_function: Callable[..., Awaitable[List[ScoredPoint]]],
-):
+    callback_function: Callable[..., Awaitable[list[ScoredPoint]]],
+) -> list[ScoredPoint] | None:
     try:
         qps: list[EnhancedSearchQuery] = []
         for query in qp.query:
@@ -26,7 +24,7 @@ async def search_multi_inputs(
         tasks = [
             callback_function(
                 qp=qp,
-                method="by_slices",
+                method=SearchMethods.BY_SLICES,
             )
             for qp in qps
         ]
@@ -39,5 +37,5 @@ async def search_multi_inputs(
 
         return all_data
     except Exception as e:
-        handle_error(response=response, exc=e)
-    return None
+        handle_error(exc=e)
+        return None

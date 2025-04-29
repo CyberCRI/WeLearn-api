@@ -1,5 +1,3 @@
-from typing import Optional
-
 from fastapi import HTTPException, Response, status
 
 from src.app.utils.logger import logger as logger_utils
@@ -152,7 +150,7 @@ class PartialResponseResultError(BaseException):
         super().__init__(self.message, self.msg_code)
 
 
-def handle_error(response: Optional[Response], exc: Exception) -> None:
+def handle_error(exc: Exception, response: Response | None = None) -> None:
     if isinstance(exc, PartialResponseResultError):
         if response:
             response.status_code = status.HTTP_206_PARTIAL_CONTENT
