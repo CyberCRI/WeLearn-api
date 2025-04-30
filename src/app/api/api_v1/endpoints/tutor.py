@@ -99,7 +99,6 @@ async def tutor_search(
         )
 
         search_results = await search_multi_inputs(
-            response=response,
             qp=qp,
             callback_function=sp.search_handler,
         )
