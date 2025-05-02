@@ -568,17 +568,6 @@ class Mistral_Chat(AbstractChat):
     async def chat(
         self, type: RESPONSE_TYPE, model: str, messages: List[Dict[str, str]]
     ):
-        resp = await self.chat_client.chat.complete_async(
-            model=model,
-            messages=messages,
-            response_format={"type": type},
-        )
-
-        return resp.data
-
-    async def chat(
-        self, type: RESPONSE_TYPE, model: str, messages: List[Dict[str, str]]
-    ):
         try:
             completion = await self.chat_client.chat.complete_async(
                 model=model,
