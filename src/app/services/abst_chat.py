@@ -592,7 +592,6 @@ class Mistral_Chat(AbstractChat):
                 temperature=0.2,
                 response_format=response_format,
             )
-            print(completion)
 
             return completion.choices[0].message
         except Exception as e:
