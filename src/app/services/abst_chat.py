@@ -568,13 +568,35 @@ class Mistral_Chat(AbstractChat):
     async def chat(
         self, type: RESPONSE_TYPE, model: str, messages: List[Dict[str, str]]
     ):
-        resp = await self.chat_client.chat.complete_async(
-            model=model,
-            messages=messages,
-            response_format={"type": type},
-        )
+        try:
+            completion = await self.chat_client.chat.complete_async(
+                model=model,
+                response_format={"type": type},
+                messages=messages,
+                stream=False,
+                temperature=0.2,
+            )
 
-        return resp.data
+            return completion
+        except Exception as e:
+            logger.error("ai_generator=openai error=%s", e)
+            raise e
+
+    async def chat_schema(
+        self, model: str, messages: List[Dict[str, str]], response_format
+    ):
+        try:
+            completion = await self.chat_client.chat.complete(
+                model=self.model or model,
+                messages=messages,
+                temperature=0.2,
+                response_format=response_format,
+            )
+
+            return completion.choices[0].message
+        except Exception as e:
+            logger.error("ai_generator=mistral error=%s", e)
+            raise e
 
 
 class Azure_Chat(AbstractChat):
@@ -662,7 +684,7 @@ class ChatFactory:
                 "gpt-4o": (
                     settings.AZURE_GPT_4O_API_KEY,
                     settings.AZURE_GPT_4O_API_BASE,
-                    "2025-01-01-preview",
+                    settings.AZURE_GPT_4O_API_VERSION,
                 ),
             }
             if model:
@@ -680,9 +702,14 @@ class ChatFactory:
                 model="gpt-4o-mini",
             )
         elif chat_type == "mistral":
+            if model:
+                return chat_classes[chat_type](
+                    API_KEY=settings.MISTRAL_API_KEY,
+                    model=model,
+                )
             return chat_classes[chat_type](
                 API_KEY=settings.MISTRAL_API_KEY,
-                model="open-mistral-nemo",
+                model="mistral-small-latest",
             )
         elif chat_type == "azure":
             azure_models = {
