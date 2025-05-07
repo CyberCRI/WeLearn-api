@@ -4,7 +4,7 @@ from fastapi import APIRouter, File, HTTPException, Response, UploadFile
 
 from src.app.api.dependencies import get_settings
 from src.app.models.search import EnhancedSearchQuery
-from src.app.services.abst_chat import AbstractChat, ChatFactory
+from src.app.services.abst_chat import AbstractChat
 from src.app.services.exceptions import NoResultsError
 from src.app.services.search import SearchService
 from src.app.services.search_helpers import search_multi_inputs
@@ -23,7 +23,13 @@ router = APIRouter()
 
 settings = get_settings()
 
-chatfactory: AbstractChat = ChatFactory().create_chat("openai", model="gpt-4o")
+
+chatfactory = AbstractChat(
+    model="azure/gpt-4o",
+    API_KEY=settings.AZURE_GPT_4O_API_KEY,
+    API_BASE=settings.AZURE_GPT_4O_API_BASE,
+    API_VERSION=settings.AZURE_GPT_4O_API_VERSION,
+)
 chatfactory.init_client()
 
 sp = SearchService()
@@ -69,9 +75,14 @@ async def tutor_search(
     ]
 
     try:
-        themes_extracted = await chatfactory.chat_schema(
-            model="gpt-4o", messages=messages, response_format=ExtractorOuputList  # type: ignore
+        themes_extracted = await chatfactory.chat_client.completion(
+            messages=messages, response_format=ExtractorOuputList
         )
+
+        assert isinstance(themes_extracted, dict)
+
+        themes_extracted = ExtractorOuputList(**themes_extracted)
+
     except Exception as e:
         logger.error(f"Error in chat schema: {e}")
         # todo: handle error

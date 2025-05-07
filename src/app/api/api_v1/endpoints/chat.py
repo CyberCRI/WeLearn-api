@@ -8,7 +8,7 @@ from openai import RateLimitError
 
 from src.app.api.dependencies import get_settings
 from src.app.models import chat as models
-from src.app.services.abst_chat import AbstractChat, ChatFactory
+from src.app.services.abst_chat import AbstractChat 
 from src.app.services.constants import subjects as subjectsDict
 from src.app.services.exceptions import (
     EmptyQueryError,
@@ -25,7 +25,12 @@ router = APIRouter()
 
 settings = get_settings()
 
-chatfactory: AbstractChat = ChatFactory().create_chat("openai")
+chatfactory = AbstractChat(
+    model="azure/gpt-4o-mini",
+    API_KEY=settings.AZURE_API_KEY,
+    API_BASE=settings.AZURE_API_BASE,
+    API_VERSION=settings.AZURE_API_VERSION,
+)
 chatfactory.init_client()
 
 
@@ -56,7 +61,7 @@ async def test_litellm():
             api_key=settings.AZURE_GPT_4O_API_KEY,
             api_base=settings.AZURE_GPT_4O_API_BASE,
             api_version=settings.AZURE_GPT_4O_API_VERSION,
-        ).schema_completion(
+        ).completion(
             messages=[
                 {"role": "system", "content": "you should say hello in portuguese"}
             ],
