@@ -62,7 +62,6 @@ class LLMProxy(ABC):
         self,
         messages: list,
     ):
-        print("streaming")
         response = completion(
             model=self.model,
             api_key=self.api_key,
@@ -71,6 +70,5 @@ class LLMProxy(ABC):
             messages=messages,
             stream=True,
         )
-        print('>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>> streaming done')
 
         return response

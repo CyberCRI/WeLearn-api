@@ -12,7 +12,7 @@ from mistralai.models.usageinfo import UsageInfo
 # test ChatFactory class
 # mock open ai api and mistralai api
 from src.app.models.chat import ReformulatedQueryResponse
-from src.app.services.abst_chat import AbstractChat, ChatFactory
+from src.app.services.abst_chat import AbstractChat
 from src.app.services.exceptions import LanguageNotSupportedError
 
 
@@ -33,67 +33,27 @@ def create_chat_responses_mocks(response: str):
     )
 
 
-# test that when calling factory with "mistral" it calls mistral class
-@mock.patch("src.app.services.abst_chat.Azure_Chat")
-@mock.patch("src.app.services.abst_chat.Open_Chat")
-@mock.patch("src.app.services.abst_chat.Mistral_Chat")
-class TestChatFactory(unittest.TestCase):
-    def test_create_chat_mistral(self, mock_mistral, mock_openai, mock_azure):
-        ChatFactory().create_chat("mistral")
-        assert mock_mistral.called
-        assert not mock_openai.called
-        assert not mock_azure.called
+class MockedLLMProxy:
+    def __init__(self, model, api_key=None, api_base=None, api_version=None):
+        self.model = model
+        self.api_key = api_key
+        self.api_base = api_base
+        self.api_version = api_version
 
-    def test_create_openai(self, mock_mistral, mock_openai, mock_azure):
-        ChatFactory().create_chat("openai")
-        assert not mock_mistral.called
-        assert mock_openai.called
-        assert not mock_azure.called
+    async def completion(self, type, model, messages):
+        return create_chat_responses_mocks('{"ISO_CODE": "en"}')
 
-    def test_create_azure(self, mock_mistral, mock_openai, mock_azure):
-        ChatFactory().create_chat("azure", "Meta-Llama-3.1-8B-Instruct")
-        assert not mock_mistral.called
-        assert mock_azure.called
-        assert not mock_openai.called
-
-    def test_chatfactory_error(self, *mocks):
-        with self.assertRaises(ValueError):
-            ChatFactory().create_chat("other_service")
-
-
-# Mock concrete class for AbstractChat for testing purposes
-class ConcreteChat(AbstractChat):
-    def init_client(self):
-        pass  # No-op implementation
-
-    async def chat(self, type, model, messages):
-        # Simulate a mock response
-        return {"choices": [{"message": {"content": "Mocked chat response"}}]}
-
-    async def chat_schema(self, response_format, model, messages):
-        # Simulate a mock response
-        return {"choices": [{"message": {"content": "Mocked chat response"}}]}
-
-    async def streamed_chat(self, messages):
-        # Simulate a streaming response
+    async def completion_stream(self, messages):
         yield "Streamed response"
 
 
+@mock.patch("src.app.services.abst_chat.LLMProxy")
 class TestAbstractChat(unittest.IsolatedAsyncioTestCase):
     def setUp(self):
-        # Instantiate ConcreteChat instead of AbstractChat
-        self.chat = ConcreteChat("api_key", "model")
-
-    def test_get_message_content(self):
-        # Create a mocked chat response
-        mocked_chat = create_chat_responses_mocks("this is a message")
-        # Ensure the method returns the expected content
-        self.assertEqual(
-            self.chat.get_message_content(mocked_chat), "this is a message"
-        )
+        self.chat = AbstractChat(model="model", API_KEY="toto_api_key")
 
     @mock.patch("src.app.services.abst_chat.detect_language_from_entry")
-    async def test_lang_error_helper(self, mock_detect_lang):
+    async def test_lang_error_helper(self, mock_detect_lang, *mocks):
         self.chat._detect_lang_with_llm = mock.AsyncMock()
 
         mock_detect_lang.side_effect = LanguageNotSupportedError
@@ -103,76 +63,76 @@ class TestAbstractChat(unittest.IsolatedAsyncioTestCase):
     @mock.patch(
         "src.app.services.abst_chat.detect_language_from_entry", return_value="en"
     )
-    async def test_lang_ok(self, mock_detect_lang):
+    async def test_lang_ok(self, *mocks):
         lang = await self.chat._detect_language("fake message")
         assert lang == {"ISO_CODE": "en"}
 
-    async def test_lang_not_supported(self):
+    async def test_lang_not_supported(self, *mocks):
         mocked_chat = create_chat_responses_mocks('{"ISO_CODE": "pt"}')
-        self.chat.chat = mock.AsyncMock(return_value=mocked_chat)
+        self.chat.chat_client.completion = mock.AsyncMock(return_value=mocked_chat)
         with self.assertRaises(LanguageNotSupportedError):
             await self.chat._detect_language("fake message")
 
         mocked_chat = create_chat_responses_mocks("not json format")
-        self.chat.chat = mock.AsyncMock(return_value=mocked_chat)
+        self.chat.chat_client.completion = mock.AsyncMock(return_value=mocked_chat)
         with self.assertRaises(ValueError):
             await self.chat._detect_language("fake message")
 
-    async def test_lang_supported(self):
+    async def test_lang_supported(self, *mocks):
         mocked_chat = create_chat_responses_mocks('{"ISO_CODE": "en"}')
-        self.chat.chat = mock.AsyncMock(return_value=mocked_chat)
+        self.chat.chat_client.completion = mock.AsyncMock(return_value=mocked_chat)
         assert await self.chat._detect_language("fake message") == {"ISO_CODE": "en"}
 
         mocked_chat = create_chat_responses_mocks('{"ISO_CODE": "fr"}')
-        self.chat.chat = mock.AsyncMock(return_value=mocked_chat)
+        self.chat.chat_client.completion = mock.AsyncMock(return_value=mocked_chat)
         assert await self.chat._detect_language("fake message") == {"ISO_CODE": "fr"}
 
-    async def test_detect_past_message(self):
+    async def test_detect_past_message(self, *mocks):
         mocked_chat = create_chat_responses_mocks('{"REF_TO_PAST": true}')
-        self.chat.chat = mock.AsyncMock(return_value=mocked_chat)
+        self.chat.chat_client.completion = mock.AsyncMock(return_value=mocked_chat)
         assert await self.chat._detect_past_message_ref("fake message", []) == {
             "REF_TO_PAST": True
         }
 
         mocked_chat = create_chat_responses_mocks(' {"REF_TO_PAST": true} ')
-        self.chat.chat = mock.AsyncMock(return_value=mocked_chat)
+        self.chat.chat_client.completion = mock.AsyncMock(return_value=mocked_chat)
         assert await self.chat._detect_past_message_ref("fake message", []) == {
             "REF_TO_PAST": True
         }
 
         mocked_chat = create_chat_responses_mocks('{"REF_TO_PAST": false}')
-        self.chat.chat = mock.AsyncMock(return_value=mocked_chat)
+        self.chat.chat_client.completion = mock.AsyncMock(return_value=mocked_chat)
         assert await self.chat._detect_past_message_ref("fake message", []) == {
             "REF_TO_PAST": False
         }
 
         mocked_chat = create_chat_responses_mocks('{"REF_TO_TOTO": false}')
-        self.chat.chat = mock.AsyncMock(return_value=mocked_chat)
+        self.chat.chat_client.completion = mock.AsyncMock(return_value=mocked_chat)
         with self.assertRaises(ValueError):
             await self.chat._detect_past_message_ref("fake message", [])
 
-    async def test_detect_past_message_invalid_format(self):
+    async def test_detect_past_message_invalid_format(self, *mocks):
         mocked_chat = create_chat_responses_mocks("this is not a true/false answer")
-        self.chat.chat = mock.AsyncMock(return_value=mocked_chat)
+        self.chat.chat_client.completion = mock.AsyncMock(return_value=mocked_chat)
         with self.assertRaises(ValueError):
             await self.chat._detect_past_message_ref("fake message", [])
 
-    async def test_reformulate_user_query_invalid_ref_to_pas(self):
+    async def test_reformulate_user_query_invalid_ref_to_pas(self, *mocks):
         self.chat._detect_past_message_ref = mock.AsyncMock(
             return_value={"REF_TO_PAST": True}
         )
 
-        self.chat.chat_schema = mock.AsyncMock()
+        self.chat.chat_client.completion = mock.AsyncMock()
         resp = await self.chat.reformulate_user_query("this is the user query", [])
         assert resp.QUERY_STATUS == "INVALID"
-        self.chat.chat_schema.assert_not_called()
+        self.chat.chat_client.completion.assert_not_called()
 
-    async def test_reformulate_user_query_valid_ref_to_pas(self):
+    async def test_reformulate_user_query_valid_ref_to_pas(self, *mocks):
         self.chat._detect_past_message_ref = mock.AsyncMock(
             return_value={"REF_TO_PAST": True}
         )
 
-        self.chat.chat_schema = mock.AsyncMock()
+        self.chat.chat_client.completion = mock.AsyncMock()
         resp = await self.chat.reformulate_user_query(
             "this is the user query",
             [
@@ -181,14 +141,16 @@ class TestAbstractChat(unittest.IsolatedAsyncioTestCase):
             ],
         )
         assert resp.QUERY_STATUS == "REF_TO_PAST"
-        self.chat.chat_schema.assert_not_called()
+        self.chat.chat_client.completion.assert_not_called()
 
-    async def test_reformulate_user_query_hist(self):
+    async def test_reformulate_user_query_hist(self, *mocks):
         self.chat._detect_past_message_ref = mock.AsyncMock(
             return_value={"REF_TO_PAST": False}
         )
         self.chat._detect_language = mock.AsyncMock()
-        self.chat.chat_schema = mock.AsyncMock(return_value=ReformulatedQueryResponse())
+        self.chat.chat_client.completion = mock.AsyncMock(
+            return_value=ReformulatedQueryResponse()
+        )
         await self.chat.reformulate_user_query(
             "this is the user query",
             [
@@ -205,14 +167,14 @@ class TestAbstractChat(unittest.IsolatedAsyncioTestCase):
             ],
         )
 
-        self.chat.chat_schema.assert_called_once()
+        self.chat.chat_client.completion.assert_called_once()
 
-    async def test_reformulate_user_query__INVALID__(self):
+    async def test_reformulate_user_query__INVALID__(self, *mocks):
         self.chat._detect_past_message_ref = mock.AsyncMock(
             return_value={"REF_TO_PAST": False}
         )
         self.chat._detect_language = mock.AsyncMock()
-        self.chat.chat_schema = mock.AsyncMock(
+        self.chat.chat_client.completion = mock.AsyncMock(
             return_value=ReformulatedQueryResponse(QUERY_STATUS="INVALID"),
         )
         reformulated = await self.chat.reformulate_user_query(
@@ -225,11 +187,11 @@ class TestAbstractChat(unittest.IsolatedAsyncioTestCase):
 
         assert reformulated.QUERY_STATUS == "INVALID"
 
-    async def test_reformulate_user_query_valueError(self):
+    async def test_reformulate_user_query_valueError(self, *mocks):
         self.chat._detect_past_message_ref = mock.AsyncMock(
             return_value={"REF_TO_PAST": False}
         )
-        self.chat.chat_schema = mock.AsyncMock(
+        self.chat.chat_client.completion = mock.AsyncMock(
             return_value={
                 "STANDALONE_QUESTION_EN": "Question 1?",
                 "USER_LANGUAGE": "en",
@@ -245,12 +207,12 @@ class TestAbstractChat(unittest.IsolatedAsyncioTestCase):
                 ],
             )
 
-    async def test_reformulate_user_chat_not_called_if_ref_to_past(self):
+    async def test_reformulate_user_chat_not_called_if_ref_to_past(self, *mocks):
         self.chat._detect_past_message_ref = mock.AsyncMock(
             return_value={"REF_TO_PAST": True}
         )
         self.chat._detect_language = mock.AsyncMock()
-        self.chat.chat_schema = mock.AsyncMock()
+        self.chat.chat_client.completion = mock.AsyncMock()
         reformulated = await self.chat.reformulate_user_query(
             "this is the user query",
             [
@@ -266,14 +228,14 @@ class TestAbstractChat(unittest.IsolatedAsyncioTestCase):
                 {"message": "this is the second past message"},
             ],
         )
-        self.chat.chat_schema.assert_not_called()
+        self.chat.chat_client.completion.assert_not_called()
         assert reformulated == ReformulatedQueryResponse(QUERY_STATUS="REF_TO_PAST")
 
-    async def test_get_new_questions(self):
+    async def test_get_new_questions(self, *mocks):
         with mock.patch.object(
             self.chat, "_detect_language", new_callable=mock.AsyncMock
         ) as mock_detect_lang:
-            self.chat.chat = mock.AsyncMock(
+            self.chat.chat_client.completion = mock.AsyncMock(
                 return_value=create_chat_responses_mocks(
                     "%%Question 1?%% Question 2?%%"
                 ),
@@ -285,18 +247,18 @@ class TestAbstractChat(unittest.IsolatedAsyncioTestCase):
             mock_detect_lang.assert_called_with("this is the user query")
             assert new_questions == {"NEW_QUESTIONS": ["Question 1?", "Question 2?"]}
 
-    async def test_rephrase_message_stream_false(self):
-        self.chat.chat = mock.AsyncMock()
-        self.chat.streamed_chat = mock.AsyncMock()
+    async def test_rephrase_message_stream_false(self, *mocks):
+        self.chat.chat_client.completion = mock.AsyncMock()
+        self.chat.chat_client.completion_stream = mock.AsyncMock()
         await self.chat.rephrase_message(
             message="this is the user query", history=[], docs=[], subject="default"
         )
-        self.chat.chat.assert_called_once()
-        self.chat.streamed_chat.assert_not_called()
+        self.chat.chat_client.completion.assert_called_once()
+        self.chat.chat_client.completion_stream.assert_not_called()
 
-    async def test_rephrase_message_stream_true(self):
-        self.chat.chat = mock.AsyncMock()
-        self.chat.streamed_chat = mock.AsyncMock()
+    async def test_rephrase_message_stream_true(self, *mocks):
+        self.chat.chat_client.completion = mock.AsyncMock()
+        self.chat.chat_client.completion_stream = mock.AsyncMock()
         await self.chat.rephrase_message(
             message="this is the user query",
             history=[],
@@ -304,15 +266,15 @@ class TestAbstractChat(unittest.IsolatedAsyncioTestCase):
             subject="default",
             streamed_ans=True,
         )
-        self.chat.streamed_chat.assert_called_once()
-        self.chat.chat.assert_not_called()
+        self.chat.chat_client.completion_stream.assert_called_once()
+        self.chat.chat_client.completion.assert_not_called()
 
-    async def test_chat_message(self):
+    async def test_chat_message(self, *mocks):
         with mock.patch.object(
             self.chat, "_detect_language", new_callable=mock.AsyncMock
         ) as mock_detect_lang:
-            self.chat.chat = mock.AsyncMock()
-            self.chat.streamed_chat = mock.AsyncMock()
+            self.chat.chat_client.completion = mock.AsyncMock()
+            self.chat.chat_client.completion_stream = mock.AsyncMock()
 
             await self.chat.chat_message(
                 query="this is a query",
@@ -324,10 +286,5 @@ class TestAbstractChat(unittest.IsolatedAsyncioTestCase):
             )
 
             mock_detect_lang.assert_called_with("this is a query")
-            self.chat.chat.assert_not_called()
-            self.chat.streamed_chat.assert_called_once()
-
-    async def test_flex_chat(self):
-        self.chat.chat = mock.AsyncMock()
-        await self.chat.flex_chat("this is a query")
-        self.chat.chat.assert_called_once()
+            self.chat.chat_client.completion.assert_not_called()
+            self.chat.chat_client.completion_stream.assert_called_once()

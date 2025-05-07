@@ -68,40 +68,25 @@ JSON = {
 @mock.patch(
     "src.app.services.abst_chat.AbstractChat._detect_language",
 )
-@mock.patch("src.app.services.abst_chat.Open_Chat.chat")
+@mock.patch("src.app.services.abst_chat.AbstractChat.chat_message")
 class QnATests(unittest.IsolatedAsyncioTestCase):
     def setUp(self):
         backoff.on_exception = MagicMock()
 
-    async def test_chat(self, chat_mock, mock_check_language):
-        mock_check_language.return_value = {"ISO_CODE": "en"}
+    async def test_chat(self, chat_mock, *mocks):
+        chat_mock.return_value = "ok"
         response = client.post(
             f"{settings.API_V1_STR}/qna/chat/answer",
             json=JSON,
             headers={"X-API-Key": "test"},
         )
 
-        chat_mock.assert_called_with(
-            type="text",
-            model="gpt-4o-mini",
-            messages=[
-                {
-                    "role": "system",
-                    "content": '\nCONTEXT: You are an expert in sustainable development goals (SDGs).\n\nOBJECTIVE: Answer the user\'s question based on the provided articles (enclosed in XML tags). Always include the reference of the article at the end of the sentence using the following format: <a href="http://document_url" target="_blank">[Doc 2]</a>.\n\nSTYLE: Structured, conversational, and easy to understand, as if explaining to a friend. Always include the reference of the article at the end of the sentence using the following format: <a href="http://document_url" target="_blank">[Doc 2]</a>.\n\nTONE: Informative yet engaging.\n\nAUDIENCE: Non-technical readers, university students aged 18-25 years, on a General cursus.\n\nRESPONSE: It is crucial to use the <a> tag; otherwise, the answer will be considered invalid. Provide a clear and structured response based on the articles and questions provided. Use breaks, bullet points, and lists to structure your answers if relevant. You don\'t have to use all articles, only if it makes sense in the conversation. Answer in the same language as the user did.\n',
-                },
-                {"role": "user", "content": "How to promote sustainable agriculture?"},
-                {"role": "assistant", "content": "here is my answer"},
-                {
-                    "role": "user",
-                    "content": "\nArticles:\n<article>\nDoc 1: testTitle\ntestContent\n\nurl:testUrl</article>\n\nQuestion: here is my answer\n\nIMPORTANT:\n- The answer must be formulated in the same language as the question. Language: {'ISO_CODE': 'en'}.\n- Answer with the facts listed in the articles above. If there isn't enough information, say you don't know.\n- Every element of the answer must be supported by a reference to the article.\n- Add the reference of the article with a <a> tag as follows: <a href=\"http://document_url\" target=\"_blank\">[Doc 2]</a>. The target=\"_blank\" attribute is mandatory.\n- It is very important to use the <a> tag; otherwise, the answer will be considered invalid.\n",
-                },
-            ],
-        )
-        self.assertIsNotNone(response)
+        response_json = response.json()
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response_json, "ok")
 
-    async def test_chat_empty_history(self, chat_mock, mock_check_language):
-        mock_check_language.return_value = {"ISO_CODE": "en"}
-
+    async def test_chat_empty_history(self, chat_mock, *mocks):
+        chat_mock.return_value = "ok"
         response = client.post(
             f"{settings.API_V1_STR}/qna/chat/answer",
             json=JSON_NO_HIST,
@@ -109,64 +94,91 @@ class QnATests(unittest.IsolatedAsyncioTestCase):
         )
 
         chat_mock.assert_called_with(
-            type="text",
-            model="gpt-4o-mini",
-            messages=[
-                {
-                    "role": "system",
-                    "content": '\nCONTEXT: You are an expert in sustainable development goals (SDGs).\n\nOBJECTIVE: Answer the user\'s question based on the provided articles (enclosed in XML tags). Always include the reference of the article at the end of the sentence using the following format: <a href="http://document_url" target="_blank">[Doc 2]</a>.\n\nSTYLE: Structured, conversational, and easy to understand, as if explaining to a friend. Always include the reference of the article at the end of the sentence using the following format: <a href="http://document_url" target="_blank">[Doc 2]</a>.\n\nTONE: Informative yet engaging.\n\nAUDIENCE: Non-technical readers, university students aged 18-25 years, on a General cursus.\n\nRESPONSE: It is crucial to use the <a> tag; otherwise, the answer will be considered invalid. Provide a clear and structured response based on the articles and questions provided. Use breaks, bullet points, and lists to structure your answers if relevant. You don\'t have to use all articles, only if it makes sense in the conversation. Answer in the same language as the user did.\n',
-                },
-                {
-                    "role": "user",
-                    "content": "\nArticles:\n<article>\nDoc 1: testTitle\ntestContent\n\nurl:testUrl</article>\n\nQuestion: Bonjour?\n\nIMPORTANT:\n- The answer must be formulated in the same language as the question. Language: {'ISO_CODE': 'en'}.\n- Answer with the facts listed in the articles above. If there isn't enough information, say you don't know.\n- Every element of the answer must be supported by a reference to the article.\n- Add the reference of the article with a <a> tag as follows: <a href=\"http://document_url\" target=\"_blank\">[Doc 2]</a>. The target=\"_blank\" attribute is mandatory.\n- It is very important to use the <a> tag; otherwise, the answer will be considered invalid.\n",
-                },
+            query="Bonjour?",
+            history=[],
+            docs=[
+                DocumentModel(
+                    score=0.636549,
+                    payload=DocumentPayloadModel(
+                        document_corpus="testCorpus",
+                        document_desc="testDesc",
+                        document_details={
+                            "author": "testAuthor",
+                            "duration": 276,
+                            "readability": 42.61,
+                            "source": "au",
+                        },
+                        document_id="testDocId",
+                        document_lang="en",
+                        document_sdg=[11, 12, 13, 15, 2, 8],
+                        document_title="testTitle",
+                        document_url="testUrl",
+                        slice_content="testContent",
+                        slice_sdg=15,
+                    ),
+                )
             ],
+            subject=None,
         )
+        response_json = response.json()
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response_json, "ok")
 
-        self.assertIsNotNone(response)
-
-    async def test_chat_not_supported_lang(self, chat_mock, mock__detect_language):
+    async def test_chat_not_supported_lang(self, chat_mock, *mocks):
         # mock raise LanguageNotSupportedError
-        mock__detect_language.side_effect = LanguageNotSupportedError
+        chat_mock.side_effect = LanguageNotSupportedError
         JSON_NO_HIST["query"] = "Bom dia?"
         response = client.post(
             f"{settings.API_V1_STR}/qna/chat/answer",
             json=JSON_NO_HIST,
             headers={"X-API-Key": "test"},
         )
+        self.assertEqual(response.status_code, 400)
 
-        chat_mock.assert_not_called()
-        self.assertIsNotNone(response)
-
-    async def test_chat_rephrase(self, mock_chat, mock_check_language):
+    async def test_chat_rephrase(self, *mocks):
         with mock.patch(
-            "src.app.services.abst_chat.AbstractChat.chat_message",
-            return_value=[
-                {"role": "user", "content": "How to promote sustainable agriculture?"}
-            ],
-        ):
+            "src.app.services.abst_chat.AbstractChat.rephrase_message",
+            return_value="ok",
+        ) as mock_rephrase:
             client.post(
                 f"{settings.API_V1_STR}/qna/chat/rephrase",
                 json=JSON,
                 headers={"X-API-Key": "test"},
             )
 
-            mock_chat.assert_called_with(
-                type="text",
-                model="gpt-4o-mini",
-                messages=[
-                    {
-                        "role": "system",
-                        "content": '\nCONTEXT: You are an expert in sustainable development goals (SDGs).\n\nOBJECTIVE: Answer the user\'s question based on the provided articles (enclosed in XML tags). Always include the reference of the article at the end of the sentence using the following format: <a href="http://document_url" target="_blank">[Doc 2]</a>.\n\nSTYLE: Structured, conversational, and easy to understand, as if explaining to a friend. Always include the reference of the article at the end of the sentence using the following format: <a href="http://document_url" target="_blank">[Doc 2]</a>.\n\nTONE: Informative yet engaging.\n\nAUDIENCE: Non-technical readers, university students aged 18-25 years, on a General cursus.\n\nRESPONSE: It is crucial to use the <a> tag; otherwise, the answer will be considered invalid. Provide a clear and structured response based on the articles and questions provided. Use breaks, bullet points, and lists to structure your answers if relevant. You don\'t have to use all articles, only if it makes sense in the conversation. Answer in the same language as the user did.\n',
-                    },
+            mock_rephrase.assert_called_with(
+                query="Bonjour?",
+                history=[
                     {
                         "role": "user",
                         "content": "How to promote sustainable agriculture?",
                     },
                     {
-                        "role": "user",
-                        "content": '\nCONTEXT: You are a sustainable development goals (SDGs) expert. You are given a prompt and extracted parts of documents. Each document is delimited with XML tags <article> </article>.\n\nOBJECTIVE: Reformulate the given prompt based on the chat conversation and given articles. Always add the reference of the article at the end of the sentence (as follows, <a href="http://document_url" target="_blank">[Doc 2]</a>).\n\nSTYLE: Structured, conversational, and easy to understand, like explaining to a friend. Always add the reference of the article at the end of the sentence (as follows, <a href="http://document_url" target="_blank">[Doc 2]</a>).\n\nTONE: Informative yet engaging.\n\nAUDIENCE: Non-technical readers, university students aged 18-25 years.\n\nRESPONSE: It is very important to use the <a> tag; otherwise, the answer will be considered invalid. Provide a clear and structured answer based on the articles and questions provided. If relevant, use breaks, bullet points, and lists to structure your answers. You don\'t have to use all articles, only if it makes sense in the conversation. Use the same language as the user did.\n\nIMPORTANT:\n- You must answer in the same language as the question.\n- Answer with the facts listed in the list of articles above. If there isn\'t enough information, say you don\'t know.\n- Every element of the answer must be supported by a reference to the article.\n- Add the reference of the article with a <a> tag as follows: <a href="http://document_url" target="_blank">[Doc 2]</a>. The target="_blank" attribute is mandatory.\n- It is very important to use the <a> tag; otherwise, the answer will be considered invalid.\n\nArticles:\n<article>\nDoc 1: testTitle\ntestContent\n\nurl:testUrl</article>\n\nPrompt: here is my answer\n\nReformulated prompt:\n',
+                        "role": "assistant",
+                        "content": "here is my answer",
                     },
+                ],
+                docs=[
+                    DocumentModel(
+                        score=0.636549,
+                        payload=DocumentPayloadModel(
+                            document_corpus="testCorpus",
+                            document_desc="testDesc",
+                            document_details={
+                                "author": "testAuthor",
+                                "duration": 276,
+                                "readability": 42.61,
+                                "source": "au",
+                            },
+                            document_id="testDocId",
+                            document_lang="en",
+                            document_sdg=[11, 12, 13, 15, 2, 8],
+                            document_title="testTitle",
+                            document_url="testUrl",
+                            slice_content="testContent",
+                            slice_sdg=15,
+                        ),
+                    )
                 ],
             )
 

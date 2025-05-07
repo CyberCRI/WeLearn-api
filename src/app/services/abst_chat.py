@@ -16,19 +16,13 @@ Functions:
 """
 
 import json
-from abc import ABC, abstractmethod
-from typing import AsyncIterable, Dict, List, Literal, Optional
+from abc import ABC
+from typing import AsyncIterable, Dict, List, Optional
 
-from azure.ai.inference import ChatCompletionsClient
-from azure.core.credentials import AzureKeyCredential
 
 # from ecologits import EcoLogits  # type: ignore
-from mistralai import Mistral
-from openai import AsyncAzureOpenAI
-from pydantic import BaseModel
 
-from src.app.api.dependencies import get_settings
-from src.app.models.chat import RESPONSE_TYPE, ReformulatedQueryResponse
+from src.app.models.chat import ReformulatedQueryResponse
 from src.app.models.documents import Document
 from src.app.services import prompts
 from src.app.services.exceptions import LanguageNotSupportedError
@@ -60,6 +54,12 @@ class AbstractChat(ABC):
         API_BASE: Optional[str] = None,
         API_VERSION: Optional[str] = None,
     ):
+        self.chat_client = LLMProxy(
+                model=model,
+                api_key=API_KEY,
+                api_base=API_BASE,
+                api_version=API_VERSION,
+                )
         self.model = model
         self.API_KEY = API_KEY
         self.API_BASE = API_BASE
@@ -74,15 +74,6 @@ class AbstractChat(ABC):
                 "content": prompts.SYSTEM_PAST_MESSAGE_REF,
             },
         }
-
-    def init_client(self):
-        self.chat_client = LLMProxy(
-            model=self.model,
-            api_key=self.API_KEY,
-            api_base=self.API_BASE,
-            api_version=self.API_VERSION,
-            debug=True,
-        )
 
     async def _detect_language(self, query: str) -> Dict[str, str]:
         """
@@ -103,10 +94,6 @@ class AbstractChat(ABC):
             )
             lang = await self._detect_lang_with_llm(query)
             return lang
-
-    async def flex_chat(self, messages):
-        completion = await self.chat(model=self.model, type="text", messages=messages)
-        return completion
 
     async def _detect_lang_with_llm(self, query: str) -> Dict[str, str]:
         """
@@ -183,19 +170,6 @@ class AbstractChat(ABC):
             logger.error("api_error=assertion_error, response=%s", completion)
             raise ValueError("Invalid response from model")
 
-    def get_message_content(self, message) -> str:
-        """
-        Gets content from response.
-
-        Args:
-            message (dict): The chat response.
-
-        Returns:
-            str: The chat client response content.
-        """
-        log_environmental_impacts(message, logger)
-        check = message.choices[0].message.content
-        return check
 
     async def get_stream_chunks(self, stream) -> AsyncIterable[str]:
         """
@@ -400,4 +374,4 @@ class AbstractChat(ABC):
         res = await self.chat_client.completion(
             messages=messages,
         )
-        return self.get_message_content(res)
+        return res

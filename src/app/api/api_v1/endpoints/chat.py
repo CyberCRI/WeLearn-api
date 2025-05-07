@@ -8,7 +8,7 @@ from openai import RateLimitError
 
 from src.app.api.dependencies import get_settings
 from src.app.models import chat as models
-from src.app.services.abst_chat import AbstractChat 
+from src.app.services.abst_chat import AbstractChat
 from src.app.services.constants import subjects as subjectsDict
 from src.app.services.exceptions import (
     EmptyQueryError,
@@ -16,7 +16,6 @@ from src.app.services.exceptions import (
     LanguageNotSupportedError,
     bad_request,
 )
-from src.app.services.llm_proxy import LLMProxy
 from src.app.utils.logger import logger as utils_logger
 
 logger = utils_logger(__name__)
@@ -31,7 +30,6 @@ chatfactory = AbstractChat(
     API_BASE=settings.AZURE_API_BASE,
     API_VERSION=settings.AZURE_API_VERSION,
 )
-chatfactory.init_client()
 
 
 def get_params(body: models.Context) -> models.ContextOut:
@@ -51,32 +49,6 @@ def get_params(body: models.Context) -> models.ContextOut:
 
 class Response(BaseModel):
     greeting: str
-
-
-@router.post("/test_litellm")
-async def test_litellm():
-    try:
-        response = await LLMProxy(
-            model="azure/gpt-4o",
-            api_key=settings.AZURE_GPT_4O_API_KEY,
-            api_base=settings.AZURE_GPT_4O_API_BASE,
-            api_version=settings.AZURE_GPT_4O_API_VERSION,
-        ).completion(
-            messages=[
-                {"role": "system", "content": "you should say hello in portuguese"}
-            ],
-            response_format=Response,
-        )
-        return response
-    except Exception as e:
-        logger.error("Error while testing litellm: %s", e)
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail={
-                "message": "Something went wrong while testing litellm",
-                "code": "LITELLM_TEST_ERROR",
-            },
-        )
 
 
 @router.post(

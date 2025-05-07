@@ -30,7 +30,6 @@ chatfactory = AbstractChat(
     API_BASE=settings.AZURE_GPT_4O_API_BASE,
     API_VERSION=settings.AZURE_GPT_4O_API_VERSION,
 )
-chatfactory.init_client()
 
 sp = SearchService()
 
