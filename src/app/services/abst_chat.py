@@ -77,12 +77,12 @@ class AbstractChat(ABC):
 
     def init_client(self):
         self.chat_client = LLMProxy(
-                model=self.model,
-                api_key=self.API_KEY,
-                api_base=self.API_BASE,
-                api_version=self.API_VERSION,
-            )
-
+            model=self.model,
+            api_key=self.API_KEY,
+            api_base=self.API_BASE,
+            api_version=self.API_VERSION,
+            debug=True,
+        )
 
     async def _detect_language(self, query: str) -> Dict[str, str]:
         """
@@ -127,7 +127,7 @@ class AbstractChat(ABC):
             ],
             response_format={
                 "type": "json_object",
-                }
+            },
         )
 
         try:
@@ -141,7 +141,9 @@ class AbstractChat(ABC):
             logger.error("api_error=invalid_json, response=%s", detected_lang)
             raise ValueError("Invalid response from model")
 
-    async def _detect_past_message_ref(self, query: str, history: List[Dict[str, str]]) -> dict | None:
+    async def _detect_past_message_ref(
+        self, query: str, history: List[Dict[str, str]]
+    ) -> dict | None:
         """
         Detects reference to past messages.
 
@@ -163,7 +165,7 @@ class AbstractChat(ABC):
             ],
             response_format={
                 "type": "json_object",
-            }
+            },
         )
 
         try:
@@ -175,7 +177,7 @@ class AbstractChat(ABC):
 
             return jsn
         except json.JSONDecodeError:
-            
+
             logger.error("api_error=invalid_json, response=%s", completion)
         except AssertionError:
             logger.error("api_error=assertion_error, response=%s", completion)
@@ -272,7 +274,7 @@ class AbstractChat(ABC):
                 }
             )
 
-        return ref_query 
+        return ref_query
 
     async def get_new_questions(
         self, query: str, history: List[Dict[str, str]]
@@ -301,9 +303,7 @@ class AbstractChat(ABC):
 
         assert isinstance(res, str)
 
-        res_list: List[str] = [
-            r.strip() for r in res.split("%%") if len(r.strip()) > 0
-        ]
+        res_list: List[str] = [r.strip() for r in res.split("%%") if len(r.strip()) > 0]
         return {"NEW_QUESTIONS": res_list}
 
     async def rephrase_message(
@@ -401,4 +401,3 @@ class AbstractChat(ABC):
             messages=messages,
         )
         return self.get_message_content(res)
-
