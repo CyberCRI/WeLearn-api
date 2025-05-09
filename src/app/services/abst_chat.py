@@ -141,6 +141,9 @@ class AbstractChat(ABC):
         Returns:
             The detected reference to past messages.
         """
+        if not history or len(history) < 1:
+            return {"REF_TO_PAST": False}
+
         completion = await self.chat_client.completion(
             messages=[
                 self.system_prompts["past_message"],
