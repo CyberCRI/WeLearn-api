@@ -3,7 +3,7 @@ from abc import ABC
 from typing import Optional, Type, Union
 
 import litellm
-from litellm import acompletion, completion
+from litellm import acompletion
 from litellm.types.utils import ModelResponse
 from pydantic import BaseModel
 
@@ -57,11 +57,11 @@ class LLMProxy(ABC):
             )
             return response
 
-    def completion_stream(
+    async def completion_stream(
         self,
         messages: list,
     ):
-        response = completion(
+        response = await acompletion(
             model=self.model,
             api_key=self.api_key,
             api_base=self.api_base,

@@ -16,13 +16,12 @@ def create_chat_responses_mocks(response: str):
     )
 
 
-@mock.patch("src.app.services.llm_proxy.completion")
 @mock.patch("src.app.services.llm_proxy.acompletion", new_callable=mock.AsyncMock)
 class TestLLMProxy(unittest.IsolatedAsyncioTestCase):
     def setUp(self):
         self.proxy = LLMProxy(model="fake_model")
 
-    async def test_response_as_text(self, mocked_acompletion, *mocks):
+    async def test_response_as_text(self, mocked_acompletion):
         mocked_acompletion.return_value = create_chat_responses_mocks(response="text")
         response = await self.proxy.completion(
             messages=[{"role": "user", "content": "Hello"}],
@@ -31,7 +30,7 @@ class TestLLMProxy(unittest.IsolatedAsyncioTestCase):
         self.assertIs(response, "text")
         self.assertIsInstance(response, str)
 
-    async def test_response_as_dict(self, mocked_acompletion, *mocks):
+    async def test_response_as_dict(self, mocked_acompletion):
         mocked_acompletion.return_value = create_chat_responses_mocks(
             response='{"key": "value"}'
         )
@@ -41,11 +40,11 @@ class TestLLMProxy(unittest.IsolatedAsyncioTestCase):
 
         self.assertIsInstance(response, dict)
 
-    def test_stream(self, mocked_acompletion, mocked_completion):
-        self.proxy.completion_stream(
+    async def test_stream(self, mocked_acompletion):
+        await self.proxy.completion_stream(
             messages=[{"role": "user", "content": "Hello"}],
         )
-        mocked_completion.assert_called_with(
+        mocked_acompletion.assert_called_with(
             model="fake_model",
             api_key=None,
             api_base=None,

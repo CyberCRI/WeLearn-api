@@ -185,6 +185,7 @@ class AbstractChat(ABC):
                 choices = chunk.choices
                 if choices:
                     if choices[0].delta.content:
+                        print(choices[0].delta.content, end="", flush=True)
                         yield choices[0].delta.content
                     if choices[0].finish_reason:
                         log_environmental_impacts(chunk, logger)
@@ -369,7 +370,7 @@ class AbstractChat(ABC):
             },
         ]
         if streamed_ans:
-            res = self.chat_client.completion_stream(messages)
+            res = await self.chat_client.completion_stream(messages)
             return self.get_stream_chunks(res)
 
         res = await self.chat_client.completion(
