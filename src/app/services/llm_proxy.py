@@ -1,13 +1,12 @@
 import json
-
 from abc import ABC
-from typing import Type, Optional, Union
-from pydantic import BaseModel
+from typing import Optional, Type, Union
 
 import litellm
 from litellm import acompletion, completion
-from litellm.utils import supports_response_schema
 from litellm.types.utils import ModelResponse
+from pydantic import BaseModel
+
 from src.app.utils.logger import logger as utils_logger
 
 logger = utils_logger(__name__)
@@ -26,10 +25,10 @@ class LLMProxy(ABC):
         self.api_key = api_key
         self.api_base = api_base
         self.api_version = api_version
-        
+
         litellm.enable_json_schema_validation = True
         if debug:
-            litellm._turn_on_debug() # to be removed before merge
+            litellm._turn_on_debug()  # type: ignore
 
     async def completion(
         self,
@@ -41,14 +40,14 @@ class LLMProxy(ABC):
             model=self.model,
             api_key=self.api_key,
             api_base=self.api_base,
-           api_version=self.api_version,
+            api_version=self.api_version,
             messages=messages,
             response_format=response_format,
         )
 
         assert isinstance(response, ModelResponse)
 
-        response = response["choices"][0]["message"]["content"]
+        response = response["choices"][0]["message"]["content"].strip()
 
         try:
             return json.loads(response)

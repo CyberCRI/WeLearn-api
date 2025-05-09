@@ -147,17 +147,6 @@ class QnATests(unittest.IsolatedAsyncioTestCase):
             )
 
             mock_rephrase.assert_called_with(
-                query="Bonjour?",
-                history=[
-                    {
-                        "role": "user",
-                        "content": "How to promote sustainable agriculture?",
-                    },
-                    {
-                        "role": "assistant",
-                        "content": "here is my answer",
-                    },
-                ],
                 docs=[
                     DocumentModel(
                         score=0.636549,
@@ -180,6 +169,15 @@ class QnATests(unittest.IsolatedAsyncioTestCase):
                         ),
                     )
                 ],
+                message="here is my answer",
+                history=[
+                    {
+                        "role": "user",
+                        "content": "How to promote sustainable agriculture?",
+                    },
+                    {"role": "assistant", "content": "here is my answer"},
+                ],
+                subject=None,
             )
 
     def test_new_questions_empty_query(self, *mocks):

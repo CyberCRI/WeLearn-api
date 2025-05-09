@@ -19,9 +19,6 @@ import json
 from abc import ABC
 from typing import AsyncIterable, Dict, List, Optional
 
-
-# from ecologits import EcoLogits  # type: ignore
-
 from src.app.models.chat import ReformulatedQueryResponse
 from src.app.models.documents import Document
 from src.app.services import prompts
@@ -30,6 +27,9 @@ from src.app.services.helpers import detect_language_from_entry, stringify_docs_
 from src.app.services.llm_proxy import LLMProxy
 from src.app.utils.logger import log_environmental_impacts
 from src.app.utils.logger import logger as utils_logger
+
+# from ecologits import EcoLogits  # type: ignore
+
 
 logger = utils_logger(__name__)
 # EcoLogits.init(["openai", "mistralai"])
@@ -55,11 +55,11 @@ class AbstractChat(ABC):
         API_VERSION: Optional[str] = None,
     ):
         self.chat_client = LLMProxy(
-                model=model,
-                api_key=API_KEY,
-                api_base=API_BASE,
-                api_version=API_VERSION,
-                )
+            model=model,
+            api_key=API_KEY,
+            api_base=API_BASE,
+            api_version=API_VERSION,
+        )
         self.model = model
         self.API_KEY = API_KEY
         self.API_BASE = API_BASE
@@ -124,8 +124,8 @@ class AbstractChat(ABC):
                 raise LanguageNotSupportedError()
 
             return detected_lang
-        except json.JSONDecodeError:
-            logger.error("api_error=invalid_json, response=%s", detected_lang)
+        except AssertionError:
+            logger.error("api_error=assertion_error, response=%s", detected_lang)
             raise ValueError("Invalid response from model")
 
     async def _detect_past_message_ref(
@@ -170,7 +170,6 @@ class AbstractChat(ABC):
             logger.error("api_error=assertion_error, response=%s", completion)
             raise ValueError("Invalid response from model")
 
-
     async def get_stream_chunks(self, stream) -> AsyncIterable[str]:
         """
         Gets content from streamed response.
@@ -206,7 +205,6 @@ class AbstractChat(ABC):
         Returns:
             dict: The reformulated query or None.
         """
-        # lang = await self._detect_language(query)
 
         ref_to_past: dict | None = await self._detect_past_message_ref(query, history)
         if ref_to_past and ref_to_past["REF_TO_PAST"]:
@@ -236,9 +234,12 @@ class AbstractChat(ABC):
             response_format=ReformulatedQueryResponse,
         )
 
-        assert isinstance(reformulated_query, dict)
-
-        ref_query = ReformulatedQueryResponse(**reformulated_query)
+        try:
+            assert isinstance(reformulated_query, dict)
+            ref_query = ReformulatedQueryResponse(**reformulated_query)
+        except Exception:
+            logger.error("api_error=invalid_json, response=%s", reformulated_query)
+            ref_query = reformulated_query
 
         if not isinstance(ref_query, ReformulatedQueryResponse):
             raise ValueError(

@@ -1,10 +1,10 @@
 from typing import Optional, cast
-from pydantic import BaseModel
 
 import backoff
 from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi.responses import StreamingResponse
 from openai import RateLimitError
+from pydantic import BaseModel
 
 from src.app.api.dependencies import get_settings
 from src.app.models import chat as models
