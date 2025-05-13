@@ -27,7 +27,7 @@ from ragas.metrics import (  # type: ignore
 )
 
 from src.app.api.dependencies import get_settings
-from src.app.services.abst_chat import ChatFactory
+from src.app.services.abst_chat import AbstractChat
 
 logger = logging.getLogger(__name__)
 
@@ -41,9 +41,13 @@ with open("eval_questions&answers.csv") as f:
 # init chat client
 settings = get_settings()
 
-chat = ChatFactory().create_chat("openai")
+chat = AbstractChat(
+    model="azure/gpt-4o-mini",
+    API_KEY=settings.AZURE_API_KEY,
+    API_BASE=settings.AZURE_API_BASE,
+    API_VERSION=settings.AZURE_API_VERSION,
+)
 
-chat.init_client()
 
 # init test chat client
 model = "gpt-4o-mini"
