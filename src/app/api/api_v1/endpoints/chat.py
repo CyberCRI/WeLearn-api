@@ -4,10 +4,11 @@ import backoff
 from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi.responses import StreamingResponse
 from openai import RateLimitError
+from pydantic import BaseModel
 
 from src.app.api.dependencies import get_settings
 from src.app.models import chat as models
-from src.app.services.abst_chat import AbstractChat, ChatFactory
+from src.app.services.abst_chat import AbstractChat
 from src.app.services.constants import subjects as subjectsDict
 from src.app.services.exceptions import (
     EmptyQueryError,
@@ -23,8 +24,12 @@ router = APIRouter()
 
 settings = get_settings()
 
-chatfactory: AbstractChat = ChatFactory().create_chat("openai")
-chatfactory.init_client()
+chatfactory = AbstractChat(
+    model="azure/gpt-4o-mini",
+    API_KEY=settings.AZURE_API_KEY,
+    API_BASE=settings.AZURE_API_BASE,
+    API_VERSION=settings.AZURE_API_VERSION,
+)
 
 
 def get_params(body: models.Context) -> models.ContextOut:
@@ -40,6 +45,10 @@ def get_params(body: models.Context) -> models.ContextOut:
         query=body.query,
         subject=body.subject,
     )
+
+
+class Response(BaseModel):
+    greeting: str
 
 
 @router.post(
