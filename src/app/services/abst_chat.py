@@ -164,7 +164,6 @@ class AbstractChat(ABC):
 
             return jsn
         except json.JSONDecodeError:
-
             logger.error("api_error=invalid_json, response=%s", completion)
         except AssertionError:
             logger.error("api_error=assertion_error, response=%s", completion)
@@ -185,7 +184,6 @@ class AbstractChat(ABC):
                 choices = chunk.choices
                 if choices:
                     if choices[0].delta.content:
-                        print(choices[0].delta.content, end="", flush=True)
                         yield choices[0].delta.content
                     if choices[0].finish_reason:
                         log_environmental_impacts(chunk, logger)
