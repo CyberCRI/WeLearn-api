@@ -25,10 +25,8 @@ router = APIRouter()
 settings = get_settings()
 
 chatfactory = AbstractChat(
-    model="azure/gpt-4o-mini",
-    API_KEY=settings.AZURE_API_KEY,
-    API_BASE=settings.AZURE_API_BASE,
-    API_VERSION=settings.AZURE_API_VERSION,
+    model="mistral/mistral-small-latest",
+    API_KEY=settings.MISTRAL_API_KEY,
 )
 
 
