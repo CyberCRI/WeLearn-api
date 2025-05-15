@@ -9,7 +9,8 @@ from autogen_core import (
     TypeSubscription,
 )
 from autogen_core.memory import ListMemory, MemoryContent, MemoryMimeType
-from autogen_ext.models.openai import AzureOpenAIChatCompletionClient
+from autogen_core.models import ModelInfo
+from autogen_ext.models.openai import AzureOpenAIChatCompletionClient , OpenAIChatCompletionClient
 
 from src.app.api.dependencies import get_settings
 from src.app.services.tutor.agents import (
@@ -39,6 +40,19 @@ llm_4o_mini = AzureOpenAIChatCompletionClient(
     azure_endpoint=settings.AZURE_GPT_4O_API_BASE,
     api_key=settings.AZURE_GPT_4O_API_KEY,
 )
+
+# use mistral large llm
+llm_mistral = OpenAIChatCompletionClient(
+        model="pistral-large-latest",
+        api_key=settings.MISTRAL_API_KEY,
+        model_info=ModelInfo(
+            vision=False,
+            function_calling=True,
+            json_output=True,
+            family="mistral",
+        )
+    )
+
 
 
 async def tutor_manager(
@@ -84,7 +98,7 @@ async def tutor_manager(
     await UniversityTeacherAgent.register(
         runtime,
         type=university_teacher_topic_type,
-        factory=lambda: UniversityTeacherAgent(model_client=llm_4o_mini),
+        factory=lambda: UniversityTeacherAgent(model_client=llm_mistral),
     )
 
     await SDGExpertAgent.register(
