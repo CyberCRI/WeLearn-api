@@ -30,9 +30,9 @@ def extract_doc_info(documents: list[ScoredPoint]) -> list[dict]:
     """
     return [
         {
-            "title": doc.payload.document_title,  # type: ignore
-            "url": doc.payload.document_url,  # type: ignore
-            "content": doc.payload.slice_content,  # type: ignore
+            "title": doc.payload.get("document_title", ""),  # type: ignore
+            "url": doc.payload.get("document_url", ""),  # type: ignore
+            "content": doc.payload.get("slice_content", ""),  # type: ignore
         }
         for doc in documents
         if doc.payload is not None

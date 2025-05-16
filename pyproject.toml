@@ -29,9 +29,9 @@ transformers="^4.50.0"
 torch = {version = "^2.2.2+cpu", source = "pytorch_cpu"}
 torchvision = {version = "^0.17.2+cpu", source = "pytorch_cpu"}
 uvicorn = {extras = ["standard"], version = "^0.29.0"}
-autogen-core = "^0.4.9.3"
-autogen-ext = "^0.4.9.3"
-autogen-agentchat = "^0.4.9.2"
+autogen-core = "^0.5.7"
+autogen-ext = "^0.5.7"
+autogen-agentchat = "^0.5.7"
 pypdf = "^5.4.0"
 numpy = "^1.26.4"
 
