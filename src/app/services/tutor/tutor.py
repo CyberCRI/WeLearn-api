@@ -9,7 +9,8 @@ from autogen_core import (
     TypeSubscription,
 )
 from autogen_core.memory import ListMemory, MemoryContent, MemoryMimeType
-from autogen_ext.models.openai import AzureOpenAIChatCompletionClient
+from autogen_core.models import ModelFamily, ModelInfo
+from autogen_ext.models.openai import OpenAIChatCompletionClient
 
 from src.app.api.dependencies import get_settings
 from src.app.services.tutor.agents import (
@@ -32,12 +33,18 @@ from src.app.services.tutor.utils import extract_doc_info
 settings = get_settings()
 
 
-llm_4o_mini = AzureOpenAIChatCompletionClient(
-    azure_deployment="gpt-4o",
-    model="gpt-4o",
-    api_version=settings.AZURE_GPT_4O_API_VERSION,
-    azure_endpoint=settings.AZURE_GPT_4O_API_BASE,
-    api_key=settings.AZURE_GPT_4O_API_KEY,
+llm_mistral = OpenAIChatCompletionClient(
+    model="mistral-large-latest",
+    api_key=settings.MISTRAL_API_KEY,
+    base_url="https://api.mistral.ai/v1/",
+    model_info=ModelInfo(
+        vision=False,
+        function_calling=True,
+        json_output=True,
+        family=ModelFamily.MISTRAL,
+        structured_output=True,
+        multiple_system_messages=True,
+    ),
 )
 
 
@@ -84,14 +91,14 @@ async def tutor_manager(
     await UniversityTeacherAgent.register(
         runtime,
         type=university_teacher_topic_type,
-        factory=lambda: UniversityTeacherAgent(model_client=llm_4o_mini),
+        factory=lambda: UniversityTeacherAgent(model_client=llm_mistral),
     )
 
     await SDGExpertAgent.register(
         runtime,
         type=sdg_expert_topic_type,
         factory=lambda: SDGExpertAgent(
-            model_client=llm_4o_mini, memory=greencomp_memory
+            model_client=llm_mistral, memory=greencomp_memory
         ),
     )
 
@@ -99,7 +106,7 @@ async def tutor_manager(
         runtime,
         type=pedagogical_engineer_topic_type,
         factory=lambda: PedagogicalEngineerAgent(
-            model_client=llm_4o_mini, memory=greencomp_memory
+            model_client=llm_mistral, memory=greencomp_memory
         ),
     )
 
