@@ -119,7 +119,7 @@ class SearchService:
         return embedding
 
     @cache
-    def _get_model(self, curr_model: str) -> SentenceTransformer:
+    def _get_model(self, curr_model: str) -> tuple[int | None, SentenceTransformer]:
         try:
             time_start = time.time()
             # TODO: path should be an env variable
@@ -133,15 +133,41 @@ class SearchService:
         except ValueError:
             logger.error("api_error=MODEL_NOT_FOUND model=%s", curr_model)
             raise ModelNotFoundError()
-        return model
+        return (model.get_max_seq_length(), model)
+
+    @cache
+    def _split_input_seq_len(self, seq_len: int, input: str) -> list[str]:
+        if not seq_len:
+            raise ValueError("Sequence length value is not valid")
+
+        if len(input) <= seq_len:
+            return [input]
+
+        input_words = input.split()
+        inputs = []
+        curr_seq: str = input_words[0]
+        for word in input_words[1:]:
+            if len(curr_seq) + len(word) <= seq_len:
+                curr_seq = curr_seq + f" {word}"
+            else:
+                inputs.append(curr_seq.strip())
+                curr_seq = word
+
+        if curr_seq:
+            inputs.append(curr_seq.strip())
+
+        return inputs
 
     @cache
     def _embed_query(self, search_input: str, curr_model: str) -> np.ndarray:
         logger.debug("Creating embeddings model=%s", curr_model)
         time_start = time.time()
-        model = self._get_model(curr_model)
+        seq_len, model = self._get_model(curr_model)
+        inputs = self._split_input_seq_len(seq_len, search_input)
+
         try:
-            embeddings = model.encode(sentences=search_input)
+            embeddings = model.encode(sentences=inputs, show_progress_bar=True)
+            embeddings = np.mean(embeddings, axis=0)
         except Exception as ex:
             logger.error("api_error=EMBED_ERROR model=%s", curr_model)
             raise RuntimeError("Not able to create embed", "EMBED_ERROR") from ex
