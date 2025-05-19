@@ -153,6 +153,9 @@ class SearchService:
                 inputs.append(curr_seq.strip())
                 curr_seq = word
 
+        if curr_seq:
+            inputs.append(curr_seq.strip())
+
         return inputs
 
     @cache
