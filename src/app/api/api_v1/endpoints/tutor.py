@@ -8,9 +8,12 @@ from src.app.services.abst_chat import AbstractChat
 from src.app.services.exceptions import NoResultsError
 from src.app.services.search import SearchService
 from src.app.services.search_helpers import search_multi_inputs
+from src.app.services.tutor.agents import TEMPLATES
 from src.app.services.tutor.models import (
     ExtractorOuputList,
+    SyllabusFeedback,
     SyllabusResponse,
+    SyllabusResponseAgent,
     TutorSearchResponse,
 )
 from src.app.services.tutor.tutor import tutor_manager
@@ -145,4 +148,66 @@ async def create_syllabus(
 
     # TODO: handle errors
 
-    return SyllabusResponse(syllabus=results, documents=body.documents)
+    return SyllabusResponse(syllabus=results, documents=body.documents, extracts=body.extracts)
+
+
+feedback_prompt = """
+You are a pedagogical engeneer and are  given a syllabus and a feedback. by the teacher that will teach the course.
+your responsability is to analyse the syllabus and return a improved version of it in a markdown format.
+It is important to take into account the feedback given by the teacher and to keep the syllabus structure.
+The syllabus strucutre is:
+    {syllabus_structure}
+
+To be able to do that the assistant gives you:
+    - the syllabus of the course
+    - the feedback given by the teacher
+    - a list of documents related to the course
+    - a list of extracts from a document of interest
+    - the themes that the course is related to
+
+You will respond with the syllabus. Do not provide explanations or notes
+"""
+
+feedback_assistant_prompt = """
+here is the original syllabus: 
+    {syllabus}
+
+take into account the user feedback:
+    {feedback}
+
+keep the references section with the formar <a href="document.url">document.title</a>, references are based on these documents:
+    {documents}
+
+for more context, here are the extracts of the original document the user sent to build the syllaus from. Extracts:
+    {extracts}
+
+and the themes extracted from those documents:
+    {themes}
+"""
+
+@router.post("/syllabus/feedback")
+async def handle_syllabus_feedback(body: SyllabusFeedback):
+
+    messages = [
+        {"role": "system", "content": feedback_prompt.format(syllabus_structure=TEMPLATES)},
+        {"role": "assistant", "content": feedback_assistant_prompt.format(
+            syllabus=body.syllabus,
+            feedback=body.feedback,
+            documents=body.documents,
+            extracts=("/n").join([extract.summary for extract in body.extracts]),
+            themes=(', ').join([(', ').join(extract.themes) for extract in body.extracts])
+            ) },
+    ]
+
+    try:
+        syllabus = await chatfactory.chat_client.completion(
+            messages=messages
+        )
+
+        assert isinstance(syllabus, str)
+
+        return SyllabusResponse(syllabus=[SyllabusResponseAgent(content=syllabus)], documents=body.documents, extracts=body.extracts)
+
+    except Exception as e:
+        logger.error(f"Error in chat schema: {e}")
+

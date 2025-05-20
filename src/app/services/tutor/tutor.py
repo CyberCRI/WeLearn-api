@@ -25,6 +25,7 @@ from src.app.services.tutor.agents import (
 )
 from src.app.services.tutor.models import (
     MessageWithResources,
+    SyllabusFeedback,
     SyllabusResponseAgent,
     TutorSearchResponse,
 )
@@ -46,6 +47,15 @@ llm_mistral = OpenAIChatCompletionClient(
         multiple_system_messages=True,
     ),
 )
+
+async def select_manager(content: TutorSearchResponse | SyllabusFeedback):
+    if isinstance(content, TutorSearchResponse):
+        return await tutor_manager(content, lang="en")
+    if isinstance(content, SyllabusFeedback):
+        # TODO: Implement feedback manager
+        pass
+
+    raise ValueError("Invalid content type provided to select_manager")
 
 
 async def tutor_manager(
@@ -70,6 +80,7 @@ async def tutor_manager(
     await greencomp_memory.add(
         MemoryContent(
             content="Here are the GreenComp competencies: "
+            "url: https://joint-research-centre.ec.europa.eu/greencomp-european-sustainability-competence-framework_en"
             "1.1 Valuing sustainability: To reflect on personal values; identify and explain how values vary among people and over time, while critically evaluating how they align with sustainability values. "
             "1.2 Supporting fairness: To support equity and justice for current and future generations and learn from previous generations for sustainability. "
             "1.3 Promoting nature: To acknowledge that humans are part of nature; and to respect the needs and rights of other species and of nature itself in order to restore and regenerate healthy and resilient ecosystems. "
