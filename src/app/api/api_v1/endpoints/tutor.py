@@ -191,7 +191,7 @@ async def handle_syllabus_feedback(body: SyllabusFeedback):
     messages = [
         {"role": "system", "content": feedback_prompt.format(syllabus_structure=TEMPLATES)},
         {"role": "assistant", "content": feedback_assistant_prompt.format(
-            syllabus=body.syllabus,
+            syllabus=body.syllabus[0],
             feedback=body.feedback,
             documents=body.documents,
             extracts=("/n").join([extract.summary for extract in body.extracts]),

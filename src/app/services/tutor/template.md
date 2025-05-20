@@ -20,6 +20,5 @@ By ensuring that all three elements align, course design becomes coherent, struc
 table structure: | week | Topics | Learning Outcomes | Class Plan |
  7. References: In this section should be added all sources used to generate the syllabus, including any source documents or WeLearn documents used to construct the syllabus.
 IMPORTANT: Do not remove any existent references in this section
-Example of references: Minecraft can increase problem solving, collaboration and learning - yes, at school. <a href="https://theconversation.com/minecraft-can-increase-problem-solving-collaboration-and-learning-yes-at-school-113335">[link]</a>
-References must be formatted as follows: Document.title <a href="document.url" _target=blank>[link]</a>
+Example of references: Document title <a href="document url" _target=blank>[link]</a>
 
