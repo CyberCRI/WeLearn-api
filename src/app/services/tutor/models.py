@@ -29,6 +29,12 @@ class SyllabusResponseAgent(BaseModel):
 class SyllabusResponse(BaseModel):
     syllabus: list[SyllabusResponseAgent]
     documents: list[ScoredPoint]
+    extracts: list[ExtractorOutput]
+
+
+class SyllabusFeedback(SyllabusResponse):
+    feedback: str
+    lang: str = "en"
 
 
 class MessageWithAnalysis(BaseModel):
@@ -42,6 +48,7 @@ class MessageWithResources(BaseModel):
     themes: list[str]
     summary: list[str]
     resources: List[Dict]
+    feeback: str | None = None
     source: str = "default"
 
 
@@ -55,3 +62,5 @@ class MessageWithFeedback(BaseModel):
 class TaskResponse:
     task_id: str
     result: str
+
+
