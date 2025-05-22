@@ -1,6 +1,6 @@
 import json
 import time
-from functools import cache
+# from functools import lru_cache as cache
 from typing import Tuple, cast
 
 import numpy as np
@@ -118,7 +118,7 @@ class SearchService:
 
         return embedding
 
-    @cache
+    # @cache
     def _get_model(self, curr_model: str) -> tuple[int | None, SentenceTransformer]:
         try:
             time_start = time.time()
@@ -135,7 +135,7 @@ class SearchService:
             raise ModelNotFoundError()
         return (model.get_max_seq_length(), model)
 
-    @cache
+    # @cache
     def _split_input_seq_len(self, seq_len: int, input: str) -> list[str]:
         if not seq_len:
             raise ValueError("Sequence length value is not valid")
@@ -158,7 +158,7 @@ class SearchService:
 
         return inputs
 
-    @cache
+    # @cache
     def _embed_query(self, search_input: str, curr_model: str) -> np.ndarray:
         logger.debug("Creating embeddings model=%s", curr_model)
         time_start = time.time()
