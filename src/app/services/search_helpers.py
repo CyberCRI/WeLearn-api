@@ -29,11 +29,11 @@ async def search_multi_inputs(
             for qp in qps
         ]
 
+        data = await asyncio.gather(*tasks)
         all_data: list[ScoredPoint] = []
-        for coroutine in asyncio.as_completed(tasks):
-            data = await coroutine
-            if data:
-                all_data.extend(data)
+
+        for sublist in data:
+            all_data.extend(sublist)
 
         return all_data
     except Exception as e:

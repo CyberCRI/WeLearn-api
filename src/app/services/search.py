@@ -136,7 +136,7 @@ class SearchService:
         return (model.get_max_seq_length(), model)
 
     # @cache
-    def _split_input_seq_len(self, seq_len: int, input: str) -> list[str]:
+    def _split_input_seq_len(self, seq_len: int | None, input: str) -> list[str]:
         if not seq_len:
             raise ValueError("Sequence length value is not valid")
 
