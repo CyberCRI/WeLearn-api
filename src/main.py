@@ -1,5 +1,7 @@
+import os
 import time
 
+import psutil
 from fastapi import Depends, FastAPI, Request, Response, status
 from fastapi.encoders import jsonable_encoder
 from fastapi.exception_handlers import http_exception_handler
@@ -16,14 +18,12 @@ from src.app.services.security import get_user
 from src.app.utils.logger import logger as logger_utils
 
 
-import psutil
-import os
-
-
 def monitor_memory():
     """Monitor current memory usage."""
     process = psutil.Process(os.getpid())
     return process.memory_info().rss / 1024 / 1024  # Convert to MB
+
+
 logger = logger_utils(__name__)
 
 app = FastAPI(
@@ -96,19 +96,20 @@ async def add_process_time_header(request: Request, call_next):
             return Response(status_code=status.HTTP_204_NO_CONTENT)
         raise
 
+
 @app.middleware("http")
 async def log_client(request: Request, call_next):
     print(f"Initial memory: {monitor_memory():.2f} MB")
     try:
-        db_client = get_user(request.headers['x-api-key'])
+        db_client = get_user(request.headers["x-api-key"])
         logger.info(
             "Client IP=%s, User-Agent=%s, DB-client=%s",
-            request.headers.get('origin'),
+            request.headers.get("origin"),
             request.headers.get("user-agent"),
             db_client,
         )
     except Exception:
-        print('Error in get_user:')
+        print("Error in get_user:")
     response = await call_next(request)
     print(f"After creation: {monitor_memory():.2f} MB")
     return response

@@ -12,15 +12,15 @@ api_key_header = APIKeyHeader(name="X-API-Key")
 
 def check_api_key(api_key: str) -> tuple[bool, str | None]:
     digest = hashlib.sha256(api_key.encode()).digest()
-    statement = select(APIKeyManagement.digest, APIKeyManagement.is_active, APIKeyManagement.title).where(
-        APIKeyManagement.digest == digest
-    )
+    statement = select(
+        APIKeyManagement.digest, APIKeyManagement.is_active, APIKeyManagement.title
+    ).where(APIKeyManagement.digest == digest)
     with session_maker() as s:
         keys = s.execute(statement).first()
 
     if not keys:
         return (False, None)
-    
+
     return (keys.is_active, keys.title)
 
 

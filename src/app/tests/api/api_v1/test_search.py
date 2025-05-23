@@ -7,13 +7,12 @@ from qdrant_client.http import models
 from src.app.core.config import settings
 from src.app.models import collections
 from src.app.models.search import EnhancedSearchQuery
-from src.app.services.exceptions import (
-    CollectionNotFoundError,
-    LanguageNotSupportedError,
-    ModelNotFoundError,
-)
+from src.app.services.exceptions import CollectionNotFoundError, ModelNotFoundError
 from src.app.services.search import SearchService, sort_slices_using_mmr
 from src.main import app
+
+#    LanguageNotSupportedError,
+
 
 client = TestClient(app)
 
@@ -86,7 +85,10 @@ long_query = "français with a very long sentence to test what you are saying an
 
 
 @patch("src.app.services.sql_db.session_maker")
-@patch("src.app.services.security.check_api_key", new=mock.MagicMock(return_value=(True, 'welearn')))
+@patch(
+    "src.app.services.security.check_api_key",
+    new=mock.MagicMock(return_value=(True, "welearn")),
+)
 @patch(
     f"{search_pipeline_path}.get_collections",
     new=mock.AsyncMock(
@@ -117,7 +119,6 @@ class SearchTests(IsolatedAsyncioTestCase):
     #             f"{settings.API_V1_STR}/search/collections/collection_welearn_fr_model?query=français&nb_results=10",  # noqa: E501
     #             headers={"X-API-Key": "test"},
     #         )
-
     #         self.assertEqual(response.status_code, 404)
     #         self.assertEqual(
     #             response.json(),
@@ -128,7 +129,6 @@ class SearchTests(IsolatedAsyncioTestCase):
     #                 }
     #             },
     #         )
-
     @patch(
         f"{search_pipeline_path}.search_handler",
         new=mock.AsyncMock(return_value=mocked_scored_points),
@@ -177,7 +177,10 @@ class SearchTests(IsolatedAsyncioTestCase):
 
 
 @patch("src.app.services.sql_db.session_maker")
-@patch("src.app.services.security.check_api_key", new=mock.MagicMock(return_value=(True, 'welearn')))
+@patch(
+    "src.app.services.security.check_api_key",
+    new=mock.MagicMock(return_value=(True, "welearn")),
+)
 class SearchTestsSlices(IsolatedAsyncioTestCase):
     # async def test_search_all_slices_lang_not_supported(self, *mocks):
     #     with self.assertRaises(LanguageNotSupportedError):
@@ -262,7 +265,10 @@ class SearchTestsSlices(IsolatedAsyncioTestCase):
 
 
 @patch("src.app.services.sql_db.session_maker")
-@patch("src.app.services.security.check_api_key", new=mock.MagicMock(return_value=(True, 'welearn')))
+@patch(
+    "src.app.services.security.check_api_key",
+    new=mock.MagicMock(return_value=(True, "welearn")),
+)
 class SearchTestsAll(IsolatedAsyncioTestCase):
     # async def test_search_all_lang_not_supported(self, *mocks):
     #     with self.assertRaises(LanguageNotSupportedError):
@@ -349,7 +355,10 @@ class TestSortSlicesUsingMMR(IsolatedAsyncioTestCase):
 
 
 @patch("src.app.services.sql_db.session_maker")
-@patch("src.app.services.security.check_api_key", new=mock.MagicMock(return_value=(True, 'welearn')))
+@patch(
+    "src.app.services.security.check_api_key",
+    new=mock.MagicMock(return_value=(True, "welearn")),
+)
 class SearchTestsMultiInput(IsolatedAsyncioTestCase):
     # async def test_search_multi_lang_not_supported(self, *mocks):
     #     with self.assertRaises(LanguageNotSupportedError):

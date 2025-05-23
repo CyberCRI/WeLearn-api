@@ -20,7 +20,6 @@ from src.app.services.search_helpers import search_multi_inputs
 from src.app.services.sql_db import session_maker
 from src.app.utils.logger import logger as logger_utils
 
-
 router = APIRouter()
 logger = logger_utils(__name__)
 

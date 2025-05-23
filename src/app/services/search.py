@@ -305,6 +305,7 @@ def sort_slices_using_mmr(
     del sim
     return [qdrant_results[i] for i in id_s]
 
+
 sp = SearchService()
 
 

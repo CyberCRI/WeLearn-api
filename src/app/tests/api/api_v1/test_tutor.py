@@ -11,7 +11,8 @@ client = TestClient(app)
 
 @mock.patch("src.app.services.sql_db.session_maker")
 @mock.patch(
-    "src.app.services.security.check_api_key", new=mock.MagicMock(return_value=(True, 'welearn'))
+    "src.app.services.security.check_api_key",
+    new=mock.MagicMock(return_value=(True, "welearn")),
 )
 class TutorTests(IsolatedAsyncioTestCase):
     def test_tutor_no_files(self, *mocks):

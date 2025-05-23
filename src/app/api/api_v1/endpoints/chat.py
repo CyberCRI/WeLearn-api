@@ -36,6 +36,7 @@ chatfactory = AbstractChat(
 #     API_VERSION=settings.AZURE_API_VERSION,
 # )
 
+
 def get_params(body: models.Context) -> models.ContextOut:
     body.sources = body.sources[:7]
 
@@ -74,14 +75,13 @@ async def q_and_a_reformulate(
     body: models.ContextOut = Depends(get_params),
 ):
 
-    reformulated_query :models.ReformulatedQueryResponse 
+    reformulated_query: models.ReformulatedQueryResponse
     try:
         reformulated_query: models.ReformulatedQueryResponse = (
             await chatfactory.reformulate_user_query(
                 query=body.query, history=body.history
             )
         )
-
 
         if reformulated_query.QUERY_STATUS == "INVALID":
             raise InvalidQuestionError()

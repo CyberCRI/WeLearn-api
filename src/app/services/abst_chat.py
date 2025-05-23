@@ -217,7 +217,7 @@ class AbstractChat(ABC):
             )
         time_end = time()
 
-        print('>>>>>>> past message ref time:', time_end - time_start)
+        print(">>>>>>> past message ref time:", time_end - time_start)
 
         messages = [
             {
@@ -240,7 +240,7 @@ class AbstractChat(ABC):
             response_format=ReformulatedQueryResponse,
         )
         time_end = time()
-        print('>>>>>>> reformulate time:', time_end - time_start)
+        print(">>>>>>> reformulate time:", time_end - time_start)
 
         try:
             assert isinstance(reformulated_query, dict)
@@ -384,4 +384,3 @@ class AbstractChat(ABC):
             messages=messages,
         )
         return res
-
