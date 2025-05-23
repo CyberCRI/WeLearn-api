@@ -13,9 +13,18 @@ from src.app.api.api_v1.api import api_router, api_tags_metadata
 from src.app.api.shared.enpoints import health
 from src.app.core.config import settings
 from src.app.services.security import get_user
-from src.app.utils.logger import logger
+from src.app.utils.logger import logger as logger_utils
 
-logger = logger(__name__)
+
+import psutil
+import os
+
+
+def monitor_memory():
+    """Monitor current memory usage."""
+    process = psutil.Process(os.getpid())
+    return process.memory_info().rss / 1024 / 1024  # Convert to MB
+logger = logger_utils(__name__)
 
 app = FastAPI(
     openapi_tags=api_tags_metadata,
@@ -86,6 +95,23 @@ async def add_process_time_header(request: Request, call_next):
         if str(exc) == "No response returned." and await request.is_disconnected():
             return Response(status_code=status.HTTP_204_NO_CONTENT)
         raise
+
+@app.middleware("http")
+async def log_client(request: Request, call_next):
+    print(f"Initial memory: {monitor_memory():.2f} MB")
+    try:
+        db_client = get_user(request.headers['x-api-key'])
+        logger.info(
+            "Client IP=%s, User-Agent=%s, DB-client=%s",
+            request.headers.get('origin'),
+            request.headers.get("user-agent"),
+            db_client,
+        )
+    except Exception:
+        print('Error in get_user:')
+    response = await call_next(request)
+    print(f"After creation: {monitor_memory():.2f} MB")
+    return response
 
 
 app.add_middleware(

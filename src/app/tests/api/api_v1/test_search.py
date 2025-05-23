@@ -17,7 +17,7 @@ from src.main import app
 
 client = TestClient(app)
 
-search_pipeline_path = "src.app.services.search.SearchService"
+search_pipeline_path = "src.app.api.api_v1.endpoints.search.sp"
 
 mocked_collection = collections.Collection(
     lang="fr",
@@ -86,7 +86,7 @@ long_query = "français with a very long sentence to test what you are saying an
 
 
 @patch("src.app.services.sql_db.session_maker")
-@patch("src.app.services.security.check_api_key", new=mock.MagicMock(return_value=True))
+@patch("src.app.services.security.check_api_key", new=mock.MagicMock(return_value=(True, 'welearn')))
 @patch(
     f"{search_pipeline_path}.get_collections",
     new=mock.AsyncMock(
@@ -177,7 +177,7 @@ class SearchTests(IsolatedAsyncioTestCase):
 
 
 @patch("src.app.services.sql_db.session_maker")
-@patch("src.app.services.security.check_api_key", new=mock.MagicMock(return_value=True))
+@patch("src.app.services.security.check_api_key", new=mock.MagicMock(return_value=(True, 'welearn')))
 class SearchTestsSlices(IsolatedAsyncioTestCase):
     async def test_search_all_slices_lang_not_supported(self, *mocks):
         with self.assertRaises(LanguageNotSupportedError):
@@ -262,7 +262,7 @@ class SearchTestsSlices(IsolatedAsyncioTestCase):
 
 
 @patch("src.app.services.sql_db.session_maker")
-@patch("src.app.services.security.check_api_key", new=mock.MagicMock(return_value=True))
+@patch("src.app.services.security.check_api_key", new=mock.MagicMock(return_value=(True, 'welearn')))
 class SearchTestsAll(IsolatedAsyncioTestCase):
     async def test_search_all_lang_not_supported(self, *mocks):
         with self.assertRaises(LanguageNotSupportedError):
@@ -349,7 +349,7 @@ class TestSortSlicesUsingMMR(IsolatedAsyncioTestCase):
 
 
 @patch("src.app.services.sql_db.session_maker")
-@patch("src.app.services.security.check_api_key", new=mock.MagicMock(return_value=True))
+@patch("src.app.services.security.check_api_key", new=mock.MagicMock(return_value=(True, 'welearn')))
 class SearchTestsMultiInput(IsolatedAsyncioTestCase):
     async def test_search_multi_lang_not_supported(self, *mocks):
         with self.assertRaises(LanguageNotSupportedError):

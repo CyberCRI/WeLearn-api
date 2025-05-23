@@ -29,6 +29,12 @@ chatfactory = AbstractChat(
     API_KEY=settings.MISTRAL_API_KEY,
 )
 
+# chatfactory = AbstractChat(
+#     model="azure/gpt-4o-mini",
+#     API_KEY=settings.AZURE_API_KEY,
+#     API_BASE=settings.AZURE_API_BASE,
+#     API_VERSION=settings.AZURE_API_VERSION,
+# )
 
 def get_params(body: models.Context) -> models.ContextOut:
     body.sources = body.sources[:7]
@@ -67,12 +73,15 @@ class Response(BaseModel):
 async def q_and_a_reformulate(
     body: models.ContextOut = Depends(get_params),
 ):
+
+    reformulated_query :models.ReformulatedQueryResponse 
     try:
         reformulated_query: models.ReformulatedQueryResponse = (
             await chatfactory.reformulate_user_query(
                 query=body.query, history=body.history
             )
         )
+
 
         if reformulated_query.QUERY_STATUS == "INVALID":
             raise InvalidQuestionError()
@@ -109,11 +118,10 @@ async def q_and_a_reformulate(
 )
 async def q_and_a_new_questions(body: models.ContextOut = Depends(get_params)):
     try:
-        new_questions = await chatfactory.get_new_questions(
+        return await chatfactory.get_new_questions(
             query=body.query, history=body.history
         )
 
-        return new_questions
     except LanguageNotSupportedError as e:
         bad_request(message=e.message, msg_code=e.msg_code)
 
@@ -135,16 +143,15 @@ async def q_and_a_new_questions(body: models.ContextOut = Depends(get_params)):
 )
 async def q_and_a_rephrase(
     body: models.ContextOut = Depends(get_params),
-) -> Optional[str]:
+):
     try:
-        content = await chatfactory.rephrase_message(
+        return await chatfactory.rephrase_message(
             docs=body.sources,
             message=body.query,
             history=body.history,
             subject=subjectsDict.get(body.subject, None),
         )
 
-        return cast(str, content)
     except Exception as e:
         logger.error("Error while rephrasing the query: %s", e)
         raise HTTPException(

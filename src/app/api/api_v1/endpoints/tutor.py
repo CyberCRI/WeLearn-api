@@ -6,7 +6,7 @@ from src.app.api.dependencies import get_settings
 from src.app.models.search import EnhancedSearchQuery
 from src.app.services.abst_chat import AbstractChat
 from src.app.services.exceptions import NoResultsError
-from src.app.services.search import SearchService
+from src.app.services.search import sp
 from src.app.services.search_helpers import search_multi_inputs
 from src.app.services.tutor.models import (
     ExtractorOuputList,
@@ -30,9 +30,6 @@ chatfactory = AbstractChat(
     API_BASE=settings.AZURE_GPT_4O_API_BASE,
     API_VERSION=settings.AZURE_GPT_4O_API_VERSION,
 )
-
-sp = SearchService()
-
 
 extractor_prompt = """
 role="An assistant to summarize a text and extract the main themes from it",

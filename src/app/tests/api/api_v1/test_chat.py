@@ -63,7 +63,7 @@ JSON = {
 
 
 @mock.patch(
-    "src.app.services.security.check_api_key", new=mock.MagicMock(return_value=True)
+    "src.app.services.security.check_api_key", new=mock.MagicMock(return_value=(True, 'welearn'))
 )
 @mock.patch(
     "src.app.services.abst_chat.AbstractChat._detect_language",

@@ -17,6 +17,7 @@ Functions:
 
 import json
 from abc import ABC
+from time import time
 from typing import AsyncIterable, Dict, List, Optional
 
 from src.app.models.chat import ReformulatedQueryResponse
@@ -205,6 +206,7 @@ class AbstractChat(ABC):
             dict: The reformulated query or None.
         """
 
+        time_start = time()
         ref_to_past: dict | None = await self._detect_past_message_ref(query, history)
         if ref_to_past and ref_to_past["REF_TO_PAST"]:
             return ReformulatedQueryResponse(
@@ -213,6 +215,9 @@ class AbstractChat(ABC):
                 USER_LANGUAGE=None,
                 QUERY_STATUS="REF_TO_PAST" if len(history) >= 1 else "INVALID",
             )
+        time_end = time()
+
+        print('>>>>>>> past message ref time:', time_end - time_start)
 
         messages = [
             {
@@ -228,10 +233,14 @@ class AbstractChat(ABC):
             },
         ]
 
+        time_start = time()
+
         reformulated_query = await self.chat_client.completion(
             messages=messages,
             response_format=ReformulatedQueryResponse,
         )
+        time_end = time()
+        print('>>>>>>> reformulate time:', time_end - time_start)
 
         try:
             assert isinstance(reformulated_query, dict)
@@ -375,3 +384,4 @@ class AbstractChat(ABC):
             messages=messages,
         )
         return res
+
