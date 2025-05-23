@@ -1,6 +1,6 @@
 import json
 import time
-# from functools import lru_cache as cache
+from functools import lru_cache as cache
 from typing import Tuple, cast
 
 import numpy as np
@@ -118,7 +118,7 @@ class SearchService:
 
         return embedding
 
-    # @cache
+    @cache
     def _get_model(self, curr_model: str) -> tuple[int | None, SentenceTransformer]:
         try:
             time_start = time.time()
@@ -135,8 +135,8 @@ class SearchService:
             raise ModelNotFoundError()
         return (model.get_max_seq_length(), model)
 
-    # @cache
-    def _split_input_seq_len(self, seq_len: int, input: str) -> list[str]:
+    @cache
+    def _split_input_seq_len(self, seq_len: int | None, input: str) -> list[str]:
         if not seq_len:
             raise ValueError("Sequence length value is not valid")
 
@@ -158,7 +158,7 @@ class SearchService:
 
         return inputs
 
-    # @cache
+    @cache
     def _embed_query(self, search_input: str, curr_model: str) -> np.ndarray:
         logger.debug("Creating embeddings model=%s", curr_model)
         time_start = time.time()
@@ -166,19 +166,20 @@ class SearchService:
         inputs = self._split_input_seq_len(seq_len, search_input)
 
         try:
-            embeddings = model.encode(sentences=inputs, show_progress_bar=True)
+            embeddings = model.encode(sentences=inputs)
             embeddings = np.mean(embeddings, axis=0)
+            time_end = time.time()
+            logger.debug(
+                "Creating embeddings time_elapsed=%s query_length=%s model=%s",
+                round(time_end - time_start, 2),
+                len(search_input),
+                curr_model,
+            )
+
+            return cast(np.ndarray, embeddings)
         except Exception as ex:
             logger.error("api_error=EMBED_ERROR model=%s", curr_model)
             raise RuntimeError("Not able to create embed", "EMBED_ERROR") from ex
-        time_end = time.time()
-        logger.debug(
-            "Creating embeddings time_elapsed=%s query_length=%s model=%s",
-            round(time_end - time_start, 2),
-            len(search_input),
-            curr_model,
-        )
-        return cast(np.ndarray, embeddings)
 
     async def search_handler(
         self, qp: EnhancedSearchQuery, method: SearchMethods = SearchMethods.BY_SLICES
@@ -215,6 +216,8 @@ class SearchService:
             )
         else:
             raise ValueError(f"Unknown search method: {method}")
+
+        del embedding
 
         sorted_data = sort_slices_using_mmr(data, theta=qp.relevance_factor)
 
@@ -298,7 +301,11 @@ def sort_slices_using_mmr(
         id_s.append(id_r.pop(j))
 
     logger.debug("sort_slices_using_mmr=end")
+    del reward
+    del sim
     return [qdrant_results[i] for i in id_s]
+
+sp = SearchService()
 
 
 def concatenate_same_doc_id_slices(
@@ -327,12 +334,12 @@ def concatenate_same_doc_id_slices(
         if curr_doc_id not in doc_id_to_slices:
             doc_id_to_slices[curr_doc_id] = qresult
         else:
-            existing_result = doc_id_to_slices[curr_doc_id]
-            existing_result.payload[
+            doc_id_to_slices[curr_doc_id].payload[
                 "slice_content"
             ] += f"\n\n{qresult.payload.get('slice_content', '')}"
 
     new_results = list(doc_id_to_slices.values())
+    del doc_id_to_slices
 
     logger.debug(
         "concatenate_same_doc_id_slices=end nb_results_initial=%s nb_docs_final=%s",

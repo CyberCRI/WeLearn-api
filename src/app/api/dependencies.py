@@ -5,10 +5,10 @@ from typing import Annotated
 from fastapi import Depends
 
 from src.app.core import config
-from src.app.utils.logger import logger
+from src.app.utils.logger import logger as logger_utils
 
 USE_CACHED_SETTINGS = os.getenv("USE_CACHED_SETTINGS", "True") == "True"
-logger = logger(__name__)
+logger = logger_utils(__name__)
 
 
 @lru_cache()

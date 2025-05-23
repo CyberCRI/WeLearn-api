@@ -15,15 +15,14 @@ from src.app.services.exceptions import (
     EmptyQueryError,
     bad_request,
 )
-from src.app.services.search import SearchService
+from src.app.services.search import sp
 from src.app.services.search_helpers import search_multi_inputs
 from src.app.services.sql_db import session_maker
 from src.app.utils.logger import logger as logger_utils
 
+
 router = APIRouter()
 logger = logger_utils(__name__)
-
-sp = SearchService()
 
 
 def get_params(
@@ -89,6 +88,7 @@ async def search_doc_by_collection(
     nb_results: int = 10,
     sdg_filter: SDGFilter | None = None,
 ):
+
     if not query:
         e = EmptyQueryError()
         return bad_request(message=e.message, msg_code=e.msg_code)
@@ -155,6 +155,7 @@ async def multi_search_all_slices_by_lang(
         qp=qp,
         callback_function=sp.search_handler,
     )
+
     if not results:
         logger.error("No results found")
         # todo switch to 204 no content
@@ -168,7 +169,7 @@ async def multi_search_all_slices_by_lang(
     "/by_document",
     summary="search all documents",
     description="Search by documents, returns only one result by document id",
-    response_model=list[ScoredPoint] | None | str,
+    response_model=list[ScoredPoint] | str,
 )
 async def search_all(
     response: Response,
