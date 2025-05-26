@@ -103,7 +103,7 @@ async def tutor_search(
     try:
         qp = EnhancedSearchQuery(
             query=inputs,
-            nb_results=5,
+            nb_results=10,
             sdg_filter=None,
             corpora=None,
         )
