@@ -148,12 +148,14 @@ async def create_syllabus(
 
     # TODO: handle errors
 
-    return SyllabusResponse(syllabus=results, documents=body.documents, extracts=body.extracts)
+    return SyllabusResponse(
+        syllabus=results, documents=body.documents, extracts=body.extracts
+    )
 
 
 feedback_prompt = """
 You are a pedagogical engeneer and are  given a syllabus and a feedback. by the teacher that will teach the course.
-your responsability is to analyse the syllabus and return a improved version of it in a markdown format.
+your responsability is to analyse the syllabus and return a improved version of it in a markdown format do not add the backticks and the markdown mention.
 It is important to take into account the feedback given by the teacher and to keep the syllabus structure.
 The syllabus strucutre is:
     {syllabus_structure}
@@ -169,7 +171,11 @@ You will respond with the syllabus. Do not provide explanations or notes
 """
 
 feedback_assistant_prompt = """
-here is the original syllabus: 
+IMPORTANT: you must follow the syllabus structure given by the system message.
+and the respect the format of the original syllabus.
+Keep the same language as the original syllabus.
+
+here is the original syllabus:
     {syllabus}
 
 take into account the user feedback:
@@ -185,29 +191,39 @@ and the themes extracted from those documents:
     {themes}
 """
 
+
 @router.post("/syllabus/feedback")
 async def handle_syllabus_feedback(body: SyllabusFeedback):
 
     messages = [
-        {"role": "system", "content": feedback_prompt.format(syllabus_structure=TEMPLATES)},
-        {"role": "assistant", "content": feedback_assistant_prompt.format(
-            syllabus=body.syllabus[0],
-            feedback=body.feedback,
-            documents=body.documents,
-            extracts=("/n").join([extract.summary for extract in body.extracts]),
-            themes=(', ').join([(', ').join(extract.themes) for extract in body.extracts])
-            ) },
+        {
+            "role": "system",
+            "content": feedback_prompt.format(syllabus_structure=TEMPLATES),
+        },
+        {
+            "role": "assistant",
+            "content": feedback_assistant_prompt.format(
+                syllabus=body.syllabus[0],
+                feedback=body.feedback,
+                documents=body.documents,
+                extracts=("/n").join([extract.summary for extract in body.extracts]),
+                themes=(", ").join(
+                    [(", ").join(extract.themes) for extract in body.extracts]
+                ),
+            ),
+        },
     ]
 
     try:
-        syllabus = await chatfactory.chat_client.completion(
-            messages=messages
-        )
+        syllabus = await chatfactory.chat_client.completion(messages=messages)
 
         assert isinstance(syllabus, str)
 
-        return SyllabusResponse(syllabus=[SyllabusResponseAgent(content=syllabus)], documents=body.documents, extracts=body.extracts)
+        return SyllabusResponse(
+            syllabus=[SyllabusResponseAgent(content=syllabus)],
+            documents=body.documents,
+            extracts=body.extracts,
+        )
 
     except Exception as e:
         logger.error(f"Error in chat schema: {e}")
-

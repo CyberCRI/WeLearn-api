@@ -62,5 +62,3 @@ class MessageWithFeedback(BaseModel):
 class TaskResponse:
     task_id: str
     result: str
-
-

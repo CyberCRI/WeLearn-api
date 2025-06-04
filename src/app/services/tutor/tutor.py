@@ -48,6 +48,7 @@ llm_mistral = OpenAIChatCompletionClient(
     ),
 )
 
+
 async def select_manager(content: TutorSearchResponse | SyllabusFeedback):
     if isinstance(content, TutorSearchResponse):
         return await tutor_manager(content, lang="en")
