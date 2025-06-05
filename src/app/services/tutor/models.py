@@ -29,6 +29,12 @@ class SyllabusResponseAgent(BaseModel):
 class SyllabusResponse(BaseModel):
     syllabus: list[SyllabusResponseAgent]
     documents: list[ScoredPoint]
+    extracts: list[ExtractorOutput]
+
+
+class SyllabusFeedback(SyllabusResponse):
+    feedback: str
+    lang: str = "en"
 
 
 class MessageWithAnalysis(BaseModel):
