@@ -48,7 +48,6 @@ class MessageWithResources(BaseModel):
     themes: list[str]
     summary: list[str]
     resources: List[Dict]
-    feeback: str | None = None
     source: str = "default"
 
 

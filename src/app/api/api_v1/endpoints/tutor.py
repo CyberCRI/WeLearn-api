@@ -154,13 +154,13 @@ async def create_syllabus(
 
 
 feedback_prompt = """
-You are a pedagogical engeneer and are  given a syllabus and a feedback. by the teacher that will teach the course.
-your responsability is to analyse the syllabus and return a improved version of it in a markdown format do not add the backticks and the markdown mention.
+You are a pedagogical engineer and are  given a syllabus and a feedback. by the teacher that will teach the course.
+Your responsibility is to analyze the syllabus and return an improved version of it in a markdown format. Do not add the backticks and the markdown mention.
 It is important to take into account the feedback given by the teacher and to keep the syllabus structure.
-The syllabus strucutre is:
+The syllabus structure is:
     {syllabus_structure}
 
-To be able to do that the assistant gives you:
+To be able to do that, the assistant gives you:
     - the syllabus of the course
     - the feedback given by the teacher
     - a list of documents related to the course
