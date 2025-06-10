@@ -15,6 +15,7 @@ from src.app.services.tutor.models import (
     SyllabusResponse,
     SyllabusResponseAgent,
     TutorSearchResponse,
+    TutorSyllabusRequest,
 )
 from src.app.services.tutor.tutor import tutor_manager
 from src.app.services.tutor.utils import get_file_content
@@ -142,7 +143,7 @@ async def tutor_search(
 
 @router.post("/syllabus")
 async def create_syllabus(
-    body: TutorSearchResponse, lang: str = "en"
+    body: TutorSyllabusRequest, lang: str = "en"
 ) -> SyllabusResponse:
     results = await tutor_manager(body, lang)
 

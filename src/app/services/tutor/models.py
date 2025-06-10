@@ -21,6 +21,13 @@ class TutorSearchResponse(BaseModel):
     documents: list[ScoredPoint]
 
 
+class TutorSyllabusRequest(TutorSearchResponse):
+    course_title: str | None = None
+    level: str | None = None
+    duration: str | None = None
+    description: str | None = None
+
+
 class SyllabusResponseAgent(BaseModel):
     content: str
     source: str = "default"
@@ -45,6 +52,10 @@ class MessageWithAnalysis(BaseModel):
 class MessageWithResources(BaseModel):
     lang: str = "en"
     content: list[ExtractorOutput] | str
+    course_title: str | None = None
+    level: str | None = None
+    duration: str | None = None
+    description: str | None = None
     themes: list[str]
     summary: list[str]
     resources: List[Dict]

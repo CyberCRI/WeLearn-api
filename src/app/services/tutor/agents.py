@@ -79,7 +79,7 @@ class UniversityTeacherAgent(RoutedAgent):
         contents = "summary :".join(message.summary)
         themes = ",".join(message.themes)
 
-        prompt = f"Using the content in TEXT CONTENTS, you generate a syllabus that is engaging and coherent in relation to the THEMES extracted from these contents. The syllabus should be written in lang: {message.lang} \n\nTEXT CONTENTS:\n{contents}\n\nTHEMES:\n{themes}"
+        prompt = f"Using the content in TEXT CONTENTS, you generate a syllabus that is engaging and coherent in relation to the THEMES extracted from these contents. The syllabus should be written in lang: {message.lang} \n\nTEXT CONTENTS:\n{contents}\n\nTHEMES:\n{themes} \n\nTake into account the users input courses title, level, duration and description: {message.course_title}, {message.level}, {message.duration}, {message.description}."
 
         start_time = time.time()
         llm_result = await self._model_client.create(
