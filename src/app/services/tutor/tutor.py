@@ -25,9 +25,8 @@ from src.app.services.tutor.agents import (
 )
 from src.app.services.tutor.models import (
     MessageWithResources,
-    SyllabusFeedback,
     SyllabusResponseAgent,
-    TutorSearchResponse,
+    TutorSyllabusRequest,
 )
 from src.app.services.tutor.utils import extract_doc_info
 
@@ -49,18 +48,8 @@ llm_mistral = OpenAIChatCompletionClient(
 )
 
 
-async def select_manager(content: TutorSearchResponse | SyllabusFeedback):
-    if isinstance(content, TutorSearchResponse):
-        return await tutor_manager(content, lang="en")
-    if isinstance(content, SyllabusFeedback):
-        # TODO: Implement feedback manager
-        pass
-
-    raise ValueError("Invalid content type provided to select_manager")
-
-
 async def tutor_manager(
-    content: TutorSearchResponse, lang: str
+    content: TutorSyllabusRequest, lang: str
 ) -> list[SyllabusResponseAgent]:
     queue = asyncio.Queue[SyllabusResponseAgent]()
 
@@ -70,6 +59,10 @@ async def tutor_manager(
         resources=extract_doc_info(content.documents),
         themes=[theme for extract in content.extracts for theme in extract.themes],
         summary=[extract.summary for extract in content.extracts],
+        course_title=content.course_title,
+        level=content.level,
+        duration=content.duration,
+        description=content.description,
     )
 
     async def collect_result(

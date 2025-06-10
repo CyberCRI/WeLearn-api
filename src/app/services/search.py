@@ -166,7 +166,7 @@ class SearchService:
         inputs = self._split_input_seq_len(seq_len, search_input)
 
         try:
-            embeddings = model.encode(sentences=inputs, show_progress_bar=True)
+            embeddings = model.encode(sentences=inputs)
             embeddings = np.mean(embeddings, axis=0)
         except Exception as ex:
             logger.error("api_error=EMBED_ERROR model=%s", curr_model)
