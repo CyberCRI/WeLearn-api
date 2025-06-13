@@ -2,7 +2,7 @@ from fastapi import APIRouter, Depends, Response
 from qdrant_client.models import ScoredPoint
 from sqlalchemy.sql import select
 
-from src.app.models.db_models import CorpusEmbedding
+from src.app.models.db_models import CorpusEmbedding, QtyDocumentInQdrant
 from src.app.models.documents import Collection_schema
 from src.app.models.search import (
     EnhancedSearchQuery,
@@ -74,6 +74,20 @@ async def get_corpus():
         }
         for name, lang, model in collections
     ]
+
+
+@router.get(
+    "/nb_docs",
+    summary="Get total number of documents",
+    description="Returns the total number of documents stored in Qdrant",
+)
+async def get_nb_docs() -> dict[str, int]:
+    statement = select(QtyDocumentInQdrant.document_in_qdrant)
+    with session_maker() as s:
+        result = s.execute(statement).first()
+        if not result:
+            return {"nb_docs": 0}
+        return {"nb_docs": result.document_in_qdrant}
 
 
 @router.post(
