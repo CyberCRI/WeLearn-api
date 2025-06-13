@@ -75,7 +75,7 @@ async def get_file_content(file: UploadFile) -> str:
 
 async def _extract_pdf_content(file) -> str:
     reader = PdfReader(file.file)
-    return "\n".join(page.extract_text() for page in reader.pages)
+    return "\n".join(page.extract_text() or "" for page in reader.pages)
 
 
 async def _extract_text_content(file) -> str:
