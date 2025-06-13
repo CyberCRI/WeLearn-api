@@ -66,7 +66,7 @@ async def tutor_search(
     file_content_str = [
         doc_list_to_string.format(
             doc_nb=index + 1,
-            content=content.decode("utf-8", errors="ignore"),
+            content=content,
         )
         for index, content in enumerate(files_content)
     ]
