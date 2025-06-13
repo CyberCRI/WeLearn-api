@@ -89,6 +89,13 @@ class CorpusEmbedding(Base):
     __table_args__ = {"schema": "corpus_related"}
 
 
+class QtyDocumentInQdrant(Base):
+    __tablename__ = "qty_document_in_qdrant"
+    document_in_qdrant = Column(Integer, primary_key=True)
+
+    __table_args__ = {"schema": "document_related"}
+
+
 class DocumentSlice(Base):
     __tablename__ = "document_slice"
 
