@@ -27,6 +27,7 @@ from src.app.services.helpers import detect_language_from_entry, stringify_docs_
 from src.app.services.llm_proxy import LLMProxy
 from src.app.utils.logger import log_environmental_impacts
 from src.app.utils.logger import logger as utils_logger
+from src.app.utils.decorators import log_time_and_error
 
 # from ecologits import EcoLogits  # type: ignore
 
@@ -75,6 +76,7 @@ class AbstractChat(ABC):
             },
         }
 
+    @log_time_and_error
     async def _detect_language(self, query: str) -> Dict[str, str]:
         """
         Detects the language of the query.
@@ -95,6 +97,7 @@ class AbstractChat(ABC):
             lang = await self._detect_lang_with_llm(query)
             return lang
 
+    @log_time_and_error
     async def _detect_lang_with_llm(self, query: str) -> Dict[str, str]:
         """
         Detects language using LLM.
@@ -128,6 +131,7 @@ class AbstractChat(ABC):
             logger.error("api_error=assertion_error, response=%s", detected_lang)
             raise ValueError("Invalid response from model")
 
+    @log_time_and_error
     async def _detect_past_message_ref(
         self, query: str, history: List[Dict[str, str]]
     ) -> dict | None:
@@ -193,6 +197,7 @@ class AbstractChat(ABC):
             logger.error("get_stream_chunks api_error=%s", e)
             raise e
 
+    @log_time_and_error
     async def reformulate_user_query(self, query: str, history: List[Dict[str, str]]):
         """
         Reformulates user query if it's about a new subject.
@@ -250,6 +255,7 @@ class AbstractChat(ABC):
 
         return ref_query
 
+    @log_time_and_error
     async def get_new_questions(
         self, query: str, history: List[Dict[str, str]]
     ) -> Dict[str, List[str]]:
@@ -280,6 +286,7 @@ class AbstractChat(ABC):
         res_list: List[str] = [r.strip() for r in res.split("%%") if len(r.strip()) > 0]
         return {"NEW_QUESTIONS": res_list}
 
+    @log_time_and_error
     async def rephrase_message(
         self,
         docs: List[Document],
@@ -325,6 +332,7 @@ class AbstractChat(ABC):
         )
         return res
 
+    @log_time_and_error
     async def chat_message(
         self,
         query: str,

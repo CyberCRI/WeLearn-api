@@ -4,6 +4,7 @@ from pydantic import BaseModel, Field
 from qdrant_client.models import FieldCondition, Filter, MatchAny
 
 from src.app.utils.logger import logger as logger_utils
+from src.app.utils.decorators import log_time_and_error_sync
 
 logger = logger_utils(__name__)
 
@@ -37,6 +38,7 @@ class SearchFilters(BaseModel):
     slice_sdg: list[int] | None
     document_corpus: tuple[str, ...] | list[str] | None
 
+    @log_time_and_error_sync
     def build_filters(self) -> Filter | None:
         if not self.slice_sdg and not self.document_corpus:
             return None

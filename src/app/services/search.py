@@ -16,7 +16,7 @@ from src.app.models.collections import Collection
 from src.app.models.search import EnhancedSearchQuery, SearchFilters, SearchMethods
 from src.app.services.exceptions import CollectionNotFoundError, ModelNotFoundError
 from src.app.services.helpers import detect_language_from_entry
-from src.app.utils.decorators import log_time_and_error
+from src.app.utils.decorators import log_time_and_error, log_time_and_error_sync
 from src.app.utils.logger import logger as logger_utils
 
 logger = logger_utils(__name__)
@@ -93,10 +93,12 @@ class SearchService:
 
         return self._get_info_from_collection_name(collection)
 
+    @log_time_and_error_sync
     def _get_info_from_collection_name(self, collection_name: str) -> Collection:
         lang, model = collection_name.replace(self.col_prefix, "").split("_")
         return Collection(lang=lang, model=model, name=collection_name)
 
+    @log_time_and_error_sync
     def get_query_embed(
         self,
         model: str,
@@ -119,6 +121,7 @@ class SearchService:
         return embedding
 
     @cache
+    @log_time_and_error_sync
     def _get_model(self, curr_model: str) -> tuple[int | None, SentenceTransformer]:
         try:
             time_start = time.time()
@@ -136,6 +139,7 @@ class SearchService:
         return (model.get_max_seq_length(), model)
 
     @cache
+    @log_time_and_error_sync
     def _split_input_seq_len(self, seq_len: int, input: str) -> list[str]:
         if not seq_len:
             raise ValueError("Sequence length value is not valid")
@@ -159,6 +163,7 @@ class SearchService:
         return inputs
 
     @cache
+    @log_time_and_error_sync
     def _embed_query(self, search_input: str, curr_model: str) -> np.ndarray:
         logger.debug("Creating embeddings model=%s", curr_model)
         time_start = time.time()
@@ -180,6 +185,7 @@ class SearchService:
         )
         return cast(np.ndarray, embeddings)
 
+    @log_time_and_error
     async def search_handler(
         self, qp: EnhancedSearchQuery, method: SearchMethods = SearchMethods.BY_SLICES
     ) -> list[http_models.ScoredPoint]:
@@ -276,6 +282,7 @@ class SearchService:
         return resp
 
 
+@log_time_and_error_sync
 def sort_slices_using_mmr(
     qdrant_results: list[http_models.ScoredPoint],
     theta: float = 1.0,
@@ -301,6 +308,7 @@ def sort_slices_using_mmr(
     return [qdrant_results[i] for i in id_s]
 
 
+@log_time_and_error_sync
 def concatenate_same_doc_id_slices(
     qdrant_results: list[http_models.ScoredPoint],
 ) -> list[http_models.ScoredPoint]:
@@ -343,6 +351,7 @@ def concatenate_same_doc_id_slices(
     return new_results
 
 
+@log_time_and_error_sync
 def get_subject_vector(subject: str | None) -> list[float] | None:
     if not subject:
         return None
