@@ -5,8 +5,8 @@ from langdetect import detect_langs
 
 from src.app.models.documents import Document
 from src.app.services.exceptions import LanguageNotSupportedError
+from src.app.utils.decorators import log_time_and_error_sync
 from src.app.utils.logger import logger as utils_logger
-from src.app.utils.decorators import  log_time_and_error_sync
 
 logger = utils_logger(__name__)
 

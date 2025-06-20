@@ -35,8 +35,10 @@ def log_time_and_error(func):
 
     return wrapper
 
+
 def log_time_and_error_sync(func):
     functools.wraps(func)
+
     def wrapper(*args, **kwargs):
         logger.debug("starting method=%s", func.__name__)
         try:
@@ -58,8 +60,8 @@ def log_time_and_error_sync(func):
         except Exception as e:
             logger.error("method=%s api_error=%s", func.__name__, e)
             raise e
-    return wrapper
 
+    return wrapper
 
 
 def singleton(class_):

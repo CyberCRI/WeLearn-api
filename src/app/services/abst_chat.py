@@ -25,9 +25,9 @@ from src.app.services import prompts
 from src.app.services.exceptions import LanguageNotSupportedError
 from src.app.services.helpers import detect_language_from_entry, stringify_docs_content
 from src.app.services.llm_proxy import LLMProxy
+from src.app.utils.decorators import log_time_and_error
 from src.app.utils.logger import log_environmental_impacts
 from src.app.utils.logger import logger as utils_logger
-from src.app.utils.decorators import log_time_and_error
 
 # from ecologits import EcoLogits  # type: ignore
 
