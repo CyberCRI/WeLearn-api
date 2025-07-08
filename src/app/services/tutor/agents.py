@@ -25,6 +25,7 @@ TEMPLATES = {"template0": open("src/app/services/tutor/template.md").read()}
 university_teacher_topic_type = "UniversityTeacherAgent"
 sdg_expert_topic_type = "SDGExpertAgent"
 pedagogical_engineer_topic_type = "PedagogicalEngineerAgent"
+teacher_assistant_topic_type = "TeacherAssistantAgent"
 user_input_topic_type = "UserInputAgent"
 user_topic_type = "User"
 
@@ -221,12 +222,12 @@ class PedagogicalEngineerAgent(RoutedAgent):
                     "Learning Objectives & Outcomes: Ensure they are well-formulated and that the learning outcomes and thematically linked to the learning objectives."
                     "Competencies Developed: Integrate competencies from the EU GreenComp Framework and validate the inclusion of relevant transferable skills."
                     "Assessment Methods: Align evaluation strategies with learning outcomes."
-                    "Course Schedule: (1) For EACH WEEK, make sure that the Learning Outcomes mentioned are the same ones as the ones listed in the Learning Outcomes section, and include the Learning Outcome number in front of each one. (2) analyse the learning outcome and add a new column entitled Class Plan including a structured plan for the class with the activities that the professor should implement in order to best accomplish the outcomes targeted for that week. Ensure activities align with active learning strategies and innovative pedagogical approaches. (3) Go back to the Learning Outcomes section and include the class activities you listen in the Class Plan in the formulation of each Learning Outcome, for the class activities are the measures with which the professor will  measure the accomplishment of each outcome. Do this for EVERY WEEK. DO NOT SUMMARIZE OR USE ELLIPSES AS PLACEHOLDERS FOR THE ACTUAL COURSE PLAN."
+                    "Course Schedule: (1) For EACH SESSION, make sure that the Learning Outcomes mentioned are the same ones as the ones listed in the Learning Outcomes section, and include the Learning Outcome number in front of each one. (2) analyse the learning outcome and add a new column entitled Class Plan including a structured plan for the class with the activities that the professor should implement in order to best accomplish the outcomes targeted for that session. Ensure activities align with active learning strategies and innovative pedagogical approaches. (3) Go back to the Learning Outcomes section and include the class activities you listen in the Class Plan in the formulation of each Learning Outcome, for the class activities are the measures with which the professor will  measure the accomplishment of each outcome. Do this for EVERY SESSION. DO NOT SUMMARIZE OR USE ELLIPSES AS PLACEHOLDERS FOR THE ACTUAL COURSE PLAN."
                     "References: NEVER delete, summarize, or modify any references already present in the syllabus. Only append this section with any additional sources that you use to construct the syllabus."
                     "3. Check for consistency, clarity, and overall syllabus coherence to ensure usability for instructors."
                 ),
                 expected_output=(
-                    f"1. Final Syllabus: The polished syllabus, ready for user review. You must follow this template :\n {TEMPLATES['template0']}."
+                    f"The polished syllabus, ready to be detailed by the teacher assistant. You must follow this template :\n {TEMPLATES['template0']}."
                 ),
             ),
             memory=[memory],
@@ -255,7 +256,67 @@ class PedagogicalEngineerAgent(RoutedAgent):
         response = llm_result.chat_message.content
         end_time = time.time()
         assert isinstance(response, str)
+        await self.publish_message(
+            SyllabusResponseAgent(content=response, source=self.id.type),
+            topic_id=TopicId(teacher_assistant_topic_type, source=self.id.key),
+        )
+        logger.debug(
+            "agent_type=%s response_time=%s", self.id.type, end_time - start_time
+        )
+        await self.publish_message(
+            SyllabusResponseAgent(content=response, source=self.id.type),
+            task_results_topic_id,
+        )
 
+
+@type_subscription(topic_type=teacher_assistant_topic_type)
+class TeacherAssistantAgent(RoutedAgent):
+    """
+    A teacher assistant agent that provides detailed support materials and session plans for each session of the syllabus.
+    Attributes:
+        _delegate (AssistantAgent): An assistant agent that handles the core functionality.
+        _model_client (ChatCompletionClient): The model client used for generating responses.
+    Methods:
+        handle_syllabus(message: SyllabusResponseAgent, ctx: MessageContext) -> None:
+            Handles the syllabus and generates detailed weekly support materials and session plans.
+    """
+
+    def __init__(self, model_client: ChatCompletionClient, memory: ListMemory) -> None:
+        super().__init__("A teacher assistant agent.")
+        self._delegate = AssistantAgent(
+            "TeacherAssistant",
+            model_client=model_client,
+            system_message=build_system_message(
+                role="the Teacher Assistant Agent, responsible for providing detailed support materials and session plans for each week of the syllabus. Your role is to enrich the course schedule with practical resources, teaching tips, and ready-to-use materials for instructors.",
+                backstory="You are an expert in instructional support, with experience in preparing weekly teaching materials, activities, and resources for university-level courses. You help instructors by providing detailed, actionable content for each session.",
+                goal="For each week in the course schedule, generate a detailed session plan including: (1) a breakdown of the session's flow, (2) recommended teaching activities, (3) suggested readings or resources, (4) tips for engaging students, and (5) any relevant support materials (e.g., slides, worksheets, links).",
+                instructions=(
+                    "1. Analyze the syllabus provided by the Pedagogical Engineer Agent.\n"
+                    "2. For each session in the course schedule, generate the following items: session, session plan (detailed breakdown), recommended activities, suggested readings, engagement tips, support materials.\n"
+                    "3. Output a markdown table of these objects, one line per session.\n"
+                    "4. Use the same language as the syllabus.\n"
+                ),
+                expected_output=(
+                    f"The final syllabus, ready for user review. You must follow this template :\n {TEMPLATES['template0']}."
+                ),
+            ),
+            memory=[memory],
+        )
+        self._model_client = model_client
+
+    @message_handler
+    async def handle_syllabus(
+        self, message: SyllabusResponseAgent, ctx: MessageContext
+    ) -> None:
+        prompt = f"For each session in the following syllabus, provide a detailed session plan and support materials as described in your instructions.\nSYLLABUS:\n{message.content}"
+        start_time = time.time()
+        llm_result = await self._delegate.on_messages(
+            [TextMessage(content=prompt, source=self.id.key)],
+            ctx.cancellation_token,
+        )
+        response = llm_result.chat_message.content
+        end_time = time.time()
+        assert isinstance(response, str)
         logger.debug(
             "agent_type=%s response_time=%s", self.id.type, end_time - start_time
         )

@@ -16,9 +16,11 @@ Interaction Between Learning Objectives, Learning Outcomes, and Competencies: Le
 Example for a Sustainability Course: Learning Objective-"Introduce students to key sustainability frameworks.";Learning Outcome-"Students will be able to compare and contrast the UN Sustainable Development Goals (SDGs) and the Paris Agreement."; Competency-"Develops interdisciplinary thinking to assess global sustainability policies."
 By ensuring that all three elements align, course design becomes coherent, structured, and impactful.
  5. Assessment Methods: Breakdown of grading (e.g., exams, presentations, group projects). Alignment with learning outcomes.
- 6. Course Schedule: Week-by-week breakdown of topics covered and learning outcomes targeted each week. Important: this section has to be formatted as a markdown table.
-table structure: | week | Topics | Learning Outcomes | Class Plan |
- 7. References: In this section should be added all sources used to generate the syllabus, including any source documents or WeLearn documents used to construct the syllabus.
+ 6. Course Schedule: Session-by-session breakdown of topics covered and learning outcomes targeted during each session. Important: this section has to be formatted as a markdown table.
+table structure: | Session | Topics | Learning Outcomes | Class Plan |
+ 7. Session details: Session-by-session content details about each session. Important: this section has to be formatted as a markdown table.
+table structure: | Session | Session Plan | Recommended Activities | Suggested Readings | Engagement Tips | Support Materials |
+ 8. References: In this section should be added all sources used to generate the syllabus, including any source documents or WeLearn documents used to construct the syllabus.
 IMPORTANT: Do not remove any existent references in this section
 Example of references: Document title <a href="document url" _target=blank>[link]</a>
 

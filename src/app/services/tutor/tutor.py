@@ -18,9 +18,11 @@ from src.app.services.tutor.agents import (
     TASK_RESULTS_TOPIC_TYPE,
     PedagogicalEngineerAgent,
     SDGExpertAgent,
+    TeacherAssistantAgent,
     UniversityTeacherAgent,
     pedagogical_engineer_topic_type,
     sdg_expert_topic_type,
+    teacher_assistant_topic_type,
     university_teacher_topic_type,
 )
 from src.app.services.tutor.models import (
@@ -93,6 +95,7 @@ async def tutor_manager(
 
     runtime = SingleThreadedAgentRuntime()
 
+    # Register agents
     await UniversityTeacherAgent.register(
         runtime,
         type=university_teacher_topic_type,
@@ -115,8 +118,17 @@ async def tutor_manager(
         ),
     )
 
+    await TeacherAssistantAgent.register(
+        runtime,
+        type=teacher_assistant_topic_type,
+        factory=lambda: TeacherAssistantAgent(
+            model_client=llm_mistral, memory=greencomp_memory
+        ),
+    )
+
     runtime.start()
 
+    # Register closure to collect results from both PedagogicalEngineerAgent and TeacherAssistantAgent
     await ClosureAgent.register_closure(
         runtime,
         CLOSURE_AGENT_TYPE,
@@ -128,6 +140,7 @@ async def tutor_manager(
         ],
     )
 
+    # Send initial message to UniversityTeacherAgent
     await runtime.send_message(
         formatted_content,
         recipient=AgentId(university_teacher_topic_type, "default"),
