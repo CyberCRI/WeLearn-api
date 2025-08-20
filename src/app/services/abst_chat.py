@@ -22,7 +22,6 @@ from typing import AsyncIterable, Dict, List, Optional
 from src.app.models.chat import ReformulatedQueryResponse
 from src.app.models.documents import Document
 from src.app.services import prompts
-from src.app.services.exceptions import LanguageNotSupportedError
 from src.app.services.helpers import (
     detect_language_from_entry,
     extract_json_from_response,
@@ -96,10 +95,8 @@ class AbstractChat(ABC):
         try:
             lang = detect_language_from_entry(query)
             return {"ISO_CODE": lang}
-        except LanguageNotSupportedError:
-            logger.info(
-                "api_error=LANG_NOT_SUPPORTED using llm to check check_lang=%s", query
-            )
+        except Exception:
+            logger.info("api_error=using llm to check check_lang")
             lang = await self._detect_lang_with_llm(query)
             return lang
 
@@ -228,8 +225,7 @@ class AbstractChat(ABC):
         ref_to_past: dict | None = await self._detect_past_message_ref(query, history)
         if ref_to_past and ref_to_past["REF_TO_PAST"]:
             return ReformulatedQueryResponse(
-                STANDALONE_QUESTION_EN=None,
-                STANDALONE_QUESTION_FR=None,
+                STANDALONE_QUESTION=None,
                 USER_LANGUAGE=None,
                 QUERY_STATUS="REF_TO_PAST" if len(history) >= 1 else "INVALID",
             )
@@ -384,10 +380,7 @@ class AbstractChat(ABC):
             str: The chat message content.
         """
 
-        # ISO_CODE = {"ISO_CODE": "en"}
-
-        if should_check_lang:
-            ISO_CODE = await self._detect_language(query)
+        ISO_CODE = await self._detect_language(query)
 
         messages = [
             {
