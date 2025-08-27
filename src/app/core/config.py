@@ -35,6 +35,8 @@ class Settings(BaseSettings):
 
     # MISTRAL
     MISTRAL_API_KEY: str
+    AZURE_MISTRAL_API_BASE: str
+    AZURE_MISTRAL_API_KEY: str
 
     # AZURE_API
     AZURE_LLAMA_31_8B_API_KEY: str

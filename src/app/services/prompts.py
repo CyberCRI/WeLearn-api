@@ -90,6 +90,10 @@ AUDIENCE: Technical search engine used for research.
 
 RESPONSE: Reformulate the new question respecting the language ISO_CODE: en and ISO_CODE: fr.
 Return the question with the following format:
+    "STANDALONE_QUESTION_EN": "question",
+    "STANDALONE_QUESTION_FR": "question",
+    "USER_LANGUAGE": "ISO_CODE",
+    "QUERY_STATUS": "VALID"
     "reformulated: Your reformulated question"
 
 if you are unable to reformulate return:
