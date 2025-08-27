@@ -15,6 +15,7 @@ Functions:
     create_chat: Creates an instance of a chat service based on the specified type and model.
 """
 
+import re
 import json
 from abc import ABC
 from typing import AsyncIterable, Dict, List, Optional
@@ -54,12 +55,14 @@ class AbstractChat(ABC):
         API_KEY: str,
         API_BASE: Optional[str] = None,
         API_VERSION: Optional[str] = None,
+        is_azure_model: bool = False,
     ):
         self.chat_client = LLMProxy(
             model=model,
             api_key=API_KEY,
             api_base=API_BASE,
             api_version=API_VERSION,
+            is_azure_model=is_azure_model,
         )
         self.model = model
         self.API_KEY = API_KEY
@@ -170,8 +173,14 @@ class AbstractChat(ABC):
         except json.JSONDecodeError:
             logger.error("api_error=invalid_json, response=%s", completion)
         except AssertionError:
-            logger.error("api_error=assertion_error, response=%s", completion)
-            raise ValueError("Invalid response from model")
+            try:
+                assert isinstance(completion, str)
+                parsed_group = re.findall(r"\"REF_TO_PAST\": (false|true)", completion)
+                if parsed_group:
+                    return {"REF_TO_PAST": parsed_group[0] == 'true'}
+            except Exception:
+                logger.error("api_error=assertion_error, response=%s", completion)
+                raise ValueError("Invalid response from model")
 
     async def get_stream_chunks(self, stream) -> AsyncIterable[str]:
         """
@@ -194,8 +203,18 @@ class AbstractChat(ABC):
 
                 continue
         except Exception as e:
-            logger.error("get_stream_chunks api_error=%s", e)
-            raise e
+            try: 
+                for chunk in stream:
+                    choices = chunk.choices
+                    if choices:
+                        if choices[0].delta.content:
+                            yield choices[0].delta.content
+                        if choices[0].finish_reason:
+                            log_environmental_impacts(chunk, logger)
+                    continue
+            except Exception as e:
+                logger.error("get_stream_chunks api_error=%s", e)
+                raise e
 
     @log_time_and_error
     async def reformulate_user_query(self, query: str, history: List[Dict[str, str]]):
@@ -211,6 +230,7 @@ class AbstractChat(ABC):
         """
 
         ref_to_past: dict | None = await self._detect_past_message_ref(query, history)
+        print('>>>>>>>>>>>>>>>> ref_to_past', ref_to_past)
         if ref_to_past and ref_to_past["REF_TO_PAST"]:
             return ReformulatedQueryResponse(
                 STANDALONE_QUESTION_EN=None,
@@ -218,6 +238,7 @@ class AbstractChat(ABC):
                 USER_LANGUAGE=None,
                 QUERY_STATUS="REF_TO_PAST" if len(history) >= 1 else "INVALID",
             )
+        print('>>>>>>>>>>>>>>>')
 
         messages = [
             {
@@ -235,17 +256,38 @@ class AbstractChat(ABC):
 
         reformulated_query = await self.chat_client.completion(
             messages=messages,
-            response_format=ReformulatedQueryResponse,
+            response_format={"type": ReformulatedQueryResponse},
         )
+        print('>>>>>>>>>>>>>>>> reformulated_query', reformulated_query)
+            
 
         try:
             assert isinstance(reformulated_query, dict)
             ref_query = ReformulatedQueryResponse(**reformulated_query)
         except Exception:
-            logger.error("api_error=invalid_json, response=%s", reformulated_query)
-            ref_query = reformulated_query
+            assert isinstance(reformulated_query, str)
+            reformulated_query = reformulated_query.replace('```json', '')
+            reformulated_query = reformulated_query.replace('```', '')
+            print('>>>>>>>>>>>>>>> reformulated_query after replace', reformulated_query)
+            json_data = re.search(r"\{.*\}", reformulated_query, re.DOTALL)
+            if json_data:
+                try:
+                    print('>>>>>>>>>>>>>>> json_data', json_data.group())
+                    reformulated_query = json.loads(json_data.group())
+                    print('>>>>>>>>>>>>>>> reformulated_query after json loads', reformulated_query)
+                    ref_query = ReformulatedQueryResponse(**reformulated_query)
+
+                except Exception:
+                    logger.error(
+                        "api_error=json_load_error, response=%s", reformulated_query
+                    )
+                    ref_query = reformulated_query
+            else:
+                logger.error("api_error=invalid_json, response=%s", reformulated_query)
+                ref_query = reformulated_query
 
         if not isinstance(ref_query, ReformulatedQueryResponse):
+            print('>>>>>>>>>>>>>>> raise ValueError')
             raise ValueError(
                 {
                     "message": "Invalid response from model",
@@ -253,6 +295,7 @@ class AbstractChat(ABC):
                 }
             )
 
+        print('>>>>>>>>>>>>>>> return ref_query', ref_query)
         return ref_query
 
     @log_time_and_error
