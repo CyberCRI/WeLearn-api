@@ -45,10 +45,10 @@ class LLMProxy(ABC):
             logger.debug("Initializing Azure ChatCompletionsClient")
 
             self.client = ChatCompletionsClient(
-                    endpoint=api_base,
-                    credential=AzureKeyCredential(api_key),
-                    api_version=api_version,
-                )
+                endpoint=api_base,
+                credential=AzureKeyCredential(api_key),
+                api_version=api_version,
+            )
 
     async def completion(
         self,
@@ -58,7 +58,6 @@ class LLMProxy(ABC):
 
         if self.is_azure_model:
             return await self.az_completion(messages)
-
 
         response = await acompletion(
             model=self.model,
@@ -89,7 +88,6 @@ class LLMProxy(ABC):
         if self.is_azure_model:
             return await self.az_completion_stream(messages)
 
-
         response = await acompletion(
             model=self.model,
             api_key=self.api_key,
@@ -106,29 +104,21 @@ class LLMProxy(ABC):
             raise ValueError("Azure client is not initialized.")
 
         response = self.client.complete(
-                messages=messages,
-                max_tokens=2048,
-                temperature=0.8,
-                top_p=0.1,
-                model=self.model
-                )
-
+            messages=messages,
+            max_tokens=2048,
+            temperature=0.8,
+            top_p=0.1,
+            model=self.model,
+        )
 
         return response.choices[0].message.content
-
 
     async def az_completion_stream(self, messages: list):
         if self.client is None:
             raise ValueError("Azure client is not initialized.")
 
         response = self.client.complete(
-                messages=messages,
-                max_tokens=2048,
-                temperature=0.8,
-                top_p=0.1,
-                model=self.model,
-                stream=True
-                )
-
+            messages=messages, temperature=0.8, top_p=0.1, model=self.model, stream=True
+        )
 
         return response

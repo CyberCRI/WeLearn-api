@@ -15,7 +15,6 @@ Functions:
     create_chat: Creates an instance of a chat service based on the specified type and model.
 """
 
-import re
 import json
 from abc import ABC
 from typing import AsyncIterable, Dict, List, Optional
@@ -179,6 +178,7 @@ class AbstractChat(ABC):
         except json.JSONDecodeError:
             logger.error("api_error=invalid_json, response=%s", completion)
 
+    # pylint: disable=too-complex
     async def get_stream_chunks(self, stream) -> AsyncIterable[str]:
         """
         Gets content from streamed response.
@@ -191,24 +191,25 @@ class AbstractChat(ABC):
         """
         try:
             async for chunk in stream:
-                choices = chunk.choices
+                choices = getattr(chunk, "choices", None)
                 if choices:
-                    if choices[0].delta.content:
-                        yield choices[0].delta.content
-                    if choices[0].finish_reason:
+                    delta_content = getattr(choices[0].delta, "content", None)
+                    if delta_content:
+                        yield delta_content
+                    finish_reason = getattr(choices[0], "finish_reason", None)
+                    if finish_reason:
                         log_environmental_impacts(chunk, logger)
-
-                continue
-        except Exception as e:
-            try: 
+        except Exception:
+            try:
                 for chunk in stream:
-                    choices = chunk.choices
+                    choices = getattr(chunk, "choices", None)
                     if choices:
-                        if choices[0].delta.content:
-                            yield choices[0].delta.content
-                        if choices[0].finish_reason:
+                        delta_content = getattr(choices[0].delta, "content", None)
+                        if delta_content:
+                            yield delta_content
+                        finish_reason = getattr(choices[0], "finish_reason", None)
+                        if finish_reason:
                             log_environmental_impacts(chunk, logger)
-                    continue
             except Exception as e:
                 logger.error("get_stream_chunks api_error=%s", e)
                 raise e
@@ -253,14 +254,13 @@ class AbstractChat(ABC):
             messages=messages,
             response_format={"type": ReformulatedQueryResponse},
         )
-            
 
         try:
             assert isinstance(reformulated_query, dict)
             ref_query = ReformulatedQueryResponse(**reformulated_query)
-        except Exception as e:
+        except Exception:
             assert isinstance(reformulated_query, str)
-            json_data =  extract_json_from_response(reformulated_query)
+            json_data = extract_json_from_response(reformulated_query)
             if json_data:
                 try:
                     ref_query = ReformulatedQueryResponse(**json_data)

@@ -48,11 +48,7 @@ expected_output="You must follow the following JSON schema: {extracts: [{'origin
 """
 
 
-@router.post("/search")
-async def tutor_search(
-    files: Annotated[list[UploadFile], File()],
-    response: Response,
-):
+async def get_files_content(files: list[UploadFile]) -> list[str]:
     files_content: list[str] = []
 
     for file in files:
@@ -62,6 +58,16 @@ async def tutor_search(
             raise HTTPException(status_code=400, detail="added files are empty")
 
         files_content.append(file_content)
+
+    return files_content
+
+
+@router.post("/search")
+async def tutor_search(
+    files: Annotated[list[UploadFile], File()],
+    response: Response,
+):
+    files_content = await get_files_content(files)
 
     doc_list_to_string = "Document {doc_nb}: {content}"
 
