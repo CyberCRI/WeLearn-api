@@ -17,6 +17,7 @@ from src.app.services.tutor.models import (
     TutorSearchResponse,
     TutorSyllabusRequest,
 )
+from src.app.services.helpers import extract_json_from_response
 from src.app.services.tutor.tutor import tutor_manager
 from src.app.services.tutor.utils import get_file_content
 from src.app.utils.logger import logger as utils_logger
@@ -29,10 +30,11 @@ settings = get_settings()
 
 
 chatfactory = AbstractChat(
-    model="azure/gpt-4o",
-    API_KEY=settings.AZURE_GPT_4O_API_KEY,
-    API_BASE=settings.AZURE_GPT_4O_API_BASE,
-    API_VERSION=settings.AZURE_GPT_4O_API_VERSION,
+    model="Mistral-Large-2411",
+    API_KEY=settings.AZURE_MISTRAL_API_KEY,
+    API_BASE=settings.AZURE_MISTRAL_API_BASE,
+    API_VERSION="2024-05-01-preview",
+    is_azure_model=True,
 )
 
 sp = SearchService()
@@ -51,7 +53,7 @@ async def tutor_search(
     files: Annotated[list[UploadFile], File()],
     response: Response,
 ):
-    files_content: list[bytes] = []
+    files_content: list[str] = []
 
     for file in files:
         file_content = await get_file_content(file)
@@ -74,7 +76,7 @@ async def tutor_search(
 
     messages = [
         {"role": "system", "content": extractor_prompt},
-        {"role": "assistant", "content": file_content_str},
+        {"role": "user", "content": file_content_str},
     ]
 
     try:
@@ -82,9 +84,15 @@ async def tutor_search(
             messages=messages, response_format=ExtractorOuputList
         )
 
-        assert isinstance(themes_extracted, dict)
+        jsn = {}
+        if isinstance(themes_extracted, str):
+            jsn = extract_json_from_response(themes_extracted)
+        elif isinstance(themes_extracted, dict):
+            jsn = themes_extracted
+        else:
+            raise ValueError("Unexpected response format")
 
-        themes_extracted = ExtractorOuputList(**themes_extracted)
+        themes_extracted = ExtractorOuputList(**jsn)
 
     except Exception as e:
         logger.error(f"Error in chat schema: {e}")
@@ -202,7 +210,7 @@ async def handle_syllabus_feedback(body: SyllabusFeedback):
             "content": feedback_prompt.format(syllabus_structure=TEMPLATES),
         },
         {
-            "role": "assistant",
+            "role": "user",
             "content": feedback_assistant_prompt.format(
                 syllabus=body.syllabus[0],
                 feedback=body.feedback,

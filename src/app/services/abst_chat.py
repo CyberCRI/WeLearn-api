@@ -29,6 +29,7 @@ from src.app.services.llm_proxy import LLMProxy
 from src.app.utils.decorators import log_time_and_error
 from src.app.utils.logger import log_environmental_impacts
 from src.app.utils.logger import logger as utils_logger
+from src.app.services.helpers import extract_json_from_response
 
 # from ecologits import EcoLogits  # type: ignore
 
@@ -163,8 +164,13 @@ class AbstractChat(ABC):
         )
 
         try:
-            assert isinstance(completion, dict)
-            jsn = completion
+            jsn = {}
+            if isinstance(completion, str):
+                jsn = extract_json_from_response(completion)
+            elif isinstance(completion, dict):
+                jsn = completion
+            else:
+                raise ValueError("Invalid response from model")
 
             if "REF_TO_PAST" not in jsn or jsn["REF_TO_PAST"] not in [True, False]:
                 raise ValueError("Invalid response from model")
@@ -172,15 +178,6 @@ class AbstractChat(ABC):
             return jsn
         except json.JSONDecodeError:
             logger.error("api_error=invalid_json, response=%s", completion)
-        except AssertionError:
-            try:
-                assert isinstance(completion, str)
-                parsed_group = re.findall(r"\"REF_TO_PAST\": (false|true)", completion)
-                if parsed_group:
-                    return {"REF_TO_PAST": parsed_group[0] == 'true'}
-            except Exception:
-                logger.error("api_error=assertion_error, response=%s", completion)
-                raise ValueError("Invalid response from model")
 
     async def get_stream_chunks(self, stream) -> AsyncIterable[str]:
         """
@@ -230,7 +227,6 @@ class AbstractChat(ABC):
         """
 
         ref_to_past: dict | None = await self._detect_past_message_ref(query, history)
-        print('>>>>>>>>>>>>>>>> ref_to_past', ref_to_past)
         if ref_to_past and ref_to_past["REF_TO_PAST"]:
             return ReformulatedQueryResponse(
                 STANDALONE_QUESTION_EN=None,
@@ -238,7 +234,6 @@ class AbstractChat(ABC):
                 USER_LANGUAGE=None,
                 QUERY_STATUS="REF_TO_PAST" if len(history) >= 1 else "INVALID",
             )
-        print('>>>>>>>>>>>>>>>')
 
         messages = [
             {
@@ -258,24 +253,17 @@ class AbstractChat(ABC):
             messages=messages,
             response_format={"type": ReformulatedQueryResponse},
         )
-        print('>>>>>>>>>>>>>>>> reformulated_query', reformulated_query)
             
 
         try:
             assert isinstance(reformulated_query, dict)
             ref_query = ReformulatedQueryResponse(**reformulated_query)
-        except Exception:
+        except Exception as e:
             assert isinstance(reformulated_query, str)
-            reformulated_query = reformulated_query.replace('```json', '')
-            reformulated_query = reformulated_query.replace('```', '')
-            print('>>>>>>>>>>>>>>> reformulated_query after replace', reformulated_query)
-            json_data = re.search(r"\{.*\}", reformulated_query, re.DOTALL)
+            json_data =  extract_json_from_response(reformulated_query)
             if json_data:
                 try:
-                    print('>>>>>>>>>>>>>>> json_data', json_data.group())
-                    reformulated_query = json.loads(json_data.group())
-                    print('>>>>>>>>>>>>>>> reformulated_query after json loads', reformulated_query)
-                    ref_query = ReformulatedQueryResponse(**reformulated_query)
+                    ref_query = ReformulatedQueryResponse(**json_data)
 
                 except Exception:
                     logger.error(
@@ -287,7 +275,6 @@ class AbstractChat(ABC):
                 ref_query = reformulated_query
 
         if not isinstance(ref_query, ReformulatedQueryResponse):
-            print('>>>>>>>>>>>>>>> raise ValueError')
             raise ValueError(
                 {
                     "message": "Invalid response from model",
@@ -295,7 +282,6 @@ class AbstractChat(ABC):
                 }
             )
 
-        print('>>>>>>>>>>>>>>> return ref_query', ref_query)
         return ref_query
 
     @log_time_and_error
