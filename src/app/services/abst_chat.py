@@ -28,6 +28,7 @@ from src.app.services.llm_proxy import LLMProxy
 from src.app.utils.decorators import log_time_and_error
 from src.app.utils.logger import log_environmental_impacts
 from src.app.utils.logger import logger as utils_logger
+from src.app.services.helpers import extract_json_from_response
 
 # from ecologits import EcoLogits  # type: ignore
 
@@ -54,12 +55,14 @@ class AbstractChat(ABC):
         API_KEY: str,
         API_BASE: Optional[str] = None,
         API_VERSION: Optional[str] = None,
+        is_azure_model: bool = False,
     ):
         self.chat_client = LLMProxy(
             model=model,
             api_key=API_KEY,
             api_base=API_BASE,
             api_version=API_VERSION,
+            is_azure_model=is_azure_model,
         )
         self.model = model
         self.API_KEY = API_KEY
@@ -160,8 +163,13 @@ class AbstractChat(ABC):
         )
 
         try:
-            assert isinstance(completion, dict)
-            jsn = completion
+            jsn = {}
+            if isinstance(completion, str):
+                jsn = extract_json_from_response(completion)
+            elif isinstance(completion, dict):
+                jsn = completion
+            else:
+                raise ValueError("Invalid response from model")
 
             if "REF_TO_PAST" not in jsn or jsn["REF_TO_PAST"] not in [True, False]:
                 raise ValueError("Invalid response from model")
@@ -169,9 +177,6 @@ class AbstractChat(ABC):
             return jsn
         except json.JSONDecodeError:
             logger.error("api_error=invalid_json, response=%s", completion)
-        except AssertionError:
-            logger.error("api_error=assertion_error, response=%s", completion)
-            raise ValueError("Invalid response from model")
 
     async def get_stream_chunks(self, stream) -> AsyncIterable[str]:
         """
@@ -185,17 +190,26 @@ class AbstractChat(ABC):
         """
         try:
             async for chunk in stream:
-                choices = chunk.choices
-                if choices:
-                    if choices[0].delta.content:
-                        yield choices[0].delta.content
-                    if choices[0].finish_reason:
-                        log_environmental_impacts(chunk, logger)
+                for part in self._extract_stream_chunk(chunk):
+                    yield part
+        except Exception:
+            try:
+                for chunk in stream:
+                    for part in self._extract_stream_chunk(chunk):
+                        yield part
+            except Exception as e:
+                logger.error("get_stream_chunks api_error=%s", e)
+                raise e
 
-                continue
-        except Exception as e:
-            logger.error("get_stream_chunks api_error=%s", e)
-            raise e
+    def _extract_stream_chunk(self, chunk):
+        choices = getattr(chunk, "choices", None)
+        if choices:
+            delta_content = getattr(choices[0].delta, "content", None)
+            if delta_content:
+                yield delta_content
+            finish_reason = getattr(choices[0], "finish_reason", None)
+            if finish_reason:
+                log_environmental_impacts(chunk, logger)
 
     @log_time_and_error
     async def reformulate_user_query(self, query: str, history: List[Dict[str, str]]):
@@ -235,15 +249,27 @@ class AbstractChat(ABC):
 
         reformulated_query = await self.chat_client.completion(
             messages=messages,
-            response_format=ReformulatedQueryResponse,
+            response_format={"type": ReformulatedQueryResponse},
         )
 
         try:
             assert isinstance(reformulated_query, dict)
             ref_query = ReformulatedQueryResponse(**reformulated_query)
         except Exception:
-            logger.error("api_error=invalid_json, response=%s", reformulated_query)
-            ref_query = reformulated_query
+            assert isinstance(reformulated_query, str)
+            json_data = extract_json_from_response(reformulated_query)
+            if json_data:
+                try:
+                    ref_query = ReformulatedQueryResponse(**json_data)
+
+                except Exception:
+                    logger.error(
+                        "api_error=json_load_error, response=%s", reformulated_query
+                    )
+                    ref_query = reformulated_query
+            else:
+                logger.error("api_error=invalid_json, response=%s", reformulated_query)
+                ref_query = reformulated_query
 
         if not isinstance(ref_query, ReformulatedQueryResponse):
             raise ValueError(

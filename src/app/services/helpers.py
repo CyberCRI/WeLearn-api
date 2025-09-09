@@ -1,3 +1,5 @@
+import json
+import re
 from functools import cache
 from typing import List
 
@@ -78,3 +80,22 @@ def stringify_docs_content(docs: List[Document]) -> str:
         return ""
 
     return documents.strip()
+
+
+def extract_json_from_response(response: str) -> dict:
+    """
+    Extracts JSON object from a string response.
+    Args:
+        response (str): The string response containing JSON.
+    Returns:
+        dict: The extracted JSON object.
+    """
+    try:
+        json_data = re.search(r"\{.*\}", response, re.DOTALL)
+        if json_data:
+            return json.loads(json_data.group())
+        else:
+            raise ValueError("No JSON object found in the response")
+    except json.JSONDecodeError as e:
+        logger.error("api_error=json_decode_error, response=%s", response)
+        raise e

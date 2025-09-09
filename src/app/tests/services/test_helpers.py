@@ -4,7 +4,11 @@ from langdetect.language import Language
 
 from src.app.models.documents import Document, DocumentPayloadModel
 from src.app.services.exceptions import LanguageNotSupportedError
-from src.app.services.helpers import detect_language_from_entry, stringify_docs_content
+from src.app.services.helpers import (
+    detect_language_from_entry,
+    stringify_docs_content,
+    extract_json_from_response,
+)
 
 
 class HelpersTests(TestCase):
@@ -80,3 +84,13 @@ class HelpersTests(TestCase):
         with mock.patch("src.app.services.helpers.logger.error") as mock_logger:
             self.assertEqual(stringify_docs_content(docs), "")
             mock_logger.assert_called_once()
+
+    def test_extract_json_from_response(self):
+        response = 'Here is the JSON: {"key": "value"}'
+        expected = {"key": "value"}
+        self.assertEqual(extract_json_from_response(response), expected)
+
+    def test_extract_json_from_response_no_json(self):
+        response = "Here is the JSON: "
+        with self.assertRaises(ValueError):
+            extract_json_from_response(response)

@@ -25,8 +25,11 @@ router = APIRouter()
 settings = get_settings()
 
 chatfactory = AbstractChat(
-    model="mistral/mistral-small-latest",
-    API_KEY=settings.MISTRAL_API_KEY,
+    model="Mistral-Large-2411",
+    API_KEY=settings.AZURE_MISTRAL_API_KEY,
+    API_BASE=settings.AZURE_MISTRAL_API_BASE,
+    API_VERSION="2024-05-01-preview",
+    is_azure_model=True,
 )
 
 
