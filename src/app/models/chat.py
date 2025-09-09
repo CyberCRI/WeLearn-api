@@ -45,8 +45,7 @@ class ReformulatedQueryResponse(BaseModel):
         REF_TO_PAST (bool): A reference to past messages.
     """
 
-    STANDALONE_QUESTION_EN: str | None = None
-    STANDALONE_QUESTION_FR: str | None = None
+    STANDALONE_QUESTION: str | None = None
     USER_LANGUAGE: str | None = None
     QUERY_STATUS: (
         Literal["INVALID"] | Literal["VALID"] | Literal["REF_TO_PAST"] | None
