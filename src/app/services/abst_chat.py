@@ -178,7 +178,6 @@ class AbstractChat(ABC):
         except json.JSONDecodeError:
             logger.error("api_error=invalid_json, response=%s", completion)
 
-    # pylint: disable=too-complex
     async def get_stream_chunks(self, stream) -> AsyncIterable[str]:
         """
         Gets content from streamed response.
@@ -191,28 +190,26 @@ class AbstractChat(ABC):
         """
         try:
             async for chunk in stream:
-                choices = getattr(chunk, "choices", None)
-                if choices:
-                    delta_content = getattr(choices[0].delta, "content", None)
-                    if delta_content:
-                        yield delta_content
-                    finish_reason = getattr(choices[0], "finish_reason", None)
-                    if finish_reason:
-                        log_environmental_impacts(chunk, logger)
+                for part in self._extract_stream_chunk(chunk):
+                    yield part
         except Exception:
             try:
                 for chunk in stream:
-                    choices = getattr(chunk, "choices", None)
-                    if choices:
-                        delta_content = getattr(choices[0].delta, "content", None)
-                        if delta_content:
-                            yield delta_content
-                        finish_reason = getattr(choices[0], "finish_reason", None)
-                        if finish_reason:
-                            log_environmental_impacts(chunk, logger)
+                    for part in self._extract_stream_chunk(chunk):
+                        yield part
             except Exception as e:
                 logger.error("get_stream_chunks api_error=%s", e)
                 raise e
+
+    def _extract_stream_chunk(self, chunk):
+        choices = getattr(chunk, "choices", None)
+        if choices:
+            delta_content = getattr(choices[0].delta, "content", None)
+            if delta_content:
+                yield delta_content
+            finish_reason = getattr(choices[0], "finish_reason", None)
+            if finish_reason:
+                log_environmental_impacts(chunk, logger)
 
     @log_time_and_error
     async def reformulate_user_query(self, query: str, history: List[Dict[str, str]]):
