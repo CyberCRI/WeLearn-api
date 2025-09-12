@@ -7,8 +7,7 @@ logger = logger(__name__)
 
 
 def log_time_and_error(func):
-    functools.wraps(func)
-
+    @functools.wraps(func)
     async def wrapper(*args, **kwargs):
         logger.debug("starting method=%s", func.__name__)
         try:
@@ -37,8 +36,7 @@ def log_time_and_error(func):
 
 
 def log_time_and_error_sync(func):
-    functools.wraps(func)
-
+    @functools.wraps(func)
     def wrapper(*args, **kwargs):
         logger.debug("starting method=%s", func.__name__)
         try:

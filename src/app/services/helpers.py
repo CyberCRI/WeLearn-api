@@ -1,11 +1,10 @@
 import json
 import re
 from functools import cache
-from typing import List
+from typing import Any, List
 
-from langdetect import detect_langs
+from langdetect import detect_langs  # type: ignore
 
-from src.app.models.documents import Document
 from src.app.services.exceptions import LanguageNotSupportedError
 from src.app.utils.decorators import log_time_and_error_sync
 from src.app.utils.logger import logger as utils_logger
@@ -49,7 +48,24 @@ def detect_language_from_entry(entry: str) -> str:
         )
 
 
-def stringify_docs_content(docs: List[Document]) -> str:
+def normalize_payload(payload: Any) -> dict:
+    # Normalize payload to a dict
+    if payload is None:
+        payload = {}
+    elif hasattr(payload, "dict") and callable(getattr(payload, "dict")):
+        try:
+            payload = payload.dict()
+        except Exception:
+            payload = dict(payload)
+    elif not isinstance(payload, dict):
+        try:
+            payload = dict(payload)
+        except Exception:
+            payload = {}
+    return payload
+
+
+def stringify_docs_content(docs: List[Any]) -> str:
     """
     Creates a string from a list of documents.
     If document_title and slice_content are present,
@@ -66,15 +82,21 @@ def stringify_docs_content(docs: List[Document]) -> str:
         """<article>\nDoc {number}: {title}\n{content}\n\nurl:{url}</article>"""
     )
     try:
-        documents = "\n\n".join(
-            base_article.format(
-                number=i + 1,
-                title=(doc.payload.document_title or "").strip(),
-                content=(doc.payload.slice_content or "").strip(),
-                url=(doc.payload.document_url or "").strip(),
+        articles: list[str] = []
+        for i, doc in enumerate(docs):
+            payload = getattr(doc, "payload", {})
+
+            payload = normalize_payload(payload)
+
+            title = str(payload.get("document_title", "")).strip()
+            content = str(payload.get("slice_content", "")).strip()
+            url = str(payload.get("document_url", "")).strip()
+
+            articles.append(
+                base_article.format(number=i + 1, title=title, content=content, url=url)
             )
-            for i, doc in enumerate(docs)
-        )
+
+        documents = "\n\n".join(articles)
     except Exception as e:
         logger.error("Error in stringify_docs_content: %s", e)
         return ""
