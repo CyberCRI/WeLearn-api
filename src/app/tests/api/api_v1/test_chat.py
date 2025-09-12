@@ -303,3 +303,29 @@ class QnATests(unittest.IsolatedAsyncioTestCase):
             self.assertIsNotNone(response)
 
             self.assertEqual(response.status_code, 200)
+
+    @mock.patch("psycopg.AsyncConnection.connect", new_callable=mock.AsyncMock)
+    @mock.patch(
+        "src.app.services.security.check_api_key", new=mock.MagicMock(return_value=True)
+    )
+    @mock.patch("src.app.services.abst_chat.AbstractChat.agent_message")
+    def test_chat_agent(self, agent_message_mock, *mocks):
+        agent_message_mock.return_value = {
+            "messages": [
+                mock.Mock(content="Agent response 1"),
+                mock.Mock(content="Agent response 2"),
+            ]
+        }
+        response = client.post(
+            f"{settings.API_V1_STR}/qna/chat/agent",
+            json={
+                "query": "What are the SDGs?",
+                "thread_id": "thread-123",
+                "corpora": ["corpus1"],
+                "sdg_filter": [1, 2, 3],
+            },
+            headers={"X-API-Key": "test"},
+        )
+        self.assertEqual(response.status_code, 200)
+        self.assertIn("content", response.json())
+        self.assertIn("docs", response.json())

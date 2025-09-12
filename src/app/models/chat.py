@@ -2,6 +2,9 @@ from enum import Enum
 from typing import Literal, TypedDict
 
 from pydantic import BaseModel, Field
+from qdrant_client.models import ScoredPoint
+
+from src.app.models.search import SDGFilter
 
 from .documents import Document
 
@@ -54,6 +57,17 @@ class ReformulatedQueryResponse(BaseModel):
 
 class ReformulatedQuestionsResponse(BaseModel):
     NEW_QUESTIONS: list[str]
+
+
+class AgentContext(SDGFilter):
+    query: str | None = None
+    thread_id: str | None = None
+    corpora: tuple[str, ...] | None = None
+
+
+class AgentResponse(BaseModel):
+    content: str | None = None
+    docs: list[ScoredPoint] | None = None
 
 
 PROMPTS = Literal["STANDALONE", "NEW_QUESTIONS", "REPHRASE"]
