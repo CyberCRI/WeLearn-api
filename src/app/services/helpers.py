@@ -1,7 +1,7 @@
 from functools import cache
 from typing import List, Any
 
-from langdetect import detect_langs
+from langdetect import detect_langs  # type: ignore
 
 from src.app.services.exceptions import LanguageNotSupportedError
 from src.app.utils.decorators import log_time_and_error_sync
