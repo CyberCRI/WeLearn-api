@@ -35,6 +35,10 @@ class Settings(BaseSettings):
 
     # MISTRAL
     MISTRAL_API_KEY: str
+    
+    # MISTRAL ON AZURE
+    AZURE_INFERENCE_ENDPOINT: str
+    AZURE_INFERENCE_CREDENTIAL: str
 
     # AZURE_API
     AZURE_LLAMA_31_8B_API_KEY: str

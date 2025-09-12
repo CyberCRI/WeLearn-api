@@ -1,8 +1,9 @@
-from typing import Optional, cast
+from typing import Optional, cast, Dict
 
 import backoff
 from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi.responses import StreamingResponse
+from langchain_core.messages import ToolMessage
 from openai import RateLimitError
 from pydantic import BaseModel
 
@@ -42,6 +43,17 @@ def get_params(body: models.Context) -> models.ContextOut:
         history=body.history or [],
         query=body.query,
         subject=body.subject,
+    )
+
+
+def get_agent_params(body: models.AgentContext) -> models.AgentContext:
+    if not body.query or body.query == "":
+        e = EmptyQueryError()
+        return bad_request(message=e.message, msg_code=e.msg_code)
+
+    return models.AgentContext(
+        query=body.query,
+        thread_id=body.thread_id,
     )
 
 
@@ -284,3 +296,40 @@ async def q_and_a_stream(
                 "code": "STREAM_ERROR",
             },
         )
+
+
+@router.post(
+    "/chat/agent",
+    summary="Agent Response",
+    description="This endpoint is used to get an agent response to the user's message",
+    response_model=models.AgentResponse,
+)
+@backoff.on_exception(
+    wait_gen=backoff.expo,
+    exception=RateLimitError,
+    logger=logger,
+    max_tries=5,
+    max_time=180,
+    jitter=backoff.random_jitter,
+    factor=2,
+)
+async def agent_response(
+    body: models.AgentContext = Depends(get_agent_params),
+) -> Optional[Dict]:
+    try:
+        if body.query is None:
+            raise EmptyQueryError()
+        res = await chatfactory.agent_message(
+            query=body.query,
+            thread_id=body.thread_id,
+        )
+        docs = next(
+            (message.artifact for message in res["messages"] if isinstance(message, ToolMessage)),
+            None
+        )
+        return {
+            "content": cast(str, res["messages"][-1].content),
+            "docs": docs
+        }
+    except LanguageNotSupportedError as e:
+        bad_request(message=e.message, msg_code=e.msg_code)

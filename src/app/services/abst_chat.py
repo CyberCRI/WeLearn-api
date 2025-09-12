@@ -19,9 +19,15 @@ import json
 from abc import ABC
 from typing import AsyncIterable, Dict, List, Optional
 
+from langchain_azure_ai.chat_models import AzureAIChatCompletionsModel  # type: ignore
+from langgraph.checkpoint.memory import MemorySaver  # type: ignore
+from langgraph.prebuilt import create_react_agent  # type: ignore
+
+from src.app.api.dependencies import get_settings
 from src.app.models.chat import ReformulatedQueryResponse
 from src.app.models.documents import Document
 from src.app.services import prompts
+from src.app.services.agent import get_resources_about_sustainability
 from src.app.services.exceptions import LanguageNotSupportedError
 from src.app.services.helpers import detect_language_from_entry, stringify_docs_content
 from src.app.services.llm_proxy import LLMProxy
@@ -382,4 +388,48 @@ class AbstractChat(ABC):
         res = await self.chat_client.completion(
             messages=messages,
         )
+        return res
+
+    async def agent_message(
+        self,
+        query: str,
+        thread_id: Optional[str] = None,
+    ):
+        """
+        Sends a chat message handled by an agent.
+
+        Args:
+            query (str): The user query.
+            thread_id (str): The thread ID.
+
+        Returns:
+            str: The chat message content.
+        """
+        settings = get_settings()
+        memory = MemorySaver()
+        agent_model = AzureAIChatCompletionsModel(
+            endpoint=settings.AZURE_INFERENCE_ENDPOINT,
+            credential=settings.AZURE_INFERENCE_CREDENTIAL,
+            model="Mistral-Large-2411",
+        )
+
+        agent_executor = create_react_agent(
+            model=agent_model,
+            tools=[
+                get_resources_about_sustainability,
+            ],
+            checkpointer=memory,
+            prompt=prompts.AGENT_SYSTEM_PROMPT,
+        )
+
+        config = {"configurable": {"thread_id": thread_id}}
+
+        messages = [
+            {
+                "role": "user",
+                "content": query,
+            },
+        ]
+
+        res = await agent_executor.ainvoke(input={"messages": messages}, config=config)
         return res
