@@ -59,6 +59,7 @@ def get_params(
     response_model=list[Collection_schema],
 )
 async def get_corpus():
+    # test CI
     statement = select(
         CorpusEmbedding.source_name, CorpusEmbedding.lang, CorpusEmbedding.title
     )
