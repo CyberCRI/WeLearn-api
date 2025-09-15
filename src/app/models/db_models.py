@@ -212,3 +212,61 @@ class APIKeyManagement(Base):
         server_default="NOW()",
         onupdate=func.localtimestamp(),
     )
+
+
+class Session(Base):
+    __tablename__ = "session"
+    __table_args__ = {"schema": "user_related"}
+    id: Mapped[UUID] = mapped_column(
+        types.Uuid, primary_key=True, nullable=False, server_default="gen_random_uuid()"
+    )
+    infered_user_id: Mapped[UUID] = mapped_column(
+        types.Uuid,
+        ForeignKey("user_related.infered_user.id"),
+        nullable=False,
+    )
+    created_at: Mapped[datetime] = mapped_column(
+        TIMESTAMP(timezone=False),
+        nullable=False,
+        default=func.localtimestamp(),
+        server_default="NOW()",
+    )
+    end_at: Mapped[datetime] = mapped_column(
+        TIMESTAMP(timezone=False), nullable=False
+    )
+    user = relationship("InferedUser", foreign_keys=[infered_user_id])
+
+class InferedUser(Base):
+    __tablename__ = "infered_user"
+    __table_args__ = {"schema": "user_related"}
+    id: Mapped[UUID] = mapped_column(
+        types.Uuid, primary_key=True, nullable=False, server_default="gen_random_uuid()"
+    )
+    created_at: Mapped[datetime] = mapped_column(
+        TIMESTAMP(timezone=False),
+        nullable=False,
+        default=func.localtimestamp(),
+        server_default="NOW()",
+    )
+
+class EndpointRequest(Base):
+    __tablename__ = "endpoint_request"
+    __table_args__ = {"schema": "user_related"}
+    id: Mapped[UUID] = mapped_column(
+        types.Uuid, primary_key=True, nullable=False, server_default="gen_random_uuid()"
+    )
+    session_id: Mapped[UUID] = mapped_column(
+        types.Uuid,
+        ForeignKey("user_related.session.id"),
+        nullable=False,
+    )
+    endpoint_name: Mapped[str] = mapped_column(String, nullable=False)
+    http_code: Mapped[int] = mapped_column(Integer, nullable=False)
+    message: Mapped[str | None] = mapped_column(String, nullable=True)
+    created_at: Mapped[datetime] = mapped_column(
+        TIMESTAMP(timezone=False),
+        nullable=False,
+        default=func.localtimestamp(),
+        server_default="NOW()",
+    )
+    session = relationship("Session", foreign_keys=[session_id])
