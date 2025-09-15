@@ -3,6 +3,7 @@ from typing import Optional, cast, Dict
 import backoff
 from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi.responses import StreamingResponse
+from langgraph.checkpoint.memory import InMemorySaver
 from langchain_core.messages import ToolMessage
 from openai import RateLimitError
 from pydantic import BaseModel
@@ -29,6 +30,8 @@ chatfactory = AbstractChat(
     model="mistral/mistral-small-latest",
     API_KEY=settings.MISTRAL_API_KEY,
 )
+
+MEMORY = InMemorySaver()
 
 
 def get_params(body: models.Context) -> models.ContextOut:
@@ -321,6 +324,7 @@ async def agent_response(
             raise EmptyQueryError()
         res = await chatfactory.agent_message(
             query=body.query,
+            memory=MEMORY,
             thread_id=body.thread_id,
         )
         docs = next(

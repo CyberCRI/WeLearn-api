@@ -20,7 +20,7 @@ from abc import ABC
 from typing import AsyncIterable, Dict, List, Optional
 
 from langchain_azure_ai.chat_models import AzureAIChatCompletionsModel  # type: ignore
-from langgraph.checkpoint.memory import MemorySaver  # type: ignore
+from langgraph.checkpoint.memory import InMemorySaver  # type: ignore
 from langgraph.prebuilt import create_react_agent  # type: ignore
 
 from src.app.api.dependencies import get_settings
@@ -393,6 +393,7 @@ class AbstractChat(ABC):
     async def agent_message(
         self,
         query: str,
+        memory: InMemorySaver,
         thread_id: Optional[str] = None,
     ):
         """
@@ -406,7 +407,6 @@ class AbstractChat(ABC):
             str: The chat message content.
         """
         settings = get_settings()
-        memory = MemorySaver()
         agent_model = AzureAIChatCompletionsModel(
             endpoint=settings.AZURE_INFERENCE_ENDPOINT,
             credential=settings.AZURE_INFERENCE_CREDENTIAL,
