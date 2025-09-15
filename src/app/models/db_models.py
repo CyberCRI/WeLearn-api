@@ -15,7 +15,7 @@ from sqlalchemy import (
     UniqueConstraint,
     Uuid,
     func,
-    types,
+    types, ARRAY,
 )
 from sqlalchemy.dialects.postgresql import JSON
 from sqlalchemy.orm import Mapped, declarative_base, mapped_column, relationship
@@ -211,4 +211,65 @@ class APIKeyManagement(Base):
         default=func.localtimestamp(),
         server_default="NOW()",
         onupdate=func.localtimestamp(),
+    )
+
+
+class EmbeddingModel(Base):
+    __tablename__ = "embedding_model"
+    __table_args__ = {"schema": DbSchemaEnum.CORPUS_RELATED.value}
+
+    id: Mapped[UUID] = mapped_column(
+        types.Uuid, primary_key=True, nullable=False, server_default="gen_random_uuid()"
+    )
+    title: Mapped[str]
+    lang: Mapped[str]
+
+
+class MetaDocumentType(Base):
+    __tablename__ = "meta_document_type"
+
+    id = Column(
+        Uuid(as_uuid=True),
+        primary_key=True,
+        server_default="gen_random_uuid()",
+        nullable=False,
+    )
+    title: str = Column(String, nullable=False)  # type: ignore
+    __table_args__ = (
+        UniqueConstraint("title", name="meta_document_type_title_key"),
+        {"schema": "document_related"},
+    )
+
+class MetaDocument(Base):
+    __tablename__ = "meta_document"
+
+    id = Column(
+        Uuid(as_uuid=True),
+        primary_key=True,
+        server_default="gen_random_uuid()",
+        nullable=False,
+    )
+    url = Column(String, nullable=False)
+    title = Column(String)
+    full_content = Column(String)
+    meta_document_type_id = Column(Uuid(as_uuid=True), ForeignKey("document_related.meta_document_type.id"))
+    embedding_model_id = Column(Uuid(as_uuid=True), ForeignKey("corpus_related.embedding_model.id"))
+    sdg_related = Column(ARRAY(Integer))
+    created_at = Column(
+        TIMESTAMP(timezone=False), nullable=False, default=func.localtimestamp()
+    )
+
+    updated_at = Column(
+        TIMESTAMP(timezone=False),
+        nullable=False,
+        default=func.localtimestamp(),
+        onupdate=func.localtimestamp(),
+    )
+
+    meta_document_type = relationship("MetaDocumentType", foreign_keys=[meta_document_type_id])
+    embedding_model = relationship("EmbeddingModel", foreign_keys=[embedding_model_id])
+
+    __table_args__ = (
+        UniqueConstraint("url", name="meta_document_url_key"),
+        {"schema": "document_related"},
     )
