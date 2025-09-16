@@ -220,9 +220,9 @@ class Session(Base):
     id: Mapped[UUID] = mapped_column(
         types.Uuid, primary_key=True, nullable=False, server_default="gen_random_uuid()"
     )
-    infered_user_id: Mapped[UUID] = mapped_column(
+    inferred_user_id: Mapped[UUID] = mapped_column(
         types.Uuid,
-        ForeignKey("user_related.infered_user.id"),
+        ForeignKey("user_related.inferred_user.id"),
         nullable=False,
     )
     created_at: Mapped[datetime] = mapped_column(
@@ -232,11 +232,11 @@ class Session(Base):
         server_default="NOW()",
     )
     end_at: Mapped[datetime] = mapped_column(TIMESTAMP(timezone=False), nullable=False)
-    user = relationship("InferedUser", foreign_keys=[infered_user_id])
+    user = relationship("InferredUser", foreign_keys=[inferred_user_id])
 
 
 class InferredUser(Base):
-    __tablename__ = "infered_user"
+    __tablename__ = "inferred_user"
     __table_args__ = {"schema": "user_related"}
     id: Mapped[UUID] = mapped_column(
         types.Uuid, primary_key=True, nullable=False, server_default="gen_random_uuid()"

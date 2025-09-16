@@ -76,7 +76,7 @@ async def handle_session(user_id: str, session_id: str | None = None):
                 session = s.execute(
                     select(Session.id).where(
                         (Session.id == session_id)
-                        & (Session.infered_user_id == user_id)
+                        & (Session.inferred_user_id == user_id)
                         & (Session.end_at > datetime.now())
                     )
                 ).first()
@@ -91,7 +91,7 @@ async def handle_session(user_id: str, session_id: str | None = None):
         now = datetime.now()
         with session_maker() as s:
             new_session = Session(
-                infered_user_id=user_id,
+                inferred_user_id=user_id,
                 created_at=now,
                 end_at=now + timedelta(hours=24),
             )
