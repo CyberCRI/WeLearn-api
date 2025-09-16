@@ -25,5 +25,5 @@ api_tags_metadata = [
     {
         "name": "user",
         "description": "User operations",
-    }
+    },
 ]

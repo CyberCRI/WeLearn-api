@@ -231,12 +231,11 @@ class Session(Base):
         default=func.localtimestamp(),
         server_default="NOW()",
     )
-    end_at: Mapped[datetime] = mapped_column(
-        TIMESTAMP(timezone=False), nullable=False
-    )
+    end_at: Mapped[datetime] = mapped_column(TIMESTAMP(timezone=False), nullable=False)
     user = relationship("InferedUser", foreign_keys=[infered_user_id])
 
-class InferedUser(Base):
+
+class InferredUser(Base):
     __tablename__ = "infered_user"
     __table_args__ = {"schema": "user_related"}
     id: Mapped[UUID] = mapped_column(
@@ -248,6 +247,7 @@ class InferedUser(Base):
         default=func.localtimestamp(),
         server_default="NOW()",
     )
+
 
 class EndpointRequest(Base):
     __tablename__ = "endpoint_request"
