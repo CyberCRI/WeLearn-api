@@ -15,9 +15,9 @@ from sqlalchemy import (
     UniqueConstraint,
     Uuid,
     func,
-    types, ARRAY,
+    types,
 )
-from sqlalchemy.dialects.postgresql import JSON
+from sqlalchemy.dialects.postgresql import JSON, ARRAY
 from sqlalchemy.orm import Mapped, declarative_base, mapped_column, relationship
 
 Base: Any = declarative_base()
@@ -258,6 +258,7 @@ class MetaDocument(Base):
     created_at = Column(
         TIMESTAMP(timezone=False), nullable=False, default=func.localtimestamp()
     )
+    embedding = Column(LargeBinary)
 
     updated_at = Column(
         TIMESTAMP(timezone=False),
@@ -266,7 +267,7 @@ class MetaDocument(Base):
         onupdate=func.localtimestamp(),
     )
 
-    meta_document_type = relationship("MetaDocumentType", foreign_keys=[meta_document_type_id])
+    meta_document_type = relationship(MetaDocumentType, foreign_keys=[meta_document_type_id])
     embedding_model = relationship("EmbeddingModel", foreign_keys=[embedding_model_id])
 
     __table_args__ = (
