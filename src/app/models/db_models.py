@@ -212,3 +212,62 @@ class APIKeyManagement(Base):
         server_default="NOW()",
         onupdate=func.localtimestamp(),
     )
+
+
+class Session(Base):
+    __tablename__ = "session"
+    __table_args__ = {"schema": "user_related"}
+    id: Mapped[UUID] = mapped_column(
+        types.Uuid, primary_key=True, nullable=False, server_default="gen_random_uuid()"
+    )
+    inferred_user_id: Mapped[UUID] = mapped_column(
+        types.Uuid,
+        ForeignKey("user_related.inferred_user.id"),
+        nullable=False,
+    )
+    created_at: Mapped[datetime] = mapped_column(
+        TIMESTAMP(timezone=False),
+        nullable=False,
+        default=func.localtimestamp(),
+        server_default="NOW()",
+    )
+    end_at: Mapped[datetime] = mapped_column(TIMESTAMP(timezone=False), nullable=False)
+    host: Mapped[str] = mapped_column(String, nullable=True)
+    user = relationship("InferredUser", foreign_keys=[inferred_user_id])
+
+
+class InferredUser(Base):
+    __tablename__ = "inferred_user"
+    __table_args__ = {"schema": "user_related"}
+    id: Mapped[UUID] = mapped_column(
+        types.Uuid, primary_key=True, nullable=False, server_default="gen_random_uuid()"
+    )
+    created_at: Mapped[datetime] = mapped_column(
+        TIMESTAMP(timezone=False),
+        nullable=False,
+        default=func.localtimestamp(),
+        server_default="NOW()",
+    )
+
+
+class EndpointRequest(Base):
+    __tablename__ = "endpoint_request"
+    __table_args__ = {"schema": "user_related"}
+    id: Mapped[UUID] = mapped_column(
+        types.Uuid, primary_key=True, nullable=False, server_default="gen_random_uuid()"
+    )
+    session_id: Mapped[UUID] = mapped_column(
+        types.Uuid,
+        ForeignKey("user_related.session.id"),
+        nullable=False,
+    )
+    endpoint_name: Mapped[str] = mapped_column(String, nullable=False)
+    http_code: Mapped[int] = mapped_column(Integer, nullable=False)
+    message: Mapped[str | None] = mapped_column(String, nullable=True)
+    created_at: Mapped[datetime] = mapped_column(
+        TIMESTAMP(timezone=False),
+        nullable=False,
+        default=func.localtimestamp(),
+        server_default="NOW()",
+    )
+    session = relationship("Session", foreign_keys=[session_id])

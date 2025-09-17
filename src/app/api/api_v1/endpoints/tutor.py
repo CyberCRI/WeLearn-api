@@ -6,6 +6,7 @@ from src.app.api.dependencies import get_settings
 from src.app.models.search import EnhancedSearchQuery
 from src.app.services.abst_chat import AbstractChat
 from src.app.services.exceptions import NoResultsError
+from src.app.services.helpers import extract_json_from_response
 from src.app.services.search import SearchService
 from src.app.services.search_helpers import search_multi_inputs
 from src.app.services.tutor.agents import TEMPLATES
@@ -17,7 +18,6 @@ from src.app.services.tutor.models import (
     TutorSearchResponse,
     TutorSyllabusRequest,
 )
-from src.app.services.helpers import extract_json_from_response
 from src.app.services.tutor.tutor import tutor_manager
 from src.app.services.tutor.utils import get_file_content
 from src.app.utils.logger import logger as utils_logger

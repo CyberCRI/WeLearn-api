@@ -3,11 +3,10 @@ from abc import ABC
 from typing import Optional, Type, Union
 
 import litellm
-from litellm import acompletion
-from litellm.types.utils import ModelResponse
-
 from azure.ai.inference import ChatCompletionsClient
 from azure.core.credentials import AzureKeyCredential
+from litellm import acompletion
+from litellm.types.utils import ModelResponse
 from pydantic import BaseModel
 
 from src.app.utils.logger import logger as utils_logger
