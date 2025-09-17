@@ -263,6 +263,7 @@ class SearchService:
         embedding: np.ndarray,
         filters: qdrant_models.Filter | None = None,
         nb_results: int = 100,
+        with_vectors: bool=True
     ) -> list[http_models.ScoredPoint]:
         try:
             resp = await self.client.search(
@@ -270,7 +271,7 @@ class SearchService:
                 collection_name=collection_info,
                 query_vector=embedding,
                 limit=nb_results,
-                with_vectors=True,
+                with_vectors=with_vectors,
                 with_payload=self.payload_keys,
                 score_threshold=0.5,
             )
