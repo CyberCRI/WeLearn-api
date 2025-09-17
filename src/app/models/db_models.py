@@ -232,6 +232,7 @@ class Session(Base):
         server_default="NOW()",
     )
     end_at: Mapped[datetime] = mapped_column(TIMESTAMP(timezone=False), nullable=False)
+    host: Mapped[str] = mapped_column(String, nullable=True)
     user = relationship("InferredUser", foreign_keys=[inferred_user_id])
 
 
