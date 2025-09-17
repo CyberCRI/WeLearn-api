@@ -33,17 +33,17 @@ class UserApiTests(unittest.IsolatedAsyncioTestCase):
         # user_id provided and found -> should not create, returns same id
         session = MagicMock()
         session.execute.return_value.first.return_value = MagicMock(
-            id="existing-user-id"
+            id="cfc8072c-a055-442a-9878-b5a73d9141b2"
         )
         session_maker_mock.return_value.__enter__.return_value = session
 
         response = client.post(
             f"{settings.API_V1_STR}/user/user",
-            params={"user_id": "existing-user-id"},
+            params={"user_id": "cfc8072c-a055-442a-9878-b5a73d9141b2"},
             headers={"X-API-Key": "test"},
         )
         self.assertEqual(response.status_code, 200)
-        self.assertEqual(response.json(), {"user_id": "existing-user-id"})
+        self.assertEqual(response.json(), {"user_id": "cfc8072c-a055-442a-9878-b5a73d9141b2"})
 
     @mock.patch("src.app.api.api_v1.endpoints.user.session_maker")
     async def test_create_user_handles_exception(self, session_maker_mock, *mocks):
@@ -67,7 +67,7 @@ class UserApiTests(unittest.IsolatedAsyncioTestCase):
 
         response = client.post(
             f"{settings.API_V1_STR}/user/session",
-            params={"user_id": "missing-user"},
+            params={"user_id": "bdb62bb2-1fe5-4d14-92fd-60a041355aea"},
             headers={"X-API-Key": "test"},
         )
         self.assertEqual(response.status_code, 404)
@@ -80,18 +80,18 @@ class UserApiTests(unittest.IsolatedAsyncioTestCase):
         session = MagicMock()
         # First call: check user exists
         session.execute.return_value.first.side_effect = [
-            MagicMock(id="user-1"),
-            MagicMock(id="sess-1"),
+            MagicMock(id="19f11fa7-87ef-40af-aa61-96a099bd04be"),
+            MagicMock(id="8178c3c4-9379-4997-a6e6-f1ccea7a30a9"),
         ]
         session_maker_mock.return_value.__enter__.return_value = session
 
         response = client.post(
             f"{settings.API_V1_STR}/user/session",
-            params={"user_id": "user-1", "session_id": "sess-1"},
+            params={"user_id": "19f11fa7-87ef-40af-aa61-96a099bd04be", "session_id": "8178c3c4-9379-4997-a6e6-f1ccea7a30a9"},
             headers={"X-API-Key": "test"},
         )
         self.assertEqual(response.status_code, 200)
-        self.assertEqual(response.json(), {"session_id": "sess-1"})
+        self.assertEqual(response.json(), {"session_id": "8178c3c4-9379-4997-a6e6-f1ccea7a30a9"})
 
     @mock.patch("src.app.api.api_v1.endpoints.user.session_maker")
     async def test_create_session_create_new_when_not_found(
@@ -105,7 +105,7 @@ class UserApiTests(unittest.IsolatedAsyncioTestCase):
 
         response = client.post(
             f"{settings.API_V1_STR}/user/session",
-            params={"user_id": "user-1"},
+            params={"user_id": "ca592fd6-15af-4272-8503-49347e8a2c5b"},
             headers={"X-API-Key": "test"},
         )
         self.assertEqual(response.status_code, 200)
@@ -124,7 +124,7 @@ class UserApiTests(unittest.IsolatedAsyncioTestCase):
 
         response = client.post(
             f"{settings.API_V1_STR}/user/session",
-            params={"user_id": "user-1"},
+            params={"user_id": "8bb64641-7196-4979-8d71-9d87898640b9"},
             headers={"X-API-Key": "test"},
         )
         self.assertEqual(response.status_code, 500)
