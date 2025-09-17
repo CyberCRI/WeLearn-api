@@ -1,4 +1,5 @@
 from datetime import datetime, timedelta
+import uuid
 
 from fastapi import APIRouter, HTTPException
 from sqlalchemy.sql import select
@@ -17,7 +18,7 @@ logger = logger_utils(__name__)
     description="Create a new user in the user db",
     response_model=dict,
 )
-async def handle_user(user_id: str | None = None):
+def handle_user(user_id: uuid.UUID | None = None):
     """
     Create a new user in the user db
     If user_id is provided, check if the user exists in the db
@@ -50,7 +51,7 @@ async def handle_user(user_id: str | None = None):
     description="Create a new session in the user db",
     response_model=dict,
 )
-async def handle_session(user_id: str, session_id: str | None = None):
+def handle_session(user_id: uuid.UUID, session_id: uuid.UUID | None = None):
     """
     Create a new session in the session db
     If session_id is provided, check if the session exists in the db and if the end_at is still more recent than time now
