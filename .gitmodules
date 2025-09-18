@@ -1,3 +1,3 @@
 [submodule "devops-toolbox"]
 	path = devops-toolbox
-	url = git@github.com:CyberCRI/devops-toolbox.git
+	url = ../sops
