@@ -89,13 +89,14 @@ def handle_session(user_id: uuid.UUID, request: Request, session_id: uuid.UUID |
         logger.info(
             f"Session={session_id} user={user_id} does not exist or is expired, creating new session"
         )
+
         now = datetime.now()
         with session_maker() as s:
             new_session = Session(
                 inferred_user_id=user_id,
                 created_at=now,
                 end_at=now + timedelta(hours=24),
-                host=getattr(request.client, "host", None) if request.client else None,
+                host=request.headers.get("origin", "None"),
             )
             s.add(new_session)
             s.commit()
