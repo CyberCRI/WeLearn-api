@@ -1,6 +1,6 @@
 from typing import Annotated
-
-from fastapi import APIRouter, File, HTTPException, Response, UploadFile
+import uuid
+from fastapi import APIRouter, File, HTTPException, Response, UploadFile, Header, Request
 
 from src.app.api.dependencies import get_settings
 from src.app.models.search import EnhancedSearchQuery
@@ -9,6 +9,7 @@ from src.app.services.exceptions import NoResultsError
 from src.app.services.helpers import extract_json_from_response
 from src.app.services.search import SearchService
 from src.app.services.search_helpers import search_multi_inputs
+from src.app.services.sql_db import register_endpoint
 from src.app.services.tutor.agents import TEMPLATES
 from src.app.services.tutor.models import (
     ExtractorOuputList,
@@ -65,8 +66,11 @@ async def get_files_content(files: list[UploadFile]) -> list[str]:
 @router.post("/search")
 async def tutor_search(
     files: Annotated[list[UploadFile], File()],
+    request:Request,
+    X_Session_id: Annotated[uuid.UUID, Header()],
     response: Response,
 ):
+    register_endpoint(endpoint=request.url.path, session_id=X_Session_id, http_code=200)
     files_content = await get_files_content(files)
 
     doc_list_to_string = "Document {doc_nb}: {content}"
@@ -151,6 +155,8 @@ async def tutor_search(
         nb_results=len(search_results),
         documents=search_results,
     )
+
+
 
     return resp
 
