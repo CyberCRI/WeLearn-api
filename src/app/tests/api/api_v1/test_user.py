@@ -43,7 +43,9 @@ class UserApiTests(unittest.IsolatedAsyncioTestCase):
             headers={"X-API-Key": "test"},
         )
         self.assertEqual(response.status_code, 200)
-        self.assertEqual(response.json(), {"user_id": "cfc8072c-a055-442a-9878-b5a73d9141b2"})
+        self.assertEqual(
+            response.json(), {"user_id": "cfc8072c-a055-442a-9878-b5a73d9141b2"}
+        )
 
     @mock.patch("src.app.api.api_v1.endpoints.user.session_maker")
     async def test_create_user_handles_exception(self, session_maker_mock, *mocks):
@@ -87,11 +89,16 @@ class UserApiTests(unittest.IsolatedAsyncioTestCase):
 
         response = client.post(
             f"{settings.API_V1_STR}/user/session",
-            params={"user_id": "19f11fa7-87ef-40af-aa61-96a099bd04be", "session_id": "8178c3c4-9379-4997-a6e6-f1ccea7a30a9"},
+            params={
+                "user_id": "19f11fa7-87ef-40af-aa61-96a099bd04be",
+                "session_id": "8178c3c4-9379-4997-a6e6-f1ccea7a30a9",
+            },
             headers={"X-API-Key": "test"},
         )
         self.assertEqual(response.status_code, 200)
-        self.assertEqual(response.json(), {"session_id": "8178c3c4-9379-4997-a6e6-f1ccea7a30a9"})
+        self.assertEqual(
+            response.json(), {"session_id": "8178c3c4-9379-4997-a6e6-f1ccea7a30a9"}
+        )
 
     @mock.patch("src.app.api.api_v1.endpoints.user.session_maker")
     async def test_create_session_create_new_when_not_found(

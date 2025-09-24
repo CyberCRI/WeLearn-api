@@ -126,16 +126,14 @@ class AbstractChat(ABC):
             },
         )
 
-        try:
-            assert isinstance(detected_lang, dict)
-
-            if detected_lang["ISO_CODE"] not in ["en", "fr"]:
-                raise LanguageNotSupportedError()
-
-            return detected_lang
-        except AssertionError:
-            logger.error("api_error=assertion_error, response=%s", detected_lang)
+        if isinstance(detected_lang, str):
+            jsn = extract_json_from_response(detected_lang)
+        elif isinstance(detected_lang, dict):
+            jsn = detected_lang
+        else:
             raise ValueError("Invalid response from model")
+
+        return jsn
 
     @log_time_and_error
     async def _detect_past_message_ref(
@@ -385,7 +383,9 @@ class AbstractChat(ABC):
         Returns:
             str: The chat message content.
         """
-        ISO_CODE = {"ISO_CODE": "en"}
+
+        # ISO_CODE = {"ISO_CODE": "en"}
+
         if should_check_lang:
             ISO_CODE = await self._detect_language(query)
 
