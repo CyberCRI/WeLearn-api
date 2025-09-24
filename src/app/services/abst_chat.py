@@ -126,7 +126,6 @@ class AbstractChat(ABC):
             },
         )
 
-
         if isinstance(detected_lang, str):
             jsn = extract_json_from_response(detected_lang)
         elif isinstance(detected_lang, dict):

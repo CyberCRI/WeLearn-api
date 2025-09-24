@@ -1,5 +1,5 @@
-from datetime import datetime, timedelta
 import uuid
+from datetime import datetime, timedelta
 
 from fastapi import APIRouter, HTTPException, Request
 from sqlalchemy.sql import select
@@ -51,7 +51,9 @@ def handle_user(user_id: uuid.UUID | None = None):
     description="Create a new session in the user db",
     response_model=dict,
 )
-def handle_session(user_id: uuid.UUID, request: Request, session_id: uuid.UUID | None = None):
+def handle_session(
+    user_id: uuid.UUID, request: Request, session_id: uuid.UUID | None = None
+):
     """
     Create a new session in the session db
     If session_id is provided, check if the session exists in the db and if the end_at is still more recent than time now
