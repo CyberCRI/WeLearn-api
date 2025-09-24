@@ -1,8 +1,6 @@
-import uuid
-from fastapi import APIRouter, Depends, Response, Request, Header
+from fastapi import APIRouter, Depends, Response
 from qdrant_client.models import ScoredPoint
 from sqlalchemy.sql import select
-from typing import Annotated
 
 from src.app.models.db_models import CorpusEmbedding, QtyDocumentInQdrant
 from src.app.models.documents import Collection_schema
@@ -19,7 +17,7 @@ from src.app.services.exceptions import (
 )
 from src.app.services.search import SearchService
 from src.app.services.search_helpers import search_multi_inputs
-from src.app.services.sql_db import session_maker, register_endpoint
+from src.app.services.sql_db import session_maker
 from src.app.utils.logger import logger as logger_utils
 
 router = APIRouter()
@@ -100,7 +98,6 @@ async def get_nb_docs() -> dict[str, int]:
 )
 async def search_doc_by_collection(
     response: Response,
-    request: Request,
     query: str,
     collection: str = "conversation",
     nb_results: int = 10,
@@ -124,7 +121,6 @@ async def search_doc_by_collection(
             response.status_code = 206
             return []
 
-
         return res
     except CollectionNotFoundError as e:
         response.status_code = 404
@@ -147,7 +143,7 @@ async def search_all_slices_by_lang(
 
         if not res:
             logger.debug("No results found")
-            response.status_code = 404
+            response.status_code = 204
             return []
 
         return res
@@ -175,8 +171,7 @@ async def multi_search_all_slices_by_lang(
     )
     if not results:
         logger.error("No results found")
-        # todo switch to 204 no content
-        response.status_code = 404
+        response.status_code = 204
         return []
 
     return results
@@ -190,8 +185,6 @@ async def multi_search_all_slices_by_lang(
 )
 async def search_all(
     response: Response,
-    request: Request,
-    X_Session_id: Annotated[uuid.UUID, Header()],
     qp: EnhancedSearchQuery = Depends(get_params),
 ):
     try:
@@ -199,14 +192,12 @@ async def search_all(
 
         if not res:
             logger.error("No results found")
-            response.status_code = 206
+            response.status_code = 204
             return []
     except CollectionNotFoundError as e:
         response.status_code = 404
         return e.message
 
     response.status_code = 200
-
-    register_endpoint(endpoint=request.url.path, session_id=X_Session_id, http_code=response.status_code)
 
     return res

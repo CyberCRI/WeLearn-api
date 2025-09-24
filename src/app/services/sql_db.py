@@ -1,8 +1,8 @@
 from sqlalchemy import URL
 
 from src.app.api.dependencies import get_settings
-from src.app.utils.decorators import singleton
 from src.app.models.db_models import EndpointRequest
+from src.app.utils.decorators import singleton
 
 settings = get_settings()
 
@@ -34,10 +34,11 @@ class WL_SQL:
 
     def register_endpoint(self, endpoint, session_id, http_code):
         with self.session_maker() as session:
-            endpoint_request = EndpointRequest(endpoint_name=endpoint, session_id=session_id, http_code=http_code)
+            endpoint_request = EndpointRequest(
+                endpoint_name=endpoint, session_id=session_id, http_code=http_code
+            )
             session.add(endpoint_request)
             session.commit()
-            
 
 
 wl_sql = WL_SQL()

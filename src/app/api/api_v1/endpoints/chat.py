@@ -1,8 +1,7 @@
-from typing import Optional, cast, Annotated
-import uuid
+from typing import Optional, cast
 
 import backoff
-from fastapi import APIRouter, Depends, HTTPException, status, Header, Request
+from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi.responses import StreamingResponse
 from openai import RateLimitError
 from pydantic import BaseModel
@@ -10,7 +9,6 @@ from pydantic import BaseModel
 from src.app.api.dependencies import get_settings
 from src.app.models import chat as models
 from src.app.services.abst_chat import AbstractChat
-from src.app.services.sql_db import register_endpoint
 from src.app.services.constants import subjects as subjectsDict
 from src.app.services.exceptions import (
     EmptyQueryError,
@@ -70,8 +68,6 @@ class Response(BaseModel):
     factor=2,
 )
 async def q_and_a_reformulate(
-    request: Request,
-    X_Session_id: Annotated[uuid.UUID, Header()],
     body: models.ContextOut = Depends(get_params),
 ):
     try:
@@ -83,8 +79,6 @@ async def q_and_a_reformulate(
 
         if reformulated_query.QUERY_STATUS == "INVALID":
             raise InvalidQuestionError()
-
-        register_endpoint(endpoint=request.url.path, session_id=X_Session_id, http_code=200)
 
         return reformulated_query
 
