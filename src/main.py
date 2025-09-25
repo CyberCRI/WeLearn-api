@@ -12,7 +12,7 @@ from starlette.exceptions import HTTPException as StarletteHTTPException
 from src.app.api.api_v1.api import api_router, api_tags_metadata
 from src.app.api.shared.enpoints import health
 from src.app.core.config import settings
-from src.app.services.security import get_user
+from src.app.services.security import get_user, monitot_requests
 from src.app.utils.logger import logger
 
 logger = logger(__name__)
@@ -100,5 +100,7 @@ app.add_middleware(
 app.api_route(path="/", tags=["root"], methods=["GET"])(settings.get_api_version)
 app.include_router(health.router, prefix="/health", tags=["healthcheck"])
 app.include_router(
-    api_router, prefix=settings.API_V1_STR, dependencies=[Depends(get_user)]
+    api_router,
+    prefix=settings.API_V1_STR,
+    dependencies=[Depends(get_user), Depends(monitot_requests)],
 )

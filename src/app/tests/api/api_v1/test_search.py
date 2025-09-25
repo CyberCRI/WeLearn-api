@@ -258,7 +258,7 @@ class SearchTestsSlices(IsolatedAsyncioTestCase):
             },
             headers={"X-API-Key": "test"},
         )
-        self.assertEqual(response.status_code, 404)
+        self.assertEqual(response.status_code, 204)
 
 
 @patch("src.app.services.sql_db.session_maker")
@@ -319,7 +319,7 @@ class SearchTestsAll(IsolatedAsyncioTestCase):
             },
             headers={"X-API-Key": "test"},
         )
-        self.assertEqual(response.status_code, 404)
+        self.assertEqual(response.status_code, 204)
 
     async def test_search_all_no_query(self, *mocks):
         response = client.post(
@@ -389,7 +389,7 @@ class SearchTestsMultiInput(IsolatedAsyncioTestCase):
             },
             headers={"X-API-Key": "test"},
         )
-        self.assertEqual(response.status_code, 404)
+        self.assertEqual(response.status_code, 204)
 
     async def test_search_multi_single_query(self, *mocks):
         with mock.patch(

@@ -143,7 +143,7 @@ async def search_all_slices_by_lang(
 
         if not res:
             logger.debug("No results found")
-            response.status_code = 404
+            response.status_code = 204
             return []
 
         return res
@@ -171,8 +171,7 @@ async def multi_search_all_slices_by_lang(
     )
     if not results:
         logger.error("No results found")
-        # todo switch to 204 no content
-        response.status_code = 404
+        response.status_code = 204
         return []
 
     return results
@@ -193,10 +192,12 @@ async def search_all(
 
         if not res:
             logger.error("No results found")
-            response.status_code = 404
+            response.status_code = 204
             return []
     except CollectionNotFoundError as e:
         response.status_code = 404
         return e.message
+
+    response.status_code = 200
 
     return res
