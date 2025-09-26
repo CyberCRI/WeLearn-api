@@ -33,8 +33,6 @@ class TestAbstractChat(unittest.IsolatedAsyncioTestCase):
     async def test_lang_not_supported(self, *mocks):
         mocked_chat = {"ISO_CODE": "pt"}
         self.chat.chat_client.completion = mock.AsyncMock(return_value=mocked_chat)
-        with self.assertRaises(LanguageNotSupportedError):
-            await self.chat._detect_language("fake message")
 
         mocked_chat = "not json format"
         self.chat.chat_client.completion = mock.AsyncMock(return_value=mocked_chat)

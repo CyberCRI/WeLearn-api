@@ -1,4 +1,3 @@
-[submodule "sops"]
+[submodule "devops-toolbox"]
 	path = devops-toolbox
-	url = ../sops.git
-	branch = main
+	url = ../sops

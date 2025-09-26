@@ -159,7 +159,7 @@ Tone: Neutral.
 
 Audience: Computer program.
 
-Response: The response should be a single line with the following key-value structure: "ISO_CODE": "en"
+Response: The response should be in a JSON format with the following key-value structure: "ISO_CODE": "en"
 """
 
 

@@ -17,7 +17,7 @@ from sqlalchemy import (
     func,
     types,
 )
-from sqlalchemy.dialects.postgresql import JSON, ARRAY
+from sqlalchemy.dialects.postgresql import ARRAY, JSON
 from sqlalchemy.orm import Mapped, declarative_base, mapped_column, relationship
 
 Base: Any = declarative_base()
@@ -240,6 +240,7 @@ class MetaDocumentType(Base):
         {"schema": "document_related"},
     )
 
+
 class MetaDocument(Base):
     __tablename__ = "meta_document"
 
@@ -252,8 +253,12 @@ class MetaDocument(Base):
     url = Column(String, nullable=False)
     title = Column(String)
     full_content = Column(String)
-    meta_document_type_id = Column(Uuid(as_uuid=True), ForeignKey("document_related.meta_document_type.id"))
-    embedding_model_id = Column(Uuid(as_uuid=True), ForeignKey("corpus_related.embedding_model.id"))
+    meta_document_type_id = Column(
+        Uuid(as_uuid=True), ForeignKey("document_related.meta_document_type.id")
+    )
+    embedding_model_id = Column(
+        Uuid(as_uuid=True), ForeignKey("corpus_related.embedding_model.id")
+    )
     sdg_related = Column(ARRAY(Integer))
     created_at = Column(
         TIMESTAMP(timezone=False), nullable=False, default=func.localtimestamp()
@@ -267,10 +272,71 @@ class MetaDocument(Base):
         onupdate=func.localtimestamp(),
     )
 
-    meta_document_type = relationship(MetaDocumentType, foreign_keys=[meta_document_type_id])
+    meta_document_type = relationship(
+        MetaDocumentType, foreign_keys=[meta_document_type_id]
+    )
     embedding_model = relationship("EmbeddingModel", foreign_keys=[embedding_model_id])
 
     __table_args__ = (
         UniqueConstraint("url", name="meta_document_url_key"),
         {"schema": "document_related"},
     )
+
+
+class Session(Base):
+    __tablename__ = "session"
+    __table_args__ = {"schema": "user_related"}
+    id: Mapped[UUID] = mapped_column(
+        types.Uuid, primary_key=True, nullable=False, server_default="gen_random_uuid()"
+    )
+    inferred_user_id: Mapped[UUID] = mapped_column(
+        types.Uuid,
+        ForeignKey("user_related.inferred_user.id"),
+        nullable=False,
+    )
+    created_at: Mapped[datetime] = mapped_column(
+        TIMESTAMP(timezone=False),
+        nullable=False,
+        default=func.localtimestamp(),
+        server_default="NOW()",
+    )
+    end_at: Mapped[datetime] = mapped_column(TIMESTAMP(timezone=False), nullable=False)
+    host: Mapped[str] = mapped_column(String, nullable=True)
+    user = relationship("InferredUser", foreign_keys=[inferred_user_id])
+
+
+class InferredUser(Base):
+    __tablename__ = "inferred_user"
+    __table_args__ = {"schema": "user_related"}
+    id: Mapped[UUID] = mapped_column(
+        types.Uuid, primary_key=True, nullable=False, server_default="gen_random_uuid()"
+    )
+    created_at: Mapped[datetime] = mapped_column(
+        TIMESTAMP(timezone=False),
+        nullable=False,
+        default=func.localtimestamp(),
+        server_default="NOW()",
+    )
+
+
+class EndpointRequest(Base):
+    __tablename__ = "endpoint_request"
+    __table_args__ = {"schema": "user_related"}
+    id: Mapped[UUID] = mapped_column(
+        types.Uuid, primary_key=True, nullable=False, server_default="gen_random_uuid()"
+    )
+    session_id: Mapped[UUID] = mapped_column(
+        types.Uuid,
+        ForeignKey("user_related.session.id"),
+        nullable=False,
+    )
+    endpoint_name: Mapped[str] = mapped_column(String, nullable=False)
+    http_code: Mapped[int] = mapped_column(Integer, nullable=False)
+    message: Mapped[str | None] = mapped_column(String, nullable=True)
+    created_at: Mapped[datetime] = mapped_column(
+        TIMESTAMP(timezone=False),
+        nullable=False,
+        default=func.localtimestamp(),
+        server_default="NOW()",
+    )
+    session = relationship("Session", foreign_keys=[session_id])

@@ -1,6 +1,8 @@
 from sqlalchemy import URL
 
+from app.models.db_models import MetaDocument, MetaDocumentType
 from src.app.api.dependencies import get_settings
+from src.app.models.db_models import EndpointRequest
 from src.app.utils.decorators import singleton
 
 settings = get_settings()
@@ -31,6 +33,30 @@ class WL_SQL:
         Session = sessionmaker(bind=self.engine)
         return Session
 
+    def register_endpoint(self, endpoint, session_id, http_code):
+        with self.session_maker() as session:
+            endpoint_request = EndpointRequest(
+                endpoint_name=endpoint, session_id=session_id, http_code=http_code
+            )
+            session.add(endpoint_request)
+            session.commit()
+
+    def get_subject(self, subject: str):
+        with session_maker() as session:
+            subject_meta_document: MetaDocument = (
+                session.query(MetaDocument)
+                .join(
+                    MetaDocumentType,
+                    MetaDocumentType.id == MetaDocument.meta_document_type_id,
+                )
+                .filter(
+                    MetaDocumentType.title == "subject", MetaDocument.title == subject
+                )
+                .first()
+            )
+        return subject_meta_document
+
 
 wl_sql = WL_SQL()
 session_maker = wl_sql.session_maker
+register_endpoint = wl_sql.register_endpoint

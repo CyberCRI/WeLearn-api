@@ -6,8 +6,8 @@ from src.app.models.documents import Document, DocumentPayloadModel
 from src.app.services.exceptions import LanguageNotSupportedError
 from src.app.services.helpers import (
     detect_language_from_entry,
-    stringify_docs_content,
     extract_json_from_response,
+    stringify_docs_content,
 )
 
 
