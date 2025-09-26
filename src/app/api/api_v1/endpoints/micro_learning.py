@@ -22,6 +22,27 @@ def _flavored_with_subject(sdg_emb: ndarray, subject_emb: ndarray, discipline_fa
     return embedding
 
 @router.get(
+    "/subject_list",
+    summary="get subject's list",
+    description="Retrieve all the subjects",
+    response_model=list[str],
+)
+async def get_subject_list():
+    ret = []
+    with session_maker() as session:
+        sdg_meta_documents: list[MetaDocument] = session.query(
+            MetaDocument
+        ).join(
+            MetaDocumentType, MetaDocumentType.id == MetaDocument.meta_document_type_id
+        ).filter(
+            MetaDocumentType.title == "subject"
+        ).all()
+
+        ret = [md.title for md in sdg_meta_documents]
+
+    return ret
+
+@router.get(
     "/full_journey",
     summary="get the full journey",
     description="Get all documents for the micro learning journey of one sdg",
@@ -128,10 +149,11 @@ async def get_full_journey(lang: str, sdg: int, subject: str):
                 with_vectors=False
             )
 
-            ret[sdg_doc.meta_document_type.title.lower()].append({
-                "title": sdg_doc.title,
-                "content": sdg_doc.full_content,
-                "documents": qdrant_return
-            })
+            if len(qdrant_return) > 0:
+                ret[sdg_doc.meta_document_type.title.lower()].append({
+                    "title": sdg_doc.title,
+                    "content": sdg_doc.full_content,
+                    "documents": qdrant_return
+                })
 
     return ret
