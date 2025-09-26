@@ -5,7 +5,7 @@ from qdrant_client.http.models import models
 from src.app.models.db_models import MetaDocument, MetaDocumentType
 from src.app.models.documents import JourneySectionType
 from src.app.services.search import SearchService
-from src.app.services.sql_db import session_maker
+from src.app.services.sql_db import get_subject, get_subjects, session_maker
 from src.app.utils.logger import logger as logger_utils
 
 router = APIRouter()
@@ -20,19 +20,8 @@ sp = SearchService()
     description="Retrieve all the subjects",
     response_model=list[str],
 )
-async def get_subject_list():
-    with session_maker() as session:
-        sdg_meta_documents: list[MetaDocument] = (
-            session.query(MetaDocument)
-            .join(
-                MetaDocumentType,
-                MetaDocumentType.id == MetaDocument.meta_document_type_id,
-            )
-            .filter(MetaDocumentType.title == "subject")
-            .all()
-        )
-
-    return [md.title for md in sdg_meta_documents]
+async def get_subject_list() -> list[str]:
+    return [md.title for md in get_subjects()]
 
 
 @router.get(
@@ -57,15 +46,7 @@ async def get_full_journey(lang: str, sdg: int, subject: str):
             .all()
         )
 
-        subject_meta_document: MetaDocument = (
-            session.query(MetaDocument)
-            .join(
-                MetaDocumentType,
-                MetaDocumentType.id == MetaDocument.meta_document_type_id,
-            )
-            .filter(MetaDocumentType.title == "subject", MetaDocument.title == subject)
-            .first()
-        )
+        subject_meta_document: MetaDocument | None = get_subject(subject=subject)
 
         if not subject_meta_document:
             raise ValueError(f"Subject '{subject}' not found in meta documents.")
