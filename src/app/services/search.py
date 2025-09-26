@@ -4,6 +4,7 @@ from functools import cache
 from typing import Tuple, cast
 
 import numpy as np
+from numpy import ndarray
 from qdrant_client import AsyncQdrantClient
 from qdrant_client import models as qdrant_models
 from qdrant_client.http import exceptions as qdrant_exceptions
@@ -63,6 +64,14 @@ class SearchService:
             "document_details.source",
         ]
         self.col_prefix = "collection_welearn_"
+
+    @staticmethod
+    def flavored_with_subject(
+        sdg_emb: ndarray, subject_emb: ndarray, discipline_factor: int = 2
+    ):
+        embedding = sdg_emb + [discipline_factor * vec for vec in subject_emb.tolist()]
+
+        return embedding
 
     @log_time_and_error
     async def get_collections(self) -> Tuple[str, ...]:
@@ -263,7 +272,7 @@ class SearchService:
         embedding: np.ndarray,
         filters: qdrant_models.Filter | None = None,
         nb_results: int = 100,
-        with_vectors: bool=True
+        with_vectors: bool = True,
     ) -> list[http_models.ScoredPoint]:
         try:
             resp = await self.client.search(
