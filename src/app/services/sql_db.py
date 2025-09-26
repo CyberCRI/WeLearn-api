@@ -1,7 +1,7 @@
 from sqlalchemy import URL
 
 from src.app.api.dependencies import get_settings
-from src.app.models.db_models import EndpointRequest
+from src.app.models.db_models import EndpointRequest, MetaDocument, MetaDocumentType
 from src.app.utils.decorators import singleton
 
 settings = get_settings()
@@ -40,7 +40,49 @@ class WL_SQL:
             session.add(endpoint_request)
             session.commit()
 
+    def get_subject(self, subject: str) -> MetaDocument | None:
+        """
+        Get the subject meta document from the database.
+        Args:
+            subject: The subject to get.
+
+        Returns: The subject meta document.
+
+        """
+        with self.session_maker() as session:
+            subject_meta_document: MetaDocument = (
+                session.query(MetaDocument)
+                .join(
+                    MetaDocumentType,
+                    MetaDocumentType.id == MetaDocument.meta_document_type_id,
+                )
+                .filter(
+                    MetaDocumentType.title == "subject", MetaDocument.title == subject
+                )
+                .first()
+            )
+        return subject_meta_document
+
+    def get_subjects(self) -> list[MetaDocument]:
+        """
+        Get all the subject meta documents from the database.
+        Returns: List of subject meta documents.
+        """
+        with self.session_maker() as session:
+            sdg_meta_documents: list[MetaDocument] = (
+                session.query(MetaDocument)
+                .join(
+                    MetaDocumentType,
+                    MetaDocumentType.id == MetaDocument.meta_document_type_id,
+                )
+                .filter(MetaDocumentType.title == "subject")
+                .all()
+            )
+        return sdg_meta_documents
+
 
 wl_sql = WL_SQL()
 session_maker = wl_sql.session_maker
 register_endpoint = wl_sql.register_endpoint
+get_subject = wl_sql.get_subject
+get_subjects = wl_sql.get_subjects
