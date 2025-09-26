@@ -71,8 +71,8 @@ async def get_full_journey(lang: str, sdg: int, subject: str):
                     f"Embedding must be of type bytes, received type: {type(sdg_binary_embedding).__name__}"
                 )
 
-            sdg_embedding: numpy.ndarray = numpy.frombuffer(
-                bytes(sdg_binary_embedding), dtype=numpy.float32
+            sdg_embedding: numpy.ndarray = convert_embedding_bytes(
+                embeddings_byte=sdg_binary_embedding
             )
 
             flavored_embedding = sp.flavored_with_subject(
