@@ -37,9 +37,7 @@ async def get_subject_list():
             MetaDocumentType.title == "subject"
         ).all()
 
-        ret = [md.title for md in sdg_meta_documents]
-
-    return ret
+    return [md.title for md in sdg_meta_documents]
 
 @router.get(
     "/full_journey",
