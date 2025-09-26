@@ -1,4 +1,3 @@
-import json
 import time
 from functools import cache
 from typing import Tuple, cast
@@ -16,7 +15,8 @@ from src.app.api.dependencies import get_settings
 from src.app.models.collections import Collection
 from src.app.models.search import EnhancedSearchQuery, SearchFilters, SearchMethods
 from src.app.services.exceptions import CollectionNotFoundError, ModelNotFoundError
-from src.app.services.helpers import detect_language_from_entry
+from src.app.services.helpers import convert_embedding_bytes, detect_language_from_entry
+from src.app.services.sql_db import get_subject
 from src.app.utils.decorators import log_time_and_error, log_time_and_error_sync
 from src.app.utils.logger import logger as logger_utils
 
@@ -67,7 +67,7 @@ class SearchService:
 
     @staticmethod
     def flavored_with_subject(
-        sdg_emb: ndarray, subject_emb: ndarray, discipline_factor: int = 2
+        sdg_emb: ndarray, subject_emb: ndarray, discipline_factor: int | float = 2
     ):
         embedding = sdg_emb + [discipline_factor * vec for vec in subject_emb.tolist()]
 
@@ -118,9 +118,11 @@ class SearchService:
         embedding = self._embed_query(query, model)
 
         if subject_vector:
-            embedding = embedding + [
-                subject_influence_factor * vec for vec in subject_vector
-            ]
+            embedding = self.flavored_with_subject(
+                sdg_emb=embedding,
+                subject_emb=subject_vector,
+                discipline_factor=subject_influence_factor,
+            )
 
             logger.debug(
                 "Adding subject vector influence_factor=%s",
@@ -363,15 +365,20 @@ def concatenate_same_doc_id_slices(
 
 @log_time_and_error_sync
 def get_subject_vector(subject: str | None) -> list[float] | None:
+    """
+    Get the subject vector from the database.
+    Args:
+        subject: The subject to get. If None, return None.
+
+    Returns: The subject vector as a list of floats, or None if not found.
+
+    """
     if not subject:
         return None
-    with open("src/app/services/subject_vectors.json") as f:
-        logger.info("Loading subject vectors: subject=%s", subject)
-        vectors = json.load(f)
-        vector = vectors.get(subject.lower(), None)
 
-        if not vector:
-            logger.error("Subject vector not found, subject=%s", subject)
-            return None
+    subject_from_db = get_subject(subject=subject)
+    if not subject_from_db:
+        return None
 
-        return vector
+    embedding = convert_embedding_bytes(subject_from_db.embedding)
+    return embedding.tolist()

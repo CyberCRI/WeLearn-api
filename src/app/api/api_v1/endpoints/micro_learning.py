@@ -4,6 +4,7 @@ from qdrant_client.http.models import models
 
 from src.app.models.db_models import MetaDocument, MetaDocumentType
 from src.app.models.documents import JourneySectionType
+from src.app.services.helpers import convert_embedding_bytes
 from src.app.services.search import SearchService
 from src.app.services.sql_db import get_subject, get_subjects, session_maker
 from src.app.utils.logger import logger as logger_utils
@@ -58,8 +59,8 @@ async def get_full_journey(lang: str, sdg: int, subject: str):
             raise ValueError(
                 f"Embedding must be of type bytes, received type: {type(subject_binary_embedding).__name__}"
             )
-        subject_embedding: numpy.ndarray = numpy.frombuffer(
-            bytes(subject_binary_embedding), dtype=numpy.float32
+        subject_embedding = convert_embedding_bytes(
+            embeddings_byte=subject_binary_embedding
         )
 
         ret = {}
