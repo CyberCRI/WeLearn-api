@@ -28,7 +28,6 @@ def _flavored_with_subject(sdg_emb: ndarray, subject_emb: ndarray, discipline_fa
     response_model=list[str],
 )
 async def get_subject_list():
-    ret = []
     with session_maker() as session:
         sdg_meta_documents: list[MetaDocument] = session.query(
             MetaDocument
