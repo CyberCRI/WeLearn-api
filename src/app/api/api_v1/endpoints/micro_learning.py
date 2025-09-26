@@ -2,6 +2,7 @@ import numpy
 from fastapi import APIRouter
 from qdrant_client.http.models import models
 
+from app.models.search import SearchFilters
 from src.app.models.db_models import MetaDocument, MetaDocumentType
 from src.app.models.documents import JourneySectionType
 from src.app.services.helpers import convert_embedding_bytes
@@ -79,11 +80,6 @@ async def get_full_journey(lang: str, sdg: int, subject: str):
                 sdg_embedding, subject_embedding
             )
 
-            sdg_filter = models.FieldCondition(
-                key="document_sdg",
-                match=models.MatchValue(value=sdg),
-            )
-
             try:
                 sdg_doc_type = JourneySectionType[
                     sdg_doc.meta_document_type.title.upper()
@@ -93,12 +89,17 @@ async def get_full_journey(lang: str, sdg: int, subject: str):
                     f"Meta document type '{sdg_doc.meta_document_type.title}' is not a valid JourneySectionType."
                 )
 
+            readability_range: models.Range
             if sdg_doc_type == JourneySectionType.INTRODUCTION:
-                gte = 60.0
-                lte = 100.0
+                readability_range = models.Range(
+                    gte=60.0,
+                    lte=100.0,
+                )
             elif sdg_doc_type == JourneySectionType.TARGET:
-                gte = 0.0
-                lte = 60.0
+                readability_range = models.Range(
+                    gte=0.0,
+                    lte=60.0,
+                )
             else:
                 raise NotImplementedError(
                     f"Journey section type '{sdg_doc_type}' is not implemented."
@@ -107,20 +108,9 @@ async def get_full_journey(lang: str, sdg: int, subject: str):
             if not sdg_doc.meta_document_type.title.lower() in ret:
                 ret[sdg_doc.meta_document_type.title.lower()] = []
 
-            qdrant_filter = models.Filter(
-                must=[
-                    sdg_filter,
-                    models.FieldCondition(
-                        key="document_details.readability",
-                        range=models.Range(
-                            gt=None,
-                            gte=gte,
-                            lt=None,
-                            lte=lte,
-                        ),
-                    ),
-                ]
-            )
+            qdrant_filter = SearchFilters(
+                slice_sdg=[sdg], readability=readability_range
+            ).build_filters()
 
             qdrant_return = await sp.search(
                 collection_info="collection_welearn_en_all-minilm-l6-v2",

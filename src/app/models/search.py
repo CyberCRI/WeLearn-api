@@ -1,6 +1,7 @@
 from enum import StrEnum
 
 from pydantic import BaseModel, Field
+from qdrant_client.http.models import Range
 from qdrant_client.models import FieldCondition, Filter, MatchAny
 
 from src.app.utils.decorators import log_time_and_error_sync
@@ -37,6 +38,7 @@ class EnhancedSearchQuery(SDGFilter):
 class SearchFilters(BaseModel):
     slice_sdg: list[int] | None
     document_corpus: tuple[str, ...] | list[str] | None
+    readability: Range | float | None
 
     @log_time_and_error_sync
     def build_filters(self) -> Filter | None:
@@ -46,6 +48,7 @@ class SearchFilters(BaseModel):
         filters = {
             "slice_sdg": self.slice_sdg,
             "document_corpus": self.document_corpus,
+            "document_details.readability": self.readability,
         }
 
         qdrant_filter = []
