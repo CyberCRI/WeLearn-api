@@ -80,9 +80,26 @@ class WL_SQL:
             )
         return sdg_meta_documents
 
+    def get_meta_document(self, journey_part, sdg):
+        with self.session_maker() as session:
+            sdg_meta_documents: list[MetaDocument] = (
+                session.query(MetaDocument)
+                .join(
+                    MetaDocumentType,
+                    MetaDocumentType.id == MetaDocument.meta_document_type_id,
+                )
+                .filter(
+                    MetaDocumentType.title.in_(journey_part),
+                    MetaDocument.sdg_related.contains([sdg]),
+                )
+                .all()
+            )
+        return sdg_meta_documents
+
 
 wl_sql = WL_SQL()
 session_maker = wl_sql.session_maker
 register_endpoint = wl_sql.register_endpoint
 get_subject = wl_sql.get_subject
 get_subjects = wl_sql.get_subjects
+get_meta_document = wl_sql.get_meta_document

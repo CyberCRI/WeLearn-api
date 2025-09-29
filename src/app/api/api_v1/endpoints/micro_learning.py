@@ -3,11 +3,15 @@ from fastapi import APIRouter
 from qdrant_client.http.models import models
 
 from app.models.search import SearchFilters
-from src.app.models.db_models import MetaDocument, MetaDocumentType
+from src.app.models.db_models import MetaDocument
 from src.app.models.documents import JourneySectionType
 from src.app.services.helpers import convert_embedding_bytes
 from src.app.services.search import SearchService
-from src.app.services.sql_db import get_subject, get_subjects, session_maker
+from src.app.services.sql_db import (
+    get_meta_document,
+    get_subject,
+    get_subjects,
+)
 from src.app.utils.logger import logger as logger_utils
 
 router = APIRouter()
@@ -34,99 +38,83 @@ async def get_subject_list() -> list[str]:
 )
 async def get_full_journey(lang: str, sdg: int, subject: str):
     journey_part = [i.lower() for i in JourneySectionType]
-    with session_maker() as session:
-        sdg_meta_documents: list[MetaDocument] = (
-            session.query(MetaDocument)
-            .join(
-                MetaDocumentType,
-                MetaDocumentType.id == MetaDocument.meta_document_type_id,
-            )
-            .filter(
-                MetaDocumentType.title.in_(journey_part),
-                MetaDocument.sdg_related.contains([sdg]),
-            )
-            .all()
+    sdg_meta_documents = get_meta_document(journey_part, sdg)
+    if not sdg_meta_documents:
+        raise ValueError(f"SDG '{sdg}' not found in meta documents.")
+
+    subject_meta_document: MetaDocument | None = get_subject(subject=subject)
+
+    if not subject_meta_document:
+        raise ValueError(f"Subject '{subject}' not found in meta documents.")
+
+    subject_binary_embedding = subject_meta_document.embedding
+    if not isinstance(subject_binary_embedding, bytes):
+        raise ValueError(
+            f"Embedding must be of type bytes, received type: {type(subject_binary_embedding).__name__}"
         )
+    subject_embedding = convert_embedding_bytes(
+        embeddings_byte=subject_binary_embedding
+    )
 
-        subject_meta_document: MetaDocument | None = get_subject(subject=subject)
-
-        if not subject_meta_document:
-            raise ValueError(f"Subject '{subject}' not found in meta documents.")
-        if not sdg_meta_documents:
-            raise ValueError(f"SDG '{sdg}' not found in meta documents.")
-
-        subject_binary_embedding = subject_meta_document.embedding
-        if not isinstance(subject_binary_embedding, bytes):
+    ret = {}
+    for sdg_doc in sdg_meta_documents:
+        sdg_binary_embedding = sdg_doc.embedding
+        if not isinstance(sdg_binary_embedding, bytes):
             raise ValueError(
-                f"Embedding must be of type bytes, received type: {type(subject_binary_embedding).__name__}"
+                f"Embedding must be of type bytes, received type: {type(sdg_binary_embedding).__name__}"
             )
-        subject_embedding = convert_embedding_bytes(
-            embeddings_byte=subject_binary_embedding
+
+        sdg_embedding: numpy.ndarray = convert_embedding_bytes(
+            embeddings_byte=sdg_binary_embedding
         )
 
-        ret = {}
-        for sdg_doc in sdg_meta_documents:
-            sdg_binary_embedding = sdg_doc.embedding
-            if not isinstance(sdg_binary_embedding, bytes):
-                raise ValueError(
-                    f"Embedding must be of type bytes, received type: {type(sdg_binary_embedding).__name__}"
-                )
+        flavored_embedding = sp.flavored_with_subject(sdg_embedding, subject_embedding)
 
-            sdg_embedding: numpy.ndarray = convert_embedding_bytes(
-                embeddings_byte=sdg_binary_embedding
+        try:
+            sdg_doc_type = JourneySectionType[sdg_doc.meta_document_type.title.upper()]
+        except KeyError:
+            raise NotImplementedError(
+                f"Meta document type '{sdg_doc.meta_document_type.title}' is not a valid JourneySectionType."
             )
 
-            flavored_embedding = sp.flavored_with_subject(
-                sdg_embedding, subject_embedding
+        readability_range: models.Range
+        if sdg_doc_type == JourneySectionType.INTRODUCTION:
+            readability_range = models.Range(
+                gte=60.0,
+                lte=100.0,
+            )
+        elif sdg_doc_type == JourneySectionType.TARGET:
+            readability_range = models.Range(
+                gte=0.0,
+                lte=60.0,
+            )
+        else:
+            raise NotImplementedError(
+                f"Journey section type '{sdg_doc_type}' is not implemented."
             )
 
-            try:
-                sdg_doc_type = JourneySectionType[
-                    sdg_doc.meta_document_type.title.upper()
-                ]
-            except KeyError:
-                raise NotImplementedError(
-                    f"Meta document type '{sdg_doc.meta_document_type.title}' is not a valid JourneySectionType."
-                )
+        if not sdg_doc.meta_document_type.title.lower() in ret:
+            ret[sdg_doc.meta_document_type.title.lower()] = []
 
-            readability_range: models.Range
-            if sdg_doc_type == JourneySectionType.INTRODUCTION:
-                readability_range = models.Range(
-                    gte=60.0,
-                    lte=100.0,
-                )
-            elif sdg_doc_type == JourneySectionType.TARGET:
-                readability_range = models.Range(
-                    gte=0.0,
-                    lte=60.0,
-                )
-            else:
-                raise NotImplementedError(
-                    f"Journey section type '{sdg_doc_type}' is not implemented."
-                )
+        qdrant_filter = SearchFilters(
+            slice_sdg=[sdg], readability=readability_range
+        ).build_filters()
 
-            if not sdg_doc.meta_document_type.title.lower() in ret:
-                ret[sdg_doc.meta_document_type.title.lower()] = []
+        qdrant_return = await sp.search(
+            collection_info="collection_welearn_en_all-minilm-l6-v2",
+            embedding=flavored_embedding,
+            filters=qdrant_filter,
+            nb_results=10,
+            with_vectors=False,
+        )
 
-            qdrant_filter = SearchFilters(
-                slice_sdg=[sdg], readability=readability_range
-            ).build_filters()
-
-            qdrant_return = await sp.search(
-                collection_info="collection_welearn_en_all-minilm-l6-v2",
-                embedding=flavored_embedding,
-                filters=qdrant_filter,
-                nb_results=10,
-                with_vectors=False,
+        if len(qdrant_return) > 0:
+            ret[sdg_doc.meta_document_type.title.lower()].append(
+                {
+                    "title": sdg_doc.title,
+                    "content": sdg_doc.full_content,
+                    "documents": qdrant_return,
+                }
             )
-
-            if len(qdrant_return) > 0:
-                ret[sdg_doc.meta_document_type.title.lower()].append(
-                    {
-                        "title": sdg_doc.title,
-                        "content": sdg_doc.full_content,
-                        "documents": qdrant_return,
-                    }
-                )
 
     return ret
