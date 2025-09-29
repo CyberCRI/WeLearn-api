@@ -7,11 +7,7 @@ from src.app.models.db_models import MetaDocument
 from src.app.models.documents import JourneySectionType
 from src.app.services.helpers import convert_embedding_bytes
 from src.app.services.search import SearchService
-from src.app.services.sql_db import (
-    get_meta_document,
-    get_subject,
-    get_subjects,
-)
+from src.app.services.sql_db import get_meta_document, get_subject, get_subjects
 from src.app.utils.logger import logger as logger_utils
 
 router = APIRouter()
