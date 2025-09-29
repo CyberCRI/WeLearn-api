@@ -201,3 +201,19 @@ async def search_all(
     response.status_code = 200
 
     return res
+
+@router.post(
+        '/documents/payload',
+        summary="Get documents payload by their IDs",
+        description="Retrieve the payload of documents stored in Qdrant by providing their IDs.",
+        )
+def get_documents_payload_by_ids(
+        documents_ids: list[uuid.UUID],
+        ) -> list[dict]:
+    with session_maker() as s:
+        payloads = s.execute(
+            select(CorpusEmbedding.document_id, CorpusEmbedding.payload)
+            .where(CorpusEmbedding.document_id.in_(documents_ids))
+        ).all()
+        return [{"document_id": doc_id, "payload": payload} for doc_id, payload in payloads]
+
