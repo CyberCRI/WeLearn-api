@@ -2,7 +2,7 @@ import numpy
 from fastapi import APIRouter
 from qdrant_client.http.models import models
 
-from src.app.models.db_models import MetaDocument
+from src.app.models.db_models import ContextDocument
 from src.app.models.documents import JourneySectionType
 from src.app.models.search import SearchFilters
 from src.app.services.helpers import convert_embedding_bytes
@@ -38,7 +38,7 @@ async def get_full_journey(lang: str, sdg: int, subject: str):
     if not sdg_meta_documents:
         raise ValueError(f"SDG '{sdg}' not found in meta documents.")
 
-    subject_meta_document: MetaDocument | None = get_subject(subject=subject)
+    subject_meta_document: ContextDocument | None = get_subject(subject=subject)
 
     if not subject_meta_document:
         raise ValueError(f"Subject '{subject}' not found in meta documents.")
@@ -67,33 +67,33 @@ async def get_full_journey(lang: str, sdg: int, subject: str):
         flavored_embedding = sp.flavored_with_subject(sdg_embedding, subject_embedding)
 
         try:
-            sdg_doc_type = JourneySectionType[sdg_doc.meta_document_type.title.upper()]
+            sdg_doc_type = JourneySectionType[sdg_doc.context_type.upper()]
         except KeyError:
             raise NotImplementedError(
-                f"Meta document type '{sdg_doc.meta_document_type.title}' is not a valid JourneySectionType."
+                f"Meta document type '{sdg_doc.context_type}' is not a valid JourneySectionType."
             )
 
         readability_range: models.Range
         if sdg_doc_type == JourneySectionType.INTRODUCTION:
             readability_range = models.Range(
-                gte=60.0,
-                lte=100.0,
+                gte=60,
+                lte=100,
             )
         elif sdg_doc_type == JourneySectionType.TARGET:
             readability_range = models.Range(
-                gte=0.0,
-                lte=60.0,
+                gte=0,
+                lte=60,
             )
         else:
             raise NotImplementedError(
                 f"Journey section type '{sdg_doc_type}' is not implemented."
             )
 
-        if not sdg_doc.meta_document_type.title.lower() in ret:
-            ret[sdg_doc.meta_document_type.title.lower()] = []
+        if not sdg_doc.context_type.lower() in ret:
+            ret[sdg_doc.context_type.lower()] = []
 
         qdrant_filter = SearchFilters(
-            slice_sdg=[sdg], readability=readability_range
+            slice_sdg=[sdg], readability=readability_range, document_corpus=None
         ).build_filters()
 
         qdrant_return = await sp.search(
@@ -105,7 +105,7 @@ async def get_full_journey(lang: str, sdg: int, subject: str):
         )
 
         if len(qdrant_return) > 0:
-            ret[sdg_doc.meta_document_type.title.lower()].append(
+            ret[sdg_doc.context_type.lower()].append(
                 {
                     "title": sdg_doc.title,
                     "content": sdg_doc.full_content,

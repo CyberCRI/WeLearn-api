@@ -1,4 +1,4 @@
-from enum import StrEnum
+from enum import StrEnum, auto
 
 from pydantic import BaseModel, Field
 from qdrant_client.http.models import Range
@@ -35,6 +35,12 @@ class EnhancedSearchQuery(SDGFilter):
     concatenate: bool = True
 
 
+class ContextType(StrEnum):
+    INTRODUCTION = auto()
+    TARGET = auto()
+    SUBJECT = auto()
+
+
 class SearchFilters(BaseModel):
     slice_sdg: list[int] | None
     document_corpus: tuple[str, ...] | list[str] | None
@@ -55,13 +61,20 @@ class SearchFilters(BaseModel):
         for key, values in filters.items():
             if not values:
                 continue
-
-            qdrant_filter.append(
-                FieldCondition(
-                    key=key,
-                    match=MatchAny(any=values),
+            if type(values) == Range:
+                qdrant_filter.append(
+                    FieldCondition(
+                        key=key,
+                        range=values,
+                    )
                 )
-            )
+            else:
+                qdrant_filter.append(
+                    FieldCondition(
+                        key=key,
+                        match=MatchAny(any=values),
+                    )
+                )
 
         logger.debug("build_filters=%s", qdrant_filter)
 

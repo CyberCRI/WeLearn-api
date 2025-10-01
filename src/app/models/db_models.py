@@ -17,8 +17,10 @@ from sqlalchemy import (
     func,
     types,
 )
-from sqlalchemy.dialects.postgresql import ARRAY, JSON
+from sqlalchemy.dialects.postgresql import ARRAY, ENUM, JSON
 from sqlalchemy.orm import Mapped, declarative_base, mapped_column, relationship
+
+from src.app.models.search import ContextType
 
 Base: Any = declarative_base()
 
@@ -225,24 +227,8 @@ class EmbeddingModel(Base):
     lang: Mapped[str]
 
 
-class MetaDocumentType(Base):
-    __tablename__ = "meta_document_type"
-
-    id = Column(
-        Uuid(as_uuid=True),
-        primary_key=True,
-        server_default="gen_random_uuid()",
-        nullable=False,
-    )
-    title: str = Column(String, nullable=False)  # type: ignore
-    __table_args__ = (
-        UniqueConstraint("title", name="meta_document_type_title_key"),
-        {"schema": "document_related"},
-    )
-
-
-class MetaDocument(Base):
-    __tablename__ = "meta_document"
+class ContextDocument(Base):
+    __tablename__ = "context_document"
 
     id = Column(
         Uuid(as_uuid=True),
@@ -253,9 +239,6 @@ class MetaDocument(Base):
     url = Column(String, nullable=False)
     title = Column(String)
     full_content = Column(String)
-    meta_document_type_id = Column(
-        Uuid(as_uuid=True), ForeignKey("document_related.meta_document_type.id")
-    )
     embedding_model_id = Column(
         Uuid(as_uuid=True), ForeignKey("corpus_related.embedding_model.id")
     )
@@ -272,8 +255,13 @@ class MetaDocument(Base):
         onupdate=func.localtimestamp(),
     )
 
-    meta_document_type = relationship(
-        MetaDocumentType, foreign_keys=[meta_document_type_id]
+    context_type = mapped_column(
+        ENUM(
+            *(e.value.lower() for e in ContextType),
+            name="context_type",
+            schema="document_related"
+        ),
+        nullable=False,
     )
     embedding_model = relationship("EmbeddingModel", foreign_keys=[embedding_model_id])
 
