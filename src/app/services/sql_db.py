@@ -1,7 +1,8 @@
 from sqlalchemy import URL
 
 from src.app.api.dependencies import get_settings
-from src.app.models.db_models import EndpointRequest, MetaDocument, MetaDocumentType
+from src.app.models.db_models import ContextDocument, EndpointRequest
+from src.app.models.search import ContextType
 from src.app.utils.decorators import singleton
 
 settings = get_settings()
@@ -40,7 +41,7 @@ class WL_SQL:
             session.add(endpoint_request)
             session.commit()
 
-    def get_subject(self, subject: str) -> MetaDocument | None:
+    def get_subject(self, subject: str) -> ContextDocument | None:
         """
         Get the subject meta document from the database.
         Args:
@@ -50,47 +51,38 @@ class WL_SQL:
 
         """
         with self.session_maker() as session:
-            subject_meta_document: MetaDocument = (
-                session.query(MetaDocument)
-                .join(
-                    MetaDocumentType,
-                    MetaDocumentType.id == MetaDocument.meta_document_type_id,
-                )
+            subject_meta_document: ContextDocument = (
+                session.query(ContextDocument)
                 .filter(
-                    MetaDocumentType.title == "subject", MetaDocument.title == subject
+                    ContextDocument.context_type == ContextType.SUBJECT.value.lower(),
+                    ContextDocument.title == subject,
                 )
                 .first()
             )
         return subject_meta_document
 
-    def get_subjects(self) -> list[MetaDocument]:
+    def get_subjects(self) -> list[ContextDocument]:
         """
         Get all the subject meta documents from the database.
         Returns: List of subject meta documents.
         """
         with self.session_maker() as session:
-            sdg_meta_documents: list[MetaDocument] = (
-                session.query(MetaDocument)
-                .join(
-                    MetaDocumentType,
-                    MetaDocumentType.id == MetaDocument.meta_document_type_id,
+            sdg_meta_documents: list[ContextDocument] = (
+                session.query(ContextDocument)
+                .filter(
+                    ContextDocument.context_type == ContextType.SUBJECT.value.lower()
                 )
-                .filter(MetaDocumentType.title == "subject")
                 .all()
             )
         return sdg_meta_documents
 
     def get_meta_document(self, journey_part, sdg):
         with self.session_maker() as session:
-            sdg_meta_documents: list[MetaDocument] = (
-                session.query(MetaDocument)
-                .join(
-                    MetaDocumentType,
-                    MetaDocumentType.id == MetaDocument.meta_document_type_id,
-                )
+            sdg_meta_documents: list[ContextDocument] = (
+                session.query(ContextDocument)
                 .filter(
-                    MetaDocumentType.title.in_(journey_part),
-                    MetaDocument.sdg_related.contains([sdg]),
+                    ContextDocument.context_type.in_(journey_part),
+                    ContextDocument.sdg_related.contains([sdg]),
                 )
                 .all()
             )
