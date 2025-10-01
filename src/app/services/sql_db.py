@@ -1,8 +1,8 @@
 from sqlalchemy import URL
 
-from app.models.documents import JourneySection
 from src.app.api.dependencies import get_settings
 from src.app.models.db_models import ContextDocument, EndpointRequest
+from src.app.models.documents import JourneySection
 from src.app.models.search import ContextType
 from src.app.utils.decorators import singleton
 
