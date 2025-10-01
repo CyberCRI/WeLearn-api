@@ -1,9 +1,19 @@
+import uuid
+from collections import Counter
+
 from fastapi import APIRouter, Depends, Response
 from qdrant_client.models import ScoredPoint
 from sqlalchemy.sql import select
 
-from src.app.models.db_models import CorpusEmbedding, QtyDocumentInQdrant
-from src.app.models.documents import Collection_schema
+from src.app.models.db_models import (
+    Corpus,
+    CorpusEmbedding,
+    DocumentSlice,
+    QtyDocumentInQdrant,
+    Sdg,
+    WeLearnDocument,
+)
+from src.app.models.documents import Collection_schema, DocumentPayloadModel
 from src.app.models.search import (
     EnhancedSearchQuery,
     SDGFilter,
@@ -202,18 +212,60 @@ async def search_all(
 
     return res
 
-@router.post(
-        '/documents/payload',
-        summary="Get documents payload by their IDs",
-        description="Retrieve the payload of documents stored in Qdrant by providing their IDs.",
-        )
-def get_documents_payload_by_ids(
-        documents_ids: list[uuid.UUID],
-        ) -> list[dict]:
-    with session_maker() as s:
-        payloads = s.execute(
-            select(CorpusEmbedding.document_id, CorpusEmbedding.payload)
-            .where(CorpusEmbedding.document_id.in_(documents_ids))
-        ).all()
-        return [{"document_id": doc_id, "payload": payload} for doc_id, payload in payloads]
 
+@router.post(
+    "/documents/by_ids",
+    summary="get documents payload by ids",
+    description="Get documents payload by list of document ids",
+)
+def get_documents_payload_by_ids(
+    documents_ids: list[uuid.UUID],
+) -> list[DocumentPayloadModel]:
+    with session_maker() as s:
+        documents = s.execute(
+            select(
+                WeLearnDocument.title,
+                WeLearnDocument.url,
+                WeLearnDocument.corpus_id,
+                WeLearnDocument.id,
+                WeLearnDocument.description,
+                WeLearnDocument.details,
+            ).where(WeLearnDocument.id.in_(documents_ids))
+        ).all()
+
+        docs = []
+        for doc in documents:
+            corpus = s.execute(
+                select(Corpus.id, Corpus.source_name).where(Corpus.id == doc.corpus_id)
+            ).first()
+
+            slices = s.execute(
+                select(DocumentSlice.id, DocumentSlice.document_id).where(
+                    DocumentSlice.document_id == doc.id
+                )
+            ).all()
+
+            sdgs = s.execute(
+                select(Sdg.sdg_number, Sdg.slice_id).where(
+                    Sdg.slice_id.in_([slice_.id for slice_ in slices])
+                )
+            ).all()
+
+            short_sdg_list = Counter([sdg.sdg_number for sdg in sdgs]).most_common(2)
+
+            docs.append(
+                DocumentPayloadModel(
+                    document_id=doc.id,
+                    document_title=doc.title,
+                    document_url=doc.url,
+                    document_desc=doc.description,
+                    document_sdg=[sdg[0] for sdg in short_sdg_list],
+                    document_details=doc.details,
+                    slice_content="",
+                    document_lang="",
+                    document_corpus=corpus.source_name if corpus else "",
+                    slice_sdg=None,
+                )
+            )
+
+        return docs

@@ -1,3 +1,4 @@
+from types import SimpleNamespace
 from unittest import IsolatedAsyncioTestCase, mock
 from unittest.mock import patch
 
@@ -390,6 +391,119 @@ class SearchTestsMultiInput(IsolatedAsyncioTestCase):
             headers={"X-API-Key": "test"},
         )
         self.assertEqual(response.status_code, 204)
+
+
+@patch("src.app.api.api_v1.endpoints.search.session_maker")
+@patch("src.app.services.security.check_api_key", new=mock.MagicMock(return_value=True))
+class DocumentsByIdsTests(IsolatedAsyncioTestCase):
+    async def test_documents_by_ids_empty(self, session_maker_mock, *mocks):
+        session = session_maker_mock.return_value.__enter__.return_value
+        first_exec_result = mock.MagicMock()
+        first_exec_result.all.return_value = []
+        session.execute.side_effect = [first_exec_result]
+
+        response = client.post(
+            f"{settings.API_V1_STR}/search/documents/by_ids",
+            json=[],
+            headers={"X-API-Key": "test"},
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.json(), [])
+
+    async def test_documents_by_ids_single_doc(self, session_maker_mock, *mocks):
+        session = session_maker_mock.return_value.__enter__.return_value
+
+        doc_id = "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa"
+        corpus_id = "bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb"
+        docs_row = SimpleNamespace(
+            title="Title",
+            url="https://example.com",
+            corpus_id=corpus_id,
+            id=doc_id,
+            description="Desc",
+            details={"k": "v"},
+        )
+
+        # 1) documents .all()
+        exec_docs = mock.MagicMock()
+        exec_docs.all.return_value = [docs_row]
+        # 2) corpus .first()
+        exec_corpus = mock.MagicMock()
+        exec_corpus.first.return_value = SimpleNamespace(
+            id=corpus_id, source_name="Corpus"
+        )
+        # 3) slices .all()
+        slice1 = "11111111-1111-1111-1111-111111111111"
+        slice2 = "22222222-2222-2222-2222-222222222222"
+        exec_slices = mock.MagicMock()
+        exec_slices.all.return_value = [
+            SimpleNamespace(id=slice1, document_id=doc_id),
+            SimpleNamespace(id=slice2, document_id=doc_id),
+        ]
+        # 4) sdgs .all()
+        exec_sdgs = mock.MagicMock()
+        exec_sdgs.all.return_value = [
+            SimpleNamespace(sdg_number=1, slice_id=slice1),
+            SimpleNamespace(sdg_number=3, slice_id=slice2),
+            SimpleNamespace(sdg_number=1, slice_id=slice2),
+        ]
+
+        session.execute.side_effect = [exec_docs, exec_corpus, exec_slices, exec_sdgs]
+
+        response = client.post(
+            f"{settings.API_V1_STR}/search/documents/by_ids",
+            json=[doc_id],
+            headers={"X-API-Key": "test"},
+        )
+
+        self.assertEqual(response.status_code, 200)
+        body = response.json()
+        self.assertEqual(len(body), 1)
+        payload = body[0]
+        self.assertEqual(payload["document_id"], doc_id)
+        self.assertEqual(payload["document_title"], "Title")
+        self.assertEqual(payload["document_url"], "https://example.com")
+        self.assertEqual(payload["document_desc"], "Desc")
+        self.assertEqual(payload["document_details"], {"k": "v"})
+        self.assertEqual(payload["document_corpus"], "Corpus")
+        self.assertEqual(payload["document_sdg"], [1, 3])
+        self.assertEqual(payload["slice_content"], "")
+        self.assertIsNone(payload["slice_sdg"])
+
+    async def test_documents_by_ids_corpus_missing(self, session_maker_mock, *mocks):
+        session = session_maker_mock.return_value.__enter__.return_value
+
+        doc_id = "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa"
+        corpus_id = "bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb"
+        docs_row = SimpleNamespace(
+            title="Title",
+            url="https://example.com",
+            corpus_id=corpus_id,
+            id=doc_id,
+            description="Desc",
+            details={},
+        )
+
+        exec_docs = mock.MagicMock()
+        exec_docs.all.return_value = [docs_row]
+        exec_corpus = mock.MagicMock()
+        exec_corpus.first.return_value = None
+        exec_slices = mock.MagicMock()
+        exec_slices.all.return_value = []
+        exec_sdgs = mock.MagicMock()
+        exec_sdgs.all.return_value = []
+        session.execute.side_effect = [exec_docs, exec_corpus, exec_slices, exec_sdgs]
+
+        response = client.post(
+            f"{settings.API_V1_STR}/search/documents/by_ids",
+            json=[doc_id],
+            headers={"X-API-Key": "test"},
+        )
+        self.assertEqual(response.status_code, 200)
+        body = response.json()
+        self.assertEqual(len(body), 1)
+        self.assertEqual(body[0]["document_corpus"], "")
 
     async def test_search_multi_single_query(self, *mocks):
         with mock.patch(
