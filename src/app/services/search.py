@@ -69,7 +69,7 @@ class SearchService:
     def flavored_with_subject(
         sdg_emb: ndarray, subject_emb: ndarray, discipline_factor: int | float = 2
     ):
-        embedding = sdg_emb + [discipline_factor * vec for vec in subject_emb.tolist()]
+        embedding = sdg_emb + (discipline_factor * subject_emb)
 
         return embedding
 
