@@ -136,3 +136,183 @@ class UserApiTests(unittest.IsolatedAsyncioTestCase):
         )
         self.assertEqual(response.status_code, 500)
         self.assertIn("Error creating session", response.json()["detail"])
+
+    @mock.patch("src.app.api.api_v1.endpoints.user.session_maker")
+    async def test_get_user_bookmarks_user_not_found(self, session_maker_mock, *mocks):
+        session = MagicMock()
+        # First DB call checks user existence -> None
+        session.execute.return_value.first.return_value = None
+        session_maker_mock.return_value.__enter__.return_value = session
+
+        user_id = "11111111-1111-1111-1111-111111111111"
+        response = client.get(
+            f"{settings.API_V1_STR}/user/:user_id/bookmarks",
+            headers={"X-API-Key": "test"},
+            params={"user_id": user_id},
+        )
+        self.assertEqual(response.status_code, 404)
+
+    @mock.patch("src.app.api.api_v1.endpoints.user.session_maker")
+    async def test_get_user_bookmarks_success_empty(self, session_maker_mock, *mocks):
+        session = MagicMock()
+        # First call: user exists; Second call: bookmarks list -> []
+        session.execute.return_value.first.return_value = [MagicMock(id="user-1"), None]
+        # When calling .all() for bookmarks, return an empty list to avoid serialization issues
+        session.execute.return_value.all.return_value = []
+        session_maker_mock.return_value.__enter__.return_value = session
+
+        user_id = "22222222-2222-2222-2222-222222222222"
+        response = client.get(
+            f"{settings.API_V1_STR}/user/:user_id/bookmarks",
+            headers={"X-API-Key": "test"},
+            params={"user_id": user_id},
+        )
+        self.assertEqual(response.status_code, 200)
+        body = response.json()
+        self.assertIn("bookmarks", body)
+        self.assertIsInstance(body["bookmarks"], list)
+        self.assertEqual(len(body["bookmarks"]), 0)
+
+    @mock.patch("src.app.api.api_v1.endpoints.user.session_maker")
+    async def test_delete_user_bookmarks_user_not_found(
+        self, session_maker_mock, *mocks
+    ):
+        session = MagicMock()
+        session.execute.return_value.first.return_value = None
+        session_maker_mock.return_value.__enter__.return_value = session
+
+        user_id = "33333333-3333-3333-3333-333333333333"
+        response = client.delete(
+            f"{settings.API_V1_STR}/user/:user_id/bookmarks",
+            headers={"X-API-Key": "test"},
+            params={"user_id": user_id},
+        )
+        self.assertEqual(response.status_code, 404)
+
+    @mock.patch("src.app.api.api_v1.endpoints.user.session_maker")
+    async def test_delete_user_bookmarks_success(self, session_maker_mock, *mocks):
+        session = MagicMock()
+        # user exists
+        session.execute.return_value.first.return_value = MagicMock(id="user-1")
+        # chain: query().filter().delete() -> 3
+        session.query.return_value.filter.return_value.delete.return_value = 3
+        session_maker_mock.return_value.__enter__.return_value = session
+
+        user_id = "44444444-4444-4444-4444-444444444444"
+        response = client.delete(
+            f"{settings.API_V1_STR}/user/:user_id/bookmarks",
+            headers={"X-API-Key": "test"},
+            params={"user_id": user_id},
+        )
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.json(), {"deleted": 3})
+        session.commit.assert_called()
+
+    @mock.patch("src.app.api.api_v1.endpoints.user.session_maker")
+    async def test_delete_user_bookmark_user_not_found(
+        self, session_maker_mock, *mocks
+    ):
+        session = MagicMock()
+        session.execute.return_value.first.return_value = None
+        session_maker_mock.return_value.__enter__.return_value = session
+
+        user_id = "55555555-5555-5555-5555-555555555555"
+        document_id = "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa"
+        response = client.delete(
+            f"{settings.API_V1_STR}/user/:user_id/bookmarks/:document_id",
+            headers={"X-API-Key": "test"},
+            params={"user_id": user_id, "document_id": document_id},
+        )
+        self.assertEqual(response.status_code, 404)
+
+    @mock.patch("src.app.api.api_v1.endpoints.user.session_maker")
+    async def test_delete_user_bookmark_not_found(self, session_maker_mock, *mocks):
+        session = MagicMock()
+        # user exists
+        session.execute.return_value.first.side_effect = [MagicMock(id="user-1"), None]
+        session_maker_mock.return_value.__enter__.return_value = session
+
+        user_id = "66666666-6666-6666-6666-666666666666"
+        document_id = "bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb"
+        response = client.delete(
+            f"{settings.API_V1_STR}/user/:user_id/bookmarks/:document_id",
+            headers={"X-API-Key": "test"},
+            params={"user_id": user_id, "document_id": document_id},
+        )
+        self.assertEqual(response.status_code, 404)
+
+    @mock.patch("src.app.api.api_v1.endpoints.user.session_maker")
+    async def test_delete_user_bookmark_success(self, session_maker_mock, *mocks):
+        session = MagicMock()
+        # user exists then bookmark exists
+        bookmark_obj = MagicMock()
+        session.execute.return_value.first.side_effect = [
+            MagicMock(id="user-1"),
+            (bookmark_obj,),
+        ]
+        session_maker_mock.return_value.__enter__.return_value = session
+
+        user_id = "77777777-7777-7777-7777-777777777777"
+        document_id = "cccccccc-cccc-cccc-cccc-cccccccccccc"
+        response = client.delete(
+            f"{settings.API_V1_STR}/user/:user_id/bookmarks/:document_id",
+            headers={"X-API-Key": "test"},
+            params={"user_id": user_id, "document_id": document_id},
+        )
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.json(), {"deleted": document_id})
+        session.delete.assert_called_with(bookmark_obj)
+        session.commit.assert_called()
+
+    @mock.patch("src.app.api.api_v1.endpoints.user.session_maker")
+    async def test_add_user_bookmark_user_not_found(self, session_maker_mock, *mocks):
+        session = MagicMock()
+        session.execute.return_value.first.return_value = None
+        session_maker_mock.return_value.__enter__.return_value = session
+
+        user_id = "88888888-8888-8888-8888-888888888888"
+        document_id = "dddddddd-dddd-dddd-dddd-dddddddddddd"
+        response = client.post(
+            f"{settings.API_V1_STR}/user/:user_id/bookmarks/:document_id",
+            headers={"X-API-Key": "test"},
+            params={"user_id": user_id, "document_id": document_id},
+        )
+        self.assertEqual(response.status_code, 404)
+
+    @mock.patch("src.app.api.api_v1.endpoints.user.session_maker")
+    async def test_add_user_bookmark_already_exists(self, session_maker_mock, *mocks):
+        session = MagicMock()
+        # user exists, bookmark exists
+        session.execute.return_value.first.side_effect = [
+            MagicMock(id="user-1"),
+            (MagicMock(),),
+        ]
+        session_maker_mock.return_value.__enter__.return_value = session
+
+        user_id = "99999999-9999-9999-9999-999999999999"
+        document_id = "eeeeeeee-eeee-eeee-eeee-eeeeeeeeeeee"
+        response = client.post(
+            f"{settings.API_V1_STR}/user/:user_id/bookmarks/:document_id",
+            headers={"X-API-Key": "test"},
+            params={"user_id": user_id, "document_id": document_id},
+        )
+        self.assertEqual(response.status_code, 400)
+
+    @mock.patch("src.app.api.api_v1.endpoints.user.session_maker")
+    async def test_add_user_bookmark_success(self, session_maker_mock, *mocks):
+        session = MagicMock()
+        # user exists, bookmark not found
+        session.execute.return_value.first.side_effect = [MagicMock(id="user-1"), None]
+        session_maker_mock.return_value.__enter__.return_value = session
+
+        user_id = "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa"
+        document_id = "ffffffff-ffff-ffff-ffff-ffffffffffff"
+        response = client.post(
+            f"{settings.API_V1_STR}/user/:user_id/bookmarks/:document_id",
+            headers={"X-API-Key": "test"},
+            params={"user_id": user_id, "document_id": document_id},
+        )
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.json(), {"added": document_id})
+        session.add.assert_called()
+        session.commit.assert_called()

@@ -4,7 +4,7 @@ from datetime import datetime, timedelta
 from fastapi import APIRouter, HTTPException, Request
 from sqlalchemy.sql import select
 
-from src.app.models.db_models import InferredUser, Session
+from src.app.models.db_models import Bookmark, InferredUser, Session
 from src.app.services.sql_db import session_maker
 from src.app.utils.logger import logger as logger_utils
 
@@ -109,3 +109,118 @@ def handle_session(
     except Exception as e:
         logger.error(f"Error creating session: {e}")
         raise HTTPException(status_code=500, detail=f"Error creating session: {e}")
+
+
+@router.get(
+    "/:user_id/bookmarks",
+    summary="get user bookmarks",
+    description="Get all bookmarks for a user",
+)
+def get_user_bookmarks(user_id: uuid.UUID):
+    with session_maker() as s:
+        user = s.execute(
+            select(InferredUser.id).where(InferredUser.id == user_id)
+        ).first()
+        if not user:
+            logger.error(f"User={user_id} does not exist")
+            raise HTTPException(
+                status_code=404, detail=f"User={user_id} does not exist"
+            )
+        bookmarks = s.execute(
+            select(Bookmark).where(Bookmark.inferred_user_id == user_id)
+        ).all()
+        return {"bookmarks": [bookmark for (bookmark,) in bookmarks]}
+
+
+@router.delete(
+    "/:user_id/bookmarks",
+    summary="delete user bookmarks",
+    description="Delete all bookmarks for a user",
+)
+def delete_user_bookmarks(user_id: uuid.UUID):
+    with session_maker() as s:
+        user = s.execute(
+            select(InferredUser.id).where(InferredUser.id == user_id)
+        ).first()
+        if not user:
+            logger.error(f"User={user_id} does not exist")
+            raise HTTPException(
+                status_code=404, detail=f"User={user_id} does not exist"
+            )
+        deleted = (
+            s.query(Bookmark).filter(Bookmark.inferred_user_id == user_id).delete()
+        )
+        s.commit()
+        logger.info(f"Deleted {deleted} bookmarks for user={user_id}")
+        return {"deleted": deleted}
+
+
+@router.delete(
+    "/:user_id/bookmarks/:document_id",
+    summary="delete user bookmark",
+    description="Delete a bookmark for a user",
+)
+def delete_user_bookmark(user_id: uuid.UUID, document_id: uuid.UUID):
+    with session_maker() as s:
+        user = s.execute(
+            select(InferredUser.id).where(InferredUser.id == user_id)
+        ).first()
+
+        if not user:
+            logger.error(f"User={user_id} does not exist")
+            raise HTTPException(
+                status_code=404, detail=f"User={user_id} does not exist"
+            )
+        bookmark = s.execute(
+            select(Bookmark).where(
+                (Bookmark.inferred_user_id == user_id)
+                & (Bookmark.document_id == document_id)
+            )
+        ).first()
+        if not bookmark:
+            logger.error(f"Bookmark={document_id} for user={user_id} does not exist")
+            raise HTTPException(
+                status_code=404,
+                detail=f"Bookmark={document_id} for user={user_id} does not exist",
+            )
+        s.delete(bookmark[0])
+        s.commit()
+        logger.info(f"Deleted bookmark={document_id} for user={user_id}")
+        return {"deleted": document_id}
+
+
+@router.post(
+    "/:user_id/bookmarks/:document_id",
+    summary="add user bookmark",
+    description="Add a bookmark for a user",
+)
+def add_user_bookmark(user_id: uuid.UUID, document_id: uuid.UUID):
+    with session_maker() as s:
+        user = s.execute(
+            select(InferredUser.id).where(InferredUser.id == user_id)
+        ).first()
+        if not user:
+            logger.error(f"User={user_id} does not exist")
+            raise HTTPException(
+                status_code=404, detail=f"User={user_id} does not exist"
+            )
+        bookmark = s.execute(
+            select(Bookmark).where(
+                (Bookmark.inferred_user_id == user_id)
+                & (Bookmark.document_id == document_id)
+            )
+        ).first()
+        if bookmark:
+            logger.error(f"Bookmark={document_id} for user={user_id} already exists")
+            raise HTTPException(
+                status_code=400,
+                detail=f"Bookmark={document_id} for user={user_id} already exists",
+            )
+        new_bookmark = Bookmark(
+            document_id=document_id,
+            inferred_user_id=user_id,
+        )
+        s.add(new_bookmark)
+        s.commit()
+        logger.info(f"Added bookmark={document_id} for user={user_id}")
+        return {"added": document_id}

@@ -167,6 +167,7 @@ class UserProfile(Base):
 
 class Bookmark(Base):
     __tablename__ = "bookmark"
+    __table_args__ = {"schema": "user_related"}
 
     id = Column(
         Uuid(as_uuid=True),
@@ -174,18 +175,32 @@ class Bookmark(Base):
         server_default="gen_random_uuid()",
         nullable=False,
     )
-    document_id = Column(
-        Uuid(as_uuid=True),
+    document_id: Mapped[UUID] = mapped_column(
+        types.Uuid,
         ForeignKey("document_related.welearn_document.id"),
         nullable=False,
     )
-    user_id = Column(
-        Uuid(as_uuid=True),
-        ForeignKey("user_related.user_profile.id"),
+    inferred_user_id: Mapped[UUID] = mapped_column(
+        types.Uuid,
+        ForeignKey("user_related.inferred_user.id"),
         nullable=False,
     )
 
-    __table_args__ = {"schema": "user_related"}
+    created_at: Mapped[datetime] = mapped_column(
+        TIMESTAMP(timezone=False),
+        nullable=False,
+        default=func.localtimestamp(),
+        server_default="NOW()",
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        TIMESTAMP(timezone=False),
+        nullable=False,
+        default=func.localtimestamp(),
+        server_default="NOW()",
+        onupdate=func.localtimestamp(),
+    )
+
+    user = relationship("InferredUser", foreign_keys=[inferred_user_id])
 
 
 class APIKeyManagement(Base):
