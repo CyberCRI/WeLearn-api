@@ -61,7 +61,7 @@ class SearchFilters(BaseModel):
         for key, values in filters.items():
             if not values:
                 continue
-            if isinstance(values) == Range:
+            if isinstance(values, Range):
                 qdrant_filter.append(
                     FieldCondition(
                         key=key,

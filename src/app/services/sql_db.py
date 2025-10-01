@@ -1,5 +1,6 @@
 from sqlalchemy import URL
 
+from app.models.documents import JourneySection
 from src.app.api.dependencies import get_settings
 from src.app.models.db_models import ContextDocument, EndpointRequest
 from src.app.models.search import ContextType
@@ -76,7 +77,15 @@ class WL_SQL:
             )
         return sdg_meta_documents
 
-    def get_meta_document(self, journey_part, sdg):
+    def get_context_documents(self, journey_part: JourneySection, sdg: int):
+        """
+        Get the context documents from the database.
+
+        Args:
+            journey_part: The journey part to get the context documents for.
+            sdg: The SDG to get the context documents for.
+        Returns: List of context documents.
+        """
         with self.session_maker() as session:
             sdg_meta_documents: list[ContextDocument] = (
                 session.query(ContextDocument)
@@ -94,4 +103,4 @@ session_maker = wl_sql.session_maker
 register_endpoint = wl_sql.register_endpoint
 get_subject = wl_sql.get_subject
 get_subjects = wl_sql.get_subjects
-get_meta_document = wl_sql.get_meta_document
+get_context_documents = wl_sql.get_context_documents
