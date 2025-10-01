@@ -233,25 +233,49 @@ def get_documents_payload_by_ids(
             ).where(WeLearnDocument.id.in_(documents_ids))
         ).all()
 
+        # Batch fetch corpora
+        corpus_ids = list({doc.corpus_id for doc in documents})
+
+        corpora = s.execute(
+            select(Corpus.id, Corpus.source_name).where(Corpus.id.in_(corpus_ids))
+        ).all()
+
+        corpus_map = {corpus.id: corpus.source_name for corpus in corpora}
+
+        # Batch fetch slices
+        slices = s.execute(
+            select(DocumentSlice.id, DocumentSlice.document_id).where(
+                DocumentSlice.document_id.in_(documents_ids)
+            )
+        ).all()
+
+        # Map document_id -> list of slices
+        slices_ids_map = {}
+        slice_ids = []
+        for slice_ in slices:
+            slices_ids_map.setdefault(slice_.document_id, []).append(slice_.id)
+            slice_ids.append(slice_.id)
+
+        # Batch fetch SDGs
+        sdgs = s.execute(
+            select(Sdg.sdg_number, Sdg.slice_id).where(Sdg.slice_id.in_(slice_ids))
+        ).all()
+
+        # Map slice_id -> list of sdgs
+        sdg_map = {}
+        for sdg in sdgs:
+            sdg_map.setdefault(sdg.slice_id, []).append(sdg)
+
         docs = []
         for doc in documents:
-            corpus = s.execute(
-                select(Corpus.id, Corpus.source_name).where(Corpus.id == doc.corpus_id)
-            ).first()
-
-            slices = s.execute(
-                select(DocumentSlice.id, DocumentSlice.document_id).where(
-                    DocumentSlice.document_id == doc.id
-                )
-            ).all()
-
-            sdgs = s.execute(
-                select(Sdg.sdg_number, Sdg.slice_id).where(
-                    Sdg.slice_id.in_([slice_.id for slice_ in slices])
-                )
-            ).all()
-
-            short_sdg_list = Counter([sdg.sdg_number for sdg in sdgs]).most_common(2)
+            corpus = corpus_map.get(doc.corpus_id)
+            slices_id_for_doc = slices_ids_map.get(doc.id, [])
+            sdgs_for_doc = []
+            for slice_id in slices_id_for_doc:
+                sdgs_for_doc.extend(sdg_map.get(slice_id, []))
+            short_sdg_list = Counter(
+                [sdg.sdg_number for sdg in sdgs_for_doc]
+            ).most_common(2)
 
             docs.append(
                 DocumentPayloadModel(
@@ -263,7 +287,7 @@ def get_documents_payload_by_ids(
                     document_details=doc.details,
                     slice_content="",
                     document_lang="",
-                    document_corpus=corpus.source_name if corpus else "",
+                    document_corpus=corpus if corpus else "",
                     slice_sdg=None,
                 )
             )

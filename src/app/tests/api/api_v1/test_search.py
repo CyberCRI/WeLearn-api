@@ -398,9 +398,16 @@ class SearchTestsMultiInput(IsolatedAsyncioTestCase):
 class DocumentsByIdsTests(IsolatedAsyncioTestCase):
     async def test_documents_by_ids_empty(self, session_maker_mock, *mocks):
         session = session_maker_mock.return_value.__enter__.return_value
-        first_exec_result = mock.MagicMock()
-        first_exec_result.all.return_value = []
-        session.execute.side_effect = [first_exec_result]
+        exec_docs = mock.MagicMock()
+        exec_docs.all.return_value = []
+        exec_corpora = mock.MagicMock()
+        exec_corpora.all.return_value = []
+        exec_slices = mock.MagicMock()
+        exec_slices.all.return_value = []
+        exec_sdgs = mock.MagicMock()
+        exec_sdgs.all.return_value = []
+
+        session.execute.side_effect = [exec_docs, exec_corpora, exec_slices, exec_sdgs]
 
         response = client.post(
             f"{settings.API_V1_STR}/search/documents/by_ids",
@@ -428,11 +435,11 @@ class DocumentsByIdsTests(IsolatedAsyncioTestCase):
         # 1) documents .all()
         exec_docs = mock.MagicMock()
         exec_docs.all.return_value = [docs_row]
-        # 2) corpus .first()
-        exec_corpus = mock.MagicMock()
-        exec_corpus.first.return_value = SimpleNamespace(
-            id=corpus_id, source_name="Corpus"
-        )
+        # 2) corpora .all()
+        exec_corpora = mock.MagicMock()
+        exec_corpora.all.return_value = [
+            SimpleNamespace(id=corpus_id, source_name="Corpus")
+        ]
         # 3) slices .all()
         slice1 = "11111111-1111-1111-1111-111111111111"
         slice2 = "22222222-2222-2222-2222-222222222222"
@@ -449,7 +456,7 @@ class DocumentsByIdsTests(IsolatedAsyncioTestCase):
             SimpleNamespace(sdg_number=1, slice_id=slice2),
         ]
 
-        session.execute.side_effect = [exec_docs, exec_corpus, exec_slices, exec_sdgs]
+        session.execute.side_effect = [exec_docs, exec_corpora, exec_slices, exec_sdgs]
 
         response = client.post(
             f"{settings.API_V1_STR}/search/documents/by_ids",
@@ -487,13 +494,13 @@ class DocumentsByIdsTests(IsolatedAsyncioTestCase):
 
         exec_docs = mock.MagicMock()
         exec_docs.all.return_value = [docs_row]
-        exec_corpus = mock.MagicMock()
-        exec_corpus.first.return_value = None
+        exec_corpora = mock.MagicMock()
+        exec_corpora.all.return_value = []
         exec_slices = mock.MagicMock()
         exec_slices.all.return_value = []
         exec_sdgs = mock.MagicMock()
         exec_sdgs.all.return_value = []
-        session.execute.side_effect = [exec_docs, exec_corpus, exec_slices, exec_sdgs]
+        session.execute.side_effect = [exec_docs, exec_corpora, exec_slices, exec_sdgs]
 
         response = client.post(
             f"{settings.API_V1_STR}/search/documents/by_ids",

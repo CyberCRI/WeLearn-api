@@ -217,11 +217,11 @@ class UserApiTests(unittest.IsolatedAsyncioTestCase):
         session_maker_mock.return_value.__enter__.return_value = session
 
         user_id = "55555555-5555-5555-5555-555555555555"
-        bookmark_id = "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa"
+        document_id = "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa"
         response = client.delete(
-            f"{settings.API_V1_STR}/user/:user_id/bookmarks/:bookmark_id",
+            f"{settings.API_V1_STR}/user/:user_id/bookmarks/:document_id",
             headers={"X-API-Key": "test"},
-            params={"user_id": user_id, "bookmark_id": bookmark_id},
+            params={"user_id": user_id, "document_id": document_id},
         )
         self.assertEqual(response.status_code, 404)
 
@@ -233,11 +233,11 @@ class UserApiTests(unittest.IsolatedAsyncioTestCase):
         session_maker_mock.return_value.__enter__.return_value = session
 
         user_id = "66666666-6666-6666-6666-666666666666"
-        bookmark_id = "bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb"
+        document_id = "bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb"
         response = client.delete(
-            f"{settings.API_V1_STR}/user/:user_id/bookmarks/:bookmark_id",
+            f"{settings.API_V1_STR}/user/:user_id/bookmarks/:document_id",
             headers={"X-API-Key": "test"},
-            params={"user_id": user_id, "bookmark_id": bookmark_id},
+            params={"user_id": user_id, "document_id": document_id},
         )
         self.assertEqual(response.status_code, 404)
 
@@ -253,14 +253,14 @@ class UserApiTests(unittest.IsolatedAsyncioTestCase):
         session_maker_mock.return_value.__enter__.return_value = session
 
         user_id = "77777777-7777-7777-7777-777777777777"
-        bookmark_id = "cccccccc-cccc-cccc-cccc-cccccccccccc"
+        document_id = "cccccccc-cccc-cccc-cccc-cccccccccccc"
         response = client.delete(
-            f"{settings.API_V1_STR}/user/:user_id/bookmarks/:bookmark_id",
+            f"{settings.API_V1_STR}/user/:user_id/bookmarks/:document_id",
             headers={"X-API-Key": "test"},
-            params={"user_id": user_id, "bookmark_id": bookmark_id},
+            params={"user_id": user_id, "document_id": document_id},
         )
         self.assertEqual(response.status_code, 200)
-        self.assertEqual(response.json(), {"deleted": bookmark_id})
+        self.assertEqual(response.json(), {"deleted": document_id})
         session.delete.assert_called_with(bookmark_obj)
         session.commit.assert_called()
 
@@ -271,11 +271,11 @@ class UserApiTests(unittest.IsolatedAsyncioTestCase):
         session_maker_mock.return_value.__enter__.return_value = session
 
         user_id = "88888888-8888-8888-8888-888888888888"
-        bookmark_id = "dddddddd-dddd-dddd-dddd-dddddddddddd"
+        document_id = "dddddddd-dddd-dddd-dddd-dddddddddddd"
         response = client.post(
-            f"{settings.API_V1_STR}/user/:user_id/bookmarks/:bookmark_id",
+            f"{settings.API_V1_STR}/user/:user_id/bookmarks/:document_id",
             headers={"X-API-Key": "test"},
-            params={"user_id": user_id, "bookmark_id": bookmark_id},
+            params={"user_id": user_id, "document_id": document_id},
         )
         self.assertEqual(response.status_code, 404)
 
@@ -290,11 +290,11 @@ class UserApiTests(unittest.IsolatedAsyncioTestCase):
         session_maker_mock.return_value.__enter__.return_value = session
 
         user_id = "99999999-9999-9999-9999-999999999999"
-        bookmark_id = "eeeeeeee-eeee-eeee-eeee-eeeeeeeeeeee"
+        document_id = "eeeeeeee-eeee-eeee-eeee-eeeeeeeeeeee"
         response = client.post(
-            f"{settings.API_V1_STR}/user/:user_id/bookmarks/:bookmark_id",
+            f"{settings.API_V1_STR}/user/:user_id/bookmarks/:document_id",
             headers={"X-API-Key": "test"},
-            params={"user_id": user_id, "bookmark_id": bookmark_id},
+            params={"user_id": user_id, "document_id": document_id},
         )
         self.assertEqual(response.status_code, 400)
 
@@ -306,13 +306,13 @@ class UserApiTests(unittest.IsolatedAsyncioTestCase):
         session_maker_mock.return_value.__enter__.return_value = session
 
         user_id = "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa"
-        bookmark_id = "ffffffff-ffff-ffff-ffff-ffffffffffff"
+        document_id = "ffffffff-ffff-ffff-ffff-ffffffffffff"
         response = client.post(
-            f"{settings.API_V1_STR}/user/:user_id/bookmarks/:bookmark_id",
+            f"{settings.API_V1_STR}/user/:user_id/bookmarks/:document_id",
             headers={"X-API-Key": "test"},
-            params={"user_id": user_id, "bookmark_id": bookmark_id},
+            params={"user_id": user_id, "document_id": document_id},
         )
         self.assertEqual(response.status_code, 200)
-        self.assertEqual(response.json(), {"added": bookmark_id})
+        self.assertEqual(response.json(), {"added": document_id})
         session.add.assert_called()
         session.commit.assert_called()
