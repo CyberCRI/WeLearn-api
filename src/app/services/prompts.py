@@ -88,10 +88,9 @@ TONE: Maintain an informative, technical, and elaborated tone.
 
 AUDIENCE: Technical search engine used for research.
 
-RESPONSE: Reformulate the new question respecting the language ISO_CODE: en and ISO_CODE: fr.
+RESPONSE: Reformulate the new question. Make sure the new question is reformulated in the same language as the user used.
 Return the question with the following format:
-    "STANDALONE_QUESTION_EN": "question",
-    "STANDALONE_QUESTION_FR": "question",
+    "STANDALONE_QUESTION": "question",
     "USER_LANGUAGE": "ISO_CODE",
     "QUERY_STATUS": "VALID"
     "reformulated: Your reformulated question"
@@ -111,7 +110,8 @@ TONE: Maintain an informative, technical, and elaborated tone.
 
 AUDIENCE: Technical search engine used for research.
 
-RESPONSE: Reformulate the new question respecting the schema ISO_CODE: fr and ISO_CODE: en. Set QUESTION_STATUS to "VALID" if the question is reformulated successfully.
+RESPONSE: Reformulate the new question respecting the schema ISO_CODE: fr and ISO_CODE: en. The question should be reformulated in the same language as the original.
+Set QUESTION_STATUS to "VALID" if the question is reformulated successfully.
 If you don't have enough context to generate a standalone question, take the context from previous user messages.
 If the user input is not a question or you are unable to reformulate, return "QUESTION_STATUS: INVLAID".
 
