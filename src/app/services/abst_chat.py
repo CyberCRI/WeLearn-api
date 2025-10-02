@@ -238,8 +238,7 @@ class AbstractChat(ABC):
         ref_to_past: dict | None = await self._detect_past_message_ref(query, history)
         if ref_to_past and ref_to_past["REF_TO_PAST"]:
             return ReformulatedQueryResponse(
-                STANDALONE_QUESTION_EN=None,
-                STANDALONE_QUESTION_FR=None,
+                STANDALONE_QUESTION=None,
                 USER_LANGUAGE=None,
                 QUERY_STATUS="REF_TO_PAST" if len(history) >= 1 else "INVALID",
             )
@@ -377,7 +376,6 @@ class AbstractChat(ABC):
         docs: List[Document],
         subject: str | None = None,
         streamed_ans: bool = False,
-        should_check_lang: bool = True,
     ):
         """
         Sends a chat message.
@@ -388,7 +386,6 @@ class AbstractChat(ABC):
             docs (list): List of documents.
             subject (str): Subject.
             streamed_ans (bool): Whether to stream the answer.
-            should_check_lang (bool): Whether to check the language.
 
         Returns:
             str: The chat message content.
@@ -396,8 +393,7 @@ class AbstractChat(ABC):
 
         # ISO_CODE = {"ISO_CODE": "en"}
 
-        if should_check_lang:
-            ISO_CODE = await self._detect_language(query)
+        ISO_CODE = await self._detect_language(query)
 
         messages = [
             {

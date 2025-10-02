@@ -33,10 +33,6 @@ def detect_language_from_entry(entry: str) -> str:
             raise LanguageNotSupportedError("No language detected", "LANG_NOT_DETECTED")
 
         primary_language = detected_languages[0].lang
-        if primary_language not in ["en", "fr"]:
-            raise LanguageNotSupportedError(
-                "Language not supported", "LANG_NOT_SUPPORTED"
-            )
 
         logger.info("Detected language: %s", primary_language)
         return primary_language

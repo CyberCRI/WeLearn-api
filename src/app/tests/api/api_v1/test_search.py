@@ -8,11 +8,7 @@ from qdrant_client.http import models
 from src.app.core.config import settings
 from src.app.models import collections
 from src.app.models.search import EnhancedSearchQuery
-from src.app.services.exceptions import (
-    CollectionNotFoundError,
-    LanguageNotSupportedError,
-    ModelNotFoundError,
-)
+from src.app.services.exceptions import CollectionNotFoundError, ModelNotFoundError
 from src.app.services.search import SearchService, sort_slices_using_mmr
 from src.main import app
 
@@ -21,9 +17,9 @@ client = TestClient(app)
 search_pipeline_path = "src.app.services.search.SearchService"
 
 mocked_collection = collections.Collection(
-    lang="fr",
+    lang="mul",
     model="model",
-    name="collection_welearn_fr_model",
+    name="collection_welearn_mul_model",
 )
 mocked_scored_points = [
     models.ScoredPoint(
@@ -91,7 +87,11 @@ long_query = "français with a very long sentence to test what you are saying an
 @patch(
     f"{search_pipeline_path}.get_collections",
     new=mock.AsyncMock(
-        return_value=("collection_welearn_fr_model", "collection_en_model")
+        return_value=(
+            "collection_welearn_fr_model",
+            "collection_en_model",
+            "collection_welearn_mul_model",
+        )
     ),
 )
 class SearchTests(IsolatedAsyncioTestCase):
@@ -115,7 +115,7 @@ class SearchTests(IsolatedAsyncioTestCase):
     async def test_search_model_not_found(self, *mocks):
         with self.assertRaises(ModelNotFoundError):
             response = client.post(
-                f"{settings.API_V1_STR}/search/collections/collection_welearn_fr_model?query=français&nb_results=10",  # noqa: E501
+                f"{settings.API_V1_STR}/search/collections/collection_welearn_mul_model?query=français&nb_results=10",  # noqa: E501
                 headers={"X-API-Key": "test"},
             )
 
@@ -180,26 +180,6 @@ class SearchTests(IsolatedAsyncioTestCase):
 @patch("src.app.services.sql_db.session_maker")
 @patch("src.app.services.security.check_api_key", new=mock.MagicMock(return_value=True))
 class SearchTestsSlices(IsolatedAsyncioTestCase):
-    async def test_search_all_slices_lang_not_supported(self, *mocks):
-        with self.assertRaises(LanguageNotSupportedError):
-            response = client.post(
-                f"{settings.API_V1_STR}/search/by_slices",
-                json={
-                    "query": "pesquisa em portugues, mas longa para poder ser utilizada, ainda mais longa e com acentos éé e cedilhas çç"  # noqa: E501,
-                },
-                headers={"X-API-Key": "test"},
-            )
-            self.assertEqual(response.status_code, 400)
-            self.assertEqual(
-                response.json(),
-                {
-                    "detail": {
-                        "message": "Language not supported",
-                        "code": "LANG_NOT_SUPPORTED",
-                    }
-                },
-            )
-
     @patch(
         f"{search_pipeline_path}.get_collection_by_language",
         new=mock.AsyncMock(
@@ -265,25 +245,6 @@ class SearchTestsSlices(IsolatedAsyncioTestCase):
 @patch("src.app.services.sql_db.session_maker")
 @patch("src.app.services.security.check_api_key", new=mock.MagicMock(return_value=True))
 class SearchTestsAll(IsolatedAsyncioTestCase):
-    async def test_search_all_lang_not_supported(self, *mocks):
-        with self.assertRaises(LanguageNotSupportedError):
-            response = client.post(
-                f"{settings.API_V1_STR}/search/by_document",
-                json={
-                    "query": "uma frase longa para fazer uma pesquisa el portugues e tes um erro porque nao é suportado"
-                },  # noqa: E501
-                headers={"X-API-Key": "test"},
-            )
-            self.assertEqual(response.status_code, 400)
-            self.assertEqual(
-                response.json(),
-                {
-                    "detail": {
-                        "message": "Language not supported",
-                        "code": "LANG_NOT_SUPPORTED",
-                    }
-                },
-            )
 
     @patch(
         f"{search_pipeline_path}.get_collection_by_language",
@@ -352,29 +313,6 @@ class TestSortSlicesUsingMMR(IsolatedAsyncioTestCase):
 @patch("src.app.services.sql_db.session_maker")
 @patch("src.app.services.security.check_api_key", new=mock.MagicMock(return_value=True))
 class SearchTestsMultiInput(IsolatedAsyncioTestCase):
-    async def test_search_multi_lang_not_supported(self, *mocks):
-        with self.assertRaises(LanguageNotSupportedError):
-            response = client.post(
-                f"{settings.API_V1_STR}/search/multiple_by_slices",
-                json={
-                    "query": [
-                        "uma frase longa para fazer uma pesquisa el portugues e tes um erro porque nao é suportado",
-                        "une phrase plus longue pour tester la recherche en français. et voir ce que cela donne",
-                    ]  # noqa: E501
-                },  # noqa: E501
-                headers={"X-API-Key": "test"},
-            )
-            self.assertEqual(response.status_code, 400)
-            self.assertEqual(
-                response.json(),
-                {
-                    "detail": {
-                        "message": "Language not supported",
-                        "code": "LANG_NOT_SUPPORTED",
-                    }
-                },
-            )
-
     @patch(
         f"{search_pipeline_path}.search_handler",
         return_value=[],
