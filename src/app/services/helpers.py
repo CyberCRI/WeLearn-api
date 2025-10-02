@@ -30,7 +30,7 @@ def convert_embedding_bytes(
         raise ValueError(
             f"Embedding must be of type bytes, received type: {type(embeddings_byte).__name__}"
         )
-    return numpy.frombuffer(bytes(embeddings_byte), dtype=dtype)
+    return numpy.frombuffer(embeddings_byte, dtype=dtype)
 
 
 @log_time_and_error_sync
