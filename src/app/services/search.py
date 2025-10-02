@@ -15,7 +15,6 @@ from src.app.api.dependencies import get_settings
 from src.app.models.collections import Collection
 from src.app.models.search import EnhancedSearchQuery, SearchFilters, SearchMethods
 from src.app.services.exceptions import CollectionNotFoundError, ModelNotFoundError
-from src.app.services.helpers import detect_language_from_entry
 from src.app.utils.decorators import log_time_and_error, log_time_and_error_sync
 from src.app.utils.logger import logger as logger_utils
 
@@ -74,7 +73,7 @@ class SearchService:
         return self.collections
 
     @log_time_and_error
-    async def get_collection_by_language(self, lang: str) -> Collection:
+    async def get_collection_by_language(self, lang: str = "mul") -> Collection:
         collections = self.collections or await self.get_collections()
 
         collection = next(
@@ -191,8 +190,7 @@ class SearchService:
     ) -> list[http_models.ScoredPoint]:
         assert isinstance(qp.query, str)
 
-        lang = detect_language_from_entry(qp.query)
-        collection = await self.get_collection_by_language(lang)
+        collection = await self.get_collection_by_language(lang="mul")
         subject_vector = get_subject_vector(qp.subject)
         embedding = self.get_query_embed(
             model=collection.model,
