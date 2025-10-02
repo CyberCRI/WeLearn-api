@@ -4,9 +4,7 @@ from unittest import mock
 from fastapi.testclient import TestClient
 
 from app.core.config import settings
-from src.app.api.api_v1.endpoints.micro_learning import get_full_journey
 from src.app.models.db_models import ContextDocument
-from src.app.models.search import SearchFilters
 from src.main import app
 
 client = TestClient(app)

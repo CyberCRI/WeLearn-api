@@ -2,7 +2,6 @@ from unittest import TestCase, mock
 
 import numpy
 from langdetect.language import Language
-from litellm.llms.deprecated_providers.aleph_alpha import embedding
 
 from src.app.models.documents import Document, DocumentPayloadModel
 from src.app.services.exceptions import LanguageNotSupportedError
