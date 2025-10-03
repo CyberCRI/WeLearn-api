@@ -33,7 +33,6 @@ async def get_subject_list() -> list[str]:
     "/full_journey",
     summary="get the full journey",
     description="Get all documents for the micro learning journey of one sdg",
-    # response_model=list[JourneySection],
 )
 async def get_full_journey(lang: str, sdg: int, subject: str):
     journey_part = [i.lower() for i in JourneySectionType]
