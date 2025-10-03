@@ -1,6 +1,5 @@
 import numpy
-from fastapi import APIRouter
-from qdrant_client.http.models import models
+from fastapi import APIRouter, HTTPException
 
 from src.app.models.db_models import ContextDocument
 from src.app.models.documents import JourneySectionType
