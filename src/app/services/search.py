@@ -135,6 +135,8 @@ class SearchService:
         except ValueError:
             logger.error("api_error=MODEL_NOT_FOUND model=%s", curr_model)
             raise ModelNotFoundError()
+
+        logger.debug("Model loaded: %s", curr_model)
         return (model.get_max_seq_length(), model)
 
     @cache
@@ -167,6 +169,7 @@ class SearchService:
         logger.debug("Creating embeddings model=%s", curr_model)
         time_start = time.time()
         seq_len, model = self._get_model(curr_model)
+        logger.debug(">>>>>>>>>>>>>> Model max_seq_len=%s", seq_len)
         inputs = self._split_input_seq_len(seq_len, search_input)
 
         try:
