@@ -4,6 +4,8 @@ from functools import cache
 from typing import Tuple, cast
 
 import numpy as np
+from pathlib import Path
+
 from qdrant_client import AsyncQdrantClient
 from qdrant_client import models as qdrant_models
 from qdrant_client.http import exceptions as qdrant_exceptions
@@ -124,15 +126,23 @@ class SearchService:
     def _get_model(self, curr_model: str) -> tuple[int | None, SentenceTransformer]:
         try:
             time_start = time.time()
-            # TODO: path should be an env variable
-            model = SentenceTransformer(f"../models/embedding/{curr_model}/")
+
+            base_dir = Path(__file__).resolve().parent.parent.parent.parent.parent  
+            model_path = base_dir / "models" / "embedding" / curr_model
+
+            if not model_path.exists():
+                logger.error("Model path does not exist: %s", model_path)
+                raise ModelNotFoundError()
+
+            model = SentenceTransformer(str(model_path))
             time_end = time.time()
             logger.info(
                 "method=get_model latency=%s model=%s",
                 round(time_end - time_start, 2),
                 curr_model,
             )
-        except ValueError:
+        except Exception as ex:
+            print(ex)
             logger.error("api_error=MODEL_NOT_FOUND model=%s", curr_model)
             raise ModelNotFoundError()
 
