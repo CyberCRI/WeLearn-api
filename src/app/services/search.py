@@ -285,6 +285,7 @@ class SearchService:
                 with_vectors=with_vectors,
                 with_payload=self.payload_keys,
                 score_threshold=0.5,
+                search_params=qdrant_models.SearchParams(indexed_only=True),
             )
             logger.debug(
                 "method=search collection=%s nb_results=%s", collection_info, len(resp)
