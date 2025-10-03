@@ -3,7 +3,7 @@ from unittest import mock
 
 from fastapi.testclient import TestClient
 
-from app.core.config import settings
+from src.app.core.config import settings
 from src.app.models.db_models import ContextDocument
 from src.main import app
 
