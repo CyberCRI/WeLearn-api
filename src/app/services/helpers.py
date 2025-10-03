@@ -5,8 +5,9 @@ from typing import List
 
 import numpy
 from langdetect import detect_langs
+from qdrant_client.http.models import models
 
-from src.app.models.documents import Document
+from src.app.models.documents import Document, JourneySectionType
 from src.app.services.exceptions import LanguageNotSupportedError
 from src.app.utils.decorators import log_time_and_error_sync
 from src.app.utils.logger import logger as utils_logger
@@ -119,3 +120,33 @@ def extract_json_from_response(response: str) -> dict:
     except json.JSONDecodeError as e:
         logger.error("api_error=json_decode_error, response=%s", response)
         raise e
+
+
+def choose_readability_according_journey_section_type(
+    sdg_doc_type: JourneySectionType,
+) -> models.Range:
+    """
+    Choose the readability range according to the journey section type.
+    1. Introduction: 60-100 (easier)
+    2. Target: 0-60 (harder)
+    Args:
+        sdg_doc_type: The journey section type.
+
+    Returns: The readability range for Qdrant search.
+
+    """
+    if sdg_doc_type == JourneySectionType.INTRODUCTION:
+        readability_range = models.Range(
+            gte=60,
+            lte=100,
+        )
+    elif sdg_doc_type == JourneySectionType.TARGET:
+        readability_range = models.Range(
+            gte=0,
+            lte=60,
+        )
+    else:
+        raise NotImplementedError(
+            f"Journey section type '{sdg_doc_type}' is not implemented."
+        )
+    return readability_range

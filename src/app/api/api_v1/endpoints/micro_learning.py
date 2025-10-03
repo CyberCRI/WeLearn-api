@@ -5,7 +5,10 @@ from qdrant_client.http.models import models
 from src.app.models.db_models import ContextDocument
 from src.app.models.documents import JourneySectionType
 from src.app.models.search import SearchFilters
-from src.app.services.helpers import convert_embedding_bytes
+from src.app.services.helpers import (
+    choose_readability_according_journey_section_type,
+    convert_embedding_bytes,
+)
 from src.app.services.search import SearchService
 from src.app.services.sql_db import get_context_documents, get_subject, get_subjects
 from src.app.utils.logger import logger as logger_utils
@@ -73,21 +76,9 @@ async def get_full_journey(lang: str, sdg: int, subject: str):
                 f"Meta document type '{sdg_doc.context_type}' is not a valid JourneySectionType."
             )
 
-        readability_range: models.Range
-        if sdg_doc_type == JourneySectionType.INTRODUCTION:
-            readability_range = models.Range(
-                gte=60,
-                lte=100,
-            )
-        elif sdg_doc_type == JourneySectionType.TARGET:
-            readability_range = models.Range(
-                gte=0,
-                lte=60,
-            )
-        else:
-            raise NotImplementedError(
-                f"Journey section type '{sdg_doc_type}' is not implemented."
-            )
+        readability_range = choose_readability_according_journey_section_type(
+            sdg_doc_type
+        )
 
         if not sdg_doc.context_type.lower() in ret:
             ret[sdg_doc.context_type.lower()] = []
