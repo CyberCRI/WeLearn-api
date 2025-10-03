@@ -37,7 +37,9 @@ async def get_full_journey(lang: str, sdg: int, subject: str):
     journey_part = [i.lower() for i in JourneySectionType]
     sdg_meta_documents = get_context_documents(journey_part, sdg)
     if not sdg_meta_documents:
-        raise HTTPException(status_code=404, detail=f"SDG '{sdg}' not found in meta documents.")
+        raise HTTPException(
+            status_code=404, detail=f"SDG '{sdg}' not found in meta documents."
+        )
 
     subject_meta_document: ContextDocument | None = get_subject(subject=subject)
 
