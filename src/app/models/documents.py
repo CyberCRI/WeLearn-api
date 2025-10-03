@@ -1,4 +1,5 @@
 from enum import StrEnum, auto
+import uuid
 
 from pydantic import BaseModel
 
@@ -14,7 +15,7 @@ class DocumentPayloadModel(BaseModel):
     document_corpus: str
     document_desc: str
     document_details: dict[str, list[dict] | list[str] | str | int | float | None]
-    document_id: str
+    document_id: uuid.UUID
     document_lang: str
     document_sdg: list[int]
     document_title: str

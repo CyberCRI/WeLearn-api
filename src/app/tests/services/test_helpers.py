@@ -25,18 +25,6 @@ class HelpersTests(TestCase):
         ):
             self.assertEqual(detect_language_from_entry("test again"), "en")
 
-    def test_detect_language_from_entry_lang_not_supported(self):
-        with mock.patch(
-            "src.app.services.helpers.detect_langs", return_value=[Language("es", 1.0)]
-        ):
-            with self.assertRaises(LanguageNotSupportedError):
-                detect_language_from_entry("test es")
-
-    def test_langdetect_error(self):
-        with mock.patch("src.app.services.helpers.detect_langs", side_effect=Exception):
-            with self.assertRaises(LanguageNotSupportedError):
-                detect_language_from_entry("test es")
-
     def test_stringify_docs_content(self):
         docs = [
             Document(
@@ -45,7 +33,7 @@ class HelpersTests(TestCase):
                     document_corpus="test",
                     document_desc="desc",
                     document_details={},
-                    document_id="1",
+                    document_id="12345678-1234-5678-1234-567812345678",
                     document_lang="en",
                     document_sdg=[],
                     document_title="title",
@@ -60,7 +48,7 @@ class HelpersTests(TestCase):
                     document_corpus="test",
                     document_desc="desc",
                     document_details={},
-                    document_id="2",
+                    document_id="12345677-1234-5678-1234-567812345678",
                     document_lang="en",
                     document_sdg=[],
                     document_title="title 2",

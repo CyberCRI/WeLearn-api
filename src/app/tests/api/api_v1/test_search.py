@@ -1,3 +1,4 @@
+from types import SimpleNamespace
 from unittest import IsolatedAsyncioTestCase, mock
 from unittest.mock import patch
 
@@ -7,11 +8,7 @@ from qdrant_client.http import models
 from src.app.core.config import settings
 from src.app.models import collections
 from src.app.models.search import EnhancedSearchQuery
-from src.app.services.exceptions import (
-    CollectionNotFoundError,
-    LanguageNotSupportedError,
-    ModelNotFoundError,
-)
+from src.app.services.exceptions import CollectionNotFoundError, ModelNotFoundError
 from src.app.services.search import SearchService, sort_slices_using_mmr
 from src.main import app
 
@@ -20,9 +17,9 @@ client = TestClient(app)
 search_pipeline_path = "src.app.services.search.SearchService"
 
 mocked_collection = collections.Collection(
-    lang="fr",
+    lang="mul",
     model="model",
-    name="collection_welearn_fr_model",
+    name="collection_welearn_mul_model",
 )
 mocked_scored_points = [
     models.ScoredPoint(
@@ -90,7 +87,11 @@ long_query = "français with a very long sentence to test what you are saying an
 @patch(
     f"{search_pipeline_path}.get_collections",
     new=mock.AsyncMock(
-        return_value=("collection_welearn_fr_model", "collection_en_model")
+        return_value=(
+            "collection_welearn_fr_model",
+            "collection_en_model",
+            "collection_welearn_mul_model",
+        )
     ),
 )
 class SearchTests(IsolatedAsyncioTestCase):
@@ -114,7 +115,7 @@ class SearchTests(IsolatedAsyncioTestCase):
     async def test_search_model_not_found(self, *mocks):
         with self.assertRaises(ModelNotFoundError):
             response = client.post(
-                f"{settings.API_V1_STR}/search/collections/collection_welearn_fr_model?query=français&nb_results=10",  # noqa: E501
+                f"{settings.API_V1_STR}/search/collections/collection_welearn_mul_model?query=français&nb_results=10",  # noqa: E501
                 headers={"X-API-Key": "test"},
             )
 
@@ -179,26 +180,6 @@ class SearchTests(IsolatedAsyncioTestCase):
 @patch("src.app.services.sql_db.session_maker")
 @patch("src.app.services.security.check_api_key", new=mock.MagicMock(return_value=True))
 class SearchTestsSlices(IsolatedAsyncioTestCase):
-    async def test_search_all_slices_lang_not_supported(self, *mocks):
-        with self.assertRaises(LanguageNotSupportedError):
-            response = client.post(
-                f"{settings.API_V1_STR}/search/by_slices",
-                json={
-                    "query": "pesquisa em portugues, mas longa para poder ser utilizada, ainda mais longa e com acentos éé e cedilhas çç"  # noqa: E501,
-                },
-                headers={"X-API-Key": "test"},
-            )
-            self.assertEqual(response.status_code, 400)
-            self.assertEqual(
-                response.json(),
-                {
-                    "detail": {
-                        "message": "Language not supported",
-                        "code": "LANG_NOT_SUPPORTED",
-                    }
-                },
-            )
-
     @patch(
         f"{search_pipeline_path}.get_collection_by_language",
         new=mock.AsyncMock(
@@ -264,25 +245,6 @@ class SearchTestsSlices(IsolatedAsyncioTestCase):
 @patch("src.app.services.sql_db.session_maker")
 @patch("src.app.services.security.check_api_key", new=mock.MagicMock(return_value=True))
 class SearchTestsAll(IsolatedAsyncioTestCase):
-    async def test_search_all_lang_not_supported(self, *mocks):
-        with self.assertRaises(LanguageNotSupportedError):
-            response = client.post(
-                f"{settings.API_V1_STR}/search/by_document",
-                json={
-                    "query": "uma frase longa para fazer uma pesquisa el portugues e tes um erro porque nao é suportado"
-                },  # noqa: E501
-                headers={"X-API-Key": "test"},
-            )
-            self.assertEqual(response.status_code, 400)
-            self.assertEqual(
-                response.json(),
-                {
-                    "detail": {
-                        "message": "Language not supported",
-                        "code": "LANG_NOT_SUPPORTED",
-                    }
-                },
-            )
 
     @patch(
         f"{search_pipeline_path}.get_collection_by_language",
@@ -351,29 +313,6 @@ class TestSortSlicesUsingMMR(IsolatedAsyncioTestCase):
 @patch("src.app.services.sql_db.session_maker")
 @patch("src.app.services.security.check_api_key", new=mock.MagicMock(return_value=True))
 class SearchTestsMultiInput(IsolatedAsyncioTestCase):
-    async def test_search_multi_lang_not_supported(self, *mocks):
-        with self.assertRaises(LanguageNotSupportedError):
-            response = client.post(
-                f"{settings.API_V1_STR}/search/multiple_by_slices",
-                json={
-                    "query": [
-                        "uma frase longa para fazer uma pesquisa el portugues e tes um erro porque nao é suportado",
-                        "une phrase plus longue pour tester la recherche en français. et voir ce que cela donne",
-                    ]  # noqa: E501
-                },  # noqa: E501
-                headers={"X-API-Key": "test"},
-            )
-            self.assertEqual(response.status_code, 400)
-            self.assertEqual(
-                response.json(),
-                {
-                    "detail": {
-                        "message": "Language not supported",
-                        "code": "LANG_NOT_SUPPORTED",
-                    }
-                },
-            )
-
     @patch(
         f"{search_pipeline_path}.search_handler",
         return_value=[],
@@ -390,6 +329,126 @@ class SearchTestsMultiInput(IsolatedAsyncioTestCase):
             headers={"X-API-Key": "test"},
         )
         self.assertEqual(response.status_code, 204)
+
+
+@patch("src.app.api.api_v1.endpoints.search.session_maker")
+@patch("src.app.services.security.check_api_key", new=mock.MagicMock(return_value=True))
+class DocumentsByIdsTests(IsolatedAsyncioTestCase):
+    async def test_documents_by_ids_empty(self, session_maker_mock, *mocks):
+        session = session_maker_mock.return_value.__enter__.return_value
+        exec_docs = mock.MagicMock()
+        exec_docs.all.return_value = []
+        exec_corpora = mock.MagicMock()
+        exec_corpora.all.return_value = []
+        exec_slices = mock.MagicMock()
+        exec_slices.all.return_value = []
+        exec_sdgs = mock.MagicMock()
+        exec_sdgs.all.return_value = []
+
+        session.execute.side_effect = [exec_docs, exec_corpora, exec_slices, exec_sdgs]
+
+        response = client.post(
+            f"{settings.API_V1_STR}/search/documents/by_ids",
+            json=[],
+            headers={"X-API-Key": "test"},
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.json(), [])
+
+    async def test_documents_by_ids_single_doc(self, session_maker_mock, *mocks):
+        session = session_maker_mock.return_value.__enter__.return_value
+
+        doc_id = "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa"
+        corpus_id = "bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb"
+        docs_row = SimpleNamespace(
+            title="Title",
+            url="https://example.com",
+            corpus_id=corpus_id,
+            id=doc_id,
+            description="Desc",
+            details={"k": "v"},
+        )
+
+        # 1) documents .all()
+        exec_docs = mock.MagicMock()
+        exec_docs.all.return_value = [docs_row]
+        # 2) corpora .all()
+        exec_corpora = mock.MagicMock()
+        exec_corpora.all.return_value = [
+            SimpleNamespace(id=corpus_id, source_name="Corpus")
+        ]
+        # 3) slices .all()
+        slice1 = "11111111-1111-1111-1111-111111111111"
+        slice2 = "22222222-2222-2222-2222-222222222222"
+        exec_slices = mock.MagicMock()
+        exec_slices.all.return_value = [
+            SimpleNamespace(id=slice1, document_id=doc_id),
+            SimpleNamespace(id=slice2, document_id=doc_id),
+        ]
+        # 4) sdgs .all()
+        exec_sdgs = mock.MagicMock()
+        exec_sdgs.all.return_value = [
+            SimpleNamespace(sdg_number=1, slice_id=slice1),
+            SimpleNamespace(sdg_number=3, slice_id=slice2),
+            SimpleNamespace(sdg_number=1, slice_id=slice2),
+        ]
+
+        session.execute.side_effect = [exec_docs, exec_corpora, exec_slices, exec_sdgs]
+
+        response = client.post(
+            f"{settings.API_V1_STR}/search/documents/by_ids",
+            json=[doc_id],
+            headers={"X-API-Key": "test"},
+        )
+
+        self.assertEqual(response.status_code, 200)
+        body = response.json()
+        self.assertEqual(len(body), 1)
+        payload = body[0]
+        self.assertEqual(payload["document_id"], doc_id)
+        self.assertEqual(payload["document_title"], "Title")
+        self.assertEqual(payload["document_url"], "https://example.com")
+        self.assertEqual(payload["document_desc"], "Desc")
+        self.assertEqual(payload["document_details"], {"k": "v"})
+        self.assertEqual(payload["document_corpus"], "Corpus")
+        self.assertEqual(payload["document_sdg"], [1, 3])
+        self.assertEqual(payload["slice_content"], "")
+        self.assertIsNone(payload["slice_sdg"])
+
+    async def test_documents_by_ids_corpus_missing(self, session_maker_mock, *mocks):
+        session = session_maker_mock.return_value.__enter__.return_value
+
+        doc_id = "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa"
+        corpus_id = "bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb"
+        docs_row = SimpleNamespace(
+            title="Title",
+            url="https://example.com",
+            corpus_id=corpus_id,
+            id=doc_id,
+            description="Desc",
+            details={},
+        )
+
+        exec_docs = mock.MagicMock()
+        exec_docs.all.return_value = [docs_row]
+        exec_corpora = mock.MagicMock()
+        exec_corpora.all.return_value = []
+        exec_slices = mock.MagicMock()
+        exec_slices.all.return_value = []
+        exec_sdgs = mock.MagicMock()
+        exec_sdgs.all.return_value = []
+        session.execute.side_effect = [exec_docs, exec_corpora, exec_slices, exec_sdgs]
+
+        response = client.post(
+            f"{settings.API_V1_STR}/search/documents/by_ids",
+            json=[doc_id],
+            headers={"X-API-Key": "test"},
+        )
+        self.assertEqual(response.status_code, 200)
+        body = response.json()
+        self.assertEqual(len(body), 1)
+        self.assertEqual(body[0]["document_corpus"], "")
 
     async def test_search_multi_single_query(self, *mocks):
         with mock.patch(

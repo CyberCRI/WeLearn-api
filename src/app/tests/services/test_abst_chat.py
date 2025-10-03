@@ -245,7 +245,6 @@ class TestAbstractChat(unittest.IsolatedAsyncioTestCase):
                 docs=[],
                 subject="default",
                 streamed_ans=True,
-                should_check_lang=True,
             )
 
             mock_detect_lang.assert_called_with("this is a query")

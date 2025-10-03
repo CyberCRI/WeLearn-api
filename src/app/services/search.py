@@ -83,7 +83,7 @@ class SearchService:
         return self.collections
 
     @log_time_and_error
-    async def get_collection_by_language(self, lang: str) -> Collection:
+    async def get_collection_by_language(self, lang: str = "mul") -> Collection:
         collections = self.collections or await self.get_collections()
 
         collection = next(
@@ -202,8 +202,7 @@ class SearchService:
     ) -> list[http_models.ScoredPoint]:
         assert isinstance(qp.query, str)
 
-        lang = detect_language_from_entry(qp.query)
-        collection = await self.get_collection_by_language(lang)
+        collection = await self.get_collection_by_language(lang="mul")
         subject_vector = get_subject_vector(qp.subject)
         embedding = self.get_query_embed(
             model=collection.model,
