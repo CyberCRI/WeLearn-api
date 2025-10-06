@@ -1,5 +1,5 @@
-from enum import StrEnum, auto
 import uuid
+from enum import StrEnum, auto
 
 from pydantic import BaseModel
 

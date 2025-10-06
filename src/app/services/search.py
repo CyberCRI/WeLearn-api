@@ -15,7 +15,7 @@ from src.app.api.dependencies import get_settings
 from src.app.models.collections import Collection
 from src.app.models.search import EnhancedSearchQuery, SearchFilters, SearchMethods
 from src.app.services.exceptions import CollectionNotFoundError, ModelNotFoundError
-from src.app.services.helpers import convert_embedding_bytes, detect_language_from_entry
+from src.app.services.helpers import convert_embedding_bytes
 from src.app.services.sql_db import get_subject
 from src.app.utils.decorators import log_time_and_error, log_time_and_error_sync
 from src.app.utils.logger import logger as logger_utils
