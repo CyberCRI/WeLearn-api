@@ -1,14 +1,18 @@
 import json
 import re
+import uuid
 from functools import cache
 from typing import List
 
 import numpy
+from fastapi import HTTPException
 from langdetect import detect_langs
 from qdrant_client.http.models import models
 
+from src.app.models.collections import Collection
 from src.app.models.documents import Document, JourneySectionType
 from src.app.services.exceptions import LanguageNotSupportedError
+from src.app.services.sql_db import get_embeddings_model_id_according_name
 from src.app.utils.decorators import log_time_and_error_sync
 from src.app.utils.logger import logger as utils_logger
 
@@ -146,3 +150,33 @@ def choose_readability_according_journey_section_type(
             f"Journey section type '{sdg_doc_type}' is not implemented."
         )
     return readability_range
+
+
+@log_time_and_error_sync
+async def collection_and_model_id_according_lang(
+    lang: str | None, sp
+) -> tuple[Collection, uuid]:
+    """
+    Get the collection info and model id according to the language.
+    Args:
+        sp: The search service.
+        lang: The language to get the collection info and model id for. If None, the default language is used wich is multilingual.
+
+    Returns:
+        A tuple of the collection info and model id.
+    """
+    if lang:
+        collection_info = await sp.get_collection_by_language(lang)
+    else:
+        collection_info = await sp.get_collection_by_language()
+
+    if not collection_info:
+        raise HTTPException(
+            status_code=404, detail=f"No collection found for language '{lang}'."
+        )
+    model_id = get_embeddings_model_id_according_name(collection_info.model)
+    if not model_id:
+        raise ValueError(
+            f"Embedding model '{collection_info.model}' not found in the database."
+        )
+    return collection_info, model_id

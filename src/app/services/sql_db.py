@@ -1,12 +1,16 @@
+from uuid import UUID
+
 from sqlalchemy import URL
 
 from src.app.api.dependencies import get_settings
-from src.app.models.db_models import ContextDocument, EndpointRequest
+from src.app.models.db_models import ContextDocument, EmbeddingModel, EndpointRequest
 from src.app.models.documents import JourneySection
 from src.app.models.search import ContextType
 from src.app.utils.decorators import singleton
 
 settings = get_settings()
+
+model_id_cache: dict[str, UUID] = {}
 
 
 @singleton
@@ -42,7 +46,9 @@ class WL_SQL:
             session.add(endpoint_request)
             session.commit()
 
-    def get_subject(self, subject: str) -> ContextDocument | None:
+    def get_subject(
+        self, subject: str, embedding_model_id: UUID
+    ) -> ContextDocument | None:
         """
         Get the subject meta document from the database.
         Args:
@@ -57,12 +63,13 @@ class WL_SQL:
                 .filter(
                     ContextDocument.context_type == ContextType.SUBJECT.value.lower(),
                     ContextDocument.title == subject,
+                    ContextDocument.embedding_model_id == embedding_model_id,
                 )
                 .first()
             )
         return subject_meta_document
 
-    def get_subjects(self) -> list[ContextDocument]:
+    def get_subjects(self, embedding_model_id: UUID) -> list[ContextDocument]:
         """
         Get all the subject meta documents from the database.
         Returns: List of subject meta documents.
@@ -71,13 +78,16 @@ class WL_SQL:
             sdg_meta_documents: list[ContextDocument] = (
                 session.query(ContextDocument)
                 .filter(
-                    ContextDocument.context_type == ContextType.SUBJECT.value.lower()
+                    ContextDocument.context_type == ContextType.SUBJECT.value.lower(),
+                    ContextDocument.embedding_model_id == embedding_model_id,
                 )
                 .all()
             )
         return sdg_meta_documents
 
-    def get_context_documents(self, journey_part: JourneySection, sdg: int):
+    def get_context_documents(
+        self, journey_part: JourneySection, sdg: int, embedding_model_id: UUID
+    ):
         """
         Get the context documents from the database.
 
@@ -92,10 +102,32 @@ class WL_SQL:
                 .filter(
                     ContextDocument.context_type.in_(journey_part),
                     ContextDocument.sdg_related.contains([sdg]),
+                    ContextDocument.embedding_model_id == embedding_model_id,
                 )
                 .all()
             )
         return sdg_meta_documents
+
+    def get_embeddings_model_id_according_name(self, model_name: str) -> UUID | None:
+        """
+        Get the embeddings model ID according to its name.
+
+        Args:
+            model_name: The name of the embeddings model.
+
+        Returns:
+            The ID of the embeddings model if found, otherwise None.
+        """
+        if model_name in model_id_cache:
+            return model_id_cache[model_name]
+
+        with self.session_maker() as session:
+            model = (
+                session.query(EmbeddingModel)
+                .filter(EmbeddingModel.title == model_name)
+                .first()
+            )
+            return model.id if model else None
 
 
 wl_sql = WL_SQL()
@@ -104,3 +136,4 @@ register_endpoint = wl_sql.register_endpoint
 get_subject = wl_sql.get_subject
 get_subjects = wl_sql.get_subjects
 get_context_documents = wl_sql.get_context_documents
+get_embeddings_model_id_according_name = wl_sql.get_embeddings_model_id_according_name

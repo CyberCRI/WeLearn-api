@@ -6,6 +6,7 @@ from src.app.models.documents import JourneySectionType
 from src.app.models.search import SearchFilters
 from src.app.services.helpers import (
     choose_readability_according_journey_section_type,
+    collection_and_model_id_according_lang,
     convert_embedding_bytes,
 )
 from src.app.services.search import SearchService
@@ -24,8 +25,14 @@ sp = SearchService()
     description="Retrieve all the subjects",
     response_model=list[str],
 )
-async def get_subject_list() -> list[str]:
-    return [md.title for md in get_subjects()]
+async def get_subject_list(lang: str | None = None) -> list[str]:
+    collection_info, model_id = await collection_and_model_id_according_lang(
+        sp=sp, lang=lang
+    )
+    ret = [md.title for md in get_subjects(embedding_model_id=model_id)]
+    if len(ret) == 0:
+        raise HTTPException(status_code=404, detail="No subjects found.")
+    return ret
 
 
 @router.get(
@@ -33,15 +40,23 @@ async def get_subject_list() -> list[str]:
     summary="get the full journey",
     description="Get all documents for the micro learning journey of one sdg",
 )
-async def get_full_journey(lang: str, sdg: int, subject: str):
+async def get_full_journey(sdg: int, subject: str, lang: str | None = None):
+    collection_info, model_id = await collection_and_model_id_according_lang(
+        sp=sp, lang=lang
+    )
+
     journey_part = [i.lower() for i in JourneySectionType]
-    sdg_meta_documents = get_context_documents(journey_part, sdg)
+    sdg_meta_documents = get_context_documents(
+        journey_part=journey_part, sdg=sdg, embedding_model_id=model_id
+    )
     if not sdg_meta_documents:
         raise HTTPException(
             status_code=404, detail=f"SDG '{sdg}' not found in meta documents."
         )
 
-    subject_meta_document: ContextDocument | None = get_subject(subject=subject)
+    subject_meta_document: ContextDocument | None = get_subject(
+        subject=subject, embedding_model_id=model_id
+    )
 
     if not subject_meta_document:
         raise ValueError(f"Subject '{subject}' not found in meta documents.")
@@ -88,7 +103,7 @@ async def get_full_journey(lang: str, sdg: int, subject: str):
         ).build_filters()
 
         qdrant_return = await sp.search(
-            collection_info="collection_welearn_en_all-minilm-l6-v2",
+            collection_info=collection_info.name,
             embedding=flavored_embedding,
             filters=qdrant_filter,
             nb_results=10,
