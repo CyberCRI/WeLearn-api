@@ -405,7 +405,7 @@ class DocumentsByIdsTests(IsolatedAsyncioTestCase):
         self.assertEqual(response.status_code, 200)
         body = response.json()
         self.assertEqual(len(body), 1)
-        payload = body[0]
+        payload = body[0]["payload"]
         self.assertEqual(payload["document_id"], doc_id)
         self.assertEqual(payload["document_title"], "Title")
         self.assertEqual(payload["document_url"], "https://example.com")
@@ -447,8 +447,9 @@ class DocumentsByIdsTests(IsolatedAsyncioTestCase):
         )
         self.assertEqual(response.status_code, 200)
         body = response.json()
+        payload = body[0]["payload"]
         self.assertEqual(len(body), 1)
-        self.assertEqual(body[0]["document_corpus"], "")
+        self.assertEqual(payload["document_corpus"], "")
 
     async def test_search_multi_single_query(self, *mocks):
         with mock.patch(

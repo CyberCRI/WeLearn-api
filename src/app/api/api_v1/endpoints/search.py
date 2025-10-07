@@ -13,7 +13,7 @@ from src.app.models.db_models import (
     Sdg,
     WeLearnDocument,
 )
-from src.app.models.documents import Collection_schema, DocumentPayloadModel
+from src.app.models.documents import Collection_schema, Document, DocumentPayloadModel
 from src.app.models.search import (
     EnhancedSearchQuery,
     SDGFilter,
@@ -220,7 +220,7 @@ async def search_all(
 )
 def get_documents_payload_by_ids(
     documents_ids: list[uuid.UUID],
-) -> list[DocumentPayloadModel]:
+) -> list[Document]:
     with session_maker() as s:
         documents = s.execute(
             select(
@@ -278,17 +278,20 @@ def get_documents_payload_by_ids(
             ).most_common(2)
 
             docs.append(
-                DocumentPayloadModel(
-                    document_id=doc.id,
-                    document_title=doc.title,
-                    document_url=doc.url,
-                    document_desc=doc.description,
-                    document_sdg=[sdg[0] for sdg in short_sdg_list],
-                    document_details=doc.details,
-                    slice_content="",
-                    document_lang="",
-                    document_corpus=corpus if corpus else "",
-                    slice_sdg=None,
+                Document(
+                    score=0.0,
+                    payload=DocumentPayloadModel(
+                        document_id=doc.id,
+                        document_title=doc.title,
+                        document_url=doc.url,
+                        document_desc=doc.description,
+                        document_sdg=[sdg[0] for sdg in short_sdg_list],
+                        document_details=doc.details,
+                        slice_content="",
+                        document_lang="",
+                        document_corpus=corpus if corpus else "",
+                        slice_sdg=None,
+                    ),
                 )
             )
 
