@@ -4,16 +4,26 @@ from unittest import mock
 from fastapi.testclient import TestClient
 
 from src.app.core.config import settings
+from src.app.models.collections import Collection
 from src.app.models.db_models import ContextDocument
 from src.main import app
 
 client = TestClient(app)
 
 
+class AsyncMock(mock.MagicMock):
+    async def __call__(self, *args, **kwargs):
+        return super(AsyncMock, self).__call__(*args, **kwargs)
+
+
 @mock.patch(
     "src.app.services.security.check_api_key", new=mock.MagicMock(return_value=True)
 )
 class MicroLearningTests(unittest.IsolatedAsyncioTestCase):
+    @mock.patch(
+        "src.app.api.api_v1.endpoints.micro_learning.collection_and_model_id_according_lang",
+        new_callable=AsyncMock,
+    )
     @mock.patch("src.app.api.api_v1.endpoints.micro_learning.get_context_documents")
     @mock.patch("src.app.api.api_v1.endpoints.micro_learning.get_subject")
     @mock.patch("src.app.services.search.SearchService.search")
@@ -24,7 +34,12 @@ class MicroLearningTests(unittest.IsolatedAsyncioTestCase):
         mock_search,
         mock_get_subject,
         mock_get_context_docs,
+        mock_collection_and_model_id_according_lang,
     ):
+        mock_collection_and_model_id_according_lang.return_value = (
+            Collection(name="test_collection", lang="en", model="test_model"),
+            "model_id",
+        )
         # Mock data
         mock_get_context_docs.return_value = [
             ContextDocument(
@@ -74,8 +89,14 @@ class MicroLearningTests(unittest.IsolatedAsyncioTestCase):
         self.assertIn("target", response.json())
         self.assertEqual(len(response.json()["target"]), 2)
 
+    @mock.patch(
+        "src.app.api.api_v1.endpoints.micro_learning.collection_and_model_id_according_lang",
+        new_callable=AsyncMock,
+    )
     @mock.patch("src.app.api.api_v1.endpoints.micro_learning.get_subjects")
-    async def test_get_subject_list(self, mock_get_subjects):
+    async def test_get_subject_list(
+        self, mock_get_subjects, mock_collection_and_model_id_according_lang
+    ):
         mock_get_subjects.return_value = [
             ContextDocument(
                 id="subject_id",
@@ -90,6 +111,7 @@ class MicroLearningTests(unittest.IsolatedAsyncioTestCase):
                 context_type="subject",
             ),
         ]
+        mock_collection_and_model_id_according_lang.return_value = (None, "model_id")
 
         # API call
         response = client.get(
