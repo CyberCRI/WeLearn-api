@@ -1,4 +1,5 @@
 import uuid
+from enum import StrEnum, auto
 
 from pydantic import BaseModel
 
@@ -26,3 +27,13 @@ class DocumentPayloadModel(BaseModel):
 class Document(BaseModel):
     score: float
     payload: DocumentPayloadModel
+
+
+class JourneySectionType(StrEnum):
+    INTRODUCTION = auto()
+    TARGET = auto()
+
+
+class JourneySection(BaseModel):
+    type: JourneySectionType
+    content: Document

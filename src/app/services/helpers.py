@@ -1,16 +1,41 @@
 import json
 import re
+import uuid
 from functools import cache
 from typing import List
 
+import numpy
+from fastapi import HTTPException
 from langdetect import detect_langs
+from qdrant_client.http.models import models
 
-from src.app.models.documents import Document
+from src.app.models.collections import Collection
+from src.app.models.documents import Document, JourneySectionType
 from src.app.services.exceptions import LanguageNotSupportedError
+from src.app.services.sql_db import get_embeddings_model_id_according_name
 from src.app.utils.decorators import log_time_and_error_sync
 from src.app.utils.logger import logger as utils_logger
 
 logger = utils_logger(__name__)
+
+
+@log_time_and_error_sync
+@cache
+def convert_embedding_bytes(
+    embeddings_byte: bytes, dtype=numpy.float32
+) -> numpy.ndarray:
+    """
+    Converts a byte representation of embeddings to a numpy ndarray.
+    Args:
+        dtype: The desired data type of the output array. Default is numpy.float32. Only numpy types.
+        embeddings_byte: The byte representation of the embeddings.
+    Returns: A numpy ndarray of the embeddings.
+    """
+    if not isinstance(embeddings_byte, bytes):
+        raise ValueError(
+            f"Embedding must be of type bytes, received type: {type(embeddings_byte).__name__}"
+        )
+    return numpy.frombuffer(embeddings_byte, dtype=dtype)
 
 
 @log_time_and_error_sync
@@ -95,3 +120,63 @@ def extract_json_from_response(response: str) -> dict:
     except json.JSONDecodeError as e:
         logger.error("api_error=json_decode_error, response=%s", response)
         raise e
+
+
+def choose_readability_according_journey_section_type(
+    sdg_doc_type: JourneySectionType,
+) -> models.Range:
+    """
+    Choose the readability range according to the journey section type.
+    1. Introduction: 60-100 (easier)
+    2. Target: 0-60 (harder)
+    Args:
+        sdg_doc_type: The journey section type.
+
+    Returns: The readability range for Qdrant search.
+
+    """
+    if sdg_doc_type == JourneySectionType.INTRODUCTION:
+        readability_range = models.Range(
+            gte=60,
+            lte=100,
+        )
+    elif sdg_doc_type == JourneySectionType.TARGET:
+        readability_range = models.Range(
+            gte=0,
+            lte=60,
+        )
+    else:
+        raise NotImplementedError(
+            f"Journey section type '{sdg_doc_type}' is not implemented."
+        )
+    return readability_range
+
+
+@log_time_and_error_sync
+async def collection_and_model_id_according_lang(
+    lang: str | None, sp
+) -> tuple[Collection, uuid]:
+    """
+    Get the collection info and model id according to the language.
+    Args:
+        sp: The search service.
+        lang: The language to get the collection info and model id for. If None, the default language is used wich is multilingual.
+
+    Returns:
+        A tuple of the collection info and model id.
+    """
+    if lang:
+        collection_info = await sp.get_collection_by_language(lang)
+    else:
+        collection_info = await sp.get_collection_by_language()
+
+    if not collection_info:
+        raise HTTPException(
+            status_code=404, detail=f"No collection found for language '{lang}'."
+        )
+    model_id = get_embeddings_model_id_according_name(collection_info.model)
+    if not model_id:
+        raise ValueError(
+            f"Embedding model '{collection_info.model}' not found in the database."
+        )
+    return collection_info, model_id

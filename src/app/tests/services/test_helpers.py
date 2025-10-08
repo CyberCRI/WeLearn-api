@@ -1,10 +1,12 @@
 from unittest import TestCase, mock
 
+import numpy
 from langdetect.language import Language
 
 from src.app.models.documents import Document, DocumentPayloadModel
 from src.app.services.exceptions import LanguageNotSupportedError
 from src.app.services.helpers import (
+    convert_embedding_bytes,
     detect_language_from_entry,
     extract_json_from_response,
     stringify_docs_content,
@@ -82,3 +84,11 @@ class HelpersTests(TestCase):
         response = "Here is the JSON: "
         with self.assertRaises(ValueError):
             extract_json_from_response(response)
+
+    def test_convert_embedding_bytes(self):
+        x = numpy.random.rand(
+            5,
+        )
+        ret = convert_embedding_bytes(embeddings_byte=x.tobytes(), dtype=numpy.float64)
+
+        self.assertEqual(x.tolist(), ret.tolist())

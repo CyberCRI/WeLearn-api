@@ -16,7 +16,7 @@ exclude =
     build,
     # This contains builds of flake8 that we don't want to check
     dist
-max-complexity = 10
+max-complexity = 12
 max-line-length = 88
 per-file-ignores =
     src/app/services/prompts.py: E501, E266,

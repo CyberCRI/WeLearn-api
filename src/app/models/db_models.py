@@ -17,8 +17,10 @@ from sqlalchemy import (
     func,
     types,
 )
-from sqlalchemy.dialects.postgresql import JSON
+from sqlalchemy.dialects.postgresql import ARRAY, ENUM, JSON
 from sqlalchemy.orm import Mapped, declarative_base, mapped_column, relationship
+
+from src.app.models.search import ContextType
 
 Base: Any = declarative_base()
 
@@ -226,6 +228,61 @@ class APIKeyManagement(Base):
         default=func.localtimestamp(),
         server_default="NOW()",
         onupdate=func.localtimestamp(),
+    )
+
+
+class EmbeddingModel(Base):
+    __tablename__ = "embedding_model"
+    __table_args__ = {"schema": DbSchemaEnum.CORPUS_RELATED.value}
+
+    id: Mapped[UUID] = mapped_column(
+        types.Uuid, primary_key=True, nullable=False, server_default="gen_random_uuid()"
+    )
+    title: Mapped[str]
+    lang: Mapped[str]
+
+
+class ContextDocument(Base):
+    __tablename__ = "context_document"
+
+    id = Column(
+        Uuid(as_uuid=True),
+        primary_key=True,
+        server_default="gen_random_uuid()",
+        nullable=False,
+    )
+    url = Column(String, nullable=False)
+    title = Column(String)
+    full_content = Column(String)
+    embedding_model_id = Column(
+        Uuid(as_uuid=True), ForeignKey("corpus_related.embedding_model.id")
+    )
+    sdg_related = Column(ARRAY(Integer))
+    created_at = Column(
+        TIMESTAMP(timezone=False), nullable=False, default=func.localtimestamp()
+    )
+    embedding = Column(LargeBinary)
+
+    updated_at = Column(
+        TIMESTAMP(timezone=False),
+        nullable=False,
+        default=func.localtimestamp(),
+        onupdate=func.localtimestamp(),
+    )
+
+    context_type = mapped_column(
+        ENUM(
+            *(e.value.lower() for e in ContextType),
+            name="context_type",
+            schema="document_related"
+        ),
+        nullable=False,
+    )
+    embedding_model = relationship("EmbeddingModel", foreign_keys=[embedding_model_id])
+
+    __table_args__ = (
+        UniqueConstraint("url", name="meta_document_url_key"),
+        {"schema": "document_related"},
     )
 
 
