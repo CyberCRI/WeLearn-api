@@ -19,8 +19,8 @@ import json
 from abc import ABC
 from typing import AsyncIterable, Dict, List, Optional
 
-from langchain_core.runnables import RunnableConfig  # type: ignore
 from langchain_azure_ai.chat_models import AzureAIChatCompletionsModel  # type: ignore
+from langchain_core.runnables import RunnableConfig  # type: ignore
 from langgraph.checkpoint.postgres.aio import AsyncPostgresSaver  # type: ignore
 from langgraph.prebuilt import create_react_agent  # type: ignore
 
@@ -456,7 +456,13 @@ class AbstractChat(ABC):
             pre_model_hook=trim_conversation_history,
         )
 
-        config = RunnableConfig(configurable={"thread_id": thread_id, "corpora": corpora, "sdg_filter": sdg_filter})
+        config = RunnableConfig(
+            configurable={
+                "thread_id": thread_id,
+                "corpora": corpora,
+                "sdg_filter": sdg_filter,
+            }
+        )
 
         messages = [
             {
