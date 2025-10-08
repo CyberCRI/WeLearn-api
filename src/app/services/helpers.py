@@ -88,9 +88,13 @@ def stringify_docs_content(docs: List[Any]) -> str:
             content = str(payload.get("slice_content", "")).strip()
             url = str(payload.get("document_url", "")).strip()
 
-            articles.append(
-                base_article.format(number=i + 1, title=title, content=content, url=url)
-            )
+            # Only add article if at least one field is non-empty
+            if title or content or url:
+                articles.append(
+                    base_article.format(
+                        number=i + 1, title=title, content=content, url=url
+                    )
+                )
 
         documents = "\n\n".join(articles)
     except Exception as e:
