@@ -4,6 +4,8 @@ from typing import Literal, TypedDict
 from pydantic import BaseModel, Field
 from qdrant_client.models import ScoredPoint
 
+from src.app.models.search import SDGFilter
+
 from .documents import Document
 
 
@@ -58,9 +60,10 @@ class ReformulatedQuestionsResponse(BaseModel):
     NEW_QUESTIONS: list[str]
 
 
-class AgentContext(BaseModel):
+class AgentContext(SDGFilter):
     query: str | None = None
     thread_id: str | None = None
+    corpora: tuple[str, ...] | None = None
 
 
 class AgentResponse(BaseModel):

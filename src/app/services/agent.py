@@ -1,6 +1,7 @@
 from typing import List, Tuple
 
 from langchain_core.messages.utils import trim_messages
+from langchain_core.runnables import RunnableConfig
 from langchain_core.tools import tool
 
 from src.app.models.documents import Document
@@ -16,7 +17,7 @@ logger = utils_logger(__name__)
 @tool(response_format="content_and_artifact")
 @log_time_and_error
 async def get_resources_about_sustainability(
-    rag_query: str,
+    rag_query: str, config: RunnableConfig
 ) -> Tuple[str, List[Document]]:
     """Get relevant resources about sustainability from WeLearn database.
 
@@ -26,11 +27,16 @@ async def get_resources_about_sustainability(
     sp = SearchService()
     qp = EnhancedSearchQuery(
         query=rag_query,
-        sdg_filter=None,
+        sdg_filter=config["configurable"].get("sdg_filter"),
+        corpora=config["configurable"].get("corpora"),
     )
     docs = await sp.search_handler(qp)
-    content = stringify_docs_content(docs[:7])  # Limit to first 7 documents
-    return content, docs
+    if not docs:
+        logger.warning("No documents found for the query.")
+        return "No relevant documents found.", []
+    else:
+        content = stringify_docs_content(docs[:7])  # Limit to first 7 documents
+        return content, docs
 
 
 def trim_conversation_history(state):

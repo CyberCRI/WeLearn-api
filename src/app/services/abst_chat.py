@@ -19,6 +19,7 @@ import json
 from abc import ABC
 from typing import AsyncIterable, Dict, List, Optional
 
+from langchain_core.runnables import RunnableConfig  # type: ignore
 from langchain_azure_ai.chat_models import AzureAIChatCompletionsModel  # type: ignore
 from langgraph.checkpoint.postgres.aio import AsyncPostgresSaver  # type: ignore
 from langgraph.prebuilt import create_react_agent  # type: ignore
@@ -427,6 +428,8 @@ class AbstractChat(ABC):
         query: str,
         memory: AsyncPostgresSaver,
         thread_id: Optional[str] = None,
+        corpora: Optional[tuple[str, ...]] = None,
+        sdg_filter: Optional[List[int]] = None,
     ):
         """
         Sends a chat message handled by an agent.
@@ -434,6 +437,8 @@ class AbstractChat(ABC):
         Args:
             query (str): The user query.
             thread_id (str): The thread ID.
+            corpora (tuple[str, ...] | None): The corpora to search resources.
+            sdg_filter (list[int] | None): The SDG filters to apply to the search.
 
         Returns:
             str: The chat message content.
@@ -455,7 +460,7 @@ class AbstractChat(ABC):
             pre_model_hook=trim_conversation_history,
         )
 
-        config = {"configurable": {"thread_id": thread_id}}
+        config = RunnableConfig(configurable={"thread_id": thread_id, "corpora": corpora, "sdg_filter": sdg_filter})
 
         messages = [
             {

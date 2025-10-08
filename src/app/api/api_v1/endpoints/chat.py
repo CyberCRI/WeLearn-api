@@ -68,6 +68,8 @@ def get_agent_params(body: models.AgentContext) -> models.AgentContext:
     return models.AgentContext(
         query=body.query,
         thread_id=body.thread_id,
+        corpora=body.corpora,
+        sdg_filter=body.sdg_filter,
     )
 
 
@@ -346,15 +348,13 @@ async def agent_response(
                 query=body.query,
                 memory=memory,
                 thread_id=body.thread_id,
+                corpora=body.corpora,
+                sdg_filter=body.sdg_filter,
             )
-            docs = next(
-                (
-                    message.artifact
-                    for message in res["messages"]
-                    if isinstance(message, ToolMessage)
-                ),
-                None,
-            )
+            if isinstance(res["messages"][-2], ToolMessage):
+                docs = res["messages"][-2].artifact
+            else:
+                docs = None
             return {"content": cast(str, res["messages"][-1].content), "docs": docs}
     except LanguageNotSupportedError as e:
         bad_request(message=e.message, msg_code=e.msg_code)
