@@ -14,16 +14,10 @@ from src.app.utils.logger import logger as utils_logger
 logger = utils_logger(__name__)
 
 
-@tool(response_format="content_and_artifact")
-@log_time_and_error
-async def get_resources_about_sustainability(
+async def _get_resources_about_sustainability(
     rag_query: str, config: RunnableConfig
 ) -> Tuple[str, List[Document]]:
-    """Get relevant resources about sustainability from WeLearn database.
-
-    Args:
-        rag_query (str): The query string to search for relevant resources.
-    """
+    """Core logic for getting relevant resources about sustainability from WeLearn database."""
     sp = SearchService()
     qp = EnhancedSearchQuery(
         query=rag_query,
@@ -37,6 +31,19 @@ async def get_resources_about_sustainability(
     else:
         content = stringify_docs_content(docs[:7])  # Limit to first 7 documents
         return content, docs
+
+
+@tool(response_format="content_and_artifact")
+@log_time_and_error
+async def get_resources_about_sustainability(
+    rag_query: str, config: RunnableConfig
+) -> Tuple[str, List[Document]]:
+    """Get relevant resources about sustainability from WeLearn database.
+
+    Args:
+        rag_query (str): The query string to search for relevant resources.
+    """
+    return await _get_resources_about_sustainability(rag_query, config)
 
 
 def trim_conversation_history(state):
