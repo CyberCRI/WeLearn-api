@@ -85,6 +85,9 @@ The project exposes several REST API endpoints that allow clients to interact wi
 - **POST** `/api/v1/qna/stream`  
   **Description**: Streams responses from the Q&A service, providing real-time answers to the user’s questions.
 
+- **POST** `/api/v1/qna/chat/agent`  
+  **Description**: Interact in a conversation from the chat interface, using the LLM, and fetching relevant data from WeLearn only if needed.
+
 ---
 
 ### Example Usage of Search Endpoints
