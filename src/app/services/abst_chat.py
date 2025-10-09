@@ -446,12 +446,17 @@ class AbstractChat(ABC):
             model="Mistral-Large-2411",
         )
 
+        if thread_id:
+            checkpointer = memory
+        else:
+            checkpointer = None
+
         agent_executor = create_react_agent(
             model=agent_model,
             tools=[
                 get_resources_about_sustainability,
             ],
-            checkpointer=memory,
+            checkpointer=checkpointer,
             prompt=prompts.AGENT_SYSTEM_PROMPT,
             pre_model_hook=trim_conversation_history,
         )
