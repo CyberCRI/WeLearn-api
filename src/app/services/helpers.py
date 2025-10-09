@@ -2,7 +2,7 @@ import json
 import re
 import uuid
 from functools import cache
-from typing import List
+from typing import Any, List
 
 import numpy
 from fastapi import HTTPException
@@ -10,7 +10,7 @@ from langdetect import detect_langs
 from qdrant_client.http.models import models
 
 from src.app.models.collections import Collection
-from src.app.models.documents import Document, JourneySectionType
+from src.app.models.documents import JourneySectionType
 from src.app.services.exceptions import LanguageNotSupportedError
 from src.app.services.sql_db import get_embeddings_model_id_according_name
 from src.app.utils.decorators import log_time_and_error_sync
@@ -70,7 +70,24 @@ def detect_language_from_entry(entry: str) -> str:
         )
 
 
-def stringify_docs_content(docs: List[Document]) -> str:
+def normalize_payload(payload: Any) -> dict:
+    # Normalize payload to a dict
+    if payload is None:
+        payload = {}
+    elif hasattr(payload, "dict") and callable(getattr(payload, "dict")):
+        try:
+            payload = payload.dict()
+        except Exception:
+            payload = dict(payload)
+    elif not isinstance(payload, dict):
+        try:
+            payload = dict(payload)
+        except Exception:
+            payload = {}
+    return payload
+
+
+def stringify_docs_content(docs: List[Any]) -> str:
     """
     Creates a string from a list of documents.
     If document_title and slice_content are present,
@@ -87,15 +104,25 @@ def stringify_docs_content(docs: List[Document]) -> str:
         """<article>\nDoc {number}: {title}\n{content}\n\nurl:{url}</article>"""
     )
     try:
-        documents = "\n\n".join(
-            base_article.format(
-                number=i + 1,
-                title=(doc.payload.document_title or "").strip(),
-                content=(doc.payload.slice_content or "").strip(),
-                url=(doc.payload.document_url or "").strip(),
-            )
-            for i, doc in enumerate(docs)
-        )
+        articles: list[str] = []
+        for i, doc in enumerate(docs):
+            payload = getattr(doc, "payload", {})
+
+            payload = normalize_payload(payload)
+
+            title = str(payload.get("document_title", "")).strip()
+            content = str(payload.get("slice_content", "")).strip()
+            url = str(payload.get("document_url", "")).strip()
+
+            # Only add article if at least one field is non-empty
+            if title or content or url:
+                articles.append(
+                    base_article.format(
+                        number=i + 1, title=title, content=content, url=url
+                    )
+                )
+
+        documents = "\n\n".join(articles)
     except Exception as e:
         logger.error("Error in stringify_docs_content: %s", e)
         return ""
