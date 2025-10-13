@@ -212,7 +212,7 @@ class SearchService:
         )
 
         filters = SearchFilters(
-            slice_sdg=qp.sdg_filter, document_corpus=qp.corpora
+            slice_sdg=qp.sdg_filter, document_corpus=qp.corpora, readability=None
         ).build_filters()
         data = []
         if method == "by_slices":
