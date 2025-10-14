@@ -1,4 +1,5 @@
 import unittest
+import uuid
 from unittest import mock
 from unittest.mock import MagicMock
 
@@ -320,7 +321,7 @@ class QnATests(unittest.IsolatedAsyncioTestCase):
             f"{settings.API_V1_STR}/qna/chat/agent",
             json={
                 "query": "What are the SDGs?",
-                "thread_id": "thread-123",
+                "thread_id": str(uuid.uuid4()),
                 "corpora": ["corpus1"],
                 "sdg_filter": [1, 2, 3],
             },

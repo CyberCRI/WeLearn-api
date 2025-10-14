@@ -336,25 +336,26 @@ async def agent_response(
         if body.query is None:
             raise EmptyQueryError()
 
-        async with await psycopg.AsyncConnection.connect(
-            DB_URI, autocommit=True, prepare_threshold=0, row_factory=dict_row
-        ) as conn:
-            await conn.execute("SET SEARCH_PATH to agent_related")
-            await conn.commit()
+        if body.thread_id:
+            async with await psycopg.AsyncConnection.connect(
+                DB_URI, autocommit=True, prepare_threshold=0, row_factory=dict_row
+            ) as conn:
+                await conn.execute("SET SEARCH_PATH to agent_related")
+                await conn.commit()
 
-            memory = AsyncPostgresSaver(conn)
+                memory = AsyncPostgresSaver(conn)
 
-            res = await chatfactory.agent_message(
-                query=body.query,
-                memory=memory,
-                thread_id=body.thread_id,
-                corpora=body.corpora,
-                sdg_filter=body.sdg_filter,
-            )
-            if isinstance(res["messages"][-2], ToolMessage):
-                docs = res["messages"][-2].artifact
-            else:
-                docs = None
-            return {"content": cast(str, res["messages"][-1].content), "docs": docs}
+        res = await chatfactory.agent_message(
+            query=body.query,
+            memory=memory,
+            thread_id=body.thread_id,
+            corpora=body.corpora,
+            sdg_filter=body.sdg_filter,
+        )
+        if isinstance(res["messages"][-2], ToolMessage):
+            docs = res["messages"][-2].artifact
+        else:
+            docs = None
+        return {"content": cast(str, res["messages"][-1].content), "docs": docs}
     except LanguageNotSupportedError as e:
         bad_request(message=e.message, msg_code=e.msg_code)

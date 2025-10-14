@@ -18,6 +18,7 @@ Functions:
 import json
 from abc import ABC
 from typing import AsyncIterable, Dict, List, Optional
+import uuid
 
 from langchain_azure_ai.chat_models import AzureAIChatCompletionsModel  # type: ignore
 from langchain_core.runnables import RunnableConfig  # type: ignore
@@ -422,8 +423,8 @@ class AbstractChat(ABC):
     async def agent_message(
         self,
         query: str,
-        memory: AsyncPostgresSaver,
-        thread_id: Optional[str] = None,
+        memory: AsyncPostgresSaver | None = None,
+        thread_id: Optional[uuid.UUID] = None,
         corpora: Optional[tuple[str, ...]] = None,
         sdg_filter: Optional[List[int]] = None,
     ):
@@ -432,7 +433,8 @@ class AbstractChat(ABC):
 
         Args:
             query (str): The user query.
-            thread_id (str): The thread ID.
+            memory (AsyncPostgresSaver | None): The memory to use for the agent.
+            thread_id (uuid.UUID): The thread ID.
             corpora (tuple[str, ...] | None): The corpora to search resources.
             sdg_filter (list[int] | None): The SDG filters to apply to the search.
 
@@ -446,17 +448,12 @@ class AbstractChat(ABC):
             model="Mistral-Large-2411",
         )
 
-        if thread_id:
-            checkpointer = memory
-        else:
-            checkpointer = None
-
         agent_executor = create_react_agent(
             model=agent_model,
             tools=[
                 get_resources_about_sustainability,
             ],
-            checkpointer=checkpointer,
+            checkpointer=memory,
             prompt=prompts.AGENT_SYSTEM_PROMPT,
             pre_model_hook=trim_conversation_history,
         )

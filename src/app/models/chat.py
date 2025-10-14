@@ -1,5 +1,6 @@
 from enum import Enum
 from typing import Literal, TypedDict
+import uuid
 
 from pydantic import BaseModel, Field
 from qdrant_client.models import ScoredPoint
@@ -61,7 +62,7 @@ class ReformulatedQuestionsResponse(BaseModel):
 
 class AgentContext(SDGFilter):
     query: str | None = None
-    thread_id: str | None = None
+    thread_id: uuid.UUID | None = None
     corpora: tuple[str, ...] | None = None
 
 
