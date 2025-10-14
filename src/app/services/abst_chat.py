@@ -18,10 +18,21 @@ Functions:
 import json
 from abc import ABC
 from typing import AsyncIterable, Dict, List, Optional
+import uuid
 
+from langchain_azure_ai.chat_models import AzureAIChatCompletionsModel  # type: ignore
+from langchain_core.runnables import RunnableConfig  # type: ignore
+from langgraph.checkpoint.postgres.aio import AsyncPostgresSaver  # type: ignore
+from langgraph.prebuilt import create_react_agent  # type: ignore
+
+from src.app.api.dependencies import get_settings
 from src.app.models.chat import ReformulatedQueryResponse
 from src.app.models.documents import Document
 from src.app.services import prompts
+from src.app.services.agent import (
+    get_resources_about_sustainability,
+    trim_conversation_history,
+)
 from src.app.services.exceptions import LanguageNotSupportedError
 from src.app.services.helpers import (
     detect_language_from_entry,
@@ -407,4 +418,60 @@ class AbstractChat(ABC):
         res = await self.chat_client.completion(
             messages=messages,
         )
+        return res
+
+    async def agent_message(
+        self,
+        query: str,
+        memory: AsyncPostgresSaver | None = None,
+        thread_id: Optional[uuid.UUID] = None,
+        corpora: Optional[tuple[str, ...]] = None,
+        sdg_filter: Optional[List[int]] = None,
+    ):
+        """
+        Sends a chat message handled by an agent.
+
+        Args:
+            query (str): The user query.
+            memory (AsyncPostgresSaver | None): The memory to use for the agent.
+            thread_id (uuid.UUID): The thread ID.
+            corpora (tuple[str, ...] | None): The corpora to search resources.
+            sdg_filter (list[int] | None): The SDG filters to apply to the search.
+
+        Returns:
+            str: The chat message content.
+        """
+        settings = get_settings()
+        agent_model = AzureAIChatCompletionsModel(
+            endpoint=settings.AZURE_MISTRAL_API_BASE,
+            credential=settings.AZURE_MISTRAL_API_KEY,
+            model="Mistral-Large-2411",
+        )
+
+        agent_executor = create_react_agent(
+            model=agent_model,
+            tools=[
+                get_resources_about_sustainability,
+            ],
+            checkpointer=memory,
+            prompt=prompts.AGENT_SYSTEM_PROMPT,
+            pre_model_hook=trim_conversation_history,
+        )
+
+        config = RunnableConfig(
+            configurable={
+                "thread_id": thread_id,
+                "corpora": corpora,
+                "sdg_filter": sdg_filter,
+            }
+        )
+
+        messages = [
+            {
+                "role": "user",
+                "content": query,
+            },
+        ]
+
+        res = await agent_executor.ainvoke(input={"messages": messages}, config=config)
         return res

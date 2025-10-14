@@ -1,9 +1,13 @@
-from typing import Optional, cast
+from typing import Dict, Optional, cast
 
 import backoff
+import psycopg
 from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi.responses import StreamingResponse
+from langchain_core.messages import ToolMessage
+from langgraph.checkpoint.postgres.aio import AsyncPostgresSaver
 from openai import RateLimitError
+from psycopg.rows import dict_row
 from pydantic import BaseModel
 
 from src.app.api.dependencies import get_settings
@@ -32,6 +36,14 @@ chatfactory = AbstractChat(
     is_azure_model=True,
 )
 
+DB_URI = "postgresql://{user}:{password}@{host}:{port}/{database}".format(
+    user=settings.PG_USER,
+    password=settings.PG_PASSWORD,
+    host=settings.PG_HOST,
+    port=settings.PG_PORT,
+    database=settings.PG_DATABASE,
+)
+
 
 def get_params(body: models.Context) -> models.ContextOut:
     body.sources = body.sources[:7]
@@ -45,6 +57,19 @@ def get_params(body: models.Context) -> models.ContextOut:
         history=body.history or [],
         query=body.query,
         subject=body.subject,
+    )
+
+
+def get_agent_params(body: models.AgentContext) -> models.AgentContext:
+    if not body.query or body.query == "":
+        e = EmptyQueryError()
+        return bad_request(message=e.message, msg_code=e.msg_code)
+
+    return models.AgentContext(
+        query=body.query,
+        thread_id=body.thread_id,
+        corpora=body.corpora,
+        sdg_filter=body.sdg_filter,
     )
 
 
@@ -287,3 +312,50 @@ async def q_and_a_stream(
                 "code": "STREAM_ERROR",
             },
         )
+
+
+@router.post(
+    "/chat/agent",
+    summary="Agent Response",
+    description="This endpoint is used to get an agent response to the user's message",
+    response_model=models.AgentResponse,
+)
+@backoff.on_exception(
+    wait_gen=backoff.expo,
+    exception=RateLimitError,
+    logger=logger,
+    max_tries=5,
+    max_time=180,
+    jitter=backoff.random_jitter,
+    factor=2,
+)
+async def agent_response(
+    body: models.AgentContext = Depends(get_agent_params),
+) -> Optional[Dict]:
+    try:
+        if body.query is None:
+            raise EmptyQueryError()
+
+        if body.thread_id:
+            async with await psycopg.AsyncConnection.connect(
+                DB_URI, autocommit=True, prepare_threshold=0, row_factory=dict_row
+            ) as conn:
+                await conn.execute("SET SEARCH_PATH to agent_related")
+                await conn.commit()
+
+                memory = AsyncPostgresSaver(conn)
+
+        res = await chatfactory.agent_message(
+            query=body.query,
+            memory=memory,
+            thread_id=body.thread_id,
+            corpora=body.corpora,
+            sdg_filter=body.sdg_filter,
+        )
+        if isinstance(res["messages"][-2], ToolMessage):
+            docs = res["messages"][-2].artifact
+        else:
+            docs = None
+        return {"content": cast(str, res["messages"][-1].content), "docs": docs}
+    except LanguageNotSupportedError as e:
+        bad_request(message=e.message, msg_code=e.msg_code)

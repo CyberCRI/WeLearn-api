@@ -33,6 +33,7 @@ class EnhancedSearchQuery(SDGFilter):
     influence_factor: float = 2
     relevance_factor: float = 1
     concatenate: bool = True
+    readability: Range | float | None = None
 
 
 class ContextType(StrEnum):

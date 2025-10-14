@@ -10,6 +10,7 @@ from qdrant_client.http import exceptions as qdrant_exceptions
 from starlette.exceptions import HTTPException as StarletteHTTPException
 
 from src.app.api.api_v1.api import api_router, api_tags_metadata
+from src.app.api.api_v1.endpoints.chat import chatfactory
 from src.app.api.shared.enpoints import health
 from src.app.core.config import settings
 from src.app.services.security import get_user, monitot_requests
@@ -23,6 +24,11 @@ app = FastAPI(
     title=settings.PROJECT_NAME,
     openapi_url=f"{settings.API_V1_STR}/openapi.json",
 )
+
+
+@app.on_event("shutdown")
+async def shutdown_event():
+    await chatfactory.aclose()
 
 
 @app.exception_handler(ResponseValidationError)

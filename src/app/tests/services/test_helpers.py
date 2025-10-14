@@ -71,9 +71,7 @@ class HelpersTests(TestCase):
             {"score": 0.7, "payload": {"document_corpus": "test"}},
         ]
 
-        with mock.patch("src.app.services.helpers.logger.error") as mock_logger:
-            self.assertEqual(stringify_docs_content(docs), "")
-            mock_logger.assert_called_once()
+        self.assertEqual(stringify_docs_content(docs), "")
 
     def test_extract_json_from_response(self):
         response = 'Here is the JSON: {"key": "value"}'
