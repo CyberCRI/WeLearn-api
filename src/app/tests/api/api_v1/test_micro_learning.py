@@ -2,10 +2,10 @@ import unittest
 from unittest import mock
 
 from fastapi.testclient import TestClient
+from welearn_database.data.models import ContextDocument
 
 from src.app.core.config import settings
 from src.app.models.collections import Collection
-from welearn_database.data.models import ContextDocument
 from src.main import app
 
 client = TestClient(app)
