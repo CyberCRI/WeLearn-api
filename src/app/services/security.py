@@ -5,8 +5,8 @@ from typing import Annotated
 from fastapi import Header, HTTPException, Request, Security, status
 from fastapi.security import APIKeyHeader
 from sqlalchemy.sql import select
+from welearn_database.data.models import APIKeyManagement
 
-from src.app.models.db_models import APIKeyManagement
 from src.app.services.sql_db import register_endpoint, session_maker
 from src.app.utils.logger import logger as logger_utils
 

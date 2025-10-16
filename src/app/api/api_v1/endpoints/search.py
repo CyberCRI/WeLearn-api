@@ -4,15 +4,15 @@ from collections import Counter
 from fastapi import APIRouter, Depends, Response
 from qdrant_client.models import ScoredPoint
 from sqlalchemy.sql import select
-
-from src.app.models.db_models import (
+from welearn_database.data.models import (
     Corpus,
-    CorpusEmbedding,
+    CorpusNameEmbeddingModelLang,
     DocumentSlice,
     QtyDocumentInQdrant,
     Sdg,
     WeLearnDocument,
 )
+
 from src.app.models.documents import Collection_schema, Document, DocumentPayloadModel
 from src.app.models.search import (
     EnhancedSearchQuery,
@@ -70,7 +70,9 @@ def get_params(
 )
 async def get_corpus():
     statement = select(
-        CorpusEmbedding.source_name, CorpusEmbedding.lang, CorpusEmbedding.title
+        CorpusNameEmbeddingModelLang.source_name,
+        CorpusNameEmbeddingModelLang.lang,
+        CorpusNameEmbeddingModelLang.title,
     )
     with session_maker() as s:
         collections = s.execute(statement).all()

@@ -3,8 +3,8 @@ from datetime import datetime, timedelta
 
 from fastapi import APIRouter, HTTPException, Request
 from sqlalchemy.sql import select
+from welearn_database.data.models import Bookmark, InferredUser, Session
 
-from src.app.models.db_models import Bookmark, InferredUser, Session
 from src.app.services.sql_db import session_maker
 from src.app.utils.logger import logger as logger_utils
 

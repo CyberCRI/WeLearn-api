@@ -1,9 +1,13 @@
 from uuid import UUID
 
 from sqlalchemy import URL
+from welearn_database.data.models import (
+    ContextDocument,
+    EmbeddingModel,
+    EndpointRequest,
+)
 
 from src.app.api.dependencies import get_settings
-from src.app.models.db_models import ContextDocument, EmbeddingModel, EndpointRequest
 from src.app.models.documents import JourneySection
 from src.app.models.search import ContextType
 from src.app.utils.decorators import singleton

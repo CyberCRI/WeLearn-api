@@ -1,7 +1,7 @@
 import numpy
 from fastapi import APIRouter, HTTPException
+from welearn_database.data.models import ContextDocument
 
-from src.app.models.db_models import ContextDocument
 from src.app.models.documents import JourneySectionType
 from src.app.models.search import SearchFilters
 from src.app.services.helpers import (
