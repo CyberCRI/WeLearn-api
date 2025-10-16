@@ -345,13 +345,20 @@ async def agent_response(
 
                 memory = AsyncPostgresSaver(conn)
 
-        res = await chatfactory.agent_message(
-            query=body.query,
-            memory=memory,
-            thread_id=body.thread_id,
-            corpora=body.corpora,
-            sdg_filter=body.sdg_filter,
-        )
+                res = await chatfactory.agent_message(
+                    query=body.query,
+                    memory=memory,
+                    thread_id=body.thread_id,
+                    corpora=body.corpora,
+                    sdg_filter=body.sdg_filter,
+                )
+        else:
+            res = await chatfactory.agent_message(
+                query=body.query,
+                corpora=body.corpora,
+                sdg_filter=body.sdg_filter,
+            )
+
         if isinstance(res["messages"][-2], ToolMessage):
             docs = res["messages"][-2].artifact
         else:

@@ -1,6 +1,6 @@
+import uuid
 from enum import Enum
 from typing import Literal, TypedDict
-import uuid
 
 from pydantic import BaseModel, Field
 from qdrant_client.models import ScoredPoint
