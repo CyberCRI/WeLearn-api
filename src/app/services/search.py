@@ -13,7 +13,12 @@ from sklearn.metrics.pairwise import cosine_similarity
 
 from src.app.api.dependencies import get_settings
 from src.app.models.collections import Collection
-from src.app.models.search import EnhancedSearchQuery, SearchFilters, SearchMethods
+from src.app.models.search import (
+    EnhancedSearchQuery,
+    FilterDefinition,
+    SearchFilters,
+    SearchMethods,
+)
 from src.app.services.exceptions import CollectionNotFoundError, ModelNotFoundError
 from src.app.services.helpers import convert_embedding_bytes
 from src.app.services.sql_db import get_subject
@@ -211,11 +216,19 @@ class SearchService:
             subject_influence_factor=qp.influence_factor,
         )
 
-        filters = SearchFilters(
-            slice_sdg=qp.sdg_filter,
-            document_corpus=qp.corpora,
-            readability=qp.readability,
-        ).build_filters()
+        filter_content = [
+            FilterDefinition(key="document_corpus", value=qp.corpora),
+            FilterDefinition(key="document_details.readability", value=qp.readability),
+            FilterDefinition(
+                key=(
+                    "slice_sdg" if method == SearchMethods.BY_SLICES else "document_sdg"
+                ),
+                value=qp.sdg_filter,
+            ),
+        ]
+
+        filters = SearchFilters(filters=filter_content).build_filters()
+
         data = []
         if method == "by_slices":
             data = await self.search(
