@@ -42,24 +42,27 @@ class ContextType(StrEnum):
     SUBJECT = auto()
 
 
-class SearchFilters(BaseModel):
-    slice_sdg: list[int] | None
-    document_corpus: tuple[str, ...] | list[str] | None
-    readability: Range | float | None
+class FilterDefinition(BaseModel):
+    key: str
+    value: list[str] | Range | float | tuple[str, ...] | list[int] | None
+
+
+class SearchFilters:
+    def __init__(self, filters: list[FilterDefinition] | None) -> None:
+        self.dict_filters: dict = {}
+        self.filters = filters
+        if not self.filters:
+            self.filters = []
+        for filter_item in self.filters:
+            self.dict_filters[filter_item.key] = filter_item.value
 
     @log_time_and_error_sync
     def build_filters(self) -> Filter | None:
-        if not self.slice_sdg and not self.document_corpus:
+        if not self.filters:
             return None
 
-        filters = {
-            "slice_sdg": self.slice_sdg,
-            "document_corpus": self.document_corpus,
-            "document_details.readability": self.readability,
-        }
-
         qdrant_filter = []
-        for key, values in filters.items():
+        for key, values in self.dict_filters.items():
             if not values:
                 continue
             if isinstance(values, Range):
