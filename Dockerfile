@@ -1,4 +1,4 @@
-FROM python:3.12-slim as requirements-stage
+FROM python:3.12-slim AS requirements-stage
 WORKDIR /tmp
 
 RUN pip install poetry==1.8.2
@@ -12,7 +12,7 @@ COPY ./pyproject.toml ./poetry.lock* /tmp/
 
 RUN poetry export -f requirements.txt --output requirements.txt --without-hashes --with dev --without metrics
 
-FROM python:3.12-slim as build-stage
+FROM python:3.12-slim AS build-stage
 WORKDIR /app
 RUN apt update && apt install -y --no-install-recommends make
 
@@ -22,7 +22,7 @@ RUN pip install --no-cache-dir --upgrade -r requirements.txt
 
 COPY . .
 
-COPY secrets-entrypoint.sh /app/secrets-entrypoint.sh
+COPY devops-toolbox/scripts/secrets-entrypoint.sh /app/secrets-entrypoint.sh
 
 ENTRYPOINT [ "/app/secrets-entrypoint.sh" ]
 
