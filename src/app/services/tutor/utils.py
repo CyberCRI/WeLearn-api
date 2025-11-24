@@ -1,6 +1,8 @@
 from docx import Document as DocxReader
+from src.app.utils.decorators import log_time_and_error_sync
 from fastapi import HTTPException, UploadFile
-from pypdf import PdfReader
+from src.app.services.pdf_extractor import extract_txt_from_pdf_with_tika
+import asyncio
 from qdrant_client.models import ScoredPoint
 
 
@@ -39,6 +41,24 @@ def extract_doc_info(documents: list[ScoredPoint]) -> list[dict]:
         if doc.payload is not None
     ]
 
+@log_time_and_error_sync
+async def get_files_content(files: list[UploadFile]) -> list[str]:
+    files_content: list[str] = []
+    tasks = [
+            get_file_content(file)
+            for file in files
+            ]
+
+    for coroutine in asyncio.as_completed(tasks):
+        content = await coroutine
+        files_content.append(content)
+
+    if len(files_content) == 0:
+        raise HTTPException(status_code=400, detail="added files are empty")
+
+    return files_content
+
+
 
 async def get_file_content(file: UploadFile) -> str:
     """Extract text content from various file types.
@@ -60,7 +80,6 @@ async def get_file_content(file: UploadFile) -> str:
         "text/plain": _extract_text_content,
         "application/vnd.openxmlformats-officedocument.wordprocessingml.document": _extract_docx_content,
     }
-
     if content_type not in content_extractors:
         raise HTTPException(status_code=400, detail="Unsupported file type")
 
@@ -74,8 +93,10 @@ async def get_file_content(file: UploadFile) -> str:
 
 
 async def _extract_pdf_content(file) -> str:
-    reader = PdfReader(file.file)
-    return "\n".join(page.extract_text() or "" for page in reader.pages)
+    # TODO: use .env variable for URL
+    content = extract_txt_from_pdf_with_tika(file.file,  'https://tika.k8s.lp-i.dev/')
+
+    return content
 
 
 async def _extract_text_content(file) -> str:

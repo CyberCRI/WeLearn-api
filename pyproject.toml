@@ -44,6 +44,9 @@ azure-ai-inference = "^1.0.0b9"
 azure-identity = "^1.25.0"
 psycopg = {extras = ["binary"], version = "^3.2.10"}
 welearn-database = "^0.2.4"
+bs4 = "^0.0.2"
+urllib3 = "^2.5.0"
+refinedoc = "^1.0.1"
 
 [tool.poetry.group.dev.dependencies]
 pytest = "^7.4.0"

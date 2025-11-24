@@ -9,6 +9,7 @@ from litellm import acompletion
 from litellm.types.utils import ModelResponse
 from pydantic import BaseModel
 
+from src.app.utils.decorators import log_time_and_error
 from src.app.utils.logger import logger as utils_logger
 
 logger = utils_logger(__name__)
@@ -49,6 +50,7 @@ class LLMProxy(ABC):
                 api_version=api_version,
             )
 
+    @log_time_and_error
     async def completion(
         self,
         messages: list,
