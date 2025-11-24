@@ -6,6 +6,6 @@ expected_output="You must follow the following JSON schema: { 'summaries': [summ
 """
 
 extractor_user_prompt = """
-Here is a list of documents to be summarized, each document is identified by __document_start__ and __document_end__,
+Here is a list of documents to be summarized, documents extracts are separated by __DOCUMENT_SEPARATOR__,
 {documents}
 """

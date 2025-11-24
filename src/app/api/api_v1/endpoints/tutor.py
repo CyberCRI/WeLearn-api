@@ -47,13 +47,7 @@ async def extract_files_content(
         files: Annotated[list[UploadFile], File()],
         ) -> SummariesOutputModel | None:
     files_content = await get_files_content(files)
-
-    summaries = []
-    summary_tasks = [
-           '__document_end__'+text+'__document_end__'
-           for text in files_content
-        ]
-    summary_tasks = (',').join(summary_tasks)
+    files_content_str = ('__DOCUMENT_SEPARATOR__').join(files_content)
 
     messages = [
         {
@@ -62,14 +56,14 @@ async def extract_files_content(
         },
         {
             "role": "user",
-            "content": extractor_user_prompt.format(documents=summary_tasks)
+            "content": extractor_user_prompt.format(documents=files_content_str)
         },
     ]
 
     try:
         summaries = await chatfactory.chat_client.completion(messages=messages)
         assert isinstance(summaries, str)
-        json_summaries = json.loads(summaries)
+        json_summaries = extract_json_from_response(summaries)
         summaries_output = SummariesOutputModel(**json_summaries)
 
         return summaries_output
