@@ -4,6 +4,10 @@ from fastapi import HTTPException, UploadFile
 from src.app.services.pdf_extractor import extract_txt_from_pdf_with_tika
 import asyncio
 from qdrant_client.models import ScoredPoint
+from src.app.api.dependencies import get_settings
+
+
+settings = get_settings() 
 
 
 def build_system_message(
@@ -93,8 +97,7 @@ async def get_file_content(file: UploadFile) -> str:
 
 
 async def _extract_pdf_content(file) -> str:
-    # TODO: use .env variable for URL
-    content = extract_txt_from_pdf_with_tika(file.file,  'https://tika.k8s.lp-i.dev/')
+    content = extract_txt_from_pdf_with_tika(file.file,  settings.TIKA_URL_BASE)
 
     return content
 

@@ -14,9 +14,9 @@ from src.app.api.api_v1.endpoints.chat import chatfactory
 from src.app.api.shared.enpoints import health
 from src.app.core.config import settings
 from src.app.services.security import get_user, monitot_requests
-from src.app.utils.logger import logger
+from src.app.utils.logger import logger as utils_logger
 
-logger = logger(__name__)
+logger = utils_logger(__name__)
 
 app = FastAPI(
     openapi_tags=api_tags_metadata,
@@ -25,10 +25,10 @@ app = FastAPI(
     openapi_url=f"{settings.API_V1_STR}/openapi.json",
 )
 
-
-@app.on_event("shutdown")
-async def shutdown_event():
-    await chatfactory.aclose()
+# TODO: check this with JM
+# @app.on_event("shutdown")
+# async def shutdown_event():
+#     await chatfactory.aclose()
 
 
 @app.exception_handler(ResponseValidationError)
