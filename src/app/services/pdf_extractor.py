@@ -4,11 +4,10 @@ import re
 from typing import List
 
 import requests  # type: ignore
+from bs4 import BeautifulSoup
+from refinedoc.refined_document import RefinedDocument
 from requests.adapters import HTTPAdapter  # type: ignore
 from urllib3 import Retry
-from bs4 import BeautifulSoup
-
-from refinedoc.refined_document import RefinedDocument
 
 logger = logging.getLogger(__name__)
 
@@ -20,6 +19,7 @@ HEADERS = {
     "TE": "Trailers",
     "User-Agent": "Mozilla/5.0 (X11; Linux x86_64; rv:89.0) Gecko/20100101 Firefox/136.0",
 }
+
 
 def delete_non_printable_character(text: str) -> str:
     """
@@ -56,6 +56,7 @@ def replace_ligatures(text: str) -> str:
         text = text.replace(search, replace)
     return text
 
+
 def remove_extra_whitespace(text: str) -> str:
     """removes extra whitespace from text
 
@@ -68,6 +69,7 @@ def remove_extra_whitespace(text: str) -> str:
     if not isinstance(text, str):
         return text
     return " ".join(text.split())
+
 
 def delete_accents(text: str) -> str:
     """
@@ -120,6 +122,7 @@ def remove_hyphens(text: str) -> str:
 
     return "\n".join(lines)
 
+
 def _dehyphenate(lines: List[str], line_no: int) -> List[str]:
     """
     Dehyphenate a line in a list of lines
@@ -135,6 +138,7 @@ def _dehyphenate(lines: List[str], line_no: int) -> List[str]:
     lines[line_no] = lines[line_no][:-1] + word_suffix
     lines[line_no + 1] = lines[line_no + 1][len(word_suffix) :]
     return lines
+
 
 def get_new_https_session(retry_total: int = 10):
     # Define the retry strategy
@@ -196,9 +200,7 @@ def _parse_tika_content(tika_content: dict) -> list[list[str]]:
     return res
 
 
-def extract_txt_from_pdf_with_tika(
-    pdf_content: io.BytesIO, tika_base_url: str
-) -> str:
+def extract_txt_from_pdf_with_tika(pdf_content: io.BytesIO, tika_base_url: str) -> str:
     """
     Extract the text from a PDF document and return it as a list of strings for each page of the document and a list of
     strings for each page for a filtered document and the reference document (extracted with tika micro service)
@@ -214,17 +216,19 @@ def extract_txt_from_pdf_with_tika(
 
     refined_pdf_content = RefinedDocument(content=parsed_pdf_cont)
 
-    pdf_cont = [[delete_non_printable_character(word) for word in page] for page in refined_pdf_content.body]
-    
+    pdf_cont = [
+        [delete_non_printable_character(word) for word in page]
+        for page in refined_pdf_content.body
+    ]
+
     pages = []
     for content in pdf_cont:
         page_text = " ".join(content)
         page_text = replace_ligatures(page_text)
         page_text = remove_hyphens(page_text)
         page_text = delete_accents(page_text)
-    
+
         pages.append(page_text)
     ret = remove_extra_whitespace(" ".join(pages))
 
     return ret
-

@@ -1,6 +1,5 @@
-from time import time
 from typing import Annotated
-import json
+
 from fastapi import APIRouter, File, HTTPException, Response, UploadFile
 
 from src.app.api.dependencies import get_settings
@@ -20,7 +19,10 @@ from src.app.services.tutor.models import (
     TutorSearchResponse,
     TutorSyllabusRequest,
 )
-from src.app.services.tutor.prompts import extractor_system_prompt, extractor_user_prompt
+from src.app.services.tutor.prompts import (
+    extractor_system_prompt,
+    extractor_user_prompt,
+)
 from src.app.services.tutor.tutor import tutor_manager
 from src.app.services.tutor.utils import get_files_content
 from src.app.utils.logger import logger as utils_logger
@@ -42,12 +44,13 @@ chatfactory = AbstractChat(
 
 sp = SearchService()
 
-@router.post('/files/content')
+
+@router.post("/files/content")
 async def extract_files_content(
-        files: Annotated[list[UploadFile], File()],
-        ) -> SummariesOutputModel | None:
+    files: Annotated[list[UploadFile], File()],
+) -> SummariesOutputModel | None:
     files_content = await get_files_content(files)
-    files_content_str = ('__DOCUMENT_SEPARATOR__').join(files_content)
+    files_content_str = ("__DOCUMENT_SEPARATOR__").join(files_content)
 
     messages = [
         {
@@ -56,7 +59,7 @@ async def extract_files_content(
         },
         {
             "role": "user",
-            "content": extractor_user_prompt.format(documents=files_content_str)
+            "content": extractor_user_prompt.format(documents=files_content_str),
         },
     ]
 
@@ -135,7 +138,7 @@ async def tutor_search(
     file_content_str = "\n\n".join(file_content_str)
 
     messages = [
-        {"role": "system", "content": extractor_prompt},
+        {"role": "system", "content": extractor_system_prompt},
         {"role": "user", "content": file_content_str},
     ]
 
@@ -207,6 +210,7 @@ async def tutor_search(
     )
 
     return resp
+
 
 @router.post("/syllabus")
 async def create_syllabus(

@@ -1,13 +1,14 @@
-from docx import Document as DocxReader
-from src.app.utils.decorators import log_time_and_error_sync
-from fastapi import HTTPException, UploadFile
-from src.app.services.pdf_extractor import extract_txt_from_pdf_with_tika
 import asyncio
+
+from docx import Document as DocxReader
+from fastapi import HTTPException, UploadFile
 from qdrant_client.models import ScoredPoint
+
 from src.app.api.dependencies import get_settings
+from src.app.services.pdf_extractor import extract_txt_from_pdf_with_tika
+from src.app.utils.decorators import log_time_and_error_sync
 
-
-settings = get_settings() 
+settings = get_settings()
 
 
 def build_system_message(
@@ -45,13 +46,11 @@ def extract_doc_info(documents: list[ScoredPoint]) -> list[dict]:
         if doc.payload is not None
     ]
 
+
 @log_time_and_error_sync
 async def get_files_content(files: list[UploadFile]) -> list[str]:
     files_content: list[str] = []
-    tasks = [
-            get_file_content(file)
-            for file in files
-            ]
+    tasks = [get_file_content(file) for file in files]
 
     for coroutine in asyncio.as_completed(tasks):
         content = await coroutine
@@ -61,7 +60,6 @@ async def get_files_content(files: list[UploadFile]) -> list[str]:
         raise HTTPException(status_code=400, detail="added files are empty")
 
     return files_content
-
 
 
 async def get_file_content(file: UploadFile) -> str:
@@ -97,7 +95,7 @@ async def get_file_content(file: UploadFile) -> str:
 
 
 async def _extract_pdf_content(file) -> str:
-    content = extract_txt_from_pdf_with_tika(file.file,  settings.TIKA_URL_BASE)
+    content = extract_txt_from_pdf_with_tika(file.file, settings.TIKA_URL_BASE)
 
     return content
 

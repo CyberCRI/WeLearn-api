@@ -13,8 +13,10 @@ class ExtractorOutput(BaseModel):
 class ExtractorOutputList(BaseModel):
     extracts: list[ExtractorOutput]
 
+
 class SummariesOutputModel(BaseModel):
     summaries: list[str]
+
 
 class TutorSearchResponse(BaseModel):
     extracts: list[ExtractorOutput]
