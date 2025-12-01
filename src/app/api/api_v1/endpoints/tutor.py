@@ -11,15 +11,20 @@ from src.app.services.search import SearchService
 from src.app.services.search_helpers import search_multi_inputs
 from src.app.services.tutor.agents import TEMPLATES
 from src.app.services.tutor.models import (
-    ExtractorOuputList,
+    ExtractorOutputList,
+    SummariesOutputModel,
     SyllabusFeedback,
     SyllabusResponse,
     SyllabusResponseAgent,
     TutorSearchResponse,
     TutorSyllabusRequest,
 )
+from src.app.services.tutor.prompts import (
+    extractor_system_prompt,
+    extractor_user_prompt,
+)
 from src.app.services.tutor.tutor import tutor_manager
-from src.app.services.tutor.utils import get_file_content
+from src.app.services.tutor.utils import get_files_content
 from src.app.utils.logger import logger as utils_logger
 
 logger = utils_logger(__name__)
@@ -40,26 +45,78 @@ chatfactory = AbstractChat(
 sp = SearchService()
 
 
-extractor_prompt = """
-role="An assistant to summarize a text and extract the main themes from it",
-backstory="You are specialised in analysing documents, summarizing them and extracting the main themes. You value precision and clarity.",
-goal="Analyse each document, summarize it and extract the main themes, explaining why each theme was identified.",
-expected_output="You must follow the following JSON schema: {extracts: [{'original_document': 'Document', 'summary': 'Summary', 'themes': ['Theme 1', 'Theme 2', ...]}, {'original_document': 'Document', 'summary': 'Sumamry', 'themes': ['Theme 1', 'Theme 2', ...]}, ...]} an entry by document",
-"""
+@router.post("/files/content")
+async def extract_files_content(
+    files: Annotated[list[UploadFile], File()],
+) -> SummariesOutputModel | None:
+    files_content = await get_files_content(files)
+    files_content_str = ("__DOCUMENT_SEPARATOR__").join(files_content)
+
+    messages = [
+        {
+            "role": "system",
+            "content": extractor_system_prompt,
+        },
+        {
+            "role": "user",
+            "content": extractor_user_prompt.format(documents=files_content_str),
+        },
+    ]
+
+    try:
+        summaries = await chatfactory.chat_client.completion(messages=messages)
+        assert isinstance(summaries, str)
+        json_summaries = extract_json_from_response(summaries)
+        summaries_output = SummariesOutputModel(**json_summaries)
+
+        return summaries_output
+
+    except Exception as e:
+        logger.error(f"Error in extractor schema: {e}")
+        HTTPException(status_code=400, detail="error in response schema")
 
 
-async def get_files_content(files: list[UploadFile]) -> list[str]:
-    files_content: list[str] = []
+@router.post("/search_extracts")
+async def tutor_search_extract(
+    summaries: list[str],
+    response: Response,
+):
 
-    for file in files:
-        file_content = await get_file_content(file)
+    try:
+        qp = EnhancedSearchQuery(
+            query=summaries,
+            nb_results=10,
+            sdg_filter=None,
+            corpora=None,
+        )
 
-        if not file_content:
-            raise HTTPException(status_code=400, detail="added files are empty")
+        search_results = await search_multi_inputs(
+            qp=qp,
+            callback_function=sp.search_handler,
+        )
+    except NoResultsError as e:
+        response.status_code = 404
+        logger.error(f"No results found: {e}")
+        return TutorSearchResponse(
+            extracts=[],
+            nb_results=0,
+            documents=[],
+        )
 
-        files_content.append(file_content)
+    if not search_results:
+        return TutorSearchResponse(
+            extracts=[],
+            nb_results=0,
+            documents=[],
+        )
 
-    return files_content
+    resp = TutorSearchResponse(
+        extracts=[],
+        nb_results=len(search_results),
+        documents=search_results,
+    )
+
+    return resp
 
 
 @router.post("/search")
@@ -81,13 +138,13 @@ async def tutor_search(
     file_content_str = "\n\n".join(file_content_str)
 
     messages = [
-        {"role": "system", "content": extractor_prompt},
+        {"role": "system", "content": extractor_system_prompt},
         {"role": "user", "content": file_content_str},
     ]
 
     try:
         themes_extracted = await chatfactory.chat_client.completion(
-            messages=messages, response_format=ExtractorOuputList
+            messages=messages, response_format=ExtractorOutputList
         )
 
         jsn = {}
@@ -98,7 +155,7 @@ async def tutor_search(
         else:
             raise ValueError("Unexpected response format")
 
-        themes_extracted = ExtractorOuputList(**jsn)
+        themes_extracted = ExtractorOutputList(**jsn)
 
     except Exception as e:
         logger.error(f"Error in chat schema: {e}")

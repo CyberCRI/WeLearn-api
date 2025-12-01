@@ -13,8 +13,7 @@ class Settings(BaseSettings):
     PROJECT_NAME: str = "WeLearn"
     DESCRIPTION: str = """
     WeLearn API
-
-    ## Search
+    Search
     **search results are grouped by url**
     - You can search by term
     - Filter based on metadata
@@ -50,6 +49,9 @@ class Settings(BaseSettings):
     AZURE_GPT_4O_API_KEY: str
     AZURE_GPT_4O_API_BASE: str
     AZURE_GPT_4O_API_VERSION: str
+
+    # TIKA
+    TIKA_URL_BASE: str
 
     # PG
     PG_USER: Optional[str] = None

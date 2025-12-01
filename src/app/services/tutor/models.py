@@ -6,13 +6,16 @@ from qdrant_client.models import ScoredPoint
 
 
 class ExtractorOutput(BaseModel):
-    original_document: str
     summary: str
     themes: list[str]
 
 
-class ExtractorOuputList(BaseModel):
+class ExtractorOutputList(BaseModel):
     extracts: list[ExtractorOutput]
+
+
+class SummariesOutputModel(BaseModel):
+    summaries: list[str]
 
 
 class TutorSearchResponse(BaseModel):
