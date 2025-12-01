@@ -35,7 +35,7 @@ settings = get_settings()
 
 
 chatfactory = AbstractChat(
-    model="Mistral-Large-2411",
+    model=settings.LLM_MODEL_NAME,
     API_KEY=settings.AZURE_MISTRAL_API_KEY,
     API_BASE=settings.AZURE_MISTRAL_API_BASE,
     API_VERSION="2024-05-01-preview",

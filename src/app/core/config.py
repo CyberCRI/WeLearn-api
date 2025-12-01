@@ -32,6 +32,7 @@ class Settings(BaseSettings):
     QDRANT_PORT: int
     CORPUS: str
 
+    LLM_MODEL_NAME: str
     # MISTRAL
     MISTRAL_API_KEY: str
     AZURE_MISTRAL_API_BASE: str
