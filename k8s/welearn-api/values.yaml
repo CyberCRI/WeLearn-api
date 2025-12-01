@@ -45,6 +45,7 @@ config:
     PG_DATABASE: welearn_datastack
     PG_PORT: "5432"
     PG_DRIVER: postgresql+psycopg2
+    LLM_MODEL_NAME: mistral-medium-2505
 
 shareName: ml-models
 
