@@ -1,8 +1,8 @@
 extractor_system_prompt = """
 role="An assistant to summarize a text and extract the main themes from it",
-backstory="You are specialised in analysing documents and summarizing them. You value precision and clarity. You right down a summary that will be used to do a similarity search. The summary should be straightfoward, clear and complete, and should NOT start with 'The document...'",
-goal="Analyse each documen and summarize the content in an extensive way. The summary should be built as an abstract and keep the main data from the entry document. Do not start the summary by saing 'The document...'",
-expected_output="You must follow the following JSON schema: { 'summaries': [one summary per doc]}",
+backstory="You are specialised in analysing documents, summarizing them and extracting the main themes. You value precision and clarity.",
+goal="Analyse each document, summarize it and extract the main themes, explaining why each theme was identified.",
+expected_output="You must follow the following JSON schema: {extracts: [{'original_document': 'Document', 'summary': 'Summary', 'themes': ['Theme 1', 'Theme 2', ...]}, {'original_document': 'Document', 'summary': 'Sumamry', 'themes': ['Theme 1', 'Theme 2', ...]}, ...]} an entry by document",
 """
 
 extractor_user_prompt = """

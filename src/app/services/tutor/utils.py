@@ -2,10 +2,12 @@ import asyncio
 
 from docx import Document as DocxReader
 from fastapi import HTTPException, UploadFile
+
+# from src.app.services.pdf_extractor import extract_txt_from_pdf_with_tika
+from pypdf import PdfReader
 from qdrant_client.models import ScoredPoint
 
 from src.app.api.dependencies import get_settings
-from src.app.services.pdf_extractor import extract_txt_from_pdf_with_tika
 from src.app.utils.decorators import log_time_and_error_sync
 
 settings = get_settings()
@@ -95,9 +97,11 @@ async def get_file_content(file: UploadFile) -> str:
 
 
 async def _extract_pdf_content(file) -> str:
-    content = extract_txt_from_pdf_with_tika(file.file, settings.TIKA_URL_BASE)
+    reader = PdfReader(file.file)
+    return "\n".join(page.extract_text() or "" for page in reader.pages)
+    # content = extract_txt_from_pdf_with_tika(file.file, settings.TIKA_URL_BASE)
 
-    return content
+    # return content
 
 
 async def _extract_text_content(file) -> str:
