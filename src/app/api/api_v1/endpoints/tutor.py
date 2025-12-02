@@ -153,7 +153,7 @@ async def tutor_search(
         elif isinstance(themes_extracted, dict):
             jsn = themes_extracted
         else:
-            raise ValueError("Unexpected response format")
+            raise ValueError("Unexpected response format", themes_extracted)
 
         themes_extracted = ExtractorOutputList(**jsn)
 

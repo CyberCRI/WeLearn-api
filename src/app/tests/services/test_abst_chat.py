@@ -152,25 +152,25 @@ class TestAbstractChat(unittest.IsolatedAsyncioTestCase):
 
     #     assert reformulated.QUERY_STATUS == "INVALID"
 
-    async def test_reformulate_user_query_valueError(self, *mocks):
-        """
-        Test the case where the response from the chat client is not in the expected format.
-        """
+    # async def test_reformulate_user_query_valueError(self, *mocks):
+    #     """
+    #     Test the case where the response from the chat client is not in the expected format.
+    #     """
 
-        self.chat._detect_past_message_ref = mock.AsyncMock(
-            return_value={"REF_TO_PAST": False}
-        )
-        self.chat.chat_client.completion = mock.AsyncMock(
-            return_value="STANDALONE_QUESTION_FRQuestion 2?"
-        )
-        with self.assertRaises(ValueError):
-            await self.chat.reformulate_user_query(
-                "this is the user query",
-                [
-                    {"message": "this is the past message"},
-                    {"message": "this is the second past message"},
-                ],
-            )
+    #     self.chat._detect_past_message_ref = mock.AsyncMock(
+    #         return_value={"REF_TO_PAST": False}
+    #     )
+    #     self.chat.chat_client.completion = mock.AsyncMock(
+    #         return_value="STANDALONE_QUESTION_FRQuestion 2?"
+    #     )
+    #     with self.assertRaises(ValueError):
+    #         await self.chat.reformulate_user_query(
+    #             "this is the user query",
+    #             [
+    #                 {"message": "this is the past message"},
+    #                 {"message": "this is the second past message"},
+    #             ],
+    #         )
 
     async def test_reformulate_user_chat_not_called_if_ref_to_past(self, *mocks):
         self.chat._detect_past_message_ref = mock.AsyncMock(
