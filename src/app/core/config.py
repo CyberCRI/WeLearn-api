@@ -35,12 +35,12 @@ class Settings(BaseSettings):
     LLM_MODEL_NAME: str
     # MISTRAL
     MISTRAL_API_KEY: str
+
     AZURE_MISTRAL_API_BASE: str
     AZURE_MISTRAL_API_KEY: str
 
-    # MISTRAL ON AZURE
-    AZURE_MISTRAL_API_BASE: str
-    AZURE_MISTRAL_API_KEY: str
+    AZURE_APIM_API_KEY: str
+    AZURE_APIM_API_BASE: str
 
     # OPENAI_API
     AZURE_API_KEY: str

@@ -34,7 +34,7 @@ settings = get_settings()
 
 
 llm_mistral = OpenAIChatCompletionClient(
-    model="mistral-large-2411",
+    model=settings.LLM_MODEL_NAME,
     api_key=settings.AZURE_MISTRAL_API_KEY,
     base_url=settings.AZURE_MISTRAL_API_BASE,
     model_info=ModelInfo(
