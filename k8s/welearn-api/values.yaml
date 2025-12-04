@@ -46,6 +46,8 @@ config:
     PG_PORT: "5432"
     PG_DRIVER: postgresql+psycopg2
     LLM_MODEL_NAME: mistral-medium-2505
+    AZURE_APIM_API_BASE: https://apim-welearn-mistral.azure-api.net/mistral/models
+    AZURE_MISTRAL_API_BASE: https://welearn-mistral.services.ai.azure.com/models
 
 shareName: ml-models
 
