@@ -34,22 +34,17 @@ class Settings(BaseSettings):
 
     LLM_MODEL_NAME: str
     # MISTRAL
-    MISTRAL_API_KEY: str
-
     AZURE_MISTRAL_API_BASE: str
     AZURE_MISTRAL_API_KEY: str
 
     AZURE_APIM_API_KEY: str
     AZURE_APIM_API_BASE: str
 
-    # OPENAI_API
+    # OPENAI_API FOR RAG METRICS (To be challenged) 
     AZURE_API_KEY: str
     AZURE_API_BASE: str
     AZURE_API_VERSION: str
 
-    AZURE_GPT_4O_API_KEY: str
-    AZURE_GPT_4O_API_BASE: str
-    AZURE_GPT_4O_API_VERSION: str
 
     # TIKA
     TIKA_URL_BASE: str
