@@ -445,7 +445,7 @@ class AbstractChat(ABC):
         agent_model = AzureAIChatCompletionsModel(
             endpoint=settings.AZURE_MISTRAL_API_BASE,
             credential=settings.AZURE_MISTRAL_API_KEY,
-            model="Mistral-Large-2411",
+            model=settings.LLM_MODEL_NAME,
         )
 
         agent_executor = create_react_agent(
