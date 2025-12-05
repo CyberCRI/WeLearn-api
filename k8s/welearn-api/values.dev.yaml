@@ -3,12 +3,7 @@ ingress:
 
 config:
   nonSensitive:
-    AZURE_API_BASE: "https://apim-welearn-openai.azure-api.net"
-    AZURE_GPT_4O_API_BASE: "https://welearn-openai-sweden.openai.azure.com"
     PG_HOST: dev-lab-projects-backend.postgres.database.azure.com
-    AZURE_LLAMA_31_8B_API_BASE: https://meta-llama-3-1-8b-instruct-wl.swedencentral.models.ai.azure.com/
-    AZURE_LLAMA_31_70B_API_BASE: https://meta-llama-3-1-70b-instruct-wl.swedencentral.models.ai.azure.com/
-    AZURE_LLAMA_31_405B_API_BASE: https://meta-llama-3-1-405b-instruct-wl.eastus.models.ai.azure.com/
     TIKA_URL_BASE: https://tika.k8s.lp-i.dev/
 allowedHostsRegexes:
   mainUrl: |-

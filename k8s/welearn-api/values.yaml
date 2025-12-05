@@ -31,23 +31,19 @@ resources:
 
 config:
   nonSensitive:
+    CLIENT_ORIGINS_REGEX: '^{{ join "|" (values .Values.allowedHostsRegexes | sortAlpha ) }}$'
+    AZURE_APIM_API_BASE: https://apim-welearn-mistral.azure-api.net/mistral/models
+    AZURE_MISTRAL_API_BASE: https://welearn-mistral.services.ai.azure.com/models
+    AZURE_API_BASE: "https://welearn-openai.openai.azure.com/openai/"
+    AZURE_API_VERSION: "2024-08-01-preview"
+    LLM_MODEL_NAME: mistral-medium-2505
     QDRANT_HOST: "http://qdrant.qdrant"
     QDRANT_PORT: "6333"
-    AZURE_API_TYPE: "azure"
-    AZURE_API_VERSION: "2024-08-01-preview"
-    AZURE_GPT_4O_API_VERSION: "2025-01-01-preview"
-    CORPUS: conversation
     MODELS_FOLDER_ROOTS: "/models"
-    AZURE_API_BASE: "https://welearn-openai.openai.azure.com/openai/"
-    AZURE_GPT_4O_API_BASE: "https://welearn-openai-sweden.openai.azure.com/"
-    CLIENT_ORIGINS_REGEX: '^{{ join "|" (values .Values.allowedHostsRegexes | sortAlpha ) }}$'
     PG_USER: welearn_datastack
     PG_DATABASE: welearn_datastack
     PG_PORT: "5432"
     PG_DRIVER: postgresql+psycopg2
-    LLM_MODEL_NAME: mistral-medium-2505
-    AZURE_APIM_API_BASE: https://apim-welearn-mistral.azure-api.net/mistral/models
-    AZURE_MISTRAL_API_BASE: https://welearn-mistral.services.ai.azure.com/models
 
 shareName: ml-models
 
