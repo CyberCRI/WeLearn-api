@@ -244,49 +244,17 @@ class AbstractChat(ABC):
                 QUERY_STATUS="REF_TO_PAST" if len(history) >= 1 else "INVALID",
             )
 
-        messages = [
-            {
-                **self.system_prompts["reformulate"],
-                "content": self.system_prompts["reformulate"]["content"].format(
-                    iso="en"
-                ),
-            },
-            *history[:-5],
-            {
-                "role": "user",
-                "content": prompts.STANDALONE_QUESTION + query,
-            },
-        ]
-
-        reformulated_query = await self.chat_client.completion(
-            messages=messages,
-            response_format={"type": ReformulatedQueryResponse},
+        ref_query = ReformulatedQueryResponse(
+            STANDALONE_QUESTION=query,
+            USER_LANGUAGE="",
+            QUERY_STATUS="VALID",
         )
-
-        try:
-            assert isinstance(reformulated_query, dict)
-            ref_query = ReformulatedQueryResponse(**reformulated_query)
-        except Exception:
-            assert isinstance(reformulated_query, str)
-            json_data = extract_json_from_response(reformulated_query)
-            if json_data:
-                try:
-                    ref_query = ReformulatedQueryResponse(**json_data)
-
-                except Exception:
-                    logger.error(
-                        "api_error=json_load_error, response=%s", reformulated_query
-                    )
-                    ref_query = reformulated_query
-            else:
-                logger.error("api_error=invalid_json, response=%s", reformulated_query)
-                ref_query = reformulated_query
 
         if not isinstance(ref_query, ReformulatedQueryResponse):
             raise ValueError(
                 {
                     "message": "Invalid response from model",
-                    "response": reformulated_query,
+                    "response": ref_query,
                 }
             )
 
