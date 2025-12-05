@@ -28,31 +28,19 @@ class Settings(BaseSettings):
             "semver": "0.1.0",
         }
 
-    QDRANT_HOST: str
-    QDRANT_PORT: int
-    CORPUS: str
-
-    LLM_MODEL_NAME: str
-    # MISTRAL
-    MISTRAL_API_KEY: str
-
+    # AZURE ENV VARS
     AZURE_MISTRAL_API_BASE: str
     AZURE_MISTRAL_API_KEY: str
 
     AZURE_APIM_API_KEY: str
     AZURE_APIM_API_BASE: str
 
-    # OPENAI_API
+    # OPENAI_API FOR RAG METRICS (To be challenged)
     AZURE_API_KEY: str
     AZURE_API_BASE: str
     AZURE_API_VERSION: str
 
-    AZURE_GPT_4O_API_KEY: str
-    AZURE_GPT_4O_API_BASE: str
-    AZURE_GPT_4O_API_VERSION: str
-
-    # TIKA
-    TIKA_URL_BASE: str
+    LLM_MODEL_NAME: str
 
     # PG
     PG_USER: Optional[str] = None
@@ -61,6 +49,12 @@ class Settings(BaseSettings):
     PG_PORT: Optional[str] = None
     PG_DATABASE: str
     PG_DRIVER: str
+
+    QDRANT_HOST: str
+    QDRANT_PORT: int
+
+    # TIKA
+    TIKA_URL_BASE: str
 
     model_config = SettingsConfigDict(
         env_file=".env", extra="ignore", case_sensitive=True
