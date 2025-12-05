@@ -54,7 +54,7 @@ class UniversityTeacherAgent(RoutedAgent):
                 build_system_message(
                     role="the University Professor Agent, responsible for drafting the initial syllabus based on the course materials provided by the user. Your role is to structure the course content, ensuring it aligns with academic standards and effectively conveys the subject matter.",
                     backstory="You are a highly experienced university professor with expertise in structuring academic courses. You understand the nuances of designing a syllabus that is comprehensive yet adaptable, providing a strong foundation for course delivery. Your experience spans multiple disciplines, and you excel at organizing complex information into a structured curriculum.",
-                    goal="Generate the first version of the syllabus, ensuring that it reflects the course content and discipline provided by the user. Your syllabus should be structured based on the syllabus template, and your version will serve as the foundation for subsequent agents.",
+                    goal="Generate the first version of the syllabus, ensuring that it reflects the course content and discipline provided by the user. Your syllabus should be structured based on the syllabus template, and your version will serve as the foundation for subsequent agents. All document, including titles, should be in the user language",
                     instructions=(
                         "1. Analyze the input materials uploaded by the user: 'content', 'summary', and 'themes'."
                         "2. Based on the Draft the following sections:"
@@ -79,7 +79,7 @@ class UniversityTeacherAgent(RoutedAgent):
         contents = "summary :".join(message.summary)
         themes = ",".join(message.themes)
 
-        prompt = f"Using the content in TEXT CONTENTS, you generate a syllabus that is engaging and coherent in relation to the THEMES extracted from these contents. The syllabus should be written in lang: {message.lang} \n\nTEXT CONTENTS:\n{contents}\n\nTHEMES:\n{themes} \n\nTake into account the users input courses title, level, duration and description: {message.course_title}, {message.level}, {message.duration}, {message.description}."
+        prompt = f"Using the content in TEXT CONTENTS, you generate a syllabus that is engaging and coherent in relation to the THEMES extracted from these contents. The syllabus should be written in lang: {message.lang} \n\nTEXT CONTENTS:\n{contents}\n\nTHEMES:\n{themes} \n\nTake into account the users input courses title, level, duration and description: {message.course_title}, {message.level}, {message.duration}, {message.description}. The doucument has to be in the user language including the titles, language={message.lang}. "
 
         start_time = time.time()
         llm_result = await self._model_client.create(
