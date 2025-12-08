@@ -36,7 +36,7 @@ config:
     AZURE_MISTRAL_API_BASE: https://welearn-mistral.services.ai.azure.com/models
     AZURE_API_BASE: "https://welearn-openai.openai.azure.com/openai/"
     AZURE_API_VERSION: "2024-08-01-preview"
-    LLM_MODEL_NAME: gpt-oss-120b
+    LLM_MODEL_NAME: Mistral-Large-3
     QDRANT_HOST: "http://qdrant.qdrant"
     QDRANT_PORT: "6333"
     MODELS_FOLDER_ROOTS: "/models"
