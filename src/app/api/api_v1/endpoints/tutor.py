@@ -282,7 +282,10 @@ async def handle_syllabus_feedback(body: SyllabusFeedback):
                 documents=body.documents,
                 extracts=("/n").join([extract.summary for extract in body.extracts]),
                 themes=(", ").join(
-                    [(", ").join(extract.themes) for extract in body.extracts]
+                    [
+                        (", ").join([theme["theme"] for theme in extract.themes])
+                        for extract in body.extracts
+                    ]
                 ),
             ),
         },

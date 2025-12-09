@@ -11,7 +11,7 @@ class SummariesList(BaseModel):
 
 class ExtractorOutput(BaseModel):
     summary: str
-    themes: list[str]
+    themes: list[Dict]
 
 
 class ExtractorOutputList(BaseModel):
@@ -59,7 +59,7 @@ class MessageWithResources(BaseModel):
     level: str | None = None
     duration: str | None = None
     description: str | None = None
-    themes: list[str]
+    themes: list[Dict]
     summary: list[str]
     resources: List[Dict]
     source: str = "default"
