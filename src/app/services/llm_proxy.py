@@ -31,6 +31,7 @@ class LLMProxy(ABC):
         self.api_version = api_version
         self.client = None
         self.is_azure_model = is_azure_model
+        logger.info("starting LLM client with model_name=%s", model)
 
         litellm.enable_json_schema_validation = True
         if debug:
