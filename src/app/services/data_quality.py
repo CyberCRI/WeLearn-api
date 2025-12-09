@@ -15,6 +15,14 @@ class DataQualityChecker:
 def remove_duplicates(
     keys_to_check: list[str], points_to_check: list[ScoredPoint], strict: bool = False
 ) -> list[ScoredPoint]:
+    """
+    Remove duplicated points according to the keys in the payload. If strict is True, raise an error when a key is missing or not a string.
+    Args:
+        keys_to_check: list of keys to check in the payload /!\ Must be first level keys, not keys into another dict
+        points_to_check: list of points to check
+        strict: whether to raise an error when a key is missing or not a string
+    Returns: list of points without duplicates
+    """
     ret: list[ScoredPoint] = []
     hashes = set()
     for point in points_to_check:
