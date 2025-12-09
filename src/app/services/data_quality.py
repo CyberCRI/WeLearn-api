@@ -2,6 +2,7 @@ import hashlib
 
 from qdrant_client.conversions.common_types import ScoredPoint
 
+from src.app.utils.decorators import log_time_and_error_sync
 from src.app.utils.logger import logger as logger_utils
 
 logger = logger_utils(__name__)
@@ -12,6 +13,7 @@ class DataQualityChecker:
         pass
 
 
+@log_time_and_error_sync
 def remove_duplicates(
     keys_to_check: list[str], points_to_check: list[ScoredPoint], strict: bool = False
 ) -> list[ScoredPoint]:
