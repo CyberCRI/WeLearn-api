@@ -12,7 +12,6 @@ from src.app.services.search_helpers import search_multi_inputs
 from src.app.services.tutor.agents import TEMPLATES
 from src.app.services.tutor.models import (
     ExtractorOutputList,
-    SummariesOutputModel,
     SyllabusFeedback,
     SyllabusResponse,
     SyllabusResponseAgent,
@@ -48,7 +47,7 @@ sp = SearchService()
 @router.post("/files/content")
 async def extract_files_content(
     files: Annotated[list[UploadFile], File()],
-) -> SummariesOutputModel | None:
+) -> ExtractorOutputList | None:
     files_content = await get_files_content(files)
     files_content_str = ("__DOCUMENT_SEPARATOR__").join(files_content)
 
@@ -67,7 +66,7 @@ async def extract_files_content(
         summaries = await chatfactory.chat_client.completion(messages=messages)
         assert isinstance(summaries, str)
         json_summaries = extract_json_from_response(summaries)
-        summaries_output = SummariesOutputModel(**json_summaries)
+        summaries_output = ExtractorOutputList(**json_summaries)
 
         return summaries_output
 
