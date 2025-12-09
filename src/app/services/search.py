@@ -19,6 +19,7 @@ from src.app.models.search import (
     SearchFilters,
     SearchMethods,
 )
+from src.app.services.data_quality import remove_duplicates
 from src.app.services.exceptions import CollectionNotFoundError, ModelNotFoundError
 from src.app.services.helpers import convert_embedding_bytes
 from src.app.services.sql_db import get_subject
@@ -142,7 +143,7 @@ class SearchService:
         try:
             time_start = time.time()
             # TODO: path should be an env variable
-            model = SentenceTransformer(f"../models/embedding/{curr_model}/")
+            model = SentenceTransformer(f"../ai_models/embedding/{curr_model}/")
             time_end = time.time()
             logger.info(
                 "method=get_model latency=%s model=%s",
@@ -252,7 +253,10 @@ class SearchService:
         if qp.concatenate:
             sorted_data = concatenate_same_doc_id_slices(sorted_data)
 
-        return sorted_data
+        return remove_duplicates(
+            points_to_check=sorted_data,
+            keys_to_check=["document_desc", "document_title"],
+        )
 
     @log_time_and_error
     async def search_group_by_document(
