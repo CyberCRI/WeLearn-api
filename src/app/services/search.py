@@ -143,7 +143,7 @@ class SearchService:
         try:
             time_start = time.time()
             # TODO: path should be an env variable
-            model = SentenceTransformer(f"../ai_models/embedding/{curr_model}/")
+            model = SentenceTransformer(f"../models/embedding/{curr_model}/")
             time_end = time.time()
             logger.info(
                 "method=get_model latency=%s model=%s",
