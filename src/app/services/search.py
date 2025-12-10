@@ -253,10 +253,18 @@ class SearchService:
         if qp.concatenate:
             sorted_data = concatenate_same_doc_id_slices(sorted_data)
 
-        return remove_duplicates(
-            points_to_check=sorted_data,
-            keys_to_check=["document_desc", "document_title"],
-        )
+        try:
+            sorted_data = remove_duplicates(
+                points_to_check=sorted_data,
+                keys_to_check=["document_desc", "document_title"],
+            )
+        except Exception as ex:
+            logger.error(
+                "Error during duplicate removal: %s, ignore it for letting the user see results",
+                ex,
+            )
+
+        return sorted_data
 
     @log_time_and_error
     async def search_group_by_document(
