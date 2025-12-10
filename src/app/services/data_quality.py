@@ -31,18 +31,18 @@ def remove_duplicates(
         payload = point.payload
 
         if not payload:
-            logger.error(f"Point {point.id} don't have payload")
+            logger.error(f"Point {point.id} doesn't have payload")
             continue
 
         values_to_check = []
         for key in keys_to_check:
             if not key in payload:
-                logger.error(f"Point {point.id} don't have key {key}")
+                logger.error(f"Point {point.id} doesn't have key {key}")
                 if strict:
-                    raise ValueError(f"Point {point.id} don't have key {key}")
+                    raise ValueError(f"Point {point.id} doesn't have key {key}")
                 continue
             if not isinstance(payload[key], str):
-                msg = f"Data quality deduplication can be only applies on string, {key} is {type(payload[key])}"
+                msg = f"Data quality deduplication can be only applied on string, {key} is {type(payload[key])}"
                 if strict:
                     raise TypeError(msg)
                 logger.error(msg + f" key {key} will be ignored")
