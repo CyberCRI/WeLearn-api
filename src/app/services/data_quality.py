@@ -22,19 +22,31 @@ def remove_duplicates(
     Args:
         keys_to_check: list of keys to check in the payload /!\ Must be first level keys, not keys into another dict
         points_to_check: list of points to check
-        strict: whether to raise an error when a key is missing or not a string
+        strict: whether to raise an error when a key is missing or  not a string
     Returns: list of points without duplicates
     """
+    if len(keys_to_check) <= 0:
+        msg = "The method need a key to check duplicates and 'keys_to_check' is empty"
+        logger.error(msg)
+        if strict:
+            raise ValueError(msg)
+        logger.info("Method return points without de-duplication")
+        return points_to_check
+
     ret: list[ScoredPoint] = []
     hashes = set()
     for point in points_to_check:
         payload = point.payload
 
         if not payload:
-            logger.error(f"Point {point.id} doesn't have payload")
+            logger.error(
+                f"Point {point.id} doesn't have payload, deduplication ignored"
+            )
+            ret.append(point)
             continue
 
         values_to_check = []
+        local_hash = hashlib.sha256()
         for key in keys_to_check:
             if not key in payload:
                 logger.error(f"Point {point.id} doesn't have key {key}")
@@ -47,14 +59,15 @@ def remove_duplicates(
                     raise TypeError(msg)
                 logger.error(msg + f" key {key} will be ignored")
             else:
-                values_to_check.append(str(payload[key]).encode("utf-8"))
-        local_hash = hashlib.sha256()
+                values_to_check.append(
+                    str(key).encode("utf-8") + str(payload[key]).encode("utf-8")
+                )
         for vtc in sorted(values_to_check):
             local_hash.update(vtc)
 
         hexdigest = local_hash.hexdigest()
         if hexdigest in hashes:
-            logger.error(
+            logger.info(
                 f"Point {point.id} is duplicated, according these keys : {keys_to_check}"
             )
         else:
