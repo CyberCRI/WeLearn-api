@@ -3,6 +3,7 @@ from functools import cache
 from typing import Tuple, cast
 
 import numpy as np
+from fastapi import BackgroundTasks
 from numpy import ndarray
 from qdrant_client import AsyncQdrantClient
 from qdrant_client import models as qdrant_models
@@ -19,7 +20,7 @@ from src.app.models.search import (
     SearchFilters,
     SearchMethods,
 )
-from src.app.services.data_quality import remove_duplicates
+from src.app.services.data_quality import DataQualityChecker
 from src.app.services.exceptions import CollectionNotFoundError, ModelNotFoundError
 from src.app.services.helpers import convert_embedding_bytes
 from src.app.services.sql_db import get_subject
@@ -204,7 +205,10 @@ class SearchService:
 
     @log_time_and_error
     async def search_handler(
-        self, qp: EnhancedSearchQuery, method: SearchMethods = SearchMethods.BY_SLICES
+        self,
+        background_tasks: BackgroundTasks,
+        qp: EnhancedSearchQuery,
+        method: SearchMethods = SearchMethods.BY_SLICES,
     ) -> list[http_models.ScoredPoint]:
         assert isinstance(qp.query, str)
 
@@ -252,9 +256,9 @@ class SearchService:
 
         if qp.concatenate:
             sorted_data = concatenate_same_doc_id_slices(sorted_data)
-
         try:
-            sorted_data = remove_duplicates(
+            dqc = DataQualityChecker(log_background_task=background_tasks)
+            sorted_data = dqc.remove_duplicates(
                 points_to_check=sorted_data,
                 keys_to_check=["document_desc", "document_title"],
             )

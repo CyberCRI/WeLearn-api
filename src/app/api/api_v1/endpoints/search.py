@@ -1,7 +1,7 @@
 import uuid
 from collections import Counter
 
-from fastapi import APIRouter, Depends, Response
+from fastapi import APIRouter, BackgroundTasks, Depends, Response
 from qdrant_client.models import ScoredPoint
 from sqlalchemy.sql import select
 from welearn_database.data.models import (
@@ -109,6 +109,7 @@ async def get_nb_docs() -> dict[str, int]:
     response_model=list[ScoredPoint] | str | None,
 )
 async def search_doc_by_collection(
+    background_tasks: BackgroundTasks,
     response: Response,
     query: str,
     collection: str = "conversation",
@@ -127,7 +128,9 @@ async def search_doc_by_collection(
     )
 
     try:
-        res = await sp.search_handler(qp=qp, method=SearchMethods.BY_DOCUMENT)
+        res = await sp.search_handler(
+            qp=qp, method=SearchMethods.BY_DOCUMENT, background_tasks=background_tasks
+        )
 
         if not res:
             response.status_code = 206
@@ -146,12 +149,15 @@ async def search_doc_by_collection(
     response_model=list[ScoredPoint] | None | str,
 )
 async def search_all_slices_by_lang(
+    background_tasks: BackgroundTasks,
     response: Response,
     qp: EnhancedSearchQuery = Depends(get_params),
 ):
     try:
 
-        res = await sp.search_handler(qp=qp, method=SearchMethods.BY_SLICES)
+        res = await sp.search_handler(
+            qp=qp, method=SearchMethods.BY_SLICES, background_tasks=background_tasks
+        )
 
         if not res:
             logger.debug("No results found")
@@ -171,6 +177,7 @@ async def search_all_slices_by_lang(
     response_model=list[ScoredPoint] | None,
 )
 async def multi_search_all_slices_by_lang(
+    background_tasks: BackgroundTasks,
     response: Response,
     qp: EnhancedSearchQuery = Depends(get_params),
 ):
@@ -179,6 +186,7 @@ async def multi_search_all_slices_by_lang(
 
     results = await search_multi_inputs(
         qp=qp,
+        background_tasks=background_tasks,
         callback_function=sp.search_handler,
     )
     if not results:
@@ -196,11 +204,14 @@ async def multi_search_all_slices_by_lang(
     response_model=list[ScoredPoint] | None | str,
 )
 async def search_all(
+    background_tasks: BackgroundTasks,
     response: Response,
     qp: EnhancedSearchQuery = Depends(get_params),
 ):
     try:
-        res = await sp.search_handler(qp=qp, method=SearchMethods.BY_DOCUMENT)
+        res = await sp.search_handler(
+            qp=qp, method=SearchMethods.BY_DOCUMENT, background_tasks=background_tasks
+        )
 
         if not res:
             logger.error("No results found")
