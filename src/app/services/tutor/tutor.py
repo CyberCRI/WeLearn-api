@@ -48,8 +48,8 @@ GREENCOMP_COMPETENCIES = (
 
 def _build_chat_model() -> AzureAIChatCompletionsModel:
     return AzureAIChatCompletionsModel(
-        azure_endpoint=settings.AZURE_APIM_API_BASE,
-        api_key=settings.AZURE_APIM_API_KEY,
+        endpoint=settings.AZURE_APIM_API_BASE,
+        credential=settings.AZURE_APIM_API_KEY,
         model=settings.LLM_MODEL_NAME,
         temperature=0.4,
     )
