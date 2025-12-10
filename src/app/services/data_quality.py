@@ -20,7 +20,7 @@ def remove_duplicates(
     """
     Remove duplicated points according to the keys in the payload. If strict is True, raise an error when a key is missing or not a string.
     Args:
-        keys_to_check: list of keys to check in the payload /!\ Must be first level keys, not keys into another dict
+        keys_to_check: list of keys to check in the payload :warning: Must be first level keys, not keys into another dict
         points_to_check: list of points to check
         strict: whether to raise an error when a key is missing or  not a string
     Returns: list of points without duplicates
@@ -48,7 +48,7 @@ def remove_duplicates(
         values_to_check = []
         local_hash = hashlib.sha256()
         for key in keys_to_check:
-            if not key in payload:
+            if key not in payload:
                 logger.error(f"Point {point.id} doesn't have key {key}")
                 if strict:
                     raise ValueError(f"Point {point.id} doesn't have key {key}")
