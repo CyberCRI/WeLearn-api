@@ -158,6 +158,8 @@ async def tutor_search(
 
     except Exception as e:
         logger.error(f"Error in chat schema: {e}")
+        # repond with error bad format
+        response.status_code = 204 
         # todo: handle error
         return TutorSearchResponse(
             extracts=[],
