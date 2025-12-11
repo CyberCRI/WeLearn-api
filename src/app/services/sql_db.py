@@ -1,3 +1,4 @@
+import uuid
 from uuid import UUID
 
 from sqlalchemy import URL
@@ -152,6 +153,7 @@ class WL_SQL:
         """
         with self.session_maker() as session:
             error_entry = ErrorDataQuality(
+                id=uuid.uuid4(),
                 document_id=document_id,
                 slice_id=slice_id,
                 error_raiser=APP_NAME,
@@ -173,6 +175,7 @@ class WL_SQL:
         """
         with self.session_maker() as session:
             process_state_entry = ProcessState(
+                id=uuid.uuid4(),
                 document_id=document_id,
                 title=process_state.value.lower(),
             )
