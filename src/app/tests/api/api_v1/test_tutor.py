@@ -39,4 +39,4 @@ class TutorTests(IsolatedAsyncioTestCase):
             files={"files": ("test.txt", file)},
             headers={"x-API-Key": "test"},
         )
-        assert reponse.status_code == 200
+        assert reponse.status_code == 204
