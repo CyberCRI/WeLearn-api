@@ -154,13 +154,12 @@ async def tutor_search(
         else:
             raise ValueError("Unexpected response format")
 
+        print(jsn)
         themes_extracted = ExtractorOutputList(**jsn)
 
     except Exception as e:
         logger.error(f"Error in chat schema: {e}")
-        # repond with error bad format
-        response.status_code = 204 
-        # todo: handle error
+        response.status_code = 204
         return TutorSearchResponse(
             extracts=[],
             nb_results=0,
