@@ -38,6 +38,11 @@ jobs:
     needs:
       - build-docker
 
+  tag-deploy-fast:
+    needs:
+      - build-docker
+    uses: CyberCRI/github-workflows/.github/workflows/tag-deploy-fast.yaml@main
+
   tag-deploy:
     needs:
       - build-docker
