@@ -16,6 +16,8 @@ replicaCount: 1
 
 ingress:
   path: /
+  middlewares: []
+
 
 sablier:
   enabled: false
@@ -52,3 +54,11 @@ runOnGpu: false # Schedule on the GPU node pool to lower its cost
 allowedHostsRegexes:
   localhost: |-
     http:\/\/localhost:5173
+
+rateLimiting:
+  average: 60
+  period: 60s
+  burst: 10
+  middlewareName: ratelimit
+  enabled: true
+  traefikMiddleware: "{{.Values.namespace}}-{{.Values.rateLimiting.middlewareName}}@kubernetescrd"

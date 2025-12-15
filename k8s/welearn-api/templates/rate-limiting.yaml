@@ -1,10 +1,12 @@
+{{- if .Values.rateLimiting.enabled }}
 ---
 apiVersion: traefik.io/v1alpha1
 kind: Middleware
 metadata:
-  name: ratelimit
+  name: {{ .Values.rateLimiting.middlewareName }}
 spec:
   rateLimit:
-    average: 1
-    period: 10s
-    burst: 1
+    average: {{ .Values.rateLimiting.average }}
+    period: {{ .Values.rateLimiting.period }}
+    burst: {{ .Values.rateLimiting.burst }}
+{{- end }}
