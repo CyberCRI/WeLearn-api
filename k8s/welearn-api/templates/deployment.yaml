@@ -57,7 +57,20 @@ spec:
           {{- include "common.security.containerSecurityContext.restricted" dict | nindent 10 }}
 
         resources: {{ toYaml .Values.resources | nindent 10 }}
-
+        livenessProbe:
+          httpGet:
+            port: http
+            path: /health/
+          timeoutSeconds: 20
+          failureThreshold: 5
+          periodSeconds: 5
+        readinessProbe:
+          httpGet:
+            port: http
+            path: /health/
+          timeoutSeconds: 20
+          failureThreshold: 3
+          periodSeconds: 5
         volumeMounts:
         # still needed ?
         - name: cache
