@@ -5,6 +5,10 @@ from pydantic import BaseModel
 from qdrant_client.models import ScoredPoint
 
 
+class SummariesList(BaseModel):
+    summaries: list[str]
+
+
 class ExtractorOutput(BaseModel):
     summary: str
     themes: list[str]
