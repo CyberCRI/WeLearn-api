@@ -1,6 +1,6 @@
 from typing import Annotated
 
-from fastapi import APIRouter, File, HTTPException, Response, UploadFile
+from fastapi import APIRouter, File, Response, UploadFile
 
 from src.app.api.dependencies import get_settings
 from src.app.models.search import EnhancedSearchQuery
@@ -12,6 +12,7 @@ from src.app.services.search_helpers import search_multi_inputs
 from src.app.services.tutor.agents import TEMPLATES
 from src.app.services.tutor.models import (
     ExtractorOutputList,
+    SummariesList,
     SyllabusFeedback,
     SyllabusResponse,
     SyllabusResponseAgent,
@@ -46,7 +47,7 @@ sp = SearchService()
 
 @router.post("/files/content")
 async def extract_files_content(
-    files: Annotated[list[UploadFile], File()],
+    files: Annotated[list[UploadFile], File()], response: Response
 ) -> ExtractorOutputList | None:
     files_content = await get_files_content(files)
     files_content_str = ("__DOCUMENT_SEPARATOR__").join(files_content)
@@ -72,18 +73,19 @@ async def extract_files_content(
 
     except Exception as e:
         logger.error(f"Error in extractor schema: {e}")
-        HTTPException(status_code=400, detail="error in response schema")
+        response.status_code = 204
+        return None
 
 
 @router.post("/search_extracts")
 async def tutor_search_extract(
-    summaries: list[str],
+    summaries: SummariesList,
     response: Response,
 ):
 
     try:
         qp = EnhancedSearchQuery(
-            query=summaries,
+            query=summaries.summaries,
             nb_results=10,
             sdg_filter=None,
             corpora=None,
@@ -154,11 +156,12 @@ async def tutor_search(
         else:
             raise ValueError("Unexpected response format")
 
+        print(jsn)
         themes_extracted = ExtractorOutputList(**jsn)
 
     except Exception as e:
         logger.error(f"Error in chat schema: {e}")
-        # todo: handle error
+        response.status_code = 204
         return TutorSearchResponse(
             extracts=[],
             nb_results=0,
