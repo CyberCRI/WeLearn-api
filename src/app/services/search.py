@@ -3,9 +3,12 @@ from functools import cache
 from typing import Tuple, cast
 
 import numpy as np
+from fastapi import Depends
 from numpy import ndarray
+from psycopg import Error
 from qdrant_client import AsyncQdrantClient
 from qdrant_client import models as qdrant_models
+from qdrant_client import qdrant_client
 from qdrant_client.http import exceptions as qdrant_exceptions
 from qdrant_client.http import models as http_models
 from sentence_transformers import SentenceTransformer
@@ -28,25 +31,35 @@ from src.app.utils.logger import logger as logger_utils
 logger = logger_utils(__name__)
 
 
-class DBClientSingleton(AsyncQdrantClient):
-    instance = None
+_qdrant_client: AsyncQdrantClient | None = None
 
-    def __new__(cls):
-        if cls.instance is None:
-            logger.debug("DBClientSingleton=init_DBClient")
-            settings = get_settings()
 
-            cls.instance = super().__new__(cls)
-            cls.instance = AsyncQdrantClient(
-                url=settings.QDRANT_HOST, port=settings.QDRANT_PORT, timeout=100
-            )
-        return cls.instance
+async def init_qdrant():
+    global _qdrant_client
+    settings = get_settings()
+    _qdrant_client = AsyncQdrantClient(
+        url=settings.QDRANT_HOST,
+        port=settings.QDRANT_PORT,
+        timeout=100,
+    )
+
+
+async def close_qdrant():
+    if _qdrant_client:
+        await _qdrant_client.close()
+
+
+async def get_qdrant() -> AsyncQdrantClient | None:
+    if qdrant_client is None:
+        raise Error()
+
+    return _qdrant_client
 
 
 class SearchService:
-    def __init__(self):
+    def __init__(self, client):
         logger.debug("SearchService=init_searchService")
-        self.client = DBClientSingleton()
+        self.client = client
         self.collections = None
 
         self.payload_keys = [
@@ -333,6 +346,12 @@ def sort_slices_using_mmr(
 
     logger.debug("sort_slices_using_mmr=end")
     return [qdrant_results[i] for i in id_s]
+
+
+async def get_search_service(
+    qdrant: AsyncQdrantClient = Depends(get_qdrant),
+) -> SearchService:
+    return SearchService(qdrant)
 
 
 @log_time_and_error_sync

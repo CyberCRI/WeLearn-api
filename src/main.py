@@ -12,6 +12,7 @@ from starlette.exceptions import HTTPException as StarletteHTTPException
 from src.app.api.api_v1.api import api_router, api_tags_metadata
 from src.app.api.shared.enpoints import health
 from src.app.core.config import settings
+from src.app.core.lifespan import lifespan
 from src.app.middleware.monitor_requests import MonitorRequestsMiddleware
 from src.app.services.security import get_user
 from src.app.utils.logger import logger as utils_logger
@@ -23,6 +24,7 @@ app = FastAPI(
     description=settings.DESCRIPTION,
     title=settings.PROJECT_NAME,
     openapi_url=f"{settings.API_V1_STR}/openapi.json",
+    lifespan=lifespan,
 )
 
 # Middleware global monitoring
