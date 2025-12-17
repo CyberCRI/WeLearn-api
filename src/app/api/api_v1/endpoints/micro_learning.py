@@ -9,13 +9,12 @@ from src.app.services.helpers import (
     collection_and_model_id_according_lang,
     convert_embedding_bytes,
 )
+from src.app.services.search import SearchService, get_search_service
 from src.app.services.sql_service import (
     get_context_documents,
     get_subject,
     get_subjects,
 )
-from src.app.services.search import SearchService, get_search_service
-
 from src.app.utils.logger import logger as logger_utils
 
 router = APIRouter()

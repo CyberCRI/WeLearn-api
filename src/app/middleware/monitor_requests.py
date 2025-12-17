@@ -11,7 +11,7 @@ logger = logger_utils(__name__)
 class MonitorRequestsMiddleware(BaseHTTPMiddleware):
     async def dispatch(self, request: Request, call_next):
         session_id = request.headers.get("X-Session-ID")
-        if session_id and request.url.path.startswith('/api/v1/'):
+        if session_id and request.url.path.startswith("/api/v1/"):
             try:
                 await run_in_threadpool(
                     register_endpoint,
