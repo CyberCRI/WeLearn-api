@@ -64,7 +64,8 @@ JSON = {
 
 
 @mock.patch(
-    "src.app.services.security.check_api_key", new=mock.MagicMock(return_value=True)
+    "src.app.services.security.check_api_key_sync",
+    new=mock.MagicMock(return_value=True),
 )
 @mock.patch(
     "src.app.services.abst_chat.AbstractChat._detect_language",
@@ -307,7 +308,8 @@ class QnATests(unittest.IsolatedAsyncioTestCase):
 
     @mock.patch("psycopg.AsyncConnection.connect", new_callable=mock.AsyncMock)
     @mock.patch(
-        "src.app.services.security.check_api_key", new=mock.MagicMock(return_value=True)
+        "src.app.services.security.check_api_key_sync",
+        new=mock.MagicMock(return_value=True),
     )
     @mock.patch("src.app.services.abst_chat.AbstractChat.agent_message")
     def test_chat_agent(self, agent_message_mock, *mocks):
