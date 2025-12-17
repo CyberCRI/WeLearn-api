@@ -82,8 +82,11 @@ mocked_scored_points = [
 long_query = "français with a very long sentence to test what you are saying and if the issue is the size of the string"  # noqa: E501
 
 
-@patch("src.app.services.sql_db.session_maker")
-@patch("src.app.services.security.check_api_key", new=mock.MagicMock(return_value=True))
+@patch("src.app.services.sql_service.session_maker")
+@mock.patch(
+    "src.app.services.security.check_api_key_sync",
+    new=mock.MagicMock(return_value=True),
+)
 @patch(
     f"{search_pipeline_path}.get_collections",
     new=mock.AsyncMock(
@@ -113,22 +116,13 @@ class SearchTests(IsolatedAsyncioTestCase):
         ),
     )
     async def test_search_model_not_found(self, *mocks):
-        with self.assertRaises(ModelNotFoundError):
-            response = client.post(
-                f"{settings.API_V1_STR}/search/collections/collection_welearn_mul_model?query=français&nb_results=10",  # noqa: E501
-                headers={"X-API-Key": "test"},
-            )
+        response = client.post(
+            f"{settings.API_V1_STR}/search/collections/collection_welearn_mul_model?query=français&nb_results=10",
+            headers={"X-API-Key": "test"},
+        )
 
-            self.assertEqual(response.status_code, 404)
-            self.assertEqual(
-                response.json(),
-                {
-                    "detail": {
-                        "message": "Model not found",
-                        "code": "MODEL_NOT_FOUND",
-                    }
-                },
-            )
+        assert response.status_code == 404
+        assert response.json() == "Model not found"
 
     @patch(
         f"{search_pipeline_path}.search_handler",
@@ -177,8 +171,11 @@ class SearchTests(IsolatedAsyncioTestCase):
         )
 
 
-@patch("src.app.services.sql_db.session_maker")
-@patch("src.app.services.security.check_api_key", new=mock.MagicMock(return_value=True))
+@patch("src.app.services.sql_service.session_maker")
+@patch(
+    "src.app.services.security.check_api_key_sync",
+    new=mock.MagicMock(return_value=True),
+)
 class SearchTestsSlices(IsolatedAsyncioTestCase):
     @patch(
         f"{search_pipeline_path}.get_collection_by_language",
@@ -242,8 +239,11 @@ class SearchTestsSlices(IsolatedAsyncioTestCase):
         self.assertEqual(response.status_code, 204)
 
 
-@patch("src.app.services.sql_db.session_maker")
-@patch("src.app.services.security.check_api_key", new=mock.MagicMock(return_value=True))
+@patch("src.app.services.sql_service.session_maker")
+@patch(
+    "src.app.services.security.check_api_key_sync",
+    new=mock.MagicMock(return_value=True),
+)
 class SearchTestsAll(IsolatedAsyncioTestCase):
 
     @patch(
@@ -310,8 +310,11 @@ class TestSortSlicesUsingMMR(IsolatedAsyncioTestCase):
         )
 
 
-@patch("src.app.services.sql_db.session_maker")
-@patch("src.app.services.security.check_api_key", new=mock.MagicMock(return_value=True))
+@patch("src.app.services.sql_db.queries.session_maker")
+@patch(
+    "src.app.services.security.check_api_key_sync",
+    new=mock.MagicMock(return_value=True),
+)
 class SearchTestsMultiInput(IsolatedAsyncioTestCase):
     @patch(
         f"{search_pipeline_path}.search_handler",
@@ -331,8 +334,11 @@ class SearchTestsMultiInput(IsolatedAsyncioTestCase):
         self.assertEqual(response.status_code, 204)
 
 
-@patch("src.app.api.api_v1.endpoints.search.session_maker")
-@patch("src.app.services.security.check_api_key", new=mock.MagicMock(return_value=True))
+@patch("src.app.services.sql_db.queries.session_maker")
+@patch(
+    "src.app.services.security.check_api_key_sync",
+    new=mock.MagicMock(return_value=True),
+)
 class DocumentsByIdsTests(IsolatedAsyncioTestCase):
     async def test_documents_by_ids_empty(self, session_maker_mock, *mocks):
         session = session_maker_mock.return_value.__enter__.return_value

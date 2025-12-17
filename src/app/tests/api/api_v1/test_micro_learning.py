@@ -17,7 +17,8 @@ class AsyncMock(mock.MagicMock):
 
 
 @mock.patch(
-    "src.app.services.security.check_api_key", new=mock.MagicMock(return_value=True)
+    "src.app.services.security.check_api_key_sync",
+    new=mock.MagicMock(return_value=True),
 )
 class MicroLearningTests(unittest.IsolatedAsyncioTestCase):
     @mock.patch(

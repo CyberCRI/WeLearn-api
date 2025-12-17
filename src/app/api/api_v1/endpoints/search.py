@@ -1,19 +1,8 @@
-import uuid
-from collections import Counter
-
 from fastapi import APIRouter, Depends, Response
+from fastapi.concurrency import run_in_threadpool
 from qdrant_client.models import ScoredPoint
-from sqlalchemy.sql import select
-from welearn_database.data.models import (
-    Corpus,
-    CorpusNameEmbeddingModelLang,
-    DocumentSlice,
-    QtyDocumentInQdrant,
-    Sdg,
-    WeLearnDocument,
-)
 
-from src.app.models.documents import Collection_schema, Document, DocumentPayloadModel
+from src.app.models.documents import Document
 from src.app.models.search import (
     EnhancedSearchQuery,
     SDGFilter,
@@ -23,11 +12,16 @@ from src.app.models.search import (
 from src.app.services.exceptions import (
     CollectionNotFoundError,
     EmptyQueryError,
+    ModelNotFoundError,
     bad_request,
 )
 from src.app.services.search import SearchService
 from src.app.services.search_helpers import search_multi_inputs
-from src.app.services.sql_db import session_maker
+from src.app.services.sql_db.queries import (
+    get_collections_sync,
+    get_documents_payload_by_ids_sync,
+    get_nb_docs_sync,
+)
 from src.app.utils.logger import logger as logger_utils
 
 router = APIRouter()
@@ -62,20 +56,9 @@ def get_params(
     return resp
 
 
-@router.get(
-    "/collections",
-    summary="get all collections",
-    description="Get all collections available in the database",
-    response_model=list[Collection_schema],
-)
+@router.get("/collections")
 async def get_corpus():
-    statement = select(
-        CorpusNameEmbeddingModelLang.source_name,
-        CorpusNameEmbeddingModelLang.lang,
-        CorpusNameEmbeddingModelLang.title,
-    )
-    with session_maker() as s:
-        collections = s.execute(statement).all()
+    collections = await run_in_threadpool(get_collections_sync)
 
     return [
         {
@@ -88,18 +71,13 @@ async def get_corpus():
     ]
 
 
-@router.get(
-    "/nb_docs",
-    summary="Get total number of documents",
-    description="Returns the total number of documents stored in Qdrant",
-)
+@router.get("/nb_docs")
 async def get_nb_docs() -> dict[str, int]:
-    statement = select(QtyDocumentInQdrant.document_in_qdrant)
-    with session_maker() as s:
-        result = s.execute(statement).first()
-        if not result:
-            return {"nb_docs": 0}
-        return {"nb_docs": result.document_in_qdrant}
+    result = await run_in_threadpool(get_nb_docs_sync)
+
+    if not result:
+        return {"nb_docs": 0}
+    return {"nb_docs": result.document_in_qdrant}
 
 
 @router.post(
@@ -134,7 +112,7 @@ async def search_doc_by_collection(
             return []
 
         return res
-    except CollectionNotFoundError as e:
+    except (CollectionNotFoundError, ModelNotFoundError) as e:
         response.status_code = 404
         return e.message
 
@@ -217,84 +195,9 @@ async def search_all(
 
 @router.post(
     "/documents/by_ids",
-    summary="get documents payload by ids",
+    summary="Get documents payload by ids",
     description="Get documents payload by list of document ids",
 )
-def get_documents_payload_by_ids(
-    documents_ids: list[uuid.UUID],
-) -> list[Document]:
-    with session_maker() as s:
-        documents = s.execute(
-            select(
-                WeLearnDocument.title,
-                WeLearnDocument.url,
-                WeLearnDocument.corpus_id,
-                WeLearnDocument.id,
-                WeLearnDocument.description,
-                WeLearnDocument.details,
-            ).where(WeLearnDocument.id.in_(documents_ids))
-        ).all()
-
-        # Batch fetch corpora
-        corpus_ids = list({doc.corpus_id for doc in documents})
-
-        corpora = s.execute(
-            select(Corpus.id, Corpus.source_name).where(Corpus.id.in_(corpus_ids))
-        ).all()
-
-        corpus_map = {corpus.id: corpus.source_name for corpus in corpora}
-
-        # Batch fetch slices
-        slices = s.execute(
-            select(DocumentSlice.id, DocumentSlice.document_id).where(
-                DocumentSlice.document_id.in_(documents_ids)
-            )
-        ).all()
-
-        # Map document_id -> list of slices
-        slices_ids_map = {}
-        slice_ids = []
-        for slice_ in slices:
-            slices_ids_map.setdefault(slice_.document_id, []).append(slice_.id)
-            slice_ids.append(slice_.id)
-
-        # Batch fetch SDGs
-        sdgs = s.execute(
-            select(Sdg.sdg_number, Sdg.slice_id).where(Sdg.slice_id.in_(slice_ids))
-        ).all()
-
-        # Map slice_id -> list of sdgs
-        sdg_map = {}
-        for sdg in sdgs:
-            sdg_map.setdefault(sdg.slice_id, []).append(sdg)
-
-        docs = []
-        for doc in documents:
-            corpus = corpus_map.get(doc.corpus_id)
-            slices_id_for_doc = slices_ids_map.get(doc.id, [])
-            sdgs_for_doc = []
-            for slice_id in slices_id_for_doc:
-                sdgs_for_doc.extend(sdg_map.get(slice_id, []))
-            short_sdg_list = Counter(
-                [sdg.sdg_number for sdg in sdgs_for_doc]
-            ).most_common(2)
-
-            docs.append(
-                Document(
-                    score=0.0,
-                    payload=DocumentPayloadModel(
-                        document_id=doc.id,
-                        document_title=doc.title,
-                        document_url=doc.url,
-                        document_desc=doc.description,
-                        document_sdg=[sdg[0] for sdg in short_sdg_list],
-                        document_details=doc.details,
-                        slice_content="",
-                        document_lang="",
-                        document_corpus=corpus if corpus else "",
-                        slice_sdg=None,
-                    ),
-                )
-            )
-
-        return docs
+async def get_documents_payload_by_ids(documents_ids: list[str]) -> list[Document]:
+    docs = await run_in_threadpool(get_documents_payload_by_ids_sync, documents_ids)
+    return docs
