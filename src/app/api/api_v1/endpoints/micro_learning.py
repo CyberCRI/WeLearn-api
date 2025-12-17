@@ -1,5 +1,5 @@
 import numpy
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Depends
 from welearn_database.data.models import ContextDocument
 
 from src.app.models.documents import JourneySectionType
@@ -9,18 +9,16 @@ from src.app.services.helpers import (
     collection_and_model_id_according_lang,
     convert_embedding_bytes,
 )
-from src.app.services.search import SearchService
 from src.app.services.sql_service import (
     get_context_documents,
     get_subject,
     get_subjects,
 )
 from src.app.utils.logger import logger as logger_utils
+from src.app.services.search import SearchService, get_search_service
 
 router = APIRouter()
 logger = logger_utils(__name__)
-
-sp = SearchService()
 
 
 @router.get(
@@ -29,7 +27,9 @@ sp = SearchService()
     description="Retrieve all the subjects",
     response_model=list[str],
 )
-async def get_subject_list(lang: str | None = None) -> list[str]:
+async def get_subject_list(
+    lang: str | None = None, sp: SearchService = Depends(get_search_service)
+) -> list[str]:
     collection_info, model_id = await collection_and_model_id_according_lang(
         sp=sp, lang=lang
     )

@@ -15,7 +15,7 @@ from src.app.services.exceptions import (
     ModelNotFoundError,
     bad_request,
 )
-from src.app.services.search import SearchService
+from src.app.services.search import SearchService, get_search_service
 from src.app.services.search_helpers import search_multi_inputs
 from src.app.services.sql_db.queries import (
     get_collections_sync,
@@ -24,10 +24,9 @@ from src.app.services.sql_db.queries import (
 )
 from src.app.utils.logger import logger as logger_utils
 
+
 router = APIRouter()
 logger = logger_utils(__name__)
-
-sp = SearchService()
 
 
 def get_params(
@@ -92,6 +91,7 @@ async def search_doc_by_collection(
     collection: str = "conversation",
     nb_results: int = 10,
     sdg_filter: SDGFilter | None = None,
+    sp: SearchService = Depends(get_search_service),
 ):
     if not query:
         e = EmptyQueryError()
@@ -126,6 +126,7 @@ async def search_doc_by_collection(
 async def search_all_slices_by_lang(
     response: Response,
     qp: EnhancedSearchQuery = Depends(get_params),
+    sp: SearchService = Depends(get_search_service)
 ):
     try:
 
@@ -151,6 +152,7 @@ async def search_all_slices_by_lang(
 async def multi_search_all_slices_by_lang(
     response: Response,
     qp: EnhancedSearchQuery = Depends(get_params),
+    sp: SearchService = Depends(get_search_service)
 ):
     if isinstance(qp.query, str):
         qp.query = [qp.query]
@@ -176,6 +178,7 @@ async def multi_search_all_slices_by_lang(
 async def search_all(
     response: Response,
     qp: EnhancedSearchQuery = Depends(get_params),
+    sp: SearchService = Depends(get_search_service),
 ):
     try:
         res = await sp.search_handler(qp=qp, method=SearchMethods.BY_DOCUMENT)

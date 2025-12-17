@@ -1,13 +1,14 @@
 from typing import Annotated
 
-from fastapi import APIRouter, File, Response, UploadFile
+from fastapi import APIRouter, File, Response, UploadFile, Depends
+from qdrant_client import qdrant_client
 
 from src.app.api.dependencies import get_settings
 from src.app.models.search import EnhancedSearchQuery
 from src.app.services.abst_chat import AbstractChat
 from src.app.services.exceptions import NoResultsError
 from src.app.services.helpers import extract_json_from_response
-from src.app.services.search import SearchService
+from src.app.services.search import SearchService, get_qdrant
 from src.app.services.search_helpers import search_multi_inputs
 from src.app.services.tutor.agents import TEMPLATES
 from src.app.services.tutor.models import (
@@ -27,6 +28,8 @@ from src.app.services.tutor.tutor import tutor_manager
 from src.app.services.tutor.utils import get_files_content
 from src.app.utils.logger import logger as utils_logger
 
+from src.app.services.search import SearchService, get_search_service
+
 logger = utils_logger(__name__)
 
 router = APIRouter()
@@ -41,8 +44,6 @@ chatfactory = AbstractChat(
     API_VERSION="2024-05-01-preview",
     is_azure_model=True,
 )
-
-sp = SearchService()
 
 
 @router.post("/files/content")
@@ -81,6 +82,7 @@ async def extract_files_content(
 async def tutor_search_extract(
     summaries: SummariesList,
     response: Response,
+    sp: SearchService = Depends(get_search_service),
 ):
 
     try:
@@ -124,6 +126,7 @@ async def tutor_search_extract(
 async def tutor_search(
     files: Annotated[list[UploadFile], File()],
     response: Response,
+    sp: SearchService = Depends(get_search_service),
 ):
     files_content = await get_files_content(files)
 

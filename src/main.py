@@ -14,6 +14,7 @@ from src.app.api.shared.enpoints import health
 from src.app.core.config import settings
 from src.app.middleware.monitor_requests import MonitorRequestsMiddleware
 from src.app.services.security import get_user
+from src.app.core.lifespan import lifespan
 from src.app.utils.logger import logger as utils_logger
 
 logger = utils_logger(__name__)
@@ -23,6 +24,7 @@ app = FastAPI(
     description=settings.DESCRIPTION,
     title=settings.PROJECT_NAME,
     openapi_url=f"{settings.API_V1_STR}/openapi.json",
+    lifespan=lifespan,
 )
 
 # Middleware global monitoring
