@@ -2,16 +2,19 @@ import time
 from functools import cache
 from typing import Tuple, cast
 
-from fastapi import Depends
 import numpy as np
+from fastapi import Depends
 from numpy import ndarray
 from psycopg import Error
-from qdrant_client import models as qdrant_models, qdrant_client
+from qdrant_client import AsyncQdrantClient
+from qdrant_client import models as qdrant_models
+from qdrant_client import qdrant_client
 from qdrant_client.http import exceptions as qdrant_exceptions
 from qdrant_client.http import models as http_models
 from sentence_transformers import SentenceTransformer
 from sklearn.metrics.pairwise import cosine_similarity
 
+from src.app.api.dependencies import get_settings
 from src.app.models.collections import Collection
 from src.app.models.search import (
     EnhancedSearchQuery,
@@ -24,8 +27,6 @@ from src.app.services.helpers import convert_embedding_bytes
 from src.app.services.sql_service import get_subject
 from src.app.utils.decorators import log_time_and_error, log_time_and_error_sync
 from src.app.utils.logger import logger as logger_utils
-from qdrant_client import AsyncQdrantClient
-from src.app.api.dependencies import get_settings
 
 logger = logger_utils(__name__)
 
@@ -346,10 +347,12 @@ def sort_slices_using_mmr(
     logger.debug("sort_slices_using_mmr=end")
     return [qdrant_results[i] for i in id_s]
 
+
 async def get_search_service(
     qdrant: AsyncQdrantClient = Depends(get_qdrant),
 ) -> SearchService:
     return SearchService(qdrant)
+
 
 @log_time_and_error_sync
 def concatenate_same_doc_id_slices(

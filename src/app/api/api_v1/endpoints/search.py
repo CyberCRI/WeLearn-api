@@ -24,7 +24,6 @@ from src.app.services.sql_db.queries import (
 )
 from src.app.utils.logger import logger as logger_utils
 
-
 router = APIRouter()
 logger = logger_utils(__name__)
 
@@ -126,7 +125,7 @@ async def search_doc_by_collection(
 async def search_all_slices_by_lang(
     response: Response,
     qp: EnhancedSearchQuery = Depends(get_params),
-    sp: SearchService = Depends(get_search_service)
+    sp: SearchService = Depends(get_search_service),
 ):
     try:
 
@@ -152,7 +151,7 @@ async def search_all_slices_by_lang(
 async def multi_search_all_slices_by_lang(
     response: Response,
     qp: EnhancedSearchQuery = Depends(get_params),
-    sp: SearchService = Depends(get_search_service)
+    sp: SearchService = Depends(get_search_service),
 ):
     if isinstance(qp.query, str):
         qp.query = [qp.query]

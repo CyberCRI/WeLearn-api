@@ -1,6 +1,8 @@
 from contextlib import asynccontextmanager
+
 from fastapi import FastAPI
-from src.app.services.search import init_qdrant, close_qdrant
+
+from src.app.services.search import close_qdrant, init_qdrant
 
 
 @asynccontextmanager

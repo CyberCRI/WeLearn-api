@@ -1,5 +1,5 @@
 import numpy
-from fastapi import APIRouter, HTTPException, Depends
+from fastapi import APIRouter, Depends, HTTPException
 from welearn_database.data.models import ContextDocument
 
 from src.app.models.documents import JourneySectionType
@@ -14,8 +14,9 @@ from src.app.services.sql_service import (
     get_subject,
     get_subjects,
 )
-from src.app.utils.logger import logger as logger_utils
 from src.app.services.search import SearchService, get_search_service
+
+from src.app.utils.logger import logger as logger_utils
 
 router = APIRouter()
 logger = logger_utils(__name__)
@@ -44,7 +45,12 @@ async def get_subject_list(
     summary="get the full journey",
     description="Get all documents for the micro learning journey of one sdg",
 )
-async def get_full_journey(sdg: int, subject: str, lang: str | None = None):
+async def get_full_journey(
+    sdg: int,
+    subject: str,
+    lang: str | None = None,
+    sp: SearchService = Depends(get_search_service),
+):
     collection_info, model_id = await collection_and_model_id_according_lang(
         sp=sp, lang=lang
     )
