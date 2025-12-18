@@ -45,6 +45,6 @@ api_tags_metadata = [
     },
     {
         "name": "metric",
-        "description": "Metric informations",
+        "description": "Metric information",
     },
 ]
