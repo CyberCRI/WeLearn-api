@@ -1,5 +1,5 @@
 import time
-from functools import cache
+from functools import cache, lru_cache
 from typing import Tuple, cast
 
 import numpy as np
@@ -49,6 +49,7 @@ async def close_qdrant():
         await _qdrant_client.close()
 
 
+@lru_cache(maxsize=1)
 async def get_qdrant() -> AsyncQdrantClient | None:
     if qdrant_client is None:
         raise Error()
@@ -149,7 +150,7 @@ class SearchService:
 
         return embedding
 
-    @cache
+    @lru_cache(maxsize=1)
     @log_time_and_error_sync
     def _get_model(self, curr_model: str) -> tuple[int | None, SentenceTransformer]:
         try:
