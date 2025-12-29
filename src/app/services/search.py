@@ -1,14 +1,13 @@
 import time
-from functools import cache, lru_cache
+from functools import cache
 from typing import Tuple, cast
 
 import numpy as np
-from fastapi import Depends
+from fastapi import Depends, Request
+from fastapi.concurrency import run_in_threadpool
 from numpy import ndarray
-from psycopg import Error
 from qdrant_client import AsyncQdrantClient
 from qdrant_client import models as qdrant_models
-from qdrant_client import qdrant_client
 from qdrant_client.http import exceptions as qdrant_exceptions
 from qdrant_client.http import models as http_models
 from sentence_transformers import SentenceTransformer
@@ -49,12 +48,8 @@ async def close_qdrant():
         await _qdrant_client.close()
 
 
-@lru_cache(maxsize=1)
-async def get_qdrant() -> AsyncQdrantClient | None:
-    if qdrant_client is None:
-        raise Error()
-
-    return _qdrant_client
+async def get_qdrant(request: Request) -> AsyncQdrantClient:
+    return request.app.state.qdrant
 
 
 class SearchService:
@@ -150,7 +145,7 @@ class SearchService:
 
         return embedding
 
-    @lru_cache(maxsize=1)
+    @cache
     @log_time_and_error_sync
     def _get_model(self, curr_model: str) -> tuple[int | None, SentenceTransformer]:
         try:
@@ -168,7 +163,6 @@ class SearchService:
             raise ModelNotFoundError()
         return (model.get_max_seq_length(), model)
 
-    @cache
     @log_time_and_error_sync
     def _split_input_seq_len(self, seq_len: int, input: str) -> list[str]:
         if not seq_len:
@@ -192,7 +186,6 @@ class SearchService:
 
         return inputs
 
-    @cache
     @log_time_and_error_sync
     def _embed_query(self, search_input: str, curr_model: str) -> np.ndarray:
         logger.debug("Creating embeddings model=%s", curr_model)
@@ -223,10 +216,11 @@ class SearchService:
 
         collection = await self.get_collection_by_language(lang="mul")
         subject_vector = get_subject_vector(qp.subject)
-        embedding = self.get_query_embed(
+        embedding = await run_in_threadpool(
+            self.get_query_embed,
             model=collection.model,
-            subject_vector=subject_vector,
             query=qp.query,
+            subject_vector=subject_vector,
             subject_influence_factor=qp.influence_factor,
         )
 
