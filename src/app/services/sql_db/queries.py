@@ -1,3 +1,5 @@
+# src/app/services/sql_db/queries.py
+
 from collections import Counter
 
 from sqlalchemy import select

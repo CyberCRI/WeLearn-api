@@ -29,6 +29,8 @@ resources:
   limits:
     memory: 1508M
 
+containerPort: 8080
+
 config:
   nonSensitive:
     CLIENT_ORIGINS_REGEX: '^{{ join "|" (values .Values.allowedHostsRegexes | sortAlpha ) }}$'
@@ -52,3 +54,7 @@ runOnGpu: false # Schedule on the GPU node pool to lower its cost
 allowedHostsRegexes:
   localhost: |-
     http:\/\/localhost:5173
+
+uvicorn:
+  workersCount: 2
+  limitMaxRequests: 1000

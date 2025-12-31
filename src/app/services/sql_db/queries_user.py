@@ -1,3 +1,5 @@
+# src/app/services/sql_db/queries_user.py
+
 import uuid
 from datetime import datetime, timedelta
 
