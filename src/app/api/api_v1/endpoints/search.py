@@ -1,4 +1,6 @@
-from fastapi import APIRouter, Depends, Response
+# src/app/api/api_v1/endpoints/search.py
+
+from fastapi import APIRouter, Depends, HTTPException, Response
 from fastapi.concurrency import run_in_threadpool
 from qdrant_client.models import ScoredPoint
 
@@ -49,7 +51,7 @@ def get_params(
 
     if not resp.query:
         e = EmptyQueryError()
-        return bad_request(message=e.message, msg_code=e.msg_code)
+        bad_request(message=e.message, msg_code=e.msg_code)
 
     return resp
 
@@ -112,8 +114,10 @@ async def search_doc_by_collection(
 
         return res
     except (CollectionNotFoundError, ModelNotFoundError) as e:
-        response.status_code = 404
-        return e.message
+        raise HTTPException(
+            status_code=404,
+            detail={"message": e.message, "code": e.msg_code},
+        )
 
 
 @router.post(
@@ -138,8 +142,10 @@ async def search_all_slices_by_lang(
 
         return res
     except CollectionNotFoundError as e:
-        response.status_code = 404
-        return e.message
+        raise HTTPException(
+            status_code=404,
+            detail={"message": e.message, "code": e.msg_code},
+        )
 
 
 @router.post(
@@ -187,8 +193,10 @@ async def search_all(
             response.status_code = 204
             return []
     except CollectionNotFoundError as e:
-        response.status_code = 404
-        return e.message
+        raise HTTPException(
+            status_code=404,
+            detail={"message": e.message, "code": e.msg_code},
+        )
 
     response.status_code = 200
 
