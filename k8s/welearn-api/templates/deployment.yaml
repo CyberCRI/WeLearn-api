@@ -62,14 +62,14 @@ spec:
             port: http
             path: /health/
           timeoutSeconds: 20
-          failureThreshold: 5
+          failureThreshold: 20
           periodSeconds: 5
         readinessProbe:
           httpGet:
             port: http
             path: /health/
           timeoutSeconds: 20
-          failureThreshold: 3
+          failureThreshold: 10
           periodSeconds: 5
         volumeMounts:
         # still needed ?
