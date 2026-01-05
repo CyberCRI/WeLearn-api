@@ -1,7 +1,6 @@
 # src/app/services/search.py
 
 import time
-from functools import cache, lru_cache
 from typing import Tuple, cast
 
 import numpy as np
