@@ -14,11 +14,13 @@ from src.app.api.dependencies import get_settings
 from src.app.models.documents import JourneySection
 from src.app.models.search import ContextType
 from src.app.utils.decorators import singleton
+from src.app.utils.logger import logger as logger_utils
 
 settings = get_settings()
 
 model_id_cache: dict[str, UUID] = {}
 model_id_lock = Lock()
+logger = logger_utils(__name__)
 
 
 @singleton
@@ -47,12 +49,15 @@ class WL_SQL:
         return Session
 
     def register_endpoint(self, endpoint, session_id, http_code):
-        with self.session_maker() as session:
-            endpoint_request = EndpointRequest(
-                endpoint_name=endpoint, session_id=session_id, http_code=http_code
-            )
-            session.add(endpoint_request)
-            session.commit()
+        try:
+            with self.session_maker() as session:
+                endpoint_request = EndpointRequest(
+                    endpoint_name=endpoint, session_id=session_id, http_code=http_code
+                )
+                session.add(endpoint_request)
+                session.commit()
+        except Exception as e:
+            logger.error(f"Failed to log endpoint usage {endpoint}: {e}")
 
     def get_subject(
         self, subject: str, embedding_model_id: UUID
