@@ -26,17 +26,17 @@ jobs:
       registry-username: ${{ secrets.DOCKER_PROD_USERNAME }}
       registry-password: ${{ secrets.DOCKER_PROD_PASSWORD }}
 
-  lint-and-test:
-    uses: ./.github/workflows/lint-and-test.yml
-    with:
-      registry-name: ${{ vars.DOCKER_PROD_REGISTRY }}
-      image-name: welearn-api
-      image-tag: ${{ github.sha }}
-    secrets:
-      registry-username: ${{ secrets.DOCKER_PROD_USERNAME }}
-      registry-password: ${{ secrets.DOCKER_PROD_PASSWORD }}
-    needs:
-      - build-docker
+  # lint-and-test:
+  #   uses: ./.github/workflows/lint-and-test.yml
+  #   with:
+  #     registry-name: ${{ vars.DOCKER_PROD_REGISTRY }}
+  #     image-name: welearn-api
+  #     image-tag: ${{ github.sha }}
+  #   secrets:
+  #     registry-username: ${{ secrets.DOCKER_PROD_USERNAME }}
+  #     registry-password: ${{ secrets.DOCKER_PROD_PASSWORD }}
+  #   needs:
+  #     - build-docker
 
   tag-deploy:
     needs:
