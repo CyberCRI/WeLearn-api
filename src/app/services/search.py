@@ -37,12 +37,12 @@ async def get_qdrant(request: Request) -> AsyncQdrantClient:
 class SearchService:
     import threading
 
+    model = {}
+
     def __init__(self, client):
         logger.debug("SearchService=init_searchService")
         self.client = client
         self.collections = None
-        self.model = {}
-        self._model_lock = self.threading.Lock()
 
         self.payload_keys = [
             "document_title",
@@ -134,28 +134,28 @@ class SearchService:
     @log_time_and_error_sync
     def _get_model(self, curr_model: str) -> dict:
         # Thread-safe model loading and caching
-        with self._model_lock:
-            if curr_model in self.model:
-                return self.model[curr_model]
-            try:
-                time_start = time.time()
-                # TODO: path should be an env variable
-                model = SentenceTransformer(f"../models/embedding/{curr_model}/")
-                self.model[curr_model] = {
-                    "max_seq_length": model.get_max_seq_length(),
-                    "instance": model,
-                }
-                time_end = time.time()
-
-                logger.info(
-                    "method=get_model latency=%s model=%s",
-                    round(time_end - time_start, 2),
-                    curr_model,
-                )
-            except ValueError:
-                logger.error("api_error=MODEL_NOT_FOUND model=%s", curr_model)
-                raise ModelNotFoundError()
+        if curr_model in self.model:
             return self.model[curr_model]
+        try:
+            print('>>>>>>>>>>>>>>>>>>>>')
+            time_start = time.time()
+            # TODO: path should be an env variable
+            model = SentenceTransformer(f"../models/embedding/{curr_model}/")
+            self.model[curr_model] = {
+                "max_seq_length": model.get_max_seq_length(),
+                "instance": model,
+            }
+            time_end = time.time()
+
+            logger.info(
+                "method=get_model latency=%s model=%s",
+                round(time_end - time_start, 2),
+                curr_model,
+            )
+        except ValueError:
+            logger.error("api_error=MODEL_NOT_FOUND model=%s", curr_model)
+            raise ModelNotFoundError()
+        return self.model[curr_model]
 
     @log_time_and_error_sync
     def _split_input_seq_len(self, seq_len: int, input: str) -> list[str]:
@@ -206,6 +206,21 @@ class SearchService:
             curr_model,
         )
         return cast(np.ndarray, embeddings)
+
+    async def simple_search_handler(
+            self,
+            qp: EnhancedSearchQuery
+            ):
+        model = await run_in_threadpool(self._get_model, curr_model="granite-embedding-107m-multilingual")
+        model_instance = model['instance']
+        embedding = await run_in_threadpool(model_instance.encode, qp.query)
+        result = await self.search(
+                collection_info="collection_welearn_mul_granite-embedding-107m-multilingual",
+                embedding=embedding,
+                nb_results=30
+                )
+
+        return result
 
     @log_time_and_error
     async def search_handler(
