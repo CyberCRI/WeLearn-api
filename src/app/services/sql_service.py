@@ -36,25 +36,25 @@ class WL_SQL:
         self.session_maker = self._create_session()
 
     def _create_engine(self):
-        from sqlalchemy import create_engine
+        from sqlalchemy.ext.asyncio import create_async_engine
 
-        return create_engine(self.engine_url)
+        return create_async_engine(self.engine_url)
 
     def _create_session(self):
-        from sqlalchemy.orm import sessionmaker
+        from sqlalchemy.ext.asyncio import async_sessionmaker
 
-        Session = sessionmaker(bind=self.engine)
-        return Session
+        session = async_sessionmaker(bind=self.engine)
+        return session
 
-    def register_endpoint(self, endpoint, session_id, http_code):
-        with self.session_maker() as session:
+    async def register_endpoint(self, endpoint, session_id, http_code):
+        async with self.session_maker() as session:
             endpoint_request = EndpointRequest(
                 endpoint_name=endpoint, session_id=session_id, http_code=http_code
             )
             session.add(endpoint_request)
-            session.commit()
+            await session.commit()
 
-    def get_subject(
+    async def get_subject(
         self, subject: str, embedding_model_id: UUID
     ) -> ContextDocument | None:
         """
@@ -65,7 +65,7 @@ class WL_SQL:
         Returns: The subject meta document.
 
         """
-        with self.session_maker() as session:
+        async with self.session_maker() as session:
             subject_meta_document: ContextDocument = (
                 session.query(ContextDocument)
                 .filter(
