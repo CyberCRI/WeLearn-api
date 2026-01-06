@@ -1,20 +1,19 @@
+# src/app/services/search.py
+
 import time
-from functools import cache
 from typing import Tuple, cast
 
 import numpy as np
-from fastapi import Depends
+from fastapi import Depends, Request
+from fastapi.concurrency import run_in_threadpool
 from numpy import ndarray
-from psycopg import Error
 from qdrant_client import AsyncQdrantClient
 from qdrant_client import models as qdrant_models
-from qdrant_client import qdrant_client
 from qdrant_client.http import exceptions as qdrant_exceptions
 from qdrant_client.http import models as http_models
 from sentence_transformers import SentenceTransformer
 from sklearn.metrics.pairwise import cosine_similarity
 
-from src.app.api.dependencies import get_settings
 from src.app.models.collections import Collection
 from src.app.models.search import (
     EnhancedSearchQuery,
@@ -31,32 +30,15 @@ from src.app.utils.logger import logger as logger_utils
 logger = logger_utils(__name__)
 
 
-_qdrant_client: AsyncQdrantClient | None = None
-
-
-async def init_qdrant():
-    global _qdrant_client
-    settings = get_settings()
-    _qdrant_client = AsyncQdrantClient(
-        url=settings.QDRANT_HOST,
-        port=settings.QDRANT_PORT,
-        timeout=100,
-    )
-
-
-async def close_qdrant():
-    if _qdrant_client:
-        await _qdrant_client.close()
-
-
-async def get_qdrant() -> AsyncQdrantClient | None:
-    if qdrant_client is None:
-        raise Error()
-
-    return _qdrant_client
+async def get_qdrant(request: Request) -> AsyncQdrantClient:
+    return request.app.state.qdrant
 
 
 class SearchService:
+    import threading
+
+    model = {}
+
     def __init__(self, client):
         logger.debug("SearchService=init_searchService")
         self.client = client
@@ -126,14 +108,14 @@ class SearchService:
         return Collection(lang=lang, model=model, name=collection_name)
 
     @log_time_and_error_sync
-    def get_query_embed(
+    async def get_query_embed(
         self,
         model: str,
         query: str,
         subject_vector: list[float] | None = None,
         subject_influence_factor: float = 1.0,
     ) -> np.ndarray:
-        embedding = self._embed_query(query, model)
+        embedding = await self._embed_query(query, model)
 
         if subject_vector:
             embedding = self.flavored_with_subject(
@@ -149,14 +131,20 @@ class SearchService:
 
         return embedding
 
-    @cache
     @log_time_and_error_sync
-    def _get_model(self, curr_model: str) -> tuple[int | None, SentenceTransformer]:
+    def _get_model(self, curr_model: str) -> dict:
+        if curr_model in self.model:
+            return self.model[curr_model]
         try:
             time_start = time.time()
             # TODO: path should be an env variable
             model = SentenceTransformer(f"../models/embedding/{curr_model}/")
+            self.model[curr_model] = {
+                "max_seq_length": model.get_max_seq_length(),
+                "instance": model,
+            }
             time_end = time.time()
+
             logger.info(
                 "method=get_model latency=%s model=%s",
                 round(time_end - time_start, 2),
@@ -165,9 +153,8 @@ class SearchService:
         except ValueError:
             logger.error("api_error=MODEL_NOT_FOUND model=%s", curr_model)
             raise ModelNotFoundError()
-        return (model.get_max_seq_length(), model)
+        return self.model[curr_model]
 
-    @cache
     @log_time_and_error_sync
     def _split_input_seq_len(self, seq_len: int, input: str) -> list[str]:
         if not seq_len:
@@ -191,16 +178,20 @@ class SearchService:
 
         return inputs
 
-    @cache
     @log_time_and_error_sync
-    def _embed_query(self, search_input: str, curr_model: str) -> np.ndarray:
+    async def _embed_query(self, search_input: str, curr_model: str) -> np.ndarray:
         logger.debug("Creating embeddings model=%s", curr_model)
         time_start = time.time()
-        seq_len, model = self._get_model(curr_model)
+        if curr_model not in self.model:
+            self._get_model(curr_model)
+
+        seq_len = self.model[curr_model]["max_seq_length"]
+        model = self.model[curr_model]["instance"]
         inputs = self._split_input_seq_len(seq_len, search_input)
 
         try:
-            embeddings = model.encode(sentences=inputs)
+            embeddings = await run_in_threadpool(model.encode, inputs)
+            # embeddings = model.encode(sentences=inputs)
             embeddings = np.mean(embeddings, axis=0)
         except Exception as ex:
             logger.error("api_error=EMBED_ERROR model=%s", curr_model)
@@ -214,6 +205,20 @@ class SearchService:
         )
         return cast(np.ndarray, embeddings)
 
+    async def simple_search_handler(self, qp: EnhancedSearchQuery):
+        model = await run_in_threadpool(
+            self._get_model, curr_model="granite-embedding-107m-multilingual"
+        )
+        model_instance = model["instance"]
+        embedding = await run_in_threadpool(model_instance.encode, qp.query)
+        result = await self.search(
+            collection_info="collection_welearn_mul_granite-embedding-107m-multilingual",
+            embedding=embedding,
+            nb_results=30,
+        )
+
+        return result
+
     @log_time_and_error
     async def search_handler(
         self, qp: EnhancedSearchQuery, method: SearchMethods = SearchMethods.BY_SLICES
@@ -221,11 +226,11 @@ class SearchService:
         assert isinstance(qp.query, str)
 
         collection = await self.get_collection_by_language(lang="mul")
-        subject_vector = get_subject_vector(qp.subject)
-        embedding = self.get_query_embed(
+        subject_vector = await run_in_threadpool(get_subject_vector, qp.subject)
+        embedding = await self.get_query_embed(
             model=collection.model,
-            subject_vector=subject_vector,
             query=qp.query,
+            subject_vector=subject_vector,
             subject_influence_factor=qp.influence_factor,
         )
 
@@ -298,7 +303,7 @@ class SearchService:
     async def search(
         self,
         collection_info: str,
-        embedding: np.ndarray,
+        embedding,
         filters: qdrant_models.Filter | None = None,
         nb_results: int = 100,
         with_vectors: bool = True,

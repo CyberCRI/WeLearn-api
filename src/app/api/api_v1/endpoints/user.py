@@ -44,7 +44,7 @@ async def handle_session(
         raise HTTPException(status_code=500, detail=str(e))
 
 
-@router.get("/:user_id/bookmarks", summary="Get user bookmarks", response_model=dict)
+@router.get("/:user_id/bookmarks", summary="Get user bookmarks")
 async def get_user_bookmarks(user_id: uuid.UUID):
     try:
         bookmarks = await run_in_threadpool(get_user_bookmarks_sync, user_id)

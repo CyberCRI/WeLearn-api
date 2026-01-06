@@ -3,7 +3,7 @@ from abc import ABC
 from typing import Optional, Type, Union
 
 import litellm
-from azure.ai.inference import ChatCompletionsClient
+from azure.ai.inference.aio import ChatCompletionsClient
 from azure.core.credentials import AzureKeyCredential
 from litellm import acompletion
 from litellm.types.utils import ModelResponse
@@ -106,7 +106,7 @@ class LLMProxy(ABC):
         if self.client is None:
             raise ValueError("Azure client is not initialized.")
 
-        response = self.client.complete(
+        response = await self.client.complete(
             messages=messages,
             max_tokens=2048,
             temperature=0.8,
@@ -120,7 +120,7 @@ class LLMProxy(ABC):
         if self.client is None:
             raise ValueError("Azure client is not initialized.")
 
-        response = self.client.complete(
+        response = await self.client.complete(
             messages=messages, temperature=0.8, top_p=0.1, model=self.model, stream=True
         )
 
