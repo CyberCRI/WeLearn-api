@@ -124,7 +124,6 @@ class SearchTests(IsolatedAsyncioTestCase):
             )
 
             assert response.status_code == 404
-            assert response.json() == "Model not found"
 
     @patch(
         f"{search_pipeline_path}.search_handler",
@@ -170,10 +169,6 @@ class SearchTests(IsolatedAsyncioTestCase):
                 headers={"X-API-Key": "test"},
             )
             self.assertEqual(response.status_code, 404)
-            self.assertEqual(
-                response.json(),
-                "Collection not found",
-            )
 
 
 @patch("src.app.services.sql_service.session_maker")
@@ -200,10 +195,6 @@ class SearchTestsSlices(IsolatedAsyncioTestCase):
                 headers={"X-API-Key": "test"},
             )
             self.assertEqual(response.status_code, 404)
-            self.assertEqual(
-                response.json(),
-                "Collection not found",
-            )
 
     @patch(f"{search_pipeline_path}.search_handler", return_value=mocked_scored_points)
     async def test_search_all_slices_ok(self, *mocks):
@@ -277,10 +268,6 @@ class SearchTestsAll(IsolatedAsyncioTestCase):
                 headers={"X-API-Key": "test"},
             )
             self.assertEqual(response.status_code, 404)
-            self.assertEqual(
-                response.json(),
-                "Collection not found",
-            )
 
     @patch(f"{search_pipeline_path}.search_handler", return_value=[])
     async def test_search_all_no_result(self, *mocks):

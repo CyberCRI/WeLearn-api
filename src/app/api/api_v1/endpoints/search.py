@@ -149,24 +149,6 @@ async def search_all_slices_by_lang(
 
 
 @router.post(
-    "/test",
-    summary="search all slices",
-    description="Search slices in all collections or in collections specified",
-    response_model=list[ScoredPoint] | None,
-)
-async def test_thread(
-    response: Response,
-    query: str,
-    sp: SearchService = Depends(get_search_service),
-):
-    qp = EnhancedSearchQuery(
-            query=query,
-            sdg_filter=[]
-            )
-    result = await sp.simple_search_handler(qp=qp)
-    return result
-
-@router.post(
     "/multiple_by_slices",
     summary="search all slices",
     description="Search slices in all collections or in collections specified",

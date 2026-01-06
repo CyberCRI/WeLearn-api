@@ -205,18 +205,17 @@ class SearchService:
         )
         return cast(np.ndarray, embeddings)
 
-    async def simple_search_handler(
-            self,
-            qp: EnhancedSearchQuery
-            ):
-        model = await run_in_threadpool(self._get_model, curr_model="granite-embedding-107m-multilingual")
-        model_instance = model['instance']
+    async def simple_search_handler(self, qp: EnhancedSearchQuery):
+        model = await run_in_threadpool(
+            self._get_model, curr_model="granite-embedding-107m-multilingual"
+        )
+        model_instance = model["instance"]
         embedding = await run_in_threadpool(model_instance.encode, qp.query)
         result = await self.search(
-                collection_info="collection_welearn_mul_granite-embedding-107m-multilingual",
-                embedding=embedding,
-                nb_results=30
-                )
+            collection_info="collection_welearn_mul_granite-embedding-107m-multilingual",
+            embedding=embedding,
+            nb_results=30,
+        )
 
         return result
 
@@ -228,7 +227,7 @@ class SearchService:
 
         collection = await self.get_collection_by_language(lang="mul")
         subject_vector = await run_in_threadpool(get_subject_vector, qp.subject)
-        embedding = await self.get_query_embed (
+        embedding = await self.get_query_embed(
             model=collection.model,
             query=qp.query,
             subject_vector=subject_vector,

@@ -10,7 +10,7 @@ logger = logger_utils(__name__)
 
 class MonitorRequestsMiddleware(BaseHTTPMiddleware):
     async def dispatch(self, request: Request, call_next):
-        if request.url.path.startswith("/api/v1/") :
+        if request.url.path.startswith("/api/v1/"):
             session_id = request.headers.get("X-Session-ID")
             if session_id:
                 try:
@@ -23,7 +23,9 @@ class MonitorRequestsMiddleware(BaseHTTPMiddleware):
                 except Exception as e:
                     logger.error(f"Failed to register endpoint {request.url.path}: {e}")
             else:
-                logger.warning(f"No X-Session-ID header provided for {request.url.path}")
+                logger.warning(
+                    f"No X-Session-ID header provided for {request.url.path}"
+                )
 
         response = await call_next(request)
         return response
