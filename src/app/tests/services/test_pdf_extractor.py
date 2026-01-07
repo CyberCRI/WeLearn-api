@@ -1,6 +1,6 @@
 import io
 import unittest
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import AsyncMock, Mock, patch
 
 from src.app.services import pdf_extractor
 from src.app.services.pdf_extractor import (
@@ -33,9 +33,9 @@ class TestPDFExtractorAsync(unittest.IsolatedAsyncioTestCase):
         # Mock du client HTTPX asynchrone
         mock_client = AsyncMock()
         mock_response = AsyncMock()
-        mock_response.json.return_value = {
-            "X-TIKA:content": "<html>Mock Content</html>"
-        }
+        mock_response.json = Mock(
+            return_value={"X-TIKA:content": "<html>Mock Content</html>"}
+        )
         mock_response.raise_for_status.return_value = None
         mock_client.__aenter__.return_value = mock_client
         mock_client.put.return_value = mock_response
