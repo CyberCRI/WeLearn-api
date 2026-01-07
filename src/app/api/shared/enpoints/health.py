@@ -60,7 +60,7 @@ async def get_db_health(settings: ConfigDepend) -> HealthCheck:
         ) as rep:
             rep_json: dict = rep.json()
 
-        status = rep_json.get("status")
-        return HealthCheck(status=status)
+        resp_status = rep_json.get("status")
+        return HealthCheck(status=resp_status)
     except JSONDecodeError:
         raise HTTPException(status_code=403)
