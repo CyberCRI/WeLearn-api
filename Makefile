@@ -1,7 +1,7 @@
 .PHONY: run-dev
 
 run-poetry:
-	poetry run uvicorn src.main:app --reload
+	poetry run uvicorn src.main:app
 
 run-dev:
 	uvicorn src.main:app --reload
