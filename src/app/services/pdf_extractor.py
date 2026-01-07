@@ -4,10 +4,8 @@ import re
 from typing import List
 
 import httpx
-import requests  # type: ignore
 from bs4 import BeautifulSoup
 from refinedoc.refined_document import RefinedDocument
-from requests.adapters import HTTPAdapter  # type: ignore
 from urllib3 import Retry
 
 logger = logging.getLogger(__name__)
