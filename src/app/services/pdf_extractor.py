@@ -3,6 +3,7 @@ import logging
 import re
 from typing import List
 
+import httpx
 import requests  # type: ignore
 from bs4 import BeautifulSoup
 from refinedoc.refined_document import RefinedDocument
@@ -140,7 +141,7 @@ def _dehyphenate(lines: List[str], line_no: int) -> List[str]:
     return lines
 
 
-def get_new_https_session(retry_total: int = 10):
+def get_new_https_async_client(retry_total: int = 10) -> httpx.AsyncClient:
     # Define the retry strategy
     retry_strategy = Retry(
         total=retry_total,  # Maximum number of retries
@@ -148,17 +149,18 @@ def get_new_https_session(retry_total: int = 10):
         backoff_factor=2,  # Factor to apply to the backoff
     )
 
-    # Create an HTTP adapter with the retry strategy and mount it to session
-    adapter = HTTPAdapter(max_retries=retry_strategy)
+    transport = httpx.AsyncHTTPTransport(retries=retry_total)
 
     # Create a new session object
-    session = requests.Session()
-    session.mount("https://", adapter)
-    session.headers = HEADERS  # type: ignore
-    return session
+    client = httpx.AsyncClient(
+        transport=transport,
+        headers=HEADERS,  # type: ignore
+    )
+    client.headers = HEADERS  # type: ignore
+    return client
 
 
-def _send_pdf_to_tika(pdf_content: io.BytesIO, tika_base_url: str) -> dict:
+async def _send_pdf_to_tika(pdf_content: io.BytesIO, tika_base_url: str) -> dict:
     """
     Send a PDF document to Tika micro service and return the content as a dictionary
     :param pdf_content: the PDF document content as a byte stream
@@ -173,9 +175,9 @@ def _send_pdf_to_tika(pdf_content: io.BytesIO, tika_base_url: str) -> dict:
         "X-Tika-PDFOcrStrategy": "no_ocr",
     }
 
-    with get_new_https_session() as http_session:
-        print(f"Sending PDF to Tika micro service at {pdf_process_addr}")
-        resp = http_session.put(
+    async with get_new_https_async_client() as http_session:
+        logger.info(f"Sending PDF to Tika micro service at {pdf_process_addr}")
+        resp = await http_session.put(
             url=pdf_process_addr,
             files={"file": pdf_content},
             headers=local_headers,
@@ -200,7 +202,9 @@ def _parse_tika_content(tika_content: dict) -> list[list[str]]:
     return res
 
 
-def extract_txt_from_pdf_with_tika(pdf_content: io.BytesIO, tika_base_url: str) -> str:
+async def extract_txt_from_pdf_with_tika(
+    pdf_content: io.BytesIO, tika_base_url: str
+) -> str:
     """
     Extract the text from a PDF document and return it as a list of strings for each page of the document and a list of
     strings for each page for a filtered document and the reference document (extracted with tika micro service)
@@ -211,7 +215,7 @@ def extract_txt_from_pdf_with_tika(pdf_content: io.BytesIO, tika_base_url: str) 
     :return: Matrix of strings (list of list of strings) for each page of the document or a tuple with the refined
              body and the metadata extracted by Tika
     """
-    tika_content = _send_pdf_to_tika(pdf_content, tika_base_url)
+    tika_content = await _send_pdf_to_tika(pdf_content, tika_base_url)
     parsed_pdf_cont = _parse_tika_content(tika_content)
 
     refined_pdf_content = RefinedDocument(content=parsed_pdf_cont)
