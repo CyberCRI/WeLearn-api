@@ -1,6 +1,6 @@
 import json
 import random
-import time
+import string
 
 from locust import HttpUser, between, task
 
@@ -4417,12 +4417,13 @@ class WeLearnUser(HttpUser):
         #        reformulated_query = json.loads(resp1.text)["STANDALONE_QUESTION"]
         #    except json.decoder.JSONDecodeError:
         #        raise Exception("Question could not be reformulated")
-        reformulated_query = query  # For now, skip reformulation step
+        reformulated_query = query + " " + random.choice(string.ascii_letters)*5  # For now, skip reformulation step and add some noise to bypass caching
         with self.client.post(
             "/api/v1/search/by_slices",
             json={"sdg_filter": [], "query": reformulated_query, "corpora": corpus},
             params={"nb_results": 10, "concatenate": True},
             name=f"Search by slices ({lang})",
+            catch_response=True,
         ) as resp2:
             try:
                 sources = json.loads(resp2.text)
@@ -4434,7 +4435,7 @@ class WeLearnUser(HttpUser):
             name=f"Chat answer ({lang})",
         )
 
-    @task(2)
+    # @task(2)
     def syllabus(self):
         lang = random.choice(["en", "fr"])
         self.client.post(
