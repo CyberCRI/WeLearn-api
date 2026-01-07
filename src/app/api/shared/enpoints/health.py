@@ -1,6 +1,6 @@
 from json import JSONDecodeError
 
-import requests
+import httpx
 from fastapi import APIRouter, HTTPException, status
 from pydantic import BaseModel
 
@@ -54,10 +54,11 @@ async def get_db_health(settings: ConfigDepend) -> HealthCheck:
         HealthCheck: Returns a JSON response with the health status
     """
     try:
-        with requests.get(
-            url=f"{settings.QDRANT_HOST}:{settings.QDRANT_PORT}/collections",
-            timeout=10,
-        ) as rep:
+        async with httpx.AsyncClient() as client:
+            rep = await client.get(
+                f"{settings.DATABASE_HEALTHCHECK_URL}/health",
+                timeout=settings.HTTPX_TIMEOUT,
+            )
             rep_json: dict = rep.json()
 
         resp_status = rep_json.get("status")
