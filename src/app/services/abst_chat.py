@@ -20,6 +20,7 @@ import uuid
 from abc import ABC
 from typing import AsyncIterable, Dict, List, Optional
 
+from fastapi import Depends, Request
 from langchain_azure_ai.chat_models import AzureAIChatCompletionsModel  # type: ignore
 from langchain_core.runnables import RunnableConfig  # type: ignore
 from langgraph.checkpoint.postgres.aio import AsyncPostgresSaver  # type: ignore
@@ -39,7 +40,8 @@ from src.app.services.helpers import (
     extract_json_from_response,
     stringify_docs_content,
 )
-from src.app.services.llm_proxy import LLMProxy
+
+# from src.app.services.llm_proxy import LLMProxy
 from src.app.utils.decorators import log_time_and_error
 from src.app.utils.logger import log_environmental_impacts
 from src.app.utils.logger import logger as utils_logger
@@ -65,23 +67,10 @@ class AbstractChat(ABC):
 
     def __init__(
         self,
-        model: str,
-        API_KEY: str,
-        API_BASE: Optional[str] = None,
-        API_VERSION: Optional[str] = None,
-        is_azure_model: bool = False,
+        client,
     ):
-        self.chat_client = LLMProxy(
-            model=model,
-            api_key=API_KEY,
-            api_base=API_BASE,
-            api_version=API_VERSION,
-            is_azure_model=is_azure_model,
-        )
-        self.model = model
-        self.API_KEY = API_KEY
-        self.API_BASE = API_BASE
-        self.API_VERSION = API_VERSION
+        self.chat_client = client
+
         self.system_prompts = {
             "reformulate": {
                 "role": "system",
@@ -360,8 +349,6 @@ class AbstractChat(ABC):
             str: The chat message content.
         """
 
-        # ISO_CODE = {"ISO_CODE": "en"}
-
         ISO_CODE = await self._detect_language(query)
 
         messages = [
@@ -443,3 +430,11 @@ class AbstractChat(ABC):
 
         res = await agent_executor.ainvoke(input={"messages": messages}, config=config)
         return res
+
+
+async def get_llm_client(request: Request):
+    return request.app.state.llm
+
+
+async def get_chat_service(llm_client=Depends(get_llm_client)) -> AbstractChat:
+    return AbstractChat(client=llm_client)

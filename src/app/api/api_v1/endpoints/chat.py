@@ -12,7 +12,7 @@ from pydantic import BaseModel
 
 from src.app.api.dependencies import get_settings
 from src.app.models import chat as models
-from src.app.services.abst_chat import AbstractChat
+from src.app.services.abst_chat import get_chat_service
 from src.app.services.constants import subjects as subjectsDict
 from src.app.services.exceptions import (
     EmptyQueryError,
@@ -28,13 +28,6 @@ router = APIRouter()
 
 settings = get_settings()
 
-chatfactory = AbstractChat(
-    model=settings.LLM_MODEL_NAME,
-    API_KEY=settings.AZURE_APIM_API_KEY,
-    API_BASE=settings.AZURE_APIM_API_BASE,
-    API_VERSION="2024-05-01-preview",
-    is_azure_model=True,
-)
 
 DB_URI = "postgresql://{user}:{password}@{host}:{port}/{database}".format(
     user=settings.PG_USER,
@@ -93,7 +86,7 @@ class Response(BaseModel):
     factor=2,
 )
 async def q_and_a_reformulate(
-    body: models.ContextOut = Depends(get_params),
+    body: models.ContextOut = Depends(get_params), chatfactory=Depends(get_chat_service)
 ):
     try:
         reformulated_query: models.ReformulatedQueryResponse = (
@@ -135,7 +128,9 @@ async def q_and_a_reformulate(
     jitter=backoff.random_jitter,
     factor=2,
 )
-async def q_and_a_new_questions(body: models.ContextOut = Depends(get_params)):
+async def q_and_a_new_questions(
+    body: models.ContextOut = Depends(get_params), chatfactory=Depends(get_chat_service)
+):
     try:
         new_questions = await chatfactory.get_new_questions(
             query=body.query, history=body.history
@@ -162,7 +157,7 @@ async def q_and_a_new_questions(body: models.ContextOut = Depends(get_params)):
     factor=2,
 )
 async def q_and_a_rephrase(
-    body: models.ContextOut = Depends(get_params),
+    body: models.ContextOut = Depends(get_params), chatfactory=Depends(get_chat_service)
 ) -> Optional[str]:
     try:
         content = await chatfactory.rephrase_message(
@@ -200,7 +195,7 @@ async def q_and_a_rephrase(
     factor=2,
 )
 async def q_and_a_rephrase_stream(
-    body: models.ContextOut = Depends(get_params),
+    body: models.ContextOut = Depends(get_params), chatfactory=Depends(get_chat_service)
 ) -> StreamingResponse:
     try:
         content = await chatfactory.rephrase_message(
@@ -242,7 +237,7 @@ async def q_and_a_rephrase_stream(
     factor=2,
 )
 async def q_and_a_ans(
-    body: models.ContextOut = Depends(get_params),
+    body: models.ContextOut = Depends(get_params), chatfactory=Depends(get_chat_service)
 ) -> Optional[str]:
     """_summary_
 
@@ -284,7 +279,7 @@ async def q_and_a_ans(
     factor=2,
 )
 async def q_and_a_stream(
-    body: models.ContextOut = Depends(get_params),
+    body: models.ContextOut = Depends(get_params), chatfactory=Depends(get_chat_service)
 ) -> StreamingResponse:  # type: ignore
     try:
         logger.info("q_and_a_stream subject=%s", body.subject)
@@ -331,6 +326,7 @@ async def q_and_a_stream(
 )
 async def agent_response(
     body: models.AgentContext = Depends(get_agent_params),
+    chatfactory=Depends(get_chat_service),
 ) -> Optional[Dict]:
     try:
         if body.query is None:
