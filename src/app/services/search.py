@@ -11,8 +11,9 @@ from qdrant_client import AsyncQdrantClient
 from qdrant_client import models as qdrant_models
 from qdrant_client.http import exceptions as qdrant_exceptions
 from qdrant_client.http import models as http_models
-from sentence_transformers import SentenceTransformer
 from sklearn.metrics.pairwise import cosine_similarity
+import torch
+from transformers import AutoModel, AutoTokenizer
 
 from src.app.models.collections import Collection
 from src.app.models.search import (
@@ -139,10 +140,14 @@ class SearchService:
         try:
             time_start = time.time()
             # TODO: path should be an env variable
-            model = SentenceTransformer(f"../models/embedding/{curr_model}/")
+            model_path = f"../models/embedding/{curr_model}/"
+            model = AutoModel.from_pretrained(model_path)
+            tokenizer = AutoTokenizer.from_pretrained(model_path)
+            model.eval()
             self.model[curr_model] = {
-                "max_seq_length": model.get_max_seq_length(),
+                "max_seq_length": tokenizer.model_max_length,
                 "instance": model,
+                "tokenizer": tokenizer,
             }
             time_end = time.time()
 
@@ -180,6 +185,15 @@ class SearchService:
         return inputs
 
     @log_time_and_error_sync
+    def _compute_embeddings(self, model, tokenizer, inputs: list[str]) -> np.ndarray:
+        with torch.no_grad():
+            tokenized_inputs = tokenizer(inputs, padding=True, truncation=True, return_tensors='pt')
+            model_output = model(**tokenized_inputs)
+            embeddings = model_output[0][:, 0]
+            embeddings = torch.nn.functional.normalize(embeddings, dim=1).numpy()
+        return embeddings
+
+    @log_time_and_error_sync
     async def _embed_query(self, search_input: str, curr_model: str) -> np.ndarray:
         logger.debug("Creating embeddings model=%s", curr_model)
         time_start = time.time()
@@ -188,11 +202,11 @@ class SearchService:
 
         seq_len = self.model[curr_model]["max_seq_length"]
         model = self.model[curr_model]["instance"]
+        tokenizer = self.model[curr_model]["tokenizer"]
         inputs = self._split_input_seq_len(seq_len, search_input)
 
         try:
-            embeddings = await run_in_threadpool(model.encode, inputs)
-            # embeddings = model.encode(sentences=inputs)
+            embeddings = await run_in_threadpool(self._compute_embeddings, model, tokenizer, inputs)
             embeddings = np.mean(embeddings, axis=0)
         except Exception as ex:
             logger.error("api_error=EMBED_ERROR model=%s", curr_model)
@@ -210,8 +224,11 @@ class SearchService:
         model = await run_in_threadpool(
             self._get_model, curr_model="granite-embedding-107m-multilingual"
         )
+
         model_instance = model["instance"]
-        embedding = await run_in_threadpool(model_instance.encode, qp.query)
+        tokenizer = model["tokenizer"]
+        embedding_input = qp.query if isinstance(qp.query, list) else [qp.query]
+        embedding = await run_in_threadpool(self._compute_embeddings, model_instance, tokenizer, embedding_input)
         result = await self.search(
             collection_info="collection_welearn_mul_granite-embedding-107m-multilingual",
             embedding=embedding,
