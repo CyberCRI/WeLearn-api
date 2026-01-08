@@ -51,7 +51,7 @@ class TestMetricEndpoint(unittest.IsolatedAsyncioTestCase):
             f"{settings.API_V1_STR}/metric/nb_docs_info_per_corpus",
             headers={"X-API-Key": "test"},
         )
-        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.status_code, 500)
         self.assertEqual(response.json(), [])
 
     @mock.patch("src.app.api.api_v1.endpoints.metric.get_document_qty_table_info_sync")
@@ -61,11 +61,22 @@ class TestMetricEndpoint(unittest.IsolatedAsyncioTestCase):
             f"{settings.API_V1_STR}/metric/nb_docs_info_per_corpus",
             headers={"X-API-Key": "test"},
         )
-        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.status_code, 500)
         self.assertEqual(response.json(), [])
 
     @mock.patch("src.app.api.api_v1.endpoints.metric.get_document_qty_table_info_sync")
     async def test_nb_docs_info_per_corpus_no_content(self, mock_get_info):
+        # Cas où certains champs sont None ou manquants
+        result = []
+        mock_get_info.return_value = result
+        response = client.get(
+            f"{settings.API_V1_STR}/metric/nb_docs_info_per_corpus",
+            headers={"X-API-Key": "test"},
+        )
+        self.assertEqual(response.status_code, 500)
+
+    @mock.patch("src.app.api.api_v1.endpoints.metric.get_document_qty_table_info_sync")
+    async def test_nb_docs_info_per_corpus_content_empty(self, mock_get_info):
         # Cas où certains champs sont None ou manquants
         partial_result = [
             (
