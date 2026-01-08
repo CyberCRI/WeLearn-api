@@ -6,7 +6,6 @@ from typing import List
 import httpx
 from bs4 import BeautifulSoup
 from refinedoc.refined_document import RefinedDocument
-from urllib3 import Retry
 
 logger = logging.getLogger(__name__)
 
@@ -140,13 +139,6 @@ def _dehyphenate(lines: List[str], line_no: int) -> List[str]:
 
 
 def get_new_https_async_client(retry_total: int = 10) -> httpx.AsyncClient:
-    # Define the retry strategy
-    retry_strategy = Retry(
-        total=retry_total,  # Maximum number of retries
-        status_forcelist=[429, 500, 502, 503, 504],  # HTTP status codes to retry on
-        backoff_factor=2,  # Factor to apply to the backoff
-    )
-
     transport = httpx.AsyncHTTPTransport(retries=retry_total)
 
     # Create a new session object
