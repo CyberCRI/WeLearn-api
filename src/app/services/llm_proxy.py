@@ -51,6 +51,11 @@ class LLMProxy(ABC):
             )
 
     @log_time_and_error
+    async def close_client(self):
+        if self.client:
+            await self.client.close()
+
+    @log_time_and_error
     async def completion(
         self,
         messages: list,

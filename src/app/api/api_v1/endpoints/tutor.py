@@ -4,7 +4,7 @@ from fastapi import APIRouter, Depends, File, Response, UploadFile
 
 from src.app.api.dependencies import get_settings
 from src.app.models.search import EnhancedSearchQuery
-from src.app.services.abst_chat import AbstractChat
+from src.app.services.abst_chat import get_chat_service
 from src.app.services.exceptions import NoResultsError
 from src.app.services.helpers import extract_json_from_response
 from src.app.services.search import SearchService, get_search_service
@@ -34,18 +34,11 @@ router = APIRouter()
 settings = get_settings()
 
 
-chatfactory = AbstractChat(
-    model=settings.LLM_MODEL_NAME,
-    API_KEY=settings.AZURE_APIM_API_KEY,
-    API_BASE=settings.AZURE_APIM_API_BASE,
-    API_VERSION="2024-05-01-preview",
-    is_azure_model=True,
-)
-
-
 @router.post("/files/content")
 async def extract_files_content(
-    files: Annotated[list[UploadFile], File()], response: Response
+    files: Annotated[list[UploadFile], File()],
+    response: Response,
+    chatfactory=Depends(get_chat_service),
 ) -> ExtractorOutputList | None:
     files_content = await get_files_content(files)
     files_content_str = ("__DOCUMENT_SEPARATOR__").join(files_content)
@@ -124,6 +117,7 @@ async def tutor_search(
     files: Annotated[list[UploadFile], File()],
     response: Response,
     sp: SearchService = Depends(get_search_service),
+    chatfactory=Depends(get_chat_service),
 ):
     files_content = await get_files_content(files)
 
@@ -267,7 +261,9 @@ and the themes extracted from those documents:
 
 
 @router.post("/syllabus/feedback")
-async def handle_syllabus_feedback(body: SyllabusFeedback):
+async def handle_syllabus_feedback(
+    body: SyllabusFeedback, chatfactory=Depends(get_chat_service)
+):
 
     messages = [
         {
