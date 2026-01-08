@@ -1,6 +1,4 @@
 import uuid
-# src/app/services/sql_service.py
-
 from threading import Lock
 from uuid import UUID
 
@@ -19,6 +17,9 @@ from src.app.models.documents import JourneySection
 from src.app.models.search import ContextType
 from src.app.services.constants import APP_NAME
 from src.app.utils.decorators import singleton
+
+# src/app/services/sql_service.py
+
 
 settings = get_settings()
 

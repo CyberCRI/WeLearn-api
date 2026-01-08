@@ -1,8 +1,7 @@
 # src/app/api/api_v1/endpoints/search.py
 
-from fastapi import APIRouter, Depends, HTTPException, Response
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Response
 from fastapi.concurrency import run_in_threadpool
-from fastapi import APIRouter, BackgroundTasks, Depends, Response
 from qdrant_client.models import ScoredPoint
 
 from src.app.models.documents import Document
