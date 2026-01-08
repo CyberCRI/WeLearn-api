@@ -1,3 +1,5 @@
+# src/app/services/security.py
+
 import hashlib
 
 from fastapi import HTTPException, Security, status

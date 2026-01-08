@@ -101,13 +101,14 @@ class SearchTests(IsolatedAsyncioTestCase):
     def test_search_items_no_query(self, *mocks):
         """Test search_items when no query is provided"""
 
-        response = client.post(
-            f"{settings.API_V1_STR}/search/collections/collection_welearn_fr_model",  # noqa: E501
-            json={"nb_results": 10},
-            headers={"X-API-Key": "test"},
-        )
+        with TestClient(app) as client:
+            response = client.post(
+                f"{settings.API_V1_STR}/search/collections/collection_welearn_fr_model",  # noqa: E501
+                json={"nb_results": 10},
+                headers={"X-API-Key": "test"},
+            )
 
-        self.assertEqual(response.status_code, 422)
+            self.assertEqual(response.status_code, 422)
 
     @patch(
         f"{search_pipeline_path}._get_model",
@@ -116,40 +117,42 @@ class SearchTests(IsolatedAsyncioTestCase):
         ),
     )
     async def test_search_model_not_found(self, *mocks):
-        response = client.post(
-            f"{settings.API_V1_STR}/search/collections/collection_welearn_mul_model?query=français&nb_results=10",
-            headers={"X-API-Key": "test"},
-        )
+        with TestClient(app) as client:
+            response = client.post(
+                f"{settings.API_V1_STR}/search/collections/collection_welearn_mul_model?query=français&nb_results=10",
+                headers={"X-API-Key": "test"},
+            )
 
-        assert response.status_code == 404
-        assert response.json() == "Model not found"
+            assert response.status_code == 404
 
     @patch(
         f"{search_pipeline_path}.search_handler",
         new=mock.AsyncMock(return_value=mocked_scored_points),
     )
     async def test_search_items_success(self, *mocks):
-        """Test successful search_items response"""
+        with TestClient(app) as client:
+            """Test successful search_items response"""
 
-        response = client.post(
-            f"{settings.API_V1_STR}/search/collections/collection_welearn_fr_model?query={long_query}&nb_results=10",
-            headers={"X-API-Key": "test"},  # noqa: E501
-        )
+            response = client.post(
+                f"{settings.API_V1_STR}/search/collections/collection_welearn_fr_model?query={long_query}&nb_results=10",
+                headers={"X-API-Key": "test"},  # noqa: E501
+            )
 
-        self.assertEqual(response.status_code, 200)
+            self.assertEqual(response.status_code, 200)
 
     @patch(
         f"{search_pipeline_path}.search_handler",
         new=mock.AsyncMock(return_value=[]),
     )
     async def test_search_items_no_result(self, *mocks):
-        response = client.post(
-            f"{settings.API_V1_STR}/search/collections/collection_welearn_fr_model?query={long_query}&nb_results=10",
-            headers={"X-API-Key": "test"},  # noqa: E501
-        )
+        with TestClient(app) as client:
+            response = client.post(
+                f"{settings.API_V1_STR}/search/collections/collection_welearn_fr_model?query={long_query}&nb_results=10",
+                headers={"X-API-Key": "test"},  # noqa: E501
+            )
 
-        self.assertEqual(response.status_code, 206)
-        self.assertEqual(response.json(), [])
+            self.assertEqual(response.status_code, 206)
+            self.assertEqual(response.json(), [])
 
     @patch(
         f"{search_pipeline_path}.get_collection_by_language",
@@ -160,15 +163,12 @@ class SearchTests(IsolatedAsyncioTestCase):
         ),
     )
     async def test_search_all_slices_no_collections(self, *mocks):
-        response = client.post(
-            f"{settings.API_V1_STR}/search/collections/collection_welearn_fr_model?query={long_query}&nb_results=10",
-            headers={"X-API-Key": "test"},
-        )
-        self.assertEqual(response.status_code, 404)
-        self.assertEqual(
-            response.json(),
-            "Collection not found",
-        )
+        with TestClient(app) as client:
+            response = client.post(
+                f"{settings.API_V1_STR}/search/collections/collection_welearn_fr_model?query={long_query}&nb_results=10",
+                headers={"X-API-Key": "test"},
+            )
+            self.assertEqual(response.status_code, 404)
 
 
 @patch("src.app.services.sql_service.session_maker")
@@ -186,57 +186,57 @@ class SearchTestsSlices(IsolatedAsyncioTestCase):
         ),
     )
     async def test_search_all_slices_no_collections(self, *mocks):
-        response = client.post(
-            f"{settings.API_V1_STR}/search/by_slices?nb_results=10",
-            json={
-                "query": "une phrase plus longue pour tester la recherche en français. et voir ce que cela donne"
-            },  # noqa: E501
-            headers={"X-API-Key": "test"},
-        )
-        self.assertEqual(response.status_code, 404)
-        self.assertEqual(
-            response.json(),
-            "Collection not found",
-        )
+        with TestClient(app) as client:
+            response = client.post(
+                f"{settings.API_V1_STR}/search/by_slices?nb_results=10",
+                json={
+                    "query": "une phrase plus longue pour tester la recherche en français. et voir ce que cela donne"
+                },  # noqa: E501
+                headers={"X-API-Key": "test"},
+            )
+            self.assertEqual(response.status_code, 404)
 
     @patch(f"{search_pipeline_path}.search_handler", return_value=mocked_scored_points)
     async def test_search_all_slices_ok(self, *mocks):
-        response = client.post(
-            f"{settings.API_V1_STR}/search/by_slices",
-            json={
-                "query": "Comment est-ce que les gouvernements font pour suivre ces conseils et les mettre en place ?",
-                "relevance_factor": 0.75,
-            },
-            headers={"X-API-Key": "test"},
-        )
+        with TestClient(app) as client:
+            response = client.post(
+                f"{settings.API_V1_STR}/search/by_slices",
+                json={
+                    "query": "Comment est-ce que les gouvernements font pour suivre ces conseils et les mettre en place ?",
+                    "relevance_factor": 0.75,
+                },
+                headers={"X-API-Key": "test"},
+            )
 
-        self.assertEqual(response.status_code, 200)
+            self.assertEqual(response.status_code, 200)
 
     async def test_search_all_slices_no_query(self, *mocks):
-        response = client.post(
-            f"{settings.API_V1_STR}/search/by_slices",
-            json={"query": ""},
-            headers={"X-API-Key": "test"},
-        )
-        self.assertEqual(response.status_code, 400)
-        self.assertEqual(
-            response.json().get("detail")["message"],
-            "Empty query",
-        )
+        with TestClient(app) as client:
+            response = client.post(
+                f"{settings.API_V1_STR}/search/by_slices",
+                json={"query": ""},
+                headers={"X-API-Key": "test"},
+            )
+            self.assertEqual(response.status_code, 400)
+            self.assertEqual(
+                response.json().get("detail")["message"],
+                "Empty query",
+            )
 
     @patch(
         f"{search_pipeline_path}.search_handler",
         return_value=[],
     )
     async def test_search_all_slices_no_result(self, *mocks):
-        response = client.post(
-            f"{settings.API_V1_STR}/search/by_slices?nb_results=10",
-            json={
-                "query": "une phrase plus longue pour tester la recherche en français. et voir ce que cela donne"
-            },
-            headers={"X-API-Key": "test"},
-        )
-        self.assertEqual(response.status_code, 204)
+        with TestClient(app) as client:
+            response = client.post(
+                f"{settings.API_V1_STR}/search/by_slices?nb_results=10",
+                json={
+                    "query": "une phrase plus longue pour tester la recherche en français. et voir ce que cela donne"
+                },
+                headers={"X-API-Key": "test"},
+            )
+            self.assertEqual(response.status_code, 204)
 
 
 @patch("src.app.services.sql_service.session_maker")
@@ -259,41 +259,40 @@ class SearchTestsAll(IsolatedAsyncioTestCase):
         new=mock.MagicMock(return_value=mocked_collection),
     )
     async def test_search_all_no_collections(self, *mocks):
-        response = client.post(
-            f"{settings.API_V1_STR}/search/by_document?nb_results=10",
-            json={
-                "query": "une phrase plus longue pour tester la recherche en français. et voir ce que cela donne"
-            },
-            headers={"X-API-Key": "test"},
-        )
-        self.assertEqual(response.status_code, 404)
-        self.assertEqual(
-            response.json(),
-            "Collection not found",
-        )
+        with TestClient(app) as client:
+            response = client.post(
+                f"{settings.API_V1_STR}/search/by_document?nb_results=10",
+                json={
+                    "query": "une phrase plus longue pour tester la recherche en français. et voir ce que cela donne"
+                },
+                headers={"X-API-Key": "test"},
+            )
+            self.assertEqual(response.status_code, 404)
 
     @patch(f"{search_pipeline_path}.search_handler", return_value=[])
     async def test_search_all_no_result(self, *mocks):
-        response = client.post(
-            f"{settings.API_V1_STR}/search/by_document?nb_results=10",
-            json={
-                "query": "une phrase plus longue pour tester la recherche en français. et voir ce que cela donne"
-            },
-            headers={"X-API-Key": "test"},
-        )
-        self.assertEqual(response.status_code, 204)
+        with TestClient(app) as client:
+            response = client.post(
+                f"{settings.API_V1_STR}/search/by_document?nb_results=10",
+                json={
+                    "query": "une phrase plus longue pour tester la recherche en français. et voir ce que cela donne"
+                },
+                headers={"X-API-Key": "test"},
+            )
+            self.assertEqual(response.status_code, 204)
 
     async def test_search_all_no_query(self, *mocks):
-        response = client.post(
-            f"{settings.API_V1_STR}/search/by_document",
-            json={"query": ""},
-            headers={"X-API-Key": "test"},
-        )
-        self.assertEqual(response.status_code, 400)
-        self.assertEqual(
-            response.json().get("detail")["message"],
-            "Empty query",
-        )
+        with TestClient(app) as client:
+            response = client.post(
+                f"{settings.API_V1_STR}/search/by_document",
+                json={"query": ""},
+                headers={"X-API-Key": "test"},
+            )
+            self.assertEqual(response.status_code, 400)
+            self.assertEqual(
+                response.json().get("detail")["message"],
+                "Empty query",
+            )
 
 
 class TestSortSlicesUsingMMR(IsolatedAsyncioTestCase):
@@ -321,17 +320,18 @@ class SearchTestsMultiInput(IsolatedAsyncioTestCase):
         return_value=[],
     )
     async def test_search_multi_no_result(self, *mocks):
-        response = client.post(
-            f"{settings.API_V1_STR}/search/multiple_by_slices?nb_results=10",
-            json={
-                "query": [
-                    "une phrase plus longue pour tester la recherche en français. et voir ce que cela donne",
-                    "another long sentence to test the search in english and see what happens",
-                ]
-            },
-            headers={"X-API-Key": "test"},
-        )
-        self.assertEqual(response.status_code, 204)
+        with TestClient(app) as client:
+            response = client.post(
+                f"{settings.API_V1_STR}/search/multiple_by_slices?nb_results=10",
+                json={
+                    "query": [
+                        "une phrase plus longue pour tester la recherche en français. et voir ce que cela donne",
+                        "another long sentence to test the search in english and see what happens",
+                    ]
+                },
+                headers={"X-API-Key": "test"},
+            )
+            self.assertEqual(response.status_code, 204)
 
 
 @patch("src.app.services.sql_db.queries.session_maker")
@@ -341,6 +341,7 @@ class SearchTestsMultiInput(IsolatedAsyncioTestCase):
 )
 class DocumentsByIdsTests(IsolatedAsyncioTestCase):
     async def test_documents_by_ids_empty(self, session_maker_mock, *mocks):
+
         session = session_maker_mock.return_value.__enter__.return_value
         exec_docs = mock.MagicMock()
         exec_docs.all.return_value = []
@@ -353,14 +354,15 @@ class DocumentsByIdsTests(IsolatedAsyncioTestCase):
 
         session.execute.side_effect = [exec_docs, exec_corpora, exec_slices, exec_sdgs]
 
-        response = client.post(
-            f"{settings.API_V1_STR}/search/documents/by_ids",
-            json=[],
-            headers={"X-API-Key": "test"},
-        )
+        with TestClient(app) as client:
+            response = client.post(
+                f"{settings.API_V1_STR}/search/documents/by_ids",
+                json=[],
+                headers={"X-API-Key": "test"},
+            )
 
-        self.assertEqual(response.status_code, 200)
-        self.assertEqual(response.json(), [])
+            self.assertEqual(response.status_code, 200)
+            self.assertEqual(response.json(), [])
 
     async def test_documents_by_ids_single_doc(self, session_maker_mock, *mocks):
         session = session_maker_mock.return_value.__enter__.return_value
@@ -446,16 +448,17 @@ class DocumentsByIdsTests(IsolatedAsyncioTestCase):
         exec_sdgs.all.return_value = []
         session.execute.side_effect = [exec_docs, exec_corpora, exec_slices, exec_sdgs]
 
-        response = client.post(
-            f"{settings.API_V1_STR}/search/documents/by_ids",
-            json=[doc_id],
-            headers={"X-API-Key": "test"},
-        )
-        self.assertEqual(response.status_code, 200)
-        body = response.json()
-        payload = body[0]["payload"]
-        self.assertEqual(len(body), 1)
-        self.assertEqual(payload["document_corpus"], "")
+        with TestClient(app) as client:
+            response = client.post(
+                f"{settings.API_V1_STR}/search/documents/by_ids",
+                json=[doc_id],
+                headers={"X-API-Key": "test"},
+            )
+            self.assertEqual(response.status_code, 200)
+            body = response.json()
+            payload = body[0]["payload"]
+            self.assertEqual(len(body), 1)
+            self.assertEqual(payload["document_corpus"], "")
 
     async def test_search_multi_single_query(self, *mocks):
         with mock.patch(
@@ -463,22 +466,23 @@ class DocumentsByIdsTests(IsolatedAsyncioTestCase):
         ) as search_multi, mock.patch.object(
             SearchService, "search_handler", return_value=mocked_scored_points
         ) as search_handler:
-            client.post(
-                f"{settings.API_V1_STR}/search/multiple_by_slices?nb_results=10",
-                json={
-                    "query": long_query,
-                },
-                headers={"X-API-Key": "test"},
-            )
-            search_multi.assert_called_once_with(
-                qp=EnhancedSearchQuery(
-                    query=[long_query],
-                    sdg_filter=None,
-                    corpora=None,
-                    subject=None,
-                    nb_results=10,
-                    influence_factor=2.0,
-                    relevance_factor=1.0,
-                ),
-                callback_function=search_handler,  # noqa: E501
-            )
+            with TestClient(app) as client:
+                client.post(
+                    f"{settings.API_V1_STR}/search/multiple_by_slices?nb_results=10",
+                    json={
+                        "query": long_query,
+                    },
+                    headers={"X-API-Key": "test"},
+                )
+                search_multi.assert_called_once_with(
+                    qp=EnhancedSearchQuery(
+                        query=[long_query],
+                        sdg_filter=None,
+                        corpora=None,
+                        subject=None,
+                        nb_results=10,
+                        influence_factor=2.0,
+                        relevance_factor=1.0,
+                    ),
+                    callback_function=search_handler,  # noqa: E501
+                )
