@@ -16,9 +16,10 @@ settings = get_settings()
 @router.get("/nb_docs_info_per_corpus")
 async def get_nb_docs_info_per_corpus() -> list[RowCorpusQtyDocInfo | None]:
     result = await run_in_threadpool(get_document_qty_table_info_sync)
-    ret = []
     if not result:
         return []
+    
+    ret = []
     for r_corpus, r_qty_doc_in_qdrant, r_qty_doc_total in result:
         current = RowCorpusQtyDocInfo(
             corpus=r_corpus.source_name,
