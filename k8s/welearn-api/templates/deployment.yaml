@@ -45,10 +45,9 @@ spec:
       {{- end }}
         imagePullPolicy: IfNotPresent
         name: welearn-api
-        args: ["uvicorn", "src.main:app", "--workers", "{{.Values.uvicorn.workersCount}}", "--host", "0.0.0.0", "--port", "{{.Values.containerPort}}", "--limit-max-requests", "{{.Values.uvicorn.limitMaxRequests}}"]
         ports:
           - name: http
-            containerPort: {{ .Values.containerPort }}
+            containerPort: 8080
         envFrom:
         {{- if .Values.config.nonSensitive }}
         - configMapRef:
