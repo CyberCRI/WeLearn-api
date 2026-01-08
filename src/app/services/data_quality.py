@@ -1,7 +1,9 @@
 import hashlib
+from typing import Any
 
+from _hashlib import HASH
 from fastapi import BackgroundTasks
-from qdrant_client.conversions.common_types import ScoredPoint
+from qdrant_client.http.models import ScoredPoint
 from sqlalchemy.exc import IntegrityError
 from welearn_database.data.enumeration import Step
 
@@ -53,25 +55,7 @@ class DataQualityChecker:
                 ret.append(point)
                 continue
 
-            values_to_check = []
-            local_hash = hashlib.sha256()
-            for key in keys_to_check:
-                if key not in payload:
-                    logger.error(f"Point {point.id} doesn't have key {key}")
-                    if strict:
-                        raise ValueError(f"Point {point.id} doesn't have key {key}")
-                    continue
-                if not isinstance(payload[key], str):
-                    msg = f"Data quality deduplication can be only applied on string, {key} is {type(payload[key])}"
-                    if strict:
-                        raise TypeError(msg)
-                    logger.error(msg + f" key {key} will be ignored")
-                else:
-                    values_to_check.append(
-                        str(key).encode("utf-8") + str(payload[key]).encode("utf-8")
-                    )
-            for vtc in sorted(values_to_check):
-                local_hash.update(vtc)
+            local_hash = self.compute_hashes(keys_to_check, payload, point, strict)
 
             hexdigest = local_hash.hexdigest()
             if hexdigest in hashes:
@@ -81,11 +65,52 @@ class DataQualityChecker:
             else:
                 hashes.add(hexdigest)
                 ret.append(point)
+
         if self.log_background_tasks:
             self.log_background_tasks.add_task(
                 self._log_duplicates_points_in_db, points_to_check, ret
             )
         return ret
+
+    def compute_hashes(
+        self,
+        keys_to_check: list[str],
+        payload: dict[str, Any],
+        point: ScoredPoint,
+        strict: bool,
+    ) -> HASH:
+        local_hash = hashlib.sha256()
+        values_to_check = self.retrieve_values_to_check(
+            keys_to_check, payload, point, strict
+        )
+        for vtc in sorted(values_to_check):
+            local_hash.update(vtc)
+        return local_hash
+
+    def retrieve_values_to_check(
+        self,
+        keys_to_check: list[str],
+        payload: dict[str, Any],
+        point: ScoredPoint,
+        strict: bool,
+    ):
+        values_to_check: list = []
+        for key in keys_to_check:
+            if key not in payload:
+                logger.error(f"Point {point.id} doesn't have key {key}")
+                if strict:
+                    raise ValueError(f"Point {point.id} doesn't have key {key}")
+                continue
+            if not isinstance(payload[key], str):
+                msg = f"Data quality deduplication can be only applied on string, {key} is {type(payload[key])}"
+                if strict:
+                    raise TypeError(msg)
+                logger.error(msg + f" key {key} will be ignored")
+            else:
+                values_to_check.append(
+                    str(key).encode("utf-8") + str(payload[key]).encode("utf-8")
+                )
+        return values_to_check
 
     @staticmethod
     def _log_duplicates_points_in_db(
