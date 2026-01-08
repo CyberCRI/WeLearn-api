@@ -1,6 +1,6 @@
 import io
 import unittest
-from unittest.mock import MagicMock, patch
+from unittest.mock import AsyncMock, Mock, patch
 
 from src.app.services import pdf_extractor
 from src.app.services.pdf_extractor import (
@@ -26,25 +26,26 @@ class TestPDFExtractor(unittest.TestCase):
         cleaned_text = pdf_extractor.remove_hyphens(text)
         self.assertEqual(cleaned_text, "wellknown\n")
 
-    @patch("src.app.services.pdf_extractor.get_new_https_session")
-    def test_send_pdf_to_tika(self, mock_get_session):
-        # Mock de la session HTTP
-        mock_session = MagicMock()
-        mock_response = MagicMock()
-        mock_response.json.return_value = {
-            "X-TIKA:content": "<html>Mock Content</html>"
-        }
-        mock_response.raise_for_status.return_value = None
-        mock_session.put.return_value = mock_response
-        mock_get_session.return_value.__enter__.return_value = mock_session
 
-        # Appel de la méthode
+class TestPDFExtractorAsync(unittest.IsolatedAsyncioTestCase):
+    @patch("src.app.services.pdf_extractor.get_new_https_async_client")
+    async def test_send_pdf_to_tika(self, mock_get_client):
+        # Mock du client HTTPX asynchrone
+        mock_client = AsyncMock()
+        mock_response = AsyncMock()
+        mock_response.json = Mock(
+            return_value={"X-TIKA:content": "<html>Mock Content</html>"}
+        )
+        mock_response.raise_for_status.return_value = None
+        mock_client.__aenter__.return_value = mock_client
+        mock_client.put.return_value = mock_response
+        mock_get_client.return_value = mock_client
+
         pdf_content = io.BytesIO(b"Mock PDF content")
         tika_base_url = "http://mock-tika-url"
-        result = _send_pdf_to_tika(pdf_content, tika_base_url)
+        result = await _send_pdf_to_tika(pdf_content, tika_base_url)
 
-        # Assertions
-        mock_session.put.assert_called_once_with(
+        mock_client.put.assert_awaited_once_with(
             url=f"{tika_base_url}/tika",
             files={"file": pdf_content},
             headers={
@@ -64,15 +65,13 @@ class TestPDFExtractor(unittest.TestCase):
             </html>
             """
         }
-
         result = _parse_tika_content(tika_content)
-
         expected_result = [["Page 1 content"], ["Page 2 content"]]
         self.assertEqual(result, expected_result)
 
-    @patch("src.app.services.pdf_extractor._send_pdf_to_tika")
+    @patch("src.app.services.pdf_extractor._send_pdf_to_tika", new_callable=AsyncMock)
     @patch("src.app.services.pdf_extractor._parse_tika_content")
-    def test_extract_txt_from_pdf_with_tika(
+    async def test_extract_txt_from_pdf_with_tika(
         self, mock_parse_tika_content, mock_send_pdf_to_tika
     ):
         pdf_content = io.BytesIO(b"%PDF-1.4 simulated content")
@@ -83,10 +82,10 @@ class TestPDFExtractor(unittest.TestCase):
         }
         mock_parse_tika_content.return_value = [["Page 1 content"]]
 
-        result = extract_txt_from_pdf_with_tika(pdf_content, tika_base_url)
+        result = await extract_txt_from_pdf_with_tika(pdf_content, tika_base_url)
 
         self.assertEqual(result, "Page 1 content")
-        mock_send_pdf_to_tika.assert_called_once_with(pdf_content, tika_base_url)
+        mock_send_pdf_to_tika.assert_awaited_once_with(pdf_content, tika_base_url)
         mock_parse_tika_content.assert_called_once_with(
             mock_send_pdf_to_tika.return_value
         )

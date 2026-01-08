@@ -98,7 +98,9 @@ async def get_file_content(file: UploadFile) -> str:
 async def _extract_pdf_content(file) -> str:
     content = ""
     try:
-        content = extract_txt_from_pdf_with_tika(file.file, settings.TIKA_URL_BASE)
+        content = await extract_txt_from_pdf_with_tika(
+            file.file, settings.TIKA_URL_BASE
+        )
     except Exception:
         reader = PdfReader(file.file)
         content = "\n".join(page.extract_text() or "" for page in reader.pages)
