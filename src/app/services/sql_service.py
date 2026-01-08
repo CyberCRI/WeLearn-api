@@ -66,7 +66,7 @@ class WL_SQL:
 
         """
         with self.session_maker() as session:
-            subject_meta_document: ContextDocument = (
+            subject_meta_document: ContextDocument | None = (
                 session.query(ContextDocument)
                 .filter(
                     ContextDocument.context_type == ContextType.SUBJECT.value.lower(),
