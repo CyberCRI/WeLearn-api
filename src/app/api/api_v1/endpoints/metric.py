@@ -19,9 +19,9 @@ async def get_nb_docs_info_per_corpus(
     response: Response,
 ) -> list[RowCorpusQtyDocInfo | None]:
     result = await run_in_threadpool(get_document_qty_table_info_sync)
-    if not result:
+    if result is None or len(result) == 0:
+        response.status_code = status.HTTP_500_INTERNAL_SERVER_ERROR
         return []
-
     ret = []
     for r_corpus, r_qty_doc_in_qdrant, r_qty_doc_total in result:
         try:
