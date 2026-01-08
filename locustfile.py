@@ -4401,23 +4401,7 @@ class WeLearnUser(HttpUser):
     def chat(self):
         lang = random.choice(["en", "fr"])
         query = random.choice(questions[lang])
-        # with self.client.post(
-        #    "/api/v1/qna/reformulate/query",
-        #    json={
-        #        "sources": [],
-        #        "history": [],
-        #        "query": query,
-        #        "subject": "",
-        #    },
-        #    name=f"Reformulate query ({lang})",
-        # ) as resp1:
-        #    print(query)
-        #    print(resp1.text)
-        #    try:
-        #        reformulated_query = json.loads(resp1.text)["STANDALONE_QUESTION"]
-        #    except json.decoder.JSONDecodeError:
-        #        raise Exception("Question could not be reformulated")
-        reformulated_query = query + " " + random.choice(string.ascii_letters)*5  # For now, skip reformulation step and add some noise to bypass caching
+        reformulated_query = query + " " + random.choice(string.ascii_letters)*5  # Add some noise to bypass caching
         with self.client.post(
             "/api/v1/search/by_slices",
             json={"sdg_filter": [], "query": reformulated_query, "corpora": corpus},
@@ -4435,7 +4419,7 @@ class WeLearnUser(HttpUser):
             name=f"Chat answer ({lang})",
         )
 
-    # @task(2)
+    @task(2)
     def syllabus(self):
         lang = random.choice(["en", "fr"])
         self.client.post(
