@@ -14,7 +14,7 @@ class Collection_schema(BaseModel):
 class DocumentPayloadModel(BaseModel):
     document_corpus: str
     document_desc: str
-    document_details: dict[str, list[dict] | list[str] | str | int | float | None]
+    document_details: dict[str, list[dict] | list[str] | str | int | float | dict | None]
     document_id: uuid.UUID
     document_lang: str
     document_sdg: list[int]
