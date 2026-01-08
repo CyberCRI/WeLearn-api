@@ -7,7 +7,12 @@ from qdrant_client.http.models import ScoredPoint
 from sqlalchemy.exc import IntegrityError
 from welearn_database.data.enumeration import Step
 
-from src.app.services.sql_db import write_new_data_quality_error, write_process_state
+from src.app.services.sql_service import (
+    write_new_data_quality_error,
+    write_process_state,
+)
+
+# from src.app.services.sql_db import write_new_data_quality_error, write_process_state
 from src.app.utils.decorators import log_time_and_error_sync
 from src.app.utils.logger import logger as logger_utils
 

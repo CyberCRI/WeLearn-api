@@ -3,6 +3,7 @@ from threading import Lock
 from uuid import UUID
 
 from sqlalchemy import URL
+from sqlalchemy.orm import sessionmaker
 from welearn_database.data.enumeration import Step
 from welearn_database.data.models import (
     ContextDocument,
@@ -47,7 +48,6 @@ class WL_SQL:
         return create_engine(self.engine_url)
 
     def _create_session(self):
-        from sqlalchemy.orm import sessionmaker
 
         Session = sessionmaker(bind=self.engine)
         return Session
