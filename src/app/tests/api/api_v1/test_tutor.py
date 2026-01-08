@@ -9,9 +9,10 @@ from src.main import app
 client = TestClient(app)
 
 
-@mock.patch("src.app.services.sql_db.session_maker")
+@mock.patch("src.app.services.sql_service.session_maker")
 @mock.patch(
-    "src.app.services.security.check_api_key", new=mock.MagicMock(return_value=True)
+    "src.app.services.security.check_api_key_sync",
+    new=mock.MagicMock(return_value=True),
 )
 class TutorTests(IsolatedAsyncioTestCase):
     def test_tutor_no_files(self, *mocks):
@@ -39,4 +40,4 @@ class TutorTests(IsolatedAsyncioTestCase):
             files={"files": ("test.txt", file)},
             headers={"x-API-Key": "test"},
         )
-        assert reponse.status_code == 200
+        assert reponse.status_code == 204

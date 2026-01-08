@@ -2,17 +2,23 @@ import os
 from typing import List
 from unittest import IsolatedAsyncioTestCase, mock
 
-from qdrant_client import AsyncQdrantClient
 from qdrant_client.models import CollectionDescription, CollectionsResponse, ScoredPoint
 
 from src.app.models.collections import Collection
-from src.app.services.search import (
-    DBClientSingleton,
-    SearchService,
-    concatenate_same_doc_id_slices,
-)
+from src.app.services.search import SearchService, concatenate_same_doc_id_slices
 
 os.environ["USE_CACHED_SETTINGS"] = "False"
+
+
+class FakeQdrantClient:
+    async def get_collections(self):
+        class Collections:
+            collections = [
+                type("C", (), {"name": "collection_welearn_fr_exists"}),
+                type("C", (), {"name": "collection_welearn_en_exists"}),
+            ]
+
+        return Collections()
 
 
 class alternate_mock_method(object):
@@ -37,24 +43,19 @@ def fake_callback_function(embedding, nb_results, filters, collection_info):
     return f"{embedding}, {nb_results}, {filters}, {collection_info}"
 
 
-@mock.patch("qdrant_client.AsyncQdrantClient", alternate_mock_method)
-@mock.patch.object(AsyncQdrantClient, "get_collections", return_value=collections)
 class SearchServiceTests(IsolatedAsyncioTestCase):
     def setUp(self):
-        self.sp = SearchService()
+        self.qdrant = FakeQdrantClient()
+        self.sp = SearchService(client=self.qdrant)
 
-    def test_db_singleton(self, *mocks):
-        db_sing1 = DBClientSingleton()
-        db_sing2 = DBClientSingleton()
+    async def test_get_collection_by_language(self):
+        collection = await self.sp.get_collection_by_language("fr")
 
-        self.assertEqual(db_sing1, db_sing2)
+        self.assertEqual(collection.name, "collection_welearn_fr_exists")
+        self.assertEqual(collection.lang, "fr")
+        self.assertEqual(collection.model, "exists")
 
-    async def test_get_collection_by_language(self, *mocks):
-        collections = await self.sp.get_collection_by_language("fr")
-
-        self.assertEqual(collections.name, "collection_welearn_fr_exists")
-
-    def test_get_info_from_collection_name(self, *mocks):
+    def test_get_info_from_collection_name(self):
         collection = self.sp._get_info_from_collection_name(
             "collection_welearn_fr_exists"
         )
@@ -63,7 +64,7 @@ class SearchServiceTests(IsolatedAsyncioTestCase):
         self.assertEqual(collection.lang, "fr")
         self.assertEqual(collection.model, "exists")
 
-    async def test_get_collection_by_language_with_collection(self, *mocks):
+    async def test_get_collection_by_language_with_collection(self):
         with mock.patch.object(
             SearchService,
             "get_collections",
@@ -82,7 +83,7 @@ class SearchServiceTests(IsolatedAsyncioTestCase):
             self.assertEqual(collection.name, "collection_welearn_fr_exists")
             self.assertEqual(collection, exp_collection)
 
-    def test_concatenate_same_doc_id_slices(self, *mocks):
+    def test_concatenate_same_doc_id_slices(self):
 
         qdrant_docs: List[ScoredPoint] = [
             ScoredPoint(

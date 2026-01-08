@@ -1,17 +1,18 @@
 from typing import Annotated
 
-from fastapi import APIRouter, File, HTTPException, Response, UploadFile
+from fastapi import APIRouter, Depends, File, Response, UploadFile
 
 from src.app.api.dependencies import get_settings
 from src.app.models.search import EnhancedSearchQuery
-from src.app.services.abst_chat import AbstractChat
+from src.app.services.abst_chat import get_chat_service
 from src.app.services.exceptions import NoResultsError
 from src.app.services.helpers import extract_json_from_response
-from src.app.services.search import SearchService
+from src.app.services.search import SearchService, get_search_service
 from src.app.services.search_helpers import search_multi_inputs
 from src.app.services.tutor.agents import TEMPLATES
 from src.app.services.tutor.models import (
     ExtractorOutputList,
+    SummariesList,
     SyllabusFeedback,
     SyllabusResponse,
     SyllabusResponseAgent,
@@ -33,20 +34,11 @@ router = APIRouter()
 settings = get_settings()
 
 
-chatfactory = AbstractChat(
-    model=settings.LLM_MODEL_NAME,
-    API_KEY=settings.AZURE_APIM_API_KEY,
-    API_BASE=settings.AZURE_APIM_API_BASE,
-    API_VERSION="2024-05-01-preview",
-    is_azure_model=True,
-)
-
-sp = SearchService()
-
-
 @router.post("/files/content")
 async def extract_files_content(
     files: Annotated[list[UploadFile], File()],
+    response: Response,
+    chatfactory=Depends(get_chat_service),
 ) -> ExtractorOutputList | None:
     files_content = await get_files_content(files)
     files_content_str = ("__DOCUMENT_SEPARATOR__").join(files_content)
@@ -72,18 +64,20 @@ async def extract_files_content(
 
     except Exception as e:
         logger.error(f"Error in extractor schema: {e}")
-        HTTPException(status_code=400, detail="error in response schema")
+        response.status_code = 204
+        return None
 
 
 @router.post("/search_extracts")
 async def tutor_search_extract(
-    summaries: list[str],
+    summaries: SummariesList,
     response: Response,
+    sp: SearchService = Depends(get_search_service),
 ):
 
     try:
         qp = EnhancedSearchQuery(
-            query=summaries,
+            query=summaries.summaries,
             nb_results=10,
             sdg_filter=None,
             corpora=None,
@@ -122,6 +116,8 @@ async def tutor_search_extract(
 async def tutor_search(
     files: Annotated[list[UploadFile], File()],
     response: Response,
+    sp: SearchService = Depends(get_search_service),
+    chatfactory=Depends(get_chat_service),
 ):
     files_content = await get_files_content(files)
 
@@ -154,11 +150,12 @@ async def tutor_search(
         else:
             raise ValueError("Unexpected response format")
 
+        print(jsn)
         themes_extracted = ExtractorOutputList(**jsn)
 
     except Exception as e:
         logger.error(f"Error in chat schema: {e}")
-        # todo: handle error
+        response.status_code = 204
         return TutorSearchResponse(
             extracts=[],
             nb_results=0,
@@ -264,7 +261,9 @@ and the themes extracted from those documents:
 
 
 @router.post("/syllabus/feedback")
-async def handle_syllabus_feedback(body: SyllabusFeedback):
+async def handle_syllabus_feedback(
+    body: SyllabusFeedback, chatfactory=Depends(get_chat_service)
+):
 
     messages = [
         {
@@ -279,7 +278,10 @@ async def handle_syllabus_feedback(body: SyllabusFeedback):
                 documents=body.documents,
                 extracts=("/n").join([extract.summary for extract in body.extracts]),
                 themes=(", ").join(
-                    [(", ").join(extract.themes) for extract in body.extracts]
+                    [
+                        (", ").join([theme["theme"] for theme in extract.themes])
+                        for extract in body.extracts
+                    ]
                 ),
             ),
         },

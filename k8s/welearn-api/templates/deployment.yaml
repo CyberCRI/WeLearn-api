@@ -45,9 +45,10 @@ spec:
       {{- end }}
         imagePullPolicy: IfNotPresent
         name: welearn-api
+        args: ["uvicorn", "src.main:app", "--workers", "{{.Values.uvicorn.workersCount}}", "--host", "0.0.0.0", "--port", "{{.Values.containerPort}}", "--limit-max-requests", "{{.Values.uvicorn.limitMaxRequests}}"]
         ports:
           - name: http
-            containerPort: 8080
+            containerPort: {{ .Values.containerPort }}
         envFrom:
         {{- if .Values.config.nonSensitive }}
         - configMapRef:
@@ -57,7 +58,20 @@ spec:
           {{- include "common.security.containerSecurityContext.restricted" dict | nindent 10 }}
 
         resources: {{ toYaml .Values.resources | nindent 10 }}
-
+        livenessProbe:
+          httpGet:
+            port: http
+            path: /health/
+          timeoutSeconds: 20
+          failureThreshold: 20
+          periodSeconds: 5
+        readinessProbe:
+          httpGet:
+            port: http
+            path: /health/
+          timeoutSeconds: 20
+          failureThreshold: 10
+          periodSeconds: 5
         volumeMounts:
         # still needed ?
         - name: cache

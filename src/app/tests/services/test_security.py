@@ -4,7 +4,8 @@ from unittest.mock import MagicMock
 
 from fastapi import HTTPException
 
-from src.app.services.security import check_api_key, get_user
+from src.app.services.security import check_api_key_sync as check_api_key
+from src.app.services.security import get_user
 
 
 class SecurityTests(unittest.TestCase):
@@ -34,18 +35,21 @@ class SecurityTests(unittest.TestCase):
         assert check_api_key("inactive") is False
 
 
-class GetUserTests(unittest.TestCase):
-    @mock.patch(
-        "src.app.services.security.check_api_key", new=mock.MagicMock(return_value=True)
-    )
-    def test_get_user_ok(self):
-        assert get_user("header-key") == "ok"
+class GetUserTests(unittest.IsolatedAsyncioTestCase):
 
     @mock.patch(
-        "src.app.services.security.check_api_key",
+        "src.app.services.security.check_api_key_sync",
+        new=mock.MagicMock(return_value=True),
+    )
+    async def test_get_user_ok(self):
+        result = await get_user("header-key")
+        self.assertEqual(result, "ok")
+
+    @mock.patch(
+        "src.app.services.security.check_api_key_sync",
         new=mock.MagicMock(return_value=False),
     )
-    def test_get_user_unauthorized(self):
+    async def test_get_user_unauthorized(self):
         with self.assertRaises(HTTPException) as ctx:
-            get_user("bad-key")
+            await get_user("bad-key")
         self.assertEqual(ctx.exception.status_code, 401)

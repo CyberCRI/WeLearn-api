@@ -29,6 +29,8 @@ resources:
   limits:
     memory: 1508M
 
+containerPort: 8080
+
 config:
   nonSensitive:
     CLIENT_ORIGINS_REGEX: '^{{ join "|" (values .Values.allowedHostsRegexes | sortAlpha ) }}$'
@@ -36,7 +38,7 @@ config:
     AZURE_MISTRAL_API_BASE: https://welearn-mistral.services.ai.azure.com/models
     AZURE_API_BASE: "https://welearn-openai.openai.azure.com/openai/"
     AZURE_API_VERSION: "2024-08-01-preview"
-    LLM_MODEL_NAME: mistral-medium-2505
+    LLM_MODEL_NAME: gpt-oss-120b
     QDRANT_HOST: "http://qdrant.qdrant"
     QDRANT_PORT: "6333"
     MODELS_FOLDER_ROOTS: "/models"
@@ -52,3 +54,7 @@ runOnGpu: false # Schedule on the GPU node pool to lower its cost
 allowedHostsRegexes:
   localhost: |-
     http:\/\/localhost:5173
+
+uvicorn:
+  workersCount: 2
+  limitMaxRequests: 1000

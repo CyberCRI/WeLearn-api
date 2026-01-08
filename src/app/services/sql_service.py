@@ -1,4 +1,7 @@
 import uuid
+# src/app/services/sql_service.py
+
+from threading import Lock
 from uuid import UUID
 
 from sqlalchemy import URL
@@ -20,6 +23,7 @@ from src.app.utils.decorators import singleton
 settings = get_settings()
 
 model_id_cache: dict[str, UUID] = {}
+model_id_lock = Lock()
 
 
 @singleton
@@ -127,8 +131,9 @@ class WL_SQL:
         Returns:
             The ID of the embeddings model if found, otherwise None.
         """
-        if model_name in model_id_cache:
-            return model_id_cache[model_name]
+        with model_id_lock:
+            if model_name in model_id_cache:
+                return model_id_cache[model_name]
 
         with self.session_maker() as session:
             model = (
