@@ -466,8 +466,8 @@ class DocumentsByIdsTests(IsolatedAsyncioTestCase):
         ) as search_multi, mock.patch.object(
             SearchService, "search_handler", return_value=mocked_scored_points
         ) as search_handler:
-            with TestClient(app) as client:
-                client.post(
+            with TestClient(app) as _client:
+                _client.post(
                     f"{settings.API_V1_STR}/search/multiple_by_slices?nb_results=10",
                     json={
                         "query": long_query,
