@@ -484,5 +484,6 @@ class DocumentsByIdsTests(IsolatedAsyncioTestCase):
                         influence_factor=2.0,
                         relevance_factor=1.0,
                     ),
+                    background_tasks=mock.ANY,
                     callback_function=search_handler,  # noqa: E501
                 )
