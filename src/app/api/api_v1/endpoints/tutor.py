@@ -1,5 +1,6 @@
 from typing import Annotated
 
+import backoff
 from fastapi import APIRouter, Depends, File, Response, UploadFile
 
 from src.app.api.dependencies import get_settings
@@ -34,7 +35,22 @@ router = APIRouter()
 settings = get_settings()
 
 
+def backoff_hdlr(details):
+    print ("Backing off {wait:0.1f} seconds after {tries} tries "
+           "calling function {target} with args {args} and kwargs "
+           "{kwargs}".format(**details))
+
 @router.post("/files/content")
+@backoff.on_exception(
+    wait_gen=backoff.expo,
+    exception=Exception,
+    logger=logger,
+    max_tries=3,
+    max_time=180,
+    jitter=backoff.random_jitter,
+    on_backoff=backoff_hdlr,
+    factor=2,
+)
 async def extract_files_content(
     files: Annotated[list[UploadFile], File()],
     response: Response,
@@ -65,7 +81,7 @@ async def extract_files_content(
     except Exception as e:
         logger.error(f"Error in extractor schema: {e}")
         response.status_code = 204
-        return None
+        raise e
 
 
 @router.post("/search_extracts")
@@ -208,6 +224,16 @@ async def tutor_search(
     return resp
 
 
+@backoff.on_exception(
+    wait_gen=backoff.expo,
+    exception=Exception,
+    logger=logger,
+    max_tries=3,
+    max_time=180,
+    jitter=backoff.random_jitter,
+    on_backoff=backoff_hdlr,
+    factor=2,
+)
 @router.post("/syllabus")
 async def create_syllabus(
     body: TutorSyllabusRequest, lang: str = "en"
@@ -260,6 +286,16 @@ and the themes extracted from those documents:
 """
 
 
+@backoff.on_exception(
+    wait_gen=backoff.expo,
+    exception=Exception,
+    logger=logger,
+    max_tries=3,
+    max_time=180,
+    jitter=backoff.random_jitter,
+    on_backoff=backoff_hdlr,
+    factor=2,
+)
 @router.post("/syllabus/feedback")
 async def handle_syllabus_feedback(
     body: SyllabusFeedback, chatfactory=Depends(get_chat_service)
@@ -300,3 +336,4 @@ async def handle_syllabus_feedback(
 
     except Exception as e:
         logger.error(f"Error in chat schema: {e}")
+        raise e
