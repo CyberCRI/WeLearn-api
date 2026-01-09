@@ -36,9 +36,12 @@ settings = get_settings()
 
 
 def backoff_hdlr(details):
-    print ("Backing off {wait:0.1f} seconds after {tries} tries "
-           "calling function {target} with args {args} and kwargs "
-           "{kwargs}".format(**details))
+    logger.info(
+        "Backing off {wait:0.1f} seconds after {tries} tries "
+        "calling function {target} with args {args} and kwargs "
+        "{kwargs}".format(**details)
+    )
+
 
 @router.post("/files/content")
 @backoff.on_exception(
