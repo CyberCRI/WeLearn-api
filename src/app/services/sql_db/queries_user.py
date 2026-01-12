@@ -17,7 +17,9 @@ logger = logger_utils(__name__)
 # ============================
 
 
-def get_or_create_user_sync(user_id: uuid.UUID | None = None) -> uuid.UUID:
+def get_or_create_user_sync(
+    user_id: uuid.UUID | None = None, referer: str | None = None
+) -> uuid.UUID:
     with session_maker() as s:
         if user_id:
             user = s.execute(
@@ -25,14 +27,17 @@ def get_or_create_user_sync(user_id: uuid.UUID | None = None) -> uuid.UUID:
             ).first()
             if user:
                 return user.id
-        user = InferredUser()
+        user = InferredUser(origin_referrer=referer)
         s.add(user)
         s.commit()
         return user.id
 
 
 def get_or_create_session_sync(
-    user_id: uuid.UUID, session_id: uuid.UUID | None = None, host: str = "unknown"
+    user_id: uuid.UUID,
+    session_id: uuid.UUID | None = None,
+    host: str = "unknown",
+    referer: str | None = None,
 ) -> uuid.UUID:
     now = datetime.now()
     with session_maker() as s:
@@ -55,6 +60,7 @@ def get_or_create_session_sync(
 
         new_session = Session(
             inferred_user_id=user_id,
+            origin_referrer=referer,
             created_at=now,
             end_at=now + timedelta(hours=24),
             host=host,
