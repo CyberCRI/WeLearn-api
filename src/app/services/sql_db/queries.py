@@ -8,6 +8,8 @@ from welearn_database.data.models import (
     CorpusNameEmbeddingModelLang,
     DocumentSlice,
     QtyDocumentInQdrant,
+    QtyDocumentInQdrantPerCorpus,
+    QtyDocumentPerCorpus,
     Sdg,
     WeLearnDocument,
 )
@@ -30,6 +32,24 @@ def get_nb_docs_sync():
     statement = select(QtyDocumentInQdrant.document_in_qdrant)
     with session_maker() as s:
         return s.execute(statement).first()
+
+
+def get_document_qty_table_info_sync() -> (
+    list[tuple[Corpus, QtyDocumentInQdrantPerCorpus, QtyDocumentPerCorpus]]
+):
+    with session_maker() as s:
+        return (
+            s.query(Corpus, QtyDocumentInQdrantPerCorpus, QtyDocumentPerCorpus)
+            .join(
+                QtyDocumentInQdrantPerCorpus,
+                Corpus.source_name == QtyDocumentInQdrantPerCorpus.source_name,
+            )
+            .join(
+                QtyDocumentPerCorpus,
+                Corpus.source_name == QtyDocumentPerCorpus.source_name,
+            )
+            .all()
+        )
 
 
 def get_documents_payload_by_ids_sync(documents_ids: list[str]) -> list[Document]:

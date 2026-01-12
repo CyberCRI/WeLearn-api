@@ -31,7 +31,7 @@ class TutorTests(IsolatedAsyncioTestCase):
             files={"files": ("test.txt", file)},
             headers={"x-API-Key": "test"},
         )
-        assert reponse.status_code == 400
+        self.assertEqual(reponse.status_code, 400)
 
     def test_tutor_file(self, *mocks):
         file = io.BytesIO(b"this is a test file")
@@ -40,4 +40,4 @@ class TutorTests(IsolatedAsyncioTestCase):
             files={"files": ("test.txt", file)},
             headers={"x-API-Key": "test"},
         )
-        assert reponse.status_code == 204
+        self.assertEqual(reponse.status_code, 204)
