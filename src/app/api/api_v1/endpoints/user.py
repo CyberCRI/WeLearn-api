@@ -29,12 +29,15 @@ async def handle_user(user_id: uuid.UUID | None = None, referer: str | None = No
 
 @router.post("/session", summary="Create new session", response_model=dict)
 async def handle_session(
-    user_id: uuid.UUID, request: Request, session_id: uuid.UUID | None = None
+    user_id: uuid.UUID,
+    request: Request,
+    session_id: uuid.UUID | None = None,
+    referer: str | None = None,
 ):
     try:
         host = request.headers.get("origin", "unknown")
         session_id = await run_in_threadpool(
-            get_or_create_session_sync, user_id, session_id, host
+            get_or_create_session_sync, user_id, session_id, host, referer
         )
         return {"session_id": session_id}
     except ValueError as e:
