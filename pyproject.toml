@@ -41,7 +41,7 @@ langgraph-checkpoint-postgres = "^2.0.23"
 azure-ai-inference = "^1.0.0b9"
 azure-identity = "^1.25.0"
 psycopg = {extras = ["binary"], version = "^3.2.10"}
-welearn-database = "1.0.0"
+welearn-database = "1.2.0.dev0"
 bs4 = "^0.0.2"
 urllib3 = "^2.5.0"
 refinedoc = "^1.0.1"

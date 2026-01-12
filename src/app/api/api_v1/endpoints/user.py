@@ -18,9 +18,9 @@ logger = logger_utils(__name__)
 
 
 @router.post("/user", summary="Create new user", response_model=dict)
-async def handle_user(user_id: uuid.UUID | None = None):
+async def handle_user(user_id: uuid.UUID | None = None, referer: str | None = None):
     try:
-        user_id = await run_in_threadpool(get_or_create_user_sync, user_id)
+        user_id = await run_in_threadpool(get_or_create_user_sync, user_id, referer)
         return {"user_id": user_id}
     except Exception as e:
         logger.error(f"Error creating user: {e}")
