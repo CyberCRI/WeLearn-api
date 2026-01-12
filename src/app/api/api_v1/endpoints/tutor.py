@@ -58,6 +58,7 @@ async def extract_files_content(
     files: Annotated[list[UploadFile], File()],
     response: Response,
     chatfactory=Depends(get_chat_service),
+    lang: str = "en",
 ) -> ExtractorOutputList | None:
     files_content = await get_files_content(files)
     files_content_str = ("__DOCUMENT_SEPARATOR__").join(files_content)
@@ -65,7 +66,7 @@ async def extract_files_content(
     messages = [
         {
             "role": "system",
-            "content": extractor_system_prompt,
+            "content": extractor_system_prompt + lang,
         },
         {
             "role": "user",
