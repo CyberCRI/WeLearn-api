@@ -71,9 +71,11 @@ async def tutor_manager(
     )
 
     chat_model = _build_chat_model()
-    teacher_agent = UniversityTeacherAgent(chat_model)
-    sdg_agent = SDGExpertAgent(chat_model, GREENCOMP_COMPETENCIES)
-    pedagogical_agent = PedagogicalEngineerAgent(chat_model, GREENCOMP_COMPETENCIES)
+    teacher_agent = UniversityTeacherAgent(chat_model, lang)
+    sdg_agent = SDGExpertAgent(chat_model, GREENCOMP_COMPETENCIES, lang)
+    pedagogical_agent = PedagogicalEngineerAgent(
+        chat_model, GREENCOMP_COMPETENCIES, lang
+    )
 
     teacher_response = await teacher_agent.generate(formatted_content)
     sdg_response = await sdg_agent.enhance(
