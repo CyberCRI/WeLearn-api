@@ -1,6 +1,7 @@
 import asyncio
 from typing import Awaitable, Callable
 
+from fastapi import BackgroundTasks
 from qdrant_client.http.models import ScoredPoint
 
 from src.app.models.search import EnhancedSearchQuery, SearchMethods
@@ -11,6 +12,7 @@ logger = logger_utils(__name__)
 
 
 async def search_multi_inputs(
+    background_tasks: BackgroundTasks,
     qp: EnhancedSearchQuery,
     callback_function: Callable[..., Awaitable[list[ScoredPoint]]],
 ) -> list[ScoredPoint] | None:
@@ -24,6 +26,7 @@ async def search_multi_inputs(
         tasks = [
             callback_function(
                 qp=qp,
+                background_tasks=background_tasks,
                 method=SearchMethods.BY_SLICES,
             )
             for qp in qps
