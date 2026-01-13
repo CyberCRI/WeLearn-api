@@ -4,7 +4,7 @@ import time
 from typing import Tuple, cast
 
 import numpy as np
-from fastapi import Depends, Request
+from fastapi import BackgroundTasks, Depends, Request
 from fastapi.concurrency import run_in_threadpool
 from numpy import ndarray
 from qdrant_client import AsyncQdrantClient
@@ -22,6 +22,7 @@ from src.app.models.search import (
     SearchFilters,
     SearchMethods,
 )
+from src.app.services.data_quality import DataQualityChecker
 from src.app.services.exceptions import CollectionNotFoundError, ModelNotFoundError
 from src.app.services.helpers import convert_embedding_bytes
 from src.app.services.sql_service import get_subject
@@ -238,7 +239,10 @@ class SearchService:
 
     @log_time_and_error
     async def search_handler(
-        self, qp: EnhancedSearchQuery, method: SearchMethods = SearchMethods.BY_SLICES
+        self,
+        background_tasks: BackgroundTasks,
+        qp: EnhancedSearchQuery,
+        method: SearchMethods = SearchMethods.BY_SLICES,
     ) -> list[http_models.ScoredPoint]:
         assert isinstance(qp.query, str)
 
@@ -286,6 +290,17 @@ class SearchService:
 
         if qp.concatenate:
             sorted_data = concatenate_same_doc_id_slices(sorted_data)
+        try:
+            dqc = DataQualityChecker(log_background_task=background_tasks)
+            sorted_data = dqc.remove_duplicates(
+                points_to_check=sorted_data,
+                keys_to_check=["document_desc", "document_title"],
+            )
+        except Exception as ex:
+            logger.error(
+                "Error during duplicate removal: %s, ignore it for letting the user see results",
+                ex,
+            )
 
         return sorted_data
 

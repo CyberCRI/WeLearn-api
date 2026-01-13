@@ -1,7 +1,7 @@
 from typing import Annotated
 
 import backoff
-from fastapi import APIRouter, Depends, File, Response, UploadFile
+from fastapi import APIRouter, BackgroundTasks, Depends, File, Response, UploadFile
 
 from src.app.api.dependencies import get_settings
 from src.app.models.search import EnhancedSearchQuery
@@ -91,6 +91,7 @@ async def extract_files_content(
 @router.post("/search_extracts")
 async def tutor_search_extract(
     summaries: SummariesList,
+    background_tasks: BackgroundTasks,
     response: Response,
     sp: SearchService = Depends(get_search_service),
 ):
@@ -105,6 +106,7 @@ async def tutor_search_extract(
 
         search_results = await search_multi_inputs(
             qp=qp,
+            background_tasks=background_tasks,
             callback_function=sp.search_handler,
         )
     except NoResultsError as e:
