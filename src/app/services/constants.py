@@ -23,3 +23,5 @@ subjects: dict = {
     "arts": "Arts",
     "theology": "Theology",
 }
+
+APP_NAME = "welearn-api"

@@ -1,19 +1,28 @@
 # src/app/services/sql_service.py
 
+import uuid
 from threading import Lock
 from uuid import UUID
 
 from sqlalchemy import URL
+from sqlalchemy.orm import sessionmaker
+from welearn_database.data.enumeration import Step
 from welearn_database.data.models import (
     ContextDocument,
     EmbeddingModel,
     EndpointRequest,
+    ErrorDataQuality,
+    ProcessState,
 )
 
 from src.app.api.dependencies import get_settings
 from src.app.models.documents import JourneySection
 from src.app.models.search import ContextType
+from src.app.services.constants import APP_NAME
 from src.app.utils.decorators import singleton
+
+# src/app/services/sql_service.py
+
 
 settings = get_settings()
 
@@ -41,7 +50,6 @@ class WL_SQL:
         return create_engine(self.engine_url)
 
     def _create_session(self):
-        from sqlalchemy.orm import sessionmaker
 
         Session = sessionmaker(bind=self.engine)
         return Session
@@ -66,7 +74,7 @@ class WL_SQL:
 
         """
         with self.session_maker() as session:
-            subject_meta_document: ContextDocument = (
+            subject_meta_document: ContextDocument | None = (
                 session.query(ContextDocument)
                 .filter(
                     ContextDocument.context_type == ContextType.SUBJECT.value.lower(),
@@ -138,6 +146,51 @@ class WL_SQL:
             )
             return model.id if model else None
 
+    def write_new_data_quality_error(
+        self, document_id: UUID, error_info: str, slice_id: UUID | None = None
+    ) -> UUID:
+        """
+        Write a new data quality error to the database.
+        Args:
+            document_id: The ID of the document with the error.
+            slice_id: The ID of the document slice with the error.
+            error_info:  The error information. Usually exception message.
+
+        Returns:
+            The ID of the new error entry.
+        """
+        with self.session_maker() as session:
+            error_entry = ErrorDataQuality(
+                id=uuid.uuid4(),
+                document_id=document_id,
+                slice_id=slice_id,
+                error_raiser=APP_NAME,
+                error_info=error_info,
+            )
+            session.add(error_entry)
+            session.commit()
+            return error_entry.id
+
+    def write_process_state(self, document_id: UUID, process_state: Step) -> UUID:
+        """
+        Write the process state of a document to the database.
+        Args:
+            document_id: The ID of the document.
+            process_state: The current process state.
+
+        Returns:
+            The ID of the new process state entry.
+        """
+        with self.session_maker() as session:
+            process_state_entry = ProcessState(
+                id=uuid.uuid4(),
+                document_id=document_id,
+                title=process_state.value.lower(),
+            )
+            session.add(process_state_entry)
+            session.commit()
+            return process_state_entry.id
+
 
 wl_sql = WL_SQL()
 session_maker = wl_sql.session_maker
@@ -146,3 +199,5 @@ get_subject = wl_sql.get_subject
 get_subjects = wl_sql.get_subjects
 get_context_documents = wl_sql.get_context_documents
 get_embeddings_model_id_according_name = wl_sql.get_embeddings_model_id_according_name
+write_new_data_quality_error = wl_sql.write_new_data_quality_error
+write_process_state = wl_sql.write_process_state
