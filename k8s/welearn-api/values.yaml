@@ -16,6 +16,7 @@ replicaCount: 1
 
 ingress:
   path: /
+  middlewares: []
 
 sablier:
   enabled: false
@@ -52,3 +53,10 @@ runOnGpu: false # Schedule on the GPU node pool to lower its cost
 allowedHostsRegexes:
   localhost: |-
     http:\/\/localhost:5173
+
+rateLimiting:
+  enabled: false
+  middlewareName: "{{ $.Values.fullName }}-ratelimit"
+  average: 50
+  period: 10s
+  burst: 10

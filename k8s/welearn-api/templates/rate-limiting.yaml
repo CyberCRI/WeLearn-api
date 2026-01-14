@@ -1,10 +1,14 @@
+{{- with .Values.rateLimiting }}
+{{- if .enabled }}
 ---
 apiVersion: traefik.io/v1alpha1
 kind: Middleware
 metadata:
-  name: ratelimit
+  name: {{ tpl .middlewareName $ }}
 spec:
   rateLimit:
-    average: 1
-    period: 10s
-    burst: 1
+    average: {{ .average }}
+    period: {{ .period }}
+    burst: {{ .burst }}
+{{- end }}
+{{- end }}

@@ -11,6 +11,10 @@ metadata:
     {{- $middlewares = append $middlewares (tpl .Values.sablier.traefikMiddleware .) }}
     {{- end }}
 
+    {{- if .Values.rateLimiting.enabled }}
+    {{- $middlewares = append $middlewares (printf "%s-%s@kubernetescrd" .Values.namespace (tpl .Values.rateLimiting.middlewareName .)) }}
+    {{- end }}
+
     {{- if $middlewares }}
     traefik.ingress.kubernetes.io/router.middlewares: {{ join "," $middlewares }}
     {{- end }}
