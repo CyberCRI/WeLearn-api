@@ -294,10 +294,10 @@ here is the original syllabus:
 take into account the user feedback:
     {feedback}
 
-keep the references section with the formar <a href="document.url">document.title</a>, references are based on these documents:
+keep the references section with the format <a href="document.url">document.title</a>, references are based on these documents:
     {documents}
 
-for more context, here are the extracts of the original document the user sent to build the syllaus from. Extracts:
+for more context, here are the extracts of the original document the user sent to build the syllabus from. Extracts:
     {extracts}
 
 and the themes extracted from those documents:
