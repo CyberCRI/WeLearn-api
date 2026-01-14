@@ -172,7 +172,7 @@ class WeLearnUser(HttpUser):
     #        name=f"/search/by_slices/{lang}",
     #    )
 
-    # @task(1)
+    @task(1)
     def chat(self):
         lang = random.choice(["en", "fr"])
         query = random.choice(questions[lang])
@@ -184,7 +184,6 @@ class WeLearnUser(HttpUser):
             name=f"Search by slices ({lang})",
             catch_response=True,
         ) as resp:
-            print(resp.text)
             try:
                 sources = json.loads(resp.text)
             except json.decoder.JSONDecodeError:
@@ -221,7 +220,7 @@ class WeLearnUser(HttpUser):
             except json.decoder.JSONDecodeError:
                 raise Exception("Sources could not be retrieved")
 
-        syllabus_payload = dict(extracts, **{"nb_results": 10, "documents": sources})
+        syllabus_payload = dict(extracts, **{"nb_results": 10, "documents": sources, "course_title": "Introduction to Sociolinguistics", "level": "Master students", "duration": "8 weeks", "description": ""})
 
         self.client.post(
             "/api/v1/tutor/syllabus",
