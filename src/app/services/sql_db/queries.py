@@ -49,7 +49,7 @@ def get_document_qty_table_info_sync() -> (
                 Corpus.source_name == QtyDocumentPerCorpus.source_name,
             )
             .all()
-        )
+        )  # type: ignore
 
 
 def get_documents_payload_by_ids_sync(documents_ids: list[str]) -> list[Document]:

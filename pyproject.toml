@@ -50,6 +50,7 @@ langchain-azure-ai = "^0.1.8"
 aiohttp = "^3.13.3"
 httpx = "^0.28.1"
 beautifulsoup4 = "^4.14.3"
+json-repair = "^0.55.0"
 
 [tool.poetry.group.dev.dependencies]
 pytest = "^7.4.0"

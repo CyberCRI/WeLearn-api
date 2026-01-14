@@ -23,6 +23,7 @@ from src.app.services.tutor.models import (
 from src.app.services.tutor.prompts import (
     extractor_system_prompt,
     extractor_user_prompt,
+    summaries_schema,
 )
 from src.app.services.tutor.tutor import tutor_manager
 from src.app.services.tutor.utils import get_files_content
@@ -66,7 +67,9 @@ async def extract_files_content(
     messages = [
         {
             "role": "system",
-            "content": extractor_system_prompt + lang,
+            "content": extractor_system_prompt.format(
+                json_schema=summaries_schema, lang=lang
+            ),
         },
         {
             "role": "user",
@@ -76,11 +79,20 @@ async def extract_files_content(
 
     try:
         summaries = await chatfactory.chat_client.completion(messages=messages)
+
         assert isinstance(summaries, str)
         json_summaries = extract_json_from_response(summaries)
-        summaries_output = ExtractorOutputList(**json_summaries)
+        assert isinstance(json_summaries, list)
 
-        return summaries_output
+        try:
+            summaries_output = ExtractorOutputList(extracts=json_summaries)
+            return summaries_output
+        except Exception:
+            formatted_output = await chatfactory.json_formatter_agent(
+                summaries,
+                "{extracts: [ 'summary': 'Summary', 'themes': [{'theme': 'Theme 1', 'reason': 'Reason for Theme 1'}, {'theme': 'Theme 2', 'reason': 'Reason for Theme 2'}, ...]}, { 'summary': 'Sumamry', 'themes': [{'theme': 'Theme 1', 'reason': 'Reason for Theme 1'}, {'theme': 'Theme 2', 'reason': 'Reason for Theme 2'}, ...]}] }",
+            )
+            return formatted_output
 
     except Exception as e:
         logger.error(f"Error in extractor schema: {e}")
@@ -94,12 +106,13 @@ async def tutor_search_extract(
     background_tasks: BackgroundTasks,
     response: Response,
     sp: SearchService = Depends(get_search_service),
+    nb_results: int = 15,
 ):
 
     try:
         qp = EnhancedSearchQuery(
             query=summaries.summaries,
-            nb_results=10,
+            nb_results=nb_results,
             sdg_filter=None,
             corpora=None,
         )
