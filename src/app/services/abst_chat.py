@@ -83,6 +83,28 @@ class AbstractChat(ABC):
         }
 
     @log_time_and_error
+    async def json_formatter_agent(self, unformatted_input, expected_output):
+        print(unformatted_input)
+        output = await self.chat_client.completion(
+            messages=[
+                {
+                    "role": "system",
+                    "content": f"You are a json formatter agent that recieves from the user a content wrongly formatted and an expected json schema and replies with the input formatted in the correct way. Here is the expected schema :{expected_output}",
+                },
+                {
+                    "role": "user",
+                    "content": f"Reformat my input so it respects the expected output. Input : {unformatted_input}",
+                },
+            ],
+            response_format={
+                "type": "json_object",
+            },
+        )
+
+        json = extract_json_from_response(output)
+        return json
+
+    @log_time_and_error
     async def _detect_language(self, query: str) -> Dict[str, str]:
         """
         Detects the language of the query.
