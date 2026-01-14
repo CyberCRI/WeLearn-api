@@ -10,3 +10,6 @@ allowedHostsRegexes:
     https://[a-zA-Z0-9-]*\.alpha-welearn\.lp-i\.org
   mainUrl: |-
     https:\/\/welearn-demo\.learningplanetinstitute\.org
+
+rateLimiting:
+  enabled: true

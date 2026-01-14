@@ -8,3 +8,6 @@ config:
 allowedHostsRegexes:
   mainUrl: |-
     https:\/\/welearn\.k8s\.lp-i\.dev
+
+rateLimiting:
+  enabled: true
