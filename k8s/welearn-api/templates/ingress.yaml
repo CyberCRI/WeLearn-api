@@ -7,12 +7,12 @@ metadata:
     cert-manager.io/cluster-issuer: letsencrypt-prod-traefik
     {{- $middlewares := .Values.ingress.middlewares }}
 
-    {{- if .Values.sablier.enabled }}
-    {{- $middlewares = append $middlewares (tpl .Values.sablier.traefikMiddleware .) }}
-    {{- end }}
-
     {{- if .Values.rateLimiting.enabled }}
     {{- $middlewares = append $middlewares (printf "%s-%s@kubernetescrd" .Values.namespace (tpl .Values.rateLimiting.middlewareName .)) }}
+    {{- end }}
+
+    {{- if .Values.sablier.enabled }}
+    {{- $middlewares = append $middlewares (tpl .Values.sablier.traefikMiddleware .) }}
     {{- end }}
 
     {{- if $middlewares }}
