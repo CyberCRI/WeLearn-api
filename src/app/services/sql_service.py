@@ -8,15 +8,18 @@ from sqlalchemy import URL
 from sqlalchemy.orm import sessionmaker
 from welearn_database.data.enumeration import Step
 from welearn_database.data.models import (
+    ChatMessage,
     ContextDocument,
     EmbeddingModel,
     EndpointRequest,
     ErrorDataQuality,
     ProcessState,
+    ReturnedDocument,
 )
 
 from src.app.api.dependencies import get_settings
-from src.app.models.documents import JourneySection
+from src.app.models.chat import Role
+from src.app.models.documents import Document, JourneySection
 from src.app.models.search import ContextType
 from src.app.services.constants import APP_NAME
 from src.app.utils.decorators import singleton
@@ -190,6 +193,61 @@ class WL_SQL:
             session.add(process_state_entry)
             session.commit()
             return process_state_entry.id
+
+    def write_user_query(self, user_id: UUID, query_content: str):
+        """
+        Write a user query to the chat in the database.
+        Args:
+            user_id:  The ID of the user.
+            query_content: The content of the user query.
+
+        Returns:
+            The ID of the new chat message entry.
+        """
+        chat_msg = ChatMessage(
+            inferred_user_id=user_id,
+            role=Role.USER.value,
+            textual_content=query_content,
+        )
+        with self.session_maker() as session:
+            session.add(chat_msg)
+            session.commit()
+            return chat_msg.id
+
+    def write_chat_answer(
+        self, user_id: UUID, answer: str, docs: list[Document]
+    ) -> tuple[UUID, list[UUID]]:
+        """
+        Write a chat answer to the database along with the referenced documents.
+        Args:
+            user_id: The ID of the user.
+            answer: The content of the chat answer.
+            docs: The list of documents referenced in the answer.
+
+        Returns:
+            The ID of the new chat message entry and the list of returned document IDs.
+        """
+        chat_msg_id = uuid.uuid4()
+
+        chat_msg = ChatMessage(
+            id=chat_msg_id,
+            inferred_user_id=user_id,
+            role=Role.USER.value,
+            textual_content=answer,
+        )
+        returned_docs: list[ReturnedDocument] = []
+        for doc in docs:
+            returned_doc = ReturnedDocument(
+                message_id=chat_msg_id,
+                document_id=doc.payload.document_id,
+            )
+            returned_docs.append(returned_doc)
+
+        with self.session_maker() as session:
+            session.add(chat_msg)
+            session.add_all(returned_docs)
+            session.commit()
+            return chat_msg.id, [doc.id for doc in returned_docs]
 
 
 wl_sql = WL_SQL()
