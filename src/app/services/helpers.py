@@ -1,11 +1,11 @@
-import json
-import re
 import uuid
 from functools import cache
 from typing import Any, List
 
+import json_repair
 import numpy
 from fastapi import HTTPException
+from json_repair import JSONReturnType
 from langdetect import detect_langs
 from qdrant_client.http.models import models
 
@@ -130,7 +130,9 @@ def stringify_docs_content(docs: List[Any]) -> str:
     return documents.strip()
 
 
-def extract_json_from_response(response: str) -> dict:
+def extract_json_from_response(
+    response: str,
+) -> JSONReturnType | tuple[JSONReturnType, list[dict[str, str]]] | str:
     """
     Extracts JSON object from a string response.
     Args:
@@ -139,12 +141,12 @@ def extract_json_from_response(response: str) -> dict:
         dict: The extracted JSON object.
     """
     try:
-        json_data = re.search(r"\{.*\}", response, re.DOTALL)
+        json_data = json_repair.loads(response)
         if json_data:
-            return json.loads(json_data.group())
+            return json_data
         else:
             raise ValueError("No JSON object found in the response")
-    except json.JSONDecodeError as e:
+    except Exception as e:
         logger.error("api_error=json_decode_error, response=%s", response)
         raise e
 
