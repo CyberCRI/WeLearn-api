@@ -6,10 +6,12 @@ from uuid import UUID
 
 from sqlalchemy import URL
 from sqlalchemy.orm import sessionmaker
+from sqlalchemy.sql.functions import now
 from welearn_database.data.enumeration import Step
 from welearn_database.data.models import (
     ChatMessage,
     ContextDocument,
+    DataCollectionCampaignManagement,
     EmbeddingModel,
     EndpointRequest,
     ErrorDataQuality,
@@ -256,6 +258,18 @@ class WL_SQL:
             session.commit()
             return chat_msg.id, [doc.id for doc in returned_docs]
 
+    def get_current_data_collection_campaign(
+        self,
+    ) -> DataCollectionCampaignManagement | None:
+        with self.session_maker() as session:
+            campaign = (
+                session.query(DataCollectionCampaignManagement)
+                .filter(DataCollectionCampaignManagement.end_at > now)
+                .order_by(DataCollectionCampaignManagement.end_at)
+                .first()
+            )
+            return campaign
+
 
 wl_sql = WL_SQL()
 session_maker = wl_sql.session_maker
@@ -268,3 +282,4 @@ write_new_data_quality_error = wl_sql.write_new_data_quality_error
 write_process_state = wl_sql.write_process_state
 write_user_query = wl_sql.write_user_query
 write_chat_answer = wl_sql.write_chat_answer
+get_current_data_collection_campaign = wl_sql.get_current_data_collection_campaign
