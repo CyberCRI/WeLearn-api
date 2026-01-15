@@ -44,7 +44,7 @@ azure-identity = "^1.25.0"
 psycopg = {extras = ["binary"], version = "^3.2.10"}
 welearn-database = "1.2.0"
 bs4 = "^0.0.2"
-urllib3 = "^2.5.0"
+urllib3 = "^2.6.3"
 refinedoc = "^1.0.1"
 langchain-azure-ai = "^0.1.8"
 aiohttp = "^3.13.3"
