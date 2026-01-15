@@ -8,7 +8,7 @@ package-mode = false
 
 [tool.poetry.dependencies]
 python = ">=3.10,<3.13"
-azure-core = "^1.32.0"
+azure-core = "^1.38.0"
 backoff = "^2.2.1"
 ecologits = "^0.5.2"
 fastapi = "^0.115.8"
