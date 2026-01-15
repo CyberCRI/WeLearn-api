@@ -13,6 +13,7 @@ from qdrant_client.http import exceptions as qdrant_exceptions
 from qdrant_client.http import models as http_models
 from sentence_transformers import SentenceTransformer
 from sklearn.metrics.pairwise import cosine_similarity
+from qdrant_client.models import FieldCondition, MatchAny
 
 from src.app.models.collections import Collection
 from src.app.models.search import (
@@ -33,6 +34,9 @@ logger = logger_utils(__name__)
 
 async def get_qdrant(request: Request) -> AsyncQdrantClient:
     return request.app.state.qdrant
+
+
+MIX_NOT_ALLOWED_CORPUS = ["conversation", "ipcc"]
 
 
 class SearchService:
@@ -65,6 +69,12 @@ class SearchService:
             "document_details.source",
         ]
         self.col_prefix = "collection_welearn_"
+
+    @staticmethod
+    def remove_unwanted_corpora(corpora: tuple[str, ...]) -> tuple[str, ...]:
+        return tuple(
+            corpus for corpus in corpora if corpus not in MIX_NOT_ALLOWED_CORPUS
+        )
 
     @staticmethod
     def flavored_with_subject(
@@ -238,6 +248,9 @@ class SearchService:
             subject_influence_factor=qp.influence_factor,
         )
 
+        if method == SearchMethods.BY_SLICES and qp.corpora and len(qp.corpora):
+            qp.corpora = self.remove_unwanted_corpora(qp.corpora)
+
         filter_content = [
             FilterDefinition(key="document_corpus", value=qp.corpora),
             FilterDefinition(key="document_details.readability", value=qp.readability),
@@ -253,6 +266,14 @@ class SearchService:
 
         data = []
         if method == "by_slices":
+            if not filters:
+                filters = qdrant_models.Filter()
+            filters.must_not = [
+                FieldCondition(
+                    key="document_corpus",
+                    match=MatchAny(any=MIX_NOT_ALLOWED_CORPUS),
+                )
+            ]
             data = await self.search(
                 collection_info=collection.name,
                 embedding=embedding,

@@ -17,7 +17,11 @@ from src.app.services.exceptions import (
     ModelNotFoundError,
     bad_request,
 )
-from src.app.services.search import SearchService, get_search_service
+from src.app.services.search import (
+    SearchService,
+    get_search_service,
+    MIX_NOT_ALLOWED_CORPUS,
+)
 from src.app.services.search_helpers import search_multi_inputs
 from src.app.services.sql_db.queries import (
     get_collections_sync,
@@ -66,6 +70,7 @@ async def get_corpus():
             "lang": lang,
             "model": model,
             "corpus": f"{name}_{lang}_{model}",
+            "is_allowed": name not in MIX_NOT_ALLOWED_CORPUS,
         }
         for name, lang, model in collections
     ]
