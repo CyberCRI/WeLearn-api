@@ -7068,14 +7068,14 @@ files = [
 
 [[package]]
 name = "welearn-database"
-version = "1.3.0.dev2"
+version = "1.3.0.dev3"
 description = "All stuff related to relationnal database from the WeLearn project"
 optional = false
 python-versions = ">=3.10"
 groups = ["main"]
 files = [
-    {file = "welearn_database-1.3.0.dev2-py3-none-any.whl", hash = "sha256:b6c7538b1da8f858b8aa5f6027e282d515f9ae62fc09dbd47e12a296112a78d1"},
-    {file = "welearn_database-1.3.0.dev2.tar.gz", hash = "sha256:46724236228deb7a963d7b3f39795904d160e0fc7936ca4c76b1c7f6a4e404f7"},
+    {file = "welearn_database-1.3.0.dev3-py3-none-any.whl", hash = "sha256:331120f0eda6f8764d02778ac10517102aa65033fd4cc6d702b5b84926e9af42"},
+    {file = "welearn_database-1.3.0.dev3.tar.gz", hash = "sha256:edff38096d3b9b16177f62205e0601b7fe49ff90e0c89c4163579984208bb017"},
 ]
 
 [package.dependencies]
@@ -7703,4 +7703,4 @@ cffi = ["cffi (>=1.17,<2.0) ; platform_python_implementation != \"PyPy\" and pyt
 [metadata]
 lock-version = "2.1"
 python-versions = ">=3.10,<3.13"
-content-hash = "b8d42914dccbcc7fa4d2b3465d1b8fbe2163c90a804e5b056972b47757f7f9db"
+content-hash = "fd558400b4708ab3fd22d2a1fc5b00a59baafa2b84f54ccb0b65d72da6a78807"

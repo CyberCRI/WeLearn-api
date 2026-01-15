@@ -18,7 +18,7 @@ from welearn_database.data.models import (
 )
 
 from src.app.api.dependencies import get_settings
-from src.app.models.chat import Role
+from src.app.models.chat import Role, UserQueryMetadata
 from src.app.models.documents import Document, JourneySection
 from src.app.models.search import ContextType
 from src.app.services.constants import APP_NAME
@@ -194,20 +194,26 @@ class WL_SQL:
             session.commit()
             return process_state_entry.id
 
-    def write_user_query(self, user_id: UUID, query_content: str):
+    def write_user_query(
+        self, user_id: UUID, query_content: str, conversation_id: UUID | None
+    ) -> UserQueryMetadata:
         """
         Write a user query to the chat in the database.
         Args:
             user_id:  The ID of the user.
             query_content: The content of the user query.
+            conversation_id: Key used for aggregated messages together, if None a new is generated in the API
 
         Returns:
             The ID of the new chat message entry.
         """
+        if not conversation_id:
+            conversation_id = uuid.uuid4()
         chat_msg = ChatMessage(
             inferred_user_id=user_id,
             role=Role.USER.value,
             textual_content=query_content,
+            conversation_id=conversation_id,
         )
         with self.session_maker() as session:
             session.add(chat_msg)
@@ -215,7 +221,7 @@ class WL_SQL:
             return chat_msg.id
 
     def write_chat_answer(
-        self, user_id: UUID, answer: str, docs: list[Document]
+        self, user_id: UUID, answer: str, docs: list[Document], conversation_id: UUID
     ) -> tuple[UUID, list[UUID]]:
         """
         Write a chat answer to the database along with the referenced documents.
@@ -223,6 +229,7 @@ class WL_SQL:
             user_id: The ID of the user.
             answer: The content of the chat answer.
             docs: The list of documents referenced in the answer.
+            conversation_id: Key used for aggregated messages together
 
         Returns:
             The ID of the new chat message entry and the list of returned document IDs.
@@ -259,3 +266,5 @@ get_context_documents = wl_sql.get_context_documents
 get_embeddings_model_id_according_name = wl_sql.get_embeddings_model_id_according_name
 write_new_data_quality_error = wl_sql.write_new_data_quality_error
 write_process_state = wl_sql.write_process_state
+write_user_query = wl_sql.write_user_query
+write_chat_answer = wl_sql.write_chat_answer
