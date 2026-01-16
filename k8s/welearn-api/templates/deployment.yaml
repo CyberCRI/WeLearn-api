@@ -20,6 +20,8 @@ spec:
       annotations:
         {{- include "common.config.checksum" (dict "filePath" "/config.yaml" "root" $)  | nindent 8 }}
     spec:
+      topologySpreadConstraints:
+        {{- (tpl ($.Values.topologySpreadConstraints | toYaml ) $) | nindent 8 }}
     {{- if .Values.runOnGpu }}
       affinity:
         nodeAffinity:

@@ -60,3 +60,11 @@ rateLimiting:
   average: 50
   period: 10s
   burst: 10
+
+topologySpreadConstraints:
+  - topologyKey: kubernetes.io/hostname
+    labelSelector:
+      matchLabels:
+        app.kubernetes.io/name: welearn-api
+    maxSkew: 1
+    whenUnsatisfiable: ScheduleAnyway
