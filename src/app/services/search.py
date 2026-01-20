@@ -4,6 +4,7 @@ import time
 from typing import Tuple, cast
 
 import numpy as np
+import torch
 from fastapi import BackgroundTasks, Depends, Request
 from fastapi.concurrency import run_in_threadpool
 from numpy import ndarray
@@ -12,7 +13,6 @@ from qdrant_client import models as qdrant_models
 from qdrant_client.http import exceptions as qdrant_exceptions
 from qdrant_client.http import models as http_models
 from sklearn.metrics.pairwise import cosine_similarity
-import torch
 from transformers import AutoModel, AutoTokenizer
 
 from src.app.models.collections import Collection
@@ -187,7 +187,9 @@ class SearchService:
     @log_time_and_error_sync
     def _compute_embeddings(self, model, tokenizer, inputs: list[str]) -> np.ndarray:
         with torch.no_grad():
-            tokenized_inputs = tokenizer(inputs, padding=True, truncation=True, return_tensors='pt')
+            tokenized_inputs = tokenizer(
+                inputs, padding=True, truncation=True, return_tensors="pt"
+            )
             model_output = model(**tokenized_inputs)
             embeddings = model_output[0][:, 0]
             embeddings = torch.nn.functional.normalize(embeddings, dim=1).numpy()
@@ -206,7 +208,9 @@ class SearchService:
         inputs = self._split_input_seq_len(seq_len, search_input)
 
         try:
-            embeddings = await run_in_threadpool(self._compute_embeddings, model, tokenizer, inputs)
+            embeddings = await run_in_threadpool(
+                self._compute_embeddings, model, tokenizer, inputs
+            )
             embeddings = np.mean(embeddings, axis=0)
         except Exception as ex:
             logger.error("api_error=EMBED_ERROR model=%s", curr_model)
@@ -228,7 +232,9 @@ class SearchService:
         model_instance = model["instance"]
         tokenizer = model["tokenizer"]
         embedding_input = qp.query if isinstance(qp.query, list) else [qp.query]
-        embedding = await run_in_threadpool(self._compute_embeddings, model_instance, tokenizer, embedding_input)
+        embedding = await run_in_threadpool(
+            self._compute_embeddings, model_instance, tokenizer, embedding_input
+        )
         result = await self.search(
             collection_info="collection_welearn_mul_granite-embedding-107m-multilingual",
             embedding=embedding,
