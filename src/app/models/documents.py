@@ -27,6 +27,7 @@ class DocumentPayloadModel(BaseModel):
 
 
 class Document(BaseModel):
+    id: int | str
     score: float
     payload: DocumentPayloadModel
 

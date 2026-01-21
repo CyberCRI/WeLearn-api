@@ -1,9 +1,8 @@
 import functools
 import time
+from src.app.utils.logger import logger as utils_logger
 
-from src.app.utils.logger import logger
-
-logger = logger(__name__)
+logger = utils_logger(__name__)
 
 
 def log_time_and_error(func):
