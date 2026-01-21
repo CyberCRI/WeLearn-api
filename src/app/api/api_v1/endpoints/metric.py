@@ -1,9 +1,10 @@
-from fastapi import APIRouter, Response, status
+from fastapi import APIRouter, Response, status, Depends, Request
+from src.app.services.data_collection import get_data_collection_service
 from pydantic import ValidationError
 from starlette.concurrency import run_in_threadpool
 
 from src.app.api.dependencies import get_settings
-from src.app.models.metric import RowCorpusQtyDocInfo
+from src.app.models.metric import RowCorpusQtyDocInfo, DocumentClickUpdateResponse
 from src.app.services.sql_db.queries import (
     get_document_qty_table_info_sync,
 )
@@ -40,3 +41,13 @@ async def get_nb_docs_info_per_corpus(
     if len(ret) == 0:
         response.status_code = status.HTTP_500_INTERNAL_SERVER_ERROR
     return ret
+
+
+@router.post("/clicked_document")
+async def update_clicked_doc_from_chat_message(
+    body: DocumentClickUpdateResponse,
+    request: Request,
+    data_collection=Depends(get_data_collection_service),
+) -> str:
+    await data_collection.register_document_click(body.doc_id, body.message_id)
+    return "updated"
