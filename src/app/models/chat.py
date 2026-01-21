@@ -22,6 +22,7 @@ class ContextOut(BaseModel):
     history: list[dict] = []
     query: str
     subject: str | None = Field(None)
+    conversation_id: uuid.UUID | None = Field(None)
 
 
 class Role(Enum):
