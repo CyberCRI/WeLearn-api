@@ -12,7 +12,7 @@ from qdrant_client.http.models import models
 from src.app.models.collections import Collection
 from src.app.models.documents import JourneySectionType
 from src.app.services.exceptions import LanguageNotSupportedError
-from src.app.services.sql_service import get_embeddings_model_id_according_name
+from src.app.services.sql_db.queries import get_embeddings_model_id_according_name
 from src.app.utils.decorators import log_time_and_error_sync
 from src.app.utils.logger import logger as utils_logger
 

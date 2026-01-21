@@ -8,7 +8,7 @@ from fastapi.security import APIKeyHeader
 from sqlalchemy.sql import select
 from welearn_database.data.models import APIKeyManagement
 
-from src.app.services.sql_service import session_maker
+from src.app.services.sql_db.queries import session_maker
 from src.app.utils.logger import logger as logger_utils
 
 api_key_header = APIKeyHeader(name="X-API-Key")

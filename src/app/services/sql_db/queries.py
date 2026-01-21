@@ -1,8 +1,13 @@
 # src/app/services/sql_db/queries.py
+import uuid
+from uuid import UUID
+from threading import Lock
 
 from collections import Counter
 
-from sqlalchemy import select
+from sqlalchemy import func, select
+from sqlalchemy.sql.functions import now
+from welearn_database.data.enumeration import Step
 from welearn_database.data.models import (
     Corpus,
     CorpusNameEmbeddingModelLang,
@@ -12,10 +17,25 @@ from welearn_database.data.models import (
     QtyDocumentPerCorpus,
     Sdg,
     WeLearnDocument,
+    ChatMessage,
+    ContextDocument,
+    DataCollectionCampaignManagement,
+    EmbeddingModel,
+    EndpointRequest,
+    ErrorDataQuality,
+    ProcessState,
+    ReturnedDocument,
 )
 
-from src.app.models.documents import Document, DocumentPayloadModel
-from src.app.services.sql_service import session_maker
+from src.app.models.documents import Document, DocumentPayloadModel, JourneySection
+from src.app.services.sql_db.sql_service import session_maker
+from src.app.models.chat import Role, UserQueryMetadata
+
+from src.app.models.search import ContextType
+from src.app.services.constants import APP_NAME
+
+model_id_cache: dict[str, UUID] = {}
+model_id_lock = Lock()
 
 
 def get_collections_sync():
@@ -121,3 +141,245 @@ def get_documents_payload_by_ids_sync(documents_ids: list[str]) -> list[Document
                 )
             )
         return docs
+
+
+def register_endpoint(endpoint, session_id, http_code):
+    with session_maker() as session:
+        endpoint_request = EndpointRequest(
+            endpoint_name=endpoint, session_id=session_id, http_code=http_code
+        )
+        session.add(endpoint_request)
+        session.commit()
+
+
+def get_subject(subject: str, embedding_model_id: UUID) -> ContextDocument | None:
+    """
+    Get the subject meta document from the database.
+    Args:
+        subject: The subject to get.
+
+    Returns: The subject meta document.
+
+    """
+    with session_maker() as session:
+        subject_meta_document: ContextDocument | None = (
+            session.query(ContextDocument)
+            .filter(
+                ContextDocument.context_type == ContextType.SUBJECT.value.lower(),
+                ContextDocument.title == subject,
+                ContextDocument.embedding_model_id == embedding_model_id,
+            )
+            .first()
+        )
+    return subject_meta_document
+
+
+def get_subjects(embedding_model_id: UUID) -> list[ContextDocument]:
+    """
+    Get all the subject meta documents from the database.
+    Returns: List of subject meta documents.
+    """
+    with session_maker() as session:
+        sdg_meta_documents: list[ContextDocument] = (
+            session.query(ContextDocument)
+            .filter(
+                ContextDocument.context_type == ContextType.SUBJECT.value.lower(),
+                ContextDocument.embedding_model_id == embedding_model_id,
+            )
+            .all()
+        )
+    return sdg_meta_documents
+
+
+def get_context_documents(
+    journey_part: JourneySection, sdg: int, embedding_model_id: UUID
+):
+    """
+    Get the context documents from the database.
+
+    Args:
+        journey_part: The journey part to get the context documents for.
+        sdg: The SDG to get the context documents for.
+    Returns: List of context documents.
+    """
+    with session_maker() as session:
+        sdg_meta_documents: list[ContextDocument] = (
+            session.query(ContextDocument)
+            .filter(
+                ContextDocument.context_type.in_(journey_part),
+                ContextDocument.sdg_related.contains([sdg]),
+                ContextDocument.embedding_model_id == embedding_model_id,
+            )
+            .all()
+        )
+    return sdg_meta_documents
+
+
+def get_embeddings_model_id_according_name(model_name: str) -> UUID | None:
+    """
+    Get the embeddings model ID according to its name.
+
+    Args:
+        model_name: The name of the embeddings model.
+
+    Returns:
+        The ID of the embeddings model if found, otherwise None.
+    """
+    with model_id_lock:
+        if model_name in model_id_cache:
+            return model_id_cache[model_name]
+
+    with session_maker() as session:
+        model = (
+            session.query(EmbeddingModel)
+            .filter(EmbeddingModel.title == model_name)
+            .first()
+        )
+        return model.id if model else None
+
+
+def write_new_data_quality_error(
+    document_id: UUID, error_info: str, slice_id: UUID | None = None
+) -> UUID:
+    """
+    Write a new data quality error to the database.
+    Args:
+        document_id: The ID of the document with the error.
+        slice_id: The ID of the document slice with the error.
+        error_info:  The error information. Usually exception message.
+
+    Returns:
+        The ID of the new error entry.
+    """
+    with session_maker() as session:
+        error_entry = ErrorDataQuality(
+            id=uuid.uuid4(),
+            document_id=document_id,
+            slice_id=slice_id,
+            error_raiser=APP_NAME,
+            error_info=error_info,
+        )
+        session.add(error_entry)
+        session.commit()
+        return error_entry.id
+
+
+def write_process_state(document_id: UUID, process_state: Step) -> UUID:
+    """
+    Write the process state of a document to the database.
+    Args:
+        document_id: The ID of the document.
+        process_state: The current process state.
+
+    Returns:
+        The ID of the new process state entry.
+    """
+    with session_maker() as session:
+        process_state_entry = ProcessState(
+            id=uuid.uuid4(),
+            document_id=document_id,
+            title=process_state.value.lower(),
+        )
+        session.add(process_state_entry)
+        session.commit()
+        return process_state_entry.id
+
+
+def write_user_query(
+    user_id: UUID, query_content: str, conversation_id: UUID | None
+) -> UUID:
+    """
+    Write a user query to the chat in the database.
+    Args:
+        user_id:  The ID of the user.
+        query_content: The content of the user query.
+        conversation_id: Key used for aggregated messages together, if None a new is generated in the API
+
+    Returns:
+        The ID of the new chat message entry.
+    """
+    if not conversation_id:
+        conversation_id = uuid.uuid4()
+    chat_msg = ChatMessage(
+        inferred_user_id=user_id,
+        role=Role.USER.value,
+        textual_content=query_content,
+        conversation_id=conversation_id,
+    )
+    with session_maker() as session:
+        session.add(chat_msg)
+        session.commit()
+        return conversation_id
+
+
+def write_chat_answer(
+    user_id: UUID, answer: str, docs: list[Document], conversation_id: UUID
+) -> UUID:
+    """
+    Write a chat answer to the database along with the referenced documents.
+    Args:
+        user_id: The ID of the user.
+        answer: The content of the chat answer.
+        docs: The list of documents referenced in the answer.
+        conversation_id: Key used for aggregated messages together
+
+    Returns:
+        The ID of the new chat message entry and the list of returned document IDs.
+    """
+    chat_msg_id = uuid.uuid4()
+
+    chat_msg = ChatMessage(
+        id=chat_msg_id,
+        inferred_user_id=user_id,
+        role=Role.ASSISTANT.value,
+        textual_content=answer,
+        conversation_id=conversation_id,
+    )
+    returned_docs: list[ReturnedDocument] = []
+    for doc in docs:
+        returned_doc = ReturnedDocument(
+            message_id=chat_msg_id,
+            document_id=doc.payload.document_id,
+        )
+        returned_docs.append(returned_doc)
+
+    with session_maker() as session:
+        session.add(chat_msg)
+        session.add_all(returned_docs)
+        session.commit()
+        return chat_msg.id
+
+
+def update_returned_document_click(document_id: UUID, message_id: UUID) -> None:
+    """
+    Write a click on a returned document to the database.
+    Args:
+        document_id: The ID of the document that was clicked.
+        message_id: The ID of the chat message associated with the document.
+
+    Returns:
+        None
+    """
+    with session_maker() as session:
+        returned_doc = (
+            session.query(ReturnedDocument)
+            .filter(
+                ReturnedDocument.document_id == document_id,
+                ReturnedDocument.message_id == message_id,
+            )
+            .first()
+        )
+        if returned_doc:
+            returned_doc.is_clicked = True
+            session.commit()
+
+
+def get_current_data_collection_campaign() -> DataCollectionCampaignManagement | None:
+    with session_maker() as session:
+        campaign = (
+            session.query(DataCollectionCampaignManagement)
+            .filter(DataCollectionCampaignManagement.end_at > func.now())
+            .order_by(DataCollectionCampaignManagement.end_at)
+            .first()
+        )
+        return campaign

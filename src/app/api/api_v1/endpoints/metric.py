@@ -4,7 +4,9 @@ from starlette.concurrency import run_in_threadpool
 
 from src.app.api.dependencies import get_settings
 from src.app.models.metric import RowCorpusQtyDocInfo
-from src.app.services.sql_db.queries import get_document_qty_table_info_sync
+from src.app.services.sql_db.queries import (
+    get_document_qty_table_info_sync,
+)
 from src.app.utils.logger import logger as utils_logger
 
 logger = utils_logger(__name__)
