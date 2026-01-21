@@ -1,38 +1,35 @@
 # src/app/services/sql_db/queries.py
 import uuid
-from uuid import UUID
-from threading import Lock
-
 from collections import Counter
+from threading import Lock
+from uuid import UUID
 
 from sqlalchemy import func, select
-from sqlalchemy.sql.functions import now
 from welearn_database.data.enumeration import Step
 from welearn_database.data.models import (
-    Corpus,
-    CorpusNameEmbeddingModelLang,
-    DocumentSlice,
-    QtyDocumentInQdrant,
-    QtyDocumentInQdrantPerCorpus,
-    QtyDocumentPerCorpus,
-    Sdg,
-    WeLearnDocument,
     ChatMessage,
     ContextDocument,
+    Corpus,
+    CorpusNameEmbeddingModelLang,
     DataCollectionCampaignManagement,
+    DocumentSlice,
     EmbeddingModel,
     EndpointRequest,
     ErrorDataQuality,
     ProcessState,
+    QtyDocumentInQdrant,
+    QtyDocumentInQdrantPerCorpus,
+    QtyDocumentPerCorpus,
     ReturnedDocument,
+    Sdg,
+    WeLearnDocument,
 )
 
+from src.app.models.chat import Role
 from src.app.models.documents import Document, DocumentPayloadModel, JourneySection
-from src.app.services.sql_db.sql_service import session_maker
-from src.app.models.chat import Role, UserQueryMetadata
-
 from src.app.models.search import ContextType
 from src.app.services.constants import APP_NAME
+from src.app.services.sql_db.sql_service import session_maker
 
 model_id_cache: dict[str, UUID] = {}
 model_id_lock = Lock()

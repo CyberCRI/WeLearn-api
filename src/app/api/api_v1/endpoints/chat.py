@@ -1,8 +1,7 @@
 from typing import Dict, Optional, cast
-
 from uuid import UUID
-import backoff
 
+import backoff
 import psycopg
 from fastapi import APIRouter, Depends, HTTPException, Request, status
 from fastapi.responses import StreamingResponse
@@ -17,7 +16,6 @@ from src.app.models import chat as models
 from src.app.services.abst_chat import get_chat_service
 from src.app.services.constants import subjects as subjectsDict
 from src.app.services.data_collection import get_data_collection_service
-
 from src.app.services.exceptions import (
     EmptyQueryError,
     InvalidQuestionError,

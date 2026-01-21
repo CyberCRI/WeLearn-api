@@ -2,11 +2,11 @@
 import uuid
 from datetime import datetime, timedelta
 from typing import Any
+
 from fastapi import HTTPException, Request, status
 from fastapi.concurrency import run_in_threadpool
-from src.app.models.documents import Document
-from src.app.utils.logger import logger as utils_logger
 
+from src.app.models.documents import Document
 from src.app.services.sql_db.queries import (
     get_current_data_collection_campaign,
     update_returned_document_click,
@@ -14,6 +14,7 @@ from src.app.services.sql_db.queries import (
     write_user_query,
 )
 from src.app.services.sql_db.queries_user import get_user_from_session_id
+from src.app.utils.logger import logger as utils_logger
 
 logger = utils_logger(__name__)
 
