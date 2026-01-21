@@ -63,6 +63,7 @@ JSON = {
 }
 
 
+@mock.patch("src.app.services.sql_db.queries.session_maker")
 @mock.patch(
     "src.app.services.security.check_api_key_sync",
     new=mock.MagicMock(return_value=True),
@@ -87,7 +88,7 @@ class QnATests(unittest.IsolatedAsyncioTestCase):
 
             response_json = response.json()
             self.assertEqual(response.status_code, 200)
-            self.assertEqual(response_json, "ok")
+            self.assertEqual(response_json["answer"], "ok")
 
     async def test_chat_empty_history(self, chat_mock, *mocks):
         chat_mock.return_value = "ok"
@@ -128,7 +129,7 @@ class QnATests(unittest.IsolatedAsyncioTestCase):
             )
             response_json = response.json()
             self.assertEqual(response.status_code, 200)
-            self.assertEqual(response_json, "ok")
+            self.assertEqual(response_json["answer"], "ok")
 
     async def test_chat_not_supported_lang(self, chat_mock, *mocks):
         # mock raise LanguageNotSupportedError
@@ -209,7 +210,9 @@ class QnATests(unittest.IsolatedAsyncioTestCase):
                 },
             )
 
-    async def test_new_questions_ok(self, mock_chat_completion, mock__detect_language):
+    async def test_new_questions_ok(
+        self, mock_db_session, mock_chat_completion, mock__detect_language
+    ):
         with mock.patch(
             "src.app.services.abst_chat.AbstractChat.get_new_questions",
             return_value={"NEW_QUESTIONS": ["Your reformulated question"]},
@@ -248,7 +251,9 @@ class QnATests(unittest.IsolatedAsyncioTestCase):
                 },
             )
 
-    async def test_reformulate_ok(self, mock_chat_completion, mock__detect_language):
+    async def test_reformulate_ok(
+        self, mock_db_session, mock_chat_completion, mock__detect_language
+    ):
         with mock.patch(
             "src.app.services.abst_chat.AbstractChat._detect_past_message_ref",
             return_value={"REF_TO_PAST": "false", "CONFIDENCE": "0.9"},
