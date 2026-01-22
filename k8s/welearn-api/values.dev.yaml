@@ -5,7 +5,7 @@ config:
   nonSensitive:
     PG_HOST: dev-lab-projects-backend.postgres.database.azure.com
     TIKA_URL_BASE: https://tika.k8s.lp-i.dev/
-    DATA_COLLECTION_HOST_PREFIX: welearn
+    DATA_COLLECTION_ORIGIN_PREFIX: welearn
 allowedHostsRegexes:
   mainUrl: |-
     https:\/\/welearn\.k8s\.lp-i\.dev

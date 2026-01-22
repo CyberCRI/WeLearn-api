@@ -22,7 +22,7 @@ class TestDataCollectionCampaignState(unittest.TestCase):
         mock_campaign.is_active = True
         mock_get_campaign.return_value = mock_campaign
 
-        dc = DataCollection(host="workshop.example.com")
+        dc = DataCollection(origin="workshop.example.com")
 
         self.assertTrue(dc.should_collect)
 
@@ -32,17 +32,17 @@ class TestDataCollectionCampaignState(unittest.TestCase):
         mock_campaign.is_active = False
         mock_get_campaign.return_value = mock_campaign
 
-        dc = DataCollection(host="workshop.example.com")
+        dc = DataCollection(origin="workshop.example.com")
 
         self.assertFalse(dc.should_collect)
 
     @patch("src.app.services.data_collection.get_current_data_collection_campaign")
-    def test_non_workshop_host(self, mock_get_campaign):
+    def test_non_workshop_origin(self, mock_get_campaign):
         mock_campaign = MagicMock()
         mock_campaign.is_active = True
         mock_get_campaign.return_value = mock_campaign
 
-        dc = DataCollection(host="example.com")
+        dc = DataCollection(origin="example.com")
 
         self.assertFalse(dc.should_collect)
 
@@ -74,7 +74,7 @@ class TestRegisterChatData(unittest.IsolatedAsyncioTestCase):
         mock_write_query.return_value = conversation_id
         mock_write_answer.return_value = message_id
 
-        dc = DataCollection(host="workshop.example.com")
+        dc = DataCollection(origin="workshop.example.com")
 
         result = await dc.register_chat_data(
             session_id=str(uuid.uuid4()),
@@ -95,7 +95,7 @@ class TestRegisterChatData(unittest.IsolatedAsyncioTestCase):
     @patch("src.app.services.data_collection.get_user_from_session_id")
     @patch("src.app.services.data_collection.get_current_data_collection_campaign")
     async def test_register_chat_data_no_session(self, *args):
-        dc = DataCollection(host="workshop.example.com")
+        dc = DataCollection(origin="workshop.example.com")
 
         with self.assertRaises(HTTPException) as ctx:
             await dc.register_chat_data(
@@ -119,7 +119,7 @@ class TestRegisterChatData(unittest.IsolatedAsyncioTestCase):
     async def test_register_chat_data_user_not_found(self, mock_campaign, _, __):
         mock_campaign.return_value = MagicMock(is_active=True)
 
-        dc = DataCollection(host="workshop.example.com")
+        dc = DataCollection(origin="workshop.example.com")
 
         with self.assertRaises(HTTPException) as ctx:
             await dc.register_chat_data(
@@ -144,7 +144,7 @@ class TestRegisterDocumentClick(unittest.IsolatedAsyncioTestCase):
     async def test_register_document_click(self, mock_campaign, mock_update, _):
         mock_campaign.return_value = MagicMock(is_active=True)
 
-        dc = DataCollection(host="workshop.example.com")
+        dc = DataCollection(origin="workshop.example.com")
 
         doc_id = uuid.uuid4()
         message_id = uuid.uuid4()

@@ -83,7 +83,7 @@ class QnATests(unittest.IsolatedAsyncioTestCase):
             response = client.post(
                 f"{settings.API_V1_STR}/qna/chat/answer",
                 json=JSON,
-                headers={"X-API-Key": "test"},
+                headers={"X-API-Key": "test", "origin": "test"},
             )
 
             response_json = response.json()
@@ -97,7 +97,7 @@ class QnATests(unittest.IsolatedAsyncioTestCase):
             response = client.post(
                 f"{settings.API_V1_STR}/qna/chat/answer",
                 json=JSON_NO_HIST,
-                headers={"X-API-Key": "test"},
+                headers={"X-API-Key": "test", "origin": "test"},
             )
 
             chat_mock.assert_called_with(
@@ -140,7 +140,7 @@ class QnATests(unittest.IsolatedAsyncioTestCase):
             response = client.post(
                 f"{settings.API_V1_STR}/qna/chat/answer",
                 json=JSON_NO_HIST,
-                headers={"X-API-Key": "test"},
+                headers={"X-API-Key": "test", "origin": "test"},
             )
             self.assertEqual(response.status_code, 400)
 

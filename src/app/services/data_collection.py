@@ -1,3 +1,4 @@
+import re
 import uuid
 from datetime import datetime, timedelta
 from typing import Any
@@ -25,13 +26,15 @@ settings = get_settings()
 
 
 class DataCollection:
-    def __init__(self, host: str):
+    def __init__(self, origin: str):
         is_campaign_active = self.get_campaign_state()
-        host_settings = settings.DATA_COLLECTION_HOST_PREFIX
-        self.should_collect = host.startswith(host_settings) and is_campaign_active
+        origin_settings = settings.DATA_COLLECTION_ORIGIN_PREFIX.strip()
+
+        self.should_collect = origin.startswith(origin_settings) and is_campaign_active
         logger.info(
-            "data_collection: host_settings=%s, is_campaign=%s, should_collect=%s",
-            host_settings,
+            "data_collection: origin=%s, origin_settings=%s, is_campaign=%s, should_collect=%s",
+            origin,
+            origin_settings,
             is_campaign_active,
             self.should_collect,
         )
@@ -114,7 +117,9 @@ class DataCollection:
 
 
 def get_data_collection_service(request: Request) -> DataCollection:
-    host = request.url.hostname
-    if host is None:
-        return DataCollection(host="")
-    return DataCollection(host=host)
+    origin = request.headers["origin"]
+    stripped_origin = re.sub(r"https?://www\.|https?://", "", origin).strip("/")
+
+    if stripped_origin is None:
+        return DataCollection(origin="")
+    return DataCollection(origin=stripped_origin)
