@@ -116,7 +116,7 @@ class DataCollection:
 
 
 def get_data_collection_service(request: Request) -> DataCollection:
-    host = request.url.hostname
+    host = request.headers["origin"]
     print(f"Request host: {host}")
     print("Request base URL:", request.base_url)
     if host is None:
