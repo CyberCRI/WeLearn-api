@@ -5,6 +5,7 @@ from typing import Any
 from fastapi import HTTPException, Request, status
 from fastapi.concurrency import run_in_threadpool
 
+from src.app.api.dependencies import get_settings
 from src.app.models.documents import Document
 from src.app.services.sql_db.queries import (
     get_current_data_collection_campaign,
@@ -19,11 +20,21 @@ logger = utils_logger(__name__)
 
 _cache: dict[str, Any] = {"is_campaign_active": None, "expires": None}
 
+# get from setting the starts with string
+settings = get_settings()
+
 
 class DataCollection:
     def __init__(self, host: str):
-        is_campaign_ = self.get_campaign_state()
-        self.should_collect = host.startswith("workshop") and is_campaign_
+        is_campaign_active = self.get_campaign_state()
+        host_settings = settings.DATA_COLLECTION_HOST_PREFIX
+        self.should_collect = host.startswith(host_settings) and is_campaign_active
+        logger.info(
+            "data_collection: host_settings=%s, is_campaign=%s, should_collect=%s",
+            host_settings,
+            is_campaign_active,
+            self.should_collect,
+        )
 
     def get_campaign_state(
         self,
@@ -37,7 +48,7 @@ class DataCollection:
         campaign = get_current_data_collection_campaign()
 
         _cache["is_campaign_active"] = campaign and campaign.is_active
-        _cache["expires"] = now + timedelta(hours=24)
+        _cache["expires"] = now + timedelta(hours=6)
 
         return _cache["is_campaign_active"]
 
@@ -51,8 +62,10 @@ class DataCollection:
     ) -> tuple[uuid.UUID | None, uuid.UUID | None]:
 
         if not self.should_collect:
-            logger.info("Data collection is not enabled.")
+            logger.info("data_collection is not enabled.")
             return None, None
+
+        logger.info("data_collection is enabled. Registering chat data.")
 
         if not session_id:
             raise HTTPException(
@@ -92,8 +105,10 @@ class DataCollection:
         message_id: uuid.UUID,
     ) -> None:
         if not self.should_collect:
-            logger.info("Data collection is not enabled.")
+            logger.info("data_collection is not enabled.")
             return
+
+        logger.info("data_collection is enabled. Registering document click.")
 
         await run_in_threadpool(update_returned_document_click, doc_id, message_id)
 

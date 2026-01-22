@@ -20,6 +20,7 @@ class Settings(BaseSettings):
     """
 
     BACKEND_CORS_ORIGINS_REGEX: str = CLIENT_ORIGINS_REGEX
+    DATA_COLLECTION_HOST_PREFIX: str
 
     def get_api_version(self, cls):
         return {
