@@ -119,7 +119,7 @@ class DataCollection:
 def get_data_collection_service(request: Request) -> DataCollection:
     origin = request.headers["origin"]
     stripped_origin = re.sub(r"https?://www\.|https?://", "", origin).strip("/")
-    print(f"Request host: {stripped_origin}")
+
     if stripped_origin is None:
         return DataCollection(origin="")
     return DataCollection(origin=stripped_origin)
