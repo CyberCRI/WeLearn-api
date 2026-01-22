@@ -27,10 +27,12 @@ settings = get_settings()
 class DataCollection:
     def __init__(self, host: str):
         is_campaign_active = self.get_campaign_state()
-        host_settings = settings.DATA_COLLECTION_HOST_PREFIX
+        host_settings = settings.DATA_COLLECTION_HOST_PREFIX.strip()
+
         self.should_collect = host.startswith(host_settings) and is_campaign_active
         logger.info(
-            "data_collection: host_settings=%s, is_campaign=%s, should_collect=%s",
+            "data_collection: host=%s, host_settings=%s, is_campaign=%s, should_collect=%s",
+            host,
             host_settings,
             is_campaign_active,
             self.should_collect,
@@ -115,6 +117,8 @@ class DataCollection:
 
 def get_data_collection_service(request: Request) -> DataCollection:
     host = request.url.hostname
+    print(f"Request host: {host}")
+    print("Request base URL:", request.base_url)
     if host is None:
         return DataCollection(host="")
     return DataCollection(host=host)
