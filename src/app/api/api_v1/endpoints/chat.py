@@ -1,8 +1,9 @@
 from typing import Dict, Optional, cast
+from uuid import UUID
 
 import backoff
 import psycopg
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Request, status
 from fastapi.responses import StreamingResponse
 from langchain_core.messages import ToolMessage
 from langgraph.checkpoint.postgres.aio import AsyncPostgresSaver
@@ -14,6 +15,7 @@ from src.app.api.dependencies import get_settings
 from src.app.models import chat as models
 from src.app.services.abst_chat import get_chat_service
 from src.app.services.constants import subjects as subjectsDict
+from src.app.services.data_collection import get_data_collection_service
 from src.app.services.exceptions import (
     EmptyQueryError,
     InvalidQuestionError,
@@ -225,7 +227,7 @@ async def q_and_a_rephrase_stream(
     "/chat/answer",
     summary="Chat Answer",
     description="This endpoint is used to get the answer to the user's query based on the provided context and history",
-    response_model=str,
+    response_model=dict[str, str | UUID | None],
 )
 @backoff.on_exception(
     wait_gen=backoff.expo,
@@ -237,8 +239,11 @@ async def q_and_a_rephrase_stream(
     factor=2,
 )
 async def q_and_a_ans(
-    body: models.ContextOut = Depends(get_params), chatfactory=Depends(get_chat_service)
-) -> Optional[str]:
+    request: Request,
+    body: models.ContextOut = Depends(get_params),
+    chatfactory=Depends(get_chat_service),
+    data_collection=Depends(get_data_collection_service),
+) -> dict[str, str | UUID | None] | None:
     """_summary_
 
     Args:
@@ -250,6 +255,8 @@ async def q_and_a_ans(
         str: openai chat completion content
     """
 
+    session_id = request.headers.get("X-Session-ID")
+
     try:
         content = await chatfactory.chat_message(
             query=body.query,
@@ -257,7 +264,20 @@ async def q_and_a_ans(
             docs=body.sources,
             subject=subjectsDict.get(body.subject, None),
         )
-        return cast(str, content)
+
+        conversation_id, message_id = await data_collection.register_chat_data(
+            session_id=session_id,
+            user_query=body.query,
+            conversation_id=body.conversation_id,
+            answer_content=content,
+            sources=body.sources,
+        )
+
+        return {
+            "message_id": message_id,
+            "answer": content,
+            "conversation_id": conversation_id,
+        }
     except LanguageNotSupportedError as e:
         bad_request(message=e.message, msg_code=e.msg_code)
 

@@ -2,7 +2,6 @@
 
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Response
 from fastapi.concurrency import run_in_threadpool
-from qdrant_client.models import ScoredPoint
 
 from src.app.models.documents import Document
 from src.app.models.search import (
@@ -84,7 +83,7 @@ async def get_nb_docs() -> dict[str, int]:
     "/collections/{collection}",
     summary="search documents in a specific collection",
     description="Search documents in a specific collection",
-    response_model=list[ScoredPoint] | str | None,
+    response_model=list[Document] | str | None,
 )
 async def search_doc_by_collection(
     background_tasks: BackgroundTasks,
@@ -127,7 +126,7 @@ async def search_doc_by_collection(
     "/by_slices",
     summary="search all slices",
     description="Search slices in all collections or in collections specified",
-    response_model=list[ScoredPoint] | None | str,
+    response_model=list[Document] | None | str,
 )
 async def search_all_slices_by_lang(
     background_tasks: BackgroundTasks,
@@ -158,7 +157,7 @@ async def search_all_slices_by_lang(
     "/multiple_by_slices",
     summary="search all slices",
     description="Search slices in all collections or in collections specified",
-    response_model=list[ScoredPoint] | None,
+    response_model=list[Document] | None,
 )
 async def multi_search_all_slices_by_lang(
     background_tasks: BackgroundTasks,
@@ -186,7 +185,7 @@ async def multi_search_all_slices_by_lang(
     "/by_document",
     summary="search all documents",
     description="Search by documents, returns only one result by document id",
-    response_model=list[ScoredPoint] | None | str,
+    response_model=list[Document] | None | str,
 )
 async def search_all(
     background_tasks: BackgroundTasks,

@@ -22,6 +22,7 @@ class ContextOut(BaseModel):
     history: list[dict] = []
     query: str
     subject: str | None = Field(None)
+    conversation_id: uuid.UUID | None = Field(None)
 
 
 class Role(Enum):
@@ -69,6 +70,11 @@ class AgentContext(SDGFilter):
 class AgentResponse(BaseModel):
     content: str | None = None
     docs: list[ScoredPoint] | None = None
+
+
+class UserQueryMetadata(BaseModel):
+    conversation_id: uuid.UUID
+    message_id: uuid.UUID
 
 
 PROMPTS = Literal["STANDALONE", "NEW_QUESTIONS", "REPHRASE"]

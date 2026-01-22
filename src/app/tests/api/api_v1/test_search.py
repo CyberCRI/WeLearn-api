@@ -1,3 +1,4 @@
+import uuid
 from types import SimpleNamespace
 from unittest import IsolatedAsyncioTestCase, mock
 from unittest.mock import patch
@@ -7,6 +8,7 @@ from qdrant_client.http import models
 
 from src.app.core.config import settings
 from src.app.models import collections
+from src.app.models.documents import Document, DocumentPayloadModel
 from src.app.models.search import EnhancedSearchQuery
 from src.app.services.exceptions import CollectionNotFoundError, ModelNotFoundError
 from src.app.services.search import SearchService, sort_slices_using_mmr
@@ -78,11 +80,74 @@ mocked_scored_points = [
     ),
 ]
 
+mocked_documents = [
+    Document(
+        score=0.9,
+        payload=DocumentPayloadModel(
+            document_corpus="corpus",
+            document_desc="desc",
+            document_details={},
+            document_id=uuid.UUID("12345678-1234-5678-1234-567812345678"),
+            document_lang="fr",
+            document_sdg=[1],
+            document_title="title",
+            document_url="url",
+            slice_content="content",
+            slice_sdg=1,
+        ),
+    ),
+    Document(
+        score=0.89,
+        payload=DocumentPayloadModel(
+            document_corpus="corpus",
+            document_desc="desc",
+            document_details={},
+            document_id=uuid.UUID("12345678-1234-5678-1234-567812345678"),
+            document_lang="fr",
+            document_sdg=[1],
+            document_title="title",
+            document_url="url",
+            slice_content="content",
+            slice_sdg=1,
+        ),
+    ),
+    Document(
+        score=0.88,
+        payload=DocumentPayloadModel(
+            document_corpus="corpus",
+            document_desc="desc",
+            document_details={},
+            document_id=uuid.UUID("12345678-1234-5678-1234-567812345678"),
+            document_lang="fr",
+            document_sdg=[1],
+            document_title="title",
+            document_url="url",
+            slice_content="content",
+            slice_sdg=1,
+        ),
+    ),
+    Document(
+        score=0.88,
+        payload=DocumentPayloadModel(
+            document_corpus="corpus",
+            document_desc="desc",
+            document_details={},
+            document_id=uuid.UUID("78901234-5678-9012-3456-789012345678"),  # UUID
+            document_lang="fr",
+            document_sdg=[1],
+            document_title="title",
+            document_url="url",
+            slice_content="content",
+            slice_sdg=1,
+        ),
+    ),
+]
+
 
 long_query = "français with a very long sentence to test what you are saying and if the issue is the size of the string"  # noqa: E501
 
 
-@patch("src.app.services.sql_service.session_maker")
+@patch("src.app.services.sql_db.sql_service.session_maker")
 @mock.patch(
     "src.app.services.security.check_api_key_sync",
     new=mock.MagicMock(return_value=True),
@@ -127,7 +192,7 @@ class SearchTests(IsolatedAsyncioTestCase):
 
     @patch(
         f"{search_pipeline_path}.search_handler",
-        new=mock.AsyncMock(return_value=mocked_scored_points),
+        new=mock.AsyncMock(return_value=mocked_documents),
     )
     async def test_search_items_success(self, *mocks):
         with TestClient(app) as client:
@@ -171,7 +236,7 @@ class SearchTests(IsolatedAsyncioTestCase):
             self.assertEqual(response.status_code, 404)
 
 
-@patch("src.app.services.sql_service.session_maker")
+@patch("src.app.services.sql_db.sql_service.session_maker")
 @patch(
     "src.app.services.security.check_api_key_sync",
     new=mock.MagicMock(return_value=True),
@@ -196,7 +261,7 @@ class SearchTestsSlices(IsolatedAsyncioTestCase):
             )
             self.assertEqual(response.status_code, 404)
 
-    @patch(f"{search_pipeline_path}.search_handler", return_value=mocked_scored_points)
+    @patch(f"{search_pipeline_path}.search_handler", return_value=mocked_documents)
     async def test_search_all_slices_ok(self, *mocks):
         with TestClient(app) as client:
             response = client.post(
@@ -239,7 +304,7 @@ class SearchTestsSlices(IsolatedAsyncioTestCase):
             self.assertEqual(response.status_code, 204)
 
 
-@patch("src.app.services.sql_service.session_maker")
+@patch("src.app.services.sql_db.sql_service.session_maker")
 @patch(
     "src.app.services.security.check_api_key_sync",
     new=mock.MagicMock(return_value=True),
@@ -464,7 +529,7 @@ class DocumentsByIdsTests(IsolatedAsyncioTestCase):
         with mock.patch(
             "src.app.api.api_v1.endpoints.search.search_multi_inputs",
         ) as search_multi, mock.patch.object(
-            SearchService, "search_handler", return_value=mocked_scored_points
+            SearchService, "search_handler", return_value=mocked_documents
         ) as search_handler:
             with TestClient(app) as _client:
                 _client.post(

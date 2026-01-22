@@ -24,7 +24,7 @@ from src.app.models.search import (
 from src.app.services.data_quality import DataQualityChecker
 from src.app.services.exceptions import CollectionNotFoundError, ModelNotFoundError
 from src.app.services.helpers import convert_embedding_bytes
-from src.app.services.sql_service import get_subject
+from src.app.services.sql_db.queries import get_subject
 from src.app.utils.decorators import log_time_and_error, log_time_and_error_sync
 from src.app.utils.logger import logger as logger_utils
 

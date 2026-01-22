@@ -165,7 +165,7 @@ class TestRemoveDuplicates(unittest.TestCase):
         self.assertEqual(len(result), 1)
         self.assertListEqual(result, [points[0]])
 
-    @patch("src.app.services.sql_service.wl_sql.session_maker")
+    @patch("src.app.services.sql_db.queries.session_maker")
     def test__log_duplicates_points_in_db(self, mocked_session_maker):
         s_maker = sessionmaker(self.engine)
         mocked_session_maker.return_value = s_maker()

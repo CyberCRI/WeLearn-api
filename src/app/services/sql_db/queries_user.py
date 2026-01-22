@@ -6,7 +6,7 @@ from datetime import datetime, timedelta
 from sqlalchemy.sql import select
 from welearn_database.data.models import Bookmark, InferredUser, Session
 
-from src.app.services.sql_service import session_maker
+from src.app.services.sql_db.sql_service import session_maker
 from src.app.utils.logger import logger as logger_utils
 
 logger = logger_utils(__name__)
@@ -68,6 +68,14 @@ def get_or_create_session_sync(
         s.add(new_session)
         s.commit()
         return new_session.id
+
+
+def get_user_from_session_id(session_id: uuid.UUID) -> uuid.UUID | None:
+    with session_maker() as s:
+        session = s.execute(select(Session).where(Session.id == session_id)).first()
+        if session:
+            return session[0].inferred_user_id
+    return None
 
 
 def get_user_bookmarks_sync(user_id: uuid.UUID) -> list[Bookmark]:
