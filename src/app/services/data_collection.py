@@ -1,4 +1,3 @@
-# a class for the data collection to be saved in the db with a get_data_collection function to be used in depends on routes
 import uuid
 from datetime import datetime, timedelta
 from typing import Any
