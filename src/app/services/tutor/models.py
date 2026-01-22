@@ -26,6 +26,7 @@ class TutorSearchResponse(BaseModel):
 
 class TutorSyllabusRequest(TutorSearchResponse):
     course_title: str | None = None
+    discipline: int | None = None
     level: str | None = None
     duration: str | None = None
     description: str | None = None
@@ -56,6 +57,7 @@ class MessageWithResources(BaseModel):
     lang: str = "en"
     content: list[ExtractorOutput] | str
     course_title: str | None = None
+    discipline: int | None = None
     level: str | None = None
     duration: str | None = None
     description: str | None = None

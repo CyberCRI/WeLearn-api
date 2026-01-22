@@ -1,4 +1,5 @@
 import time
+import json
 from pathlib import Path
 
 from langchain_core.language_models import BaseChatModel
@@ -13,6 +14,11 @@ logger = utils_logger(__name__)
 
 # TODO: add template file move this to utils
 TEMPLATES = {"template0": Path("src/app/services/tutor/template.md").read_text()}
+
+with open(
+    "src/app/services/tutor/disciplinary_skills.json", "r", encoding="utf-8"
+) as f:
+    DISCIPLINARY_SKILLS = {d["code_rncp"]: d["skills"] for d in json.load(f)["disciplines"]}
 
 
 class TutorChatAgent:
@@ -67,6 +73,7 @@ class UniversityTeacherAgent(TutorChatAgent):
             f"The syllabus should be written in lang: {message.lang} the section names must also be written in {message.lang}, this is important \n\nTEXT CONTENTS:\n{contents}\n\n"
             f"THEMES:\n{themes} \n\nTake into account the users input courses title, level, duration and "
             f"description: {message.course_title}, {message.level}, {message.duration}, {message.description}."
+            f"{'\n\nThe syllabus should also contribute to build the following disciplinary skills:'+('\n- '.join(DISCIPLINARY_SKILLS[message.discipline])) if message.discipline in DISCIPLINARY_SKILLS.keys() else ''}"
         )
         response = await self.run(prompt)
         return SyllabusResponseAgent(content=response, source=self.name)

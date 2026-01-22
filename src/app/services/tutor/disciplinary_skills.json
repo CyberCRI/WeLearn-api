@@ -1,0 +1,958 @@
+{
+    "disciplines": [
+        {
+            "code_rncp": 38184,
+            "title": "Administration publique (LAP)",
+            "skills":
+            [
+                "S’appuyer sur les aspects fondamentaux de l'organisation et des compétences des administrations de l'État, des collectivités territoriales et de sécurité sociale y compris dans leurs liens avec l'Union européenne pour analyser un texte administratif",
+                "Produire des synthèses et analyses sur l'administration publique, en mobilisant les concepts issus des sciences sociales et d’une culture administrative générale, dans une forme rédactionnelle attendue dans le domaine de l'administration publique",
+                "Identifier et définir les besoins d’une administration publique",
+                "Développer une argumentation mobilisant des compétences rédactionnelles et d’expression orale avec esprit critique",
+                "Situer les principales politiques publiques dans une perspective historique nationale et territoriale",
+                "Identifier les bases juridiques, financières et économiques du fonctionnement et de l'activité des administrations publiques"
+            ]
+        },
+        {
+            "code_rncp": 38186,
+            "title": "Droit",
+            "skills":
+            [
+                "Identifier et mobiliser les sources adéquates en vue de résoudre une problématique juridique",
+                "Utiliser l’ensemble des outils juridiques",
+                "Saisir l’histoire, l’esprit et la finalité de la règle de droit",
+                "Evaluer la légitimité, l’effectivité et l’efficacité de la règle de droit",
+                "Employer le vocabulaire juridique approprié",
+                "Identifier les règles/procédures et les distinguer d’autres règles/processus",
+                "Qualifier juridiquement les données d’un problème ou d’une situation",
+                "Formuler la problématique d’un sujet (d’une situation soumise) de façon intelligible et concise",
+                "Déterminer les règles applicables",
+                "Articuler plusieurs règles applicables",
+                "Restituer des connaissances juridiques, de façon structurée et en les contextualisant, y compris d’un point de vue historique",
+                "Lire et analyser les textes juridiques, décisions et arrêts rendus par les différentes juridictions",
+                "Comprendre le sens, la valeur et la portée d’un texte ou d’une décision de justice",
+                "Interpréter la règle de droit en utilisant les techniques du raisonnement juridique et en mesurant les implications pratiques et éthiques des interprétations possibles",
+                "Appréhender les mouvements et les évolutions de la production, de l’acceptation et de la sanction de la règle de droit",
+                "Identifier sa place en tant qu’acteur et sujet actif/passif de la règle de droit",
+                "Acquérir des connaissances pertinentes dans des domaines extra-juridiques",
+                "Adapter sa réflexion juridique en fonction des contraintes de l’environnement",
+                "Analyser les mécanismes institutionnels et faits sociaux influant directement les voies du droit, y compris en intégrant une dimension historique",
+                "Intégrer la nature compromissoire de la règle de droit",
+                "Déterminer les outils de négociation et de résolution des conflits",
+                "Maîtriser l’organisation de la justice et identifier les différentes institutions et juridictions",
+                "Comprendre la genèse d’une règle de droit pour en apprécier les avantages et les risques",
+                "Identifier les enjeux historiques et contemporains de la citoyenneté et de la démocratie",
+                "Identifier et définir un besoin dans un contexte juridique",
+                "Organiser une veille juridique",
+                "Utiliser les outils numériques juridiques de référence pour acquérir, traiter, produire et diffuser de l’information",
+                "Analyser et synthétiser des données en vue de leur exploitation argumenter ou répondre à une question juridique",
+                "Identifier et sélectionner diverses ressources spécialisées pour documenter un sujet juridique",
+                "Développer une argumentation juridique avec esprit critique (oral + écrit)"
+            ]
+        },
+        {
+            "code_rncp": 39017,
+            "title": "Économie",
+            "skills":
+            [
+                "Utiliser des méthodes de calcul économique et de statistiques descriptives",
+                "Manipuler les outils informatiques de traitement (quantitatif et / ou qualitatif) des données",
+                "Collecter, traiter l’information socioéconomique, interpréter les résultats et en tirer des préconisations pour la prise de décision",
+                "Identifier et comprendre les principaux concepts de l'économie (micro-économie, macro-économie, monnaie et finance, politique économique)",
+                "Mobiliser ces concepts pour l'étude et l'interprétation de documents économiques.",
+                "Utiliser ces concepts pour décrypter des contextes socioéconomiques variés, identifier les problématiques et éclairer la décision dans les organisations",
+                "Appréhender l’entreprise dans son environnement économique et social",
+                "Identifier les enjeux de la politique et de la régulation économique",
+                "Etre en mesure de raisonner dans un cadre économique international"
+            ]
+        },
+        {
+            "code_rncp": 39018,
+            "title": "Économie et gestion",
+            "skills":
+            [
+                "Identifier et comprendre les principaux concepts de la gestion des organisations",
+                "Mobiliser ces concepts dans le cadre des analyses en comptabilité, finance, marketing, stratégie, gestion des ressources humaines, systèmes d'information.",
+                "Identifier et comprendre les principaux concepts de l'économie (micro-économie, macro-économie, monnaie et finance, politique économique)",
+                "Mobiliser ces concepts pour l'étude et l'interprétation de documents économiques.",
+                "Utiliser les méthodes et techniques de la gestion courante des organisations pour préparer et mettre en œuvre des décisions des organisations.",
+                "Observer, décrire et évaluer la mise en œuvre par une organisation des principes managériaux fondamentaux.",
+                "Collecter, traiter l'information socioéconomique, interpréter les résultats et en tirer des préconisations pour la prise de décision",
+                "Utiliser des méthodes simples de calcul économique et de statistiques descriptives"
+            ]
+        },
+        {
+            "code_rncp": 35924,
+            "title": "Gestion",
+            "skills":
+            [
+                "Comprendre l’éco-système du monde des affaires et en assurer une veille, tant sur les plans géopolitiques, sociologiques, économiques que managériaux, etc.",
+                "Anticiper les futurs possibles du monde des affaires afin d’en détecter les menaces, les opportunités, les tendances, les risques possibles, etc.",
+                "Appliquer des techniques et outils en gestion",
+                "Contrôler le respect des règles, pratiques, normes, etc.",
+                "Recueillir et exploiter les données afin de les analyser",
+                "Comprendre les contours d’un projet, d’une affaire, d’une organisation, etc.",
+                "Définir des plans d’actions opérationnels et les mettre en œuvre en favorisant les innovations managériales"
+            ]
+        },
+        {
+            "code_rncp": 35923,
+            "title": "Administration économique et sociale",
+            "skills":
+            [
+                "Comprendre l’éco-système du monde juridique, économique et des sciences sociales et en assurer une veille afin d’en mesurer les impacts sur l’administration publique.","Anticiper les futurs possibles du monde juridiques, économique et des sciences sociales afin d’en détecter les menaces, les opportunités, les tendances, les risques possibles, etc.",
+                "Appliquer des techniques, outils et méthodes et langages fondamentaux (techniques quantitatives et informatiques) appliquées aux sciences sociales.",
+                "Contrôler le respect des règles, pratiques, normes, etc.",
+                "Recueillir et exploiter les données afin de les analyser et appliquer les méthodes nécessaires à la passation des concours administratifs tant à l’écrit qu’à l’oral.","Comprendre les fonctions d'une organisation publique ou privée et ses relations avec l'ensemble de ses parties prenantes.",
+                "Définir des plans d’actions opérationnels et les mettre en œuvre en favorisant les innovations managériales"
+            ]
+        },
+        {
+            "code_rncp": 38183,
+            "title": "Science politique",
+            "skills":
+            [
+                "Réaliser des enquêtes de terrain et de diagnostic de situation en y investissant des connaissances de science politique",
+                "Produire des analyses à partir de données qualitatives (entretiens, observations ethnographiques, archives) et quantitatives (sondages, enquêtes quantitatives) en fonction du contexte et de la demande",
+                "Rechercher, collecter et synthétiser des informations sur les questions sociales et politiques à partir de différents supports, en repérant et restituant les sources et statuts des données utilisées",
+                "Identifier au sein d’un document les différentes formes et manifestations du politique dans une perspective pluridisciplinaire et réflexive",
+                "Connaître et repérer les acteurs politiques, administratifs et sociaux aux échelles locales, nationales et supranationales",
+                "Identifier et spécifier les caractéristiques sociales, économiques, politiques et culturelles des grandes aires géoculturelles",
+                "Analyser / produire une analyse pratique et théorique de ces formes et manifestations en mobilisant les concepts et méthodes  appropriées propres à la science politique",
+                "Rendre compte des réalités et pratiques des politiques publiques, de l’action des organisations, des groupements et mouvements politiques, syndicaux et associatifs sur un plan local, national et international",
+                "Rédiger une grande variété de documents écrits (notes et articles de synthèse, comptes rendus d'entretien et d'observation, dossiers thématiques, articles, etc.)",
+                "Prendre part à la formulation des stratégies d’action et des propositions opérationnelles, en particulier en matière d’appui décisionnel, de lobbying et de représentation"
+            ]
+        },
+        {
+            "code_rncp": 39696,
+            "title": "Sciences sanitaires et sociales",
+            "skills":
+            [
+                "Caractériser et analyser des situations, des phénomènes sociaux ou des publics spécifiques en mettant en œuvre les méthodes d'enquête en sciences sociales.",
+                "Analyser une situation en appliquant des connaissances théoriques dans des situations observées.",
+                "Interpréter et répondre à une demande de nature sociale et/ou sanitaire en mettant en œuvre les méthodes d’enquête des sciences sociales.",
+                "Rendre compte d’un problème sanitaire et social en prenant de la distance avec les prénotions et en élargissant le champ de la réflexion, et proposer des diagnostics.",
+                "Identifier un questionnement relatif aux problématiques sanitaires et sociales en caractérisant les institutions, les acteurs, l’environnement juridique, les spécificités et les évolutions des structures sanitaires et sociales, pour élaborer des réponses en fonction de ces caractéristiques et pour situer l’action sanitaire et sociale dans son contexte.",
+                "Examiner des problèmes relatifs aux enjeux sanitaires et sociaux en mobilisant des données sociales, sanitaires et démographiques, et de la statistique publique.",
+                "Réaliser un travail documentaire et/ou bibliographique sur un objet de recherche.",
+                "Analyser des problématiques sanitaires et/ou sociales au sein d’un collectif, en mettant en perspective les savoirs fondamentaux des disciplines de référence (santé publique, sociologie, démographie, économie, gestion, sciences de l'éducation, psychologie, droit, histoire, anthropologie, etc.).",
+                "Questionner les demandes de nature sanitaire et/ou sociale et traiter les faits sans parti pris ni jugement de valeur, en mobilisant des concepts et des méthodes.", 
+                "Proposer des diagnostics en prenant en compte la diversité des environnements, des institutions, des acteurs et des bénéficiaires de l’action sanitaire et sociale.",
+                "Participer à la mise en œuvre de techniques d'organisation et d'exécution de l’action sanitaire ou sociale, ainsi qu’à l’usage et au partage d’outils d'évaluation.",
+                "Participer au traitement des situations, des phénomènes sociaux, auprès de publics spécifiques en mettant en œuvre les méthodes d'enquête et d’intervention.",
+                "Réaliser un travail documentaire et/ou bibliographique à partir d’un cas ou d’une situation particulière.", 
+                "Conseiller, en mobilisant les données issues de la recherche (qualitative, quantitative) et de la statistique publique."
+            ]
+        },
+        {
+            "code_rncp": 39697,
+            "title": "Humanités",
+            "skills":
+            [
+                "Analyser de façon critique des sources, textes ou œuvres issus de différentes périodes (ancienne, médiévale, moderne, contemporaine) en les replaçant dans leur contexte (géographique, culturel, historique, politique, social) et en mobilisant des outils conceptuels et des méthodes spécifiques selon les types de sources (sources matérielles, lecture d’images, lecture de documents écrits, lecture d'œuvres littéraires, etc.), dans une perspective à la fois historique et comparatiste",
+                "Interpréter, en les resituant dans leur contexte littéraire et culturel et en mobilisant les différentes disciplines des sciences de l’Antiquité, des textes en grec ancien et en latin, après les avoir lus en langue originale et traduits le cas échéant",
+                "Identifier les phénomènes de transmission et de réception, de l’Antiquité classique à l’époque contemporaine, pour éclairer le sens d’un texte",
+                "Aborder un problème sous plusieurs angles, de façon à en avoir une compréhension plus complète et nuancée, en croisant différentes disciplines de sciences humaines et sociales, dans une perspective pluridisciplinaire ou interdisciplinaire, en capitalisant sur l’approche intégrative des humanités sur les grands enjeux de société (humanités numériques, environnementales, médicales, etc.)",
+                "Décrire et analyser un fait, un concept, un phénomène, en le replaçant dans l’histoire culturelle et l’histoire des idées, et en mobilisant ses connaissances linguistiques, historiques, philosophiques, culturelles, etc., pour mettre en évidence les continuités et les ruptures",
+                "Décrire le fonctionnement des systèmes socio-politiques, de l’Antiquité au monde contemporain, en rendant compte des phénomènes de continuité et de rupture",
+                "Faire émerger des pistes de réflexion nouvelles par la connexion d’idées et de perspectives variées",
+                "Évaluer la fiabilité d'une étude et d’un discours en questionnant l’origine de ses sources, en contrôlant sa rigueur épistémologique, pour lutter contre la désinformation",
+                "Identifier les biais d’un discours en analysant ses conditions de production (auteur, destinataire, époque, contexte, présupposés, etc.), sa visée, sa construction rhétorique, le recours à l’implicite ou à des procédés destinés à orienter l'opinion de l’auditeur ou du lecteur",
+                "Adopter une démarche réflexive sur les nouvelles modalités de production du savoir (notamment par l’intelligence artificielle) et sur les outils de diffusion des informations (web, numérique, réseaux sociaux) et en éclairer les enjeux grâce au recul historique, à la réflexion épistémologique et à l’approche pluridisciplinaire",
+                "Assurer une veille documentaire sur des sujets nécessitant une expertise pluridisciplinaire",
+                "Élaborer des dossiers, rapports, notes de synthèse, comptes rendus, articles sur des sujets multidimensionnels et complexes",
+                "Rédiger des argumentaires, discours, plaidoyers adaptés aux destinataires, en mobilisant son expertise en langue française et dans un style personnel et distinctif",
+                "Assurer une prestation orale (présentation, argumentaire, discours, plaidoyer, animation de débats…) en mobilisant les ressources de la rhétorique",
+                "Concevoir un dispositif de médiatisation et de diffusion d’un sujet complexe, mobilisant plusieurs disciplines de sciences humaines et sociales, en sélectionnant les formats et supports de communication et de diffusion des savoirs les plus adaptés au public visé, notamment à un public non spécialisé"
+            ]
+        },
+        {
+            "code_rncp": 40740,
+            "title": "Histoire",
+            "skills":
+            [
+                "Analyser des documents de diverses natures (écrits, iconographiques, statistiques, archives, manuscrits, rapports de fouilles, lectures de plans, croquis).",
+                "Contextualiser historiquement, en réponse à une commande, un ensemble de documents, d’œuvres ou de sujets d’étude.",
+                "Identifier la forme et la typologie de l’objet de l’étude.",
+                "Décrypter l’iconographie de l’objet de l’étude.",
+                "Repérer l’auteur et les éléments de datation.",
+                "Se questionner sur la subjectivité et les sources de l’auteur.",
+                "S'interroger sur les termes et/ou les représentations utilisés et sur leurs profondeurs historiques.",
+                "Identifier les concepts associés aux différents termes et/ou représentations.",
+                "Présenter l’éclairage historique qu’apporte l’objet de l’étude.",
+                "Mobiliser une approche géographique sociale et culturelle pour l'étude de la société.",
+                "Replacer les événements et les processus historiques sur une longue durée et dans une perspective comparatiste.",
+                "Présenter l'intérêt d'un sujet d'étude à l'écrit comme à l'oral.",
+                "Réaliser une enquête à caractère historique à partir d'un sujet donné afin de la résoudre ou d'initier un champ d'étude pour un travail de recherche.",
+                "Définir une méthode adaptée à l’enquête et à la nature de la source.",
+                "Dégager, au travers d’un commentaire, la problématique soulevée par les sources documentaires.",
+                "Constituer une bibliographie pertinente.",
+                "Chercher des sources documentaires complémentaires nécessaires à la résolution de la problématique.",
+                "Construire une problématique et élaborer un plan en lien avec la problématique.",
+                "Collecter des données scientifiques et empiriques de façon méthodique et organisée.",
+                "Produire des écrits de nature variée : dissertation, commentaire de document, note de synthèse, dossier.",
+                "Utiliser les outils spécifiques de l’étude des sources d’information complexes (bibliothèques, ressources numériques, répertoires bibliographiques).",
+                "Classer, référencer ou ajouter un ensemble de documents ou d’objets au sein d’un fonds documentaire ou d’une collection.",
+                "Décrire le document ou l’objet pour nommer ses caractéristiques physiques et intellectuelles.",
+                "Se conformer à la classification en règle.",
+                "Situer le document au sein de la classification.",
+                "Documenter une base de données.",
+                "Identifier les règles spécifiques de conservation.",
+                "Situer la place du document ou de l’objet au sein de la réserve ou de l’espace de stockage.",
+                "Accompagner, en s’appuyant sur sa formation d’historien, un groupe d’apprenants dans le cadre d’une démarche d’apprentissage et de perfectionnement.",
+                "Présenter à l'oral une problématique, une méthode d'enquête et des résultats.",
+                "Réaliser des exposés devant un groupe de façon claire et ordonnée.",
+                "Adapter les actions de médiation à différents publics en prenant en compte leurs besoins spécifiques.",
+                "Concevoir des programmes de médiation en définissant des objectifs, des contenus et des méthodes adaptés."
+            ]
+        },
+        {
+            "code_rncp": 40546,
+            "title": "Histoire de l'art et archéologie",
+            "skills":
+            [
+                "Mobiliser le cadre juridique et institutionnel adéquate du patrimoine et de l’archéologie, en incluant les politiques de conservation, de restauration et de valorisation",
+                "Collaborer avec les différents acteurs impliqués dans un projet patrimonial : conservateurs, archéologues, architectes, restaurateurs, médiateurs culturels, financeurs, partenaires institutionnels et privés",
+                "Contribuer à la recherche de financements publics et privés, en comprenant les mécanismes du mécénat et du partenariat",
+                "Contribuer à l'élaboration du cahier des charges et à la sélection des prestataires",
+                "Participer à la rédaction de dossiers de demande de financement et de subventions",
+                "Intégrer les principes de l'accessibilité et de la responsabilité environnementale dans la conception et la réalisation de projets",
+                "Analyser les besoins et les attentes des différents publics (enfants, jeunes, adultes, familles, personnes en situation de handicap, etc.)",
+                "Définir des objectifs de médiation clairs et pertinents en fonction des publics ciblés et des contenus à valoriser",
+                "Concevoir des outils et des supports de médiation variés (visites guidées, ateliers, expositions, outils numériques, dispositifs audiovisuels, etc.)",
+                "Adapter les contenus et les méthodes pédagogiques aux spécificités de chaque public (niveaux de connaissance, centres d'intérêt, besoins spécifiques) et en prenant en compte la dimension interculturelle dans la conception des actions de médiation",
+                "Animer des visites guidées, des ateliers, des temps d’échange auprès de publics variés",
+                "Communiquer les résultats de la recherche en histoire de l'art et en archéologie à un public large",
+                "Analyser techniquement une œuvre d'art en identifiant les matériaux, les techniques et les modes de fabrication d'une œuvre",
+                "Contextualiser une œuvre d'art en la replaçant dans son contexte historique, social et culturel",
+                "Situer les œuvres dans leur contexte de création, d'usage et de réception",
+                "Identifier les questions de provenance et les enjeux éthiques liés à la circulation des biens culturels",
+                "Organiser des ressources documentaires spécialisées, (sites, bases de données, ressources numériques, archives) ainsi que les modalités d’accès",
+                "Analyser et interpréter de résultats dans une perspective d’explication théorique",
+                "Prendre en compte la diversité des approches et des méthodes de recherche en histoire de l'art et en archéologie",
+                "Identifier la terminologie descriptive et critique développée en France et à l’étranger pour commenter les productions artistiques et les objets archéologiques, ainsi que l’historique des termes au sein des systèmes des arts"
+            ]
+        },
+        {
+            "code_rncp": 40979,
+            "title": "Géographie et aménagement",
+            "skills":
+            [
+                "Réaliser une enquête à caractère géographique sur sujet donné (enjeux d’environnement et d’aménagement) en vue de répondre à une problématique identifiée ou d'initier un champ d'étude pour un travail de recherche",
+                "Définir une méthode adaptée à la nature de l’enquête à mener en contextualisant les différentes échelles spatiales à convoquer",
+                "Collecter des données scientifiques et empiriques de façon méthodique et organisée",
+                "Constituer une bibliographie pertinente",
+                "Analyser des documents de diverses natures (statistiques, textes, cartographiques, croquis, documents de planification…)",
+                "Construire une problématique en mobilisant une réflexion théorique et critique intégrant la complexité des enjeux attachés à un territoire et élaborer un plan en lien avec la problématique",
+                "Produire des écrits de nature variée : dissertation, cartographies, statistiques, commentaire de document, note de synthèse, dossier",
+                "Présenter l’intérêt du sujet à l’écrit comme à l’oral et discuter avec ses pairs sur les choix, les questions et les critiques soulevés par ce travail",
+                "Collecter, traiter et analyser les informations sur le climat, la topographie, les conditions du sol et le contexte écologique et paysager d'un site, afin de développer des outils d’aide à la décision basés sur ces données",
+                "Interpréter les données d’un site (topographie, hydrologie, occupation des sols) et les visualiser, facilitant ainsi le diagnostic à l’échelle du territoire en utilisant les outils de cartographie et des logiciels de cartographie",
+                "Collecter les informations pertinentes et les mobiliser dans les projets territoriaux en utilisant un système d’information géographique (SIG) pour créer des représentations interactives facilitant la communication et la prise de décision",
+                "Concevoir et mettre en œuvre des enquêtes qualitatives auprès des décideurs et usagers d’un territoire",
+                "Analyser les dynamiques d’un territoire pour comprendre les stratégies des acteurs publics et privés en mobilisant des données et des outils des sciences humaines",
+                "Mettre en perspective les besoins des usagers, les spécificités d’un territoire et la complexité des enjeux dans une perspective de développement durable pour apporter un conseil auprès des décideurs",
+                "Identifier les parties prenantes à intégrer au projet (acteurs locaux, institutionnels, etc.)",
+                "Concevoir des projets partenariaux avec les différentes parties prenantes en mettant en œuvre des outils de participation (ateliers, consultations, jeux de rôle…)",
+                "Concrétiser un projet de développement territorial en synthétisant l’ensemble des études et données disponibles, notamment sur les politiques publiques existantes et les éléments de prospective au regard des attentes des parties prenantes et des objectifs de développement durable",
+                "Planifier les étapes d’un projet afin de répondre aux attentes du commanditaire et au regard des moyens disponibles à mobilier et des contraintes identifiées"
+            ]
+        },
+        {
+            "code_rncp": 39694,
+            "title": "Sociologie",
+            "skills":
+            [
+                "Analyser une question et construire une problématique et des propositions d’action en mobilisant les principales théories sociologiques.",
+                "Réaliser et interpréter des enquêtes de terrain en mobilisant les principales théories et outils sociologiques en articulation avec d’autres domaines des Sciences Humaines et Sociales.",
+                "Analyser, en faisant preuve d'esprit scientifique, le fonctionnement des sociétés contemporaines ou anciennes, proches ou lointaines.",
+                "Réaliser un travail documentaire et/ou bibliographique sur un objet de recherche.",
+                "Exploiter les données issues de la statistique et de la recherche publiques.",
+                "Définir et affiner une problématique et une méthodologie d’enquête sociologique ajustées à une commande.",
+                "Construire un protocole d’observation, rédiger un compte rendu d'observation, analyser les données produites.",
+                "Participer à la construction et à la mise en œuvre d’une enquête par questionnaire (élaboration, passation, exploitation des questionnaires, maîtrise de logiciels nécessaires à cet effet, analyse des données produites).",
+                "Participer à la construction et à la mise en œuvre d’une enquête par entretiens (élaboration d’une grille d’entretien, conduite de l’entretien, exploitation des données produites).",
+                "Établir une relation régulière et une interaction avec différents interlocuteurs (bilans réguliers sur l’avancement du travail réalisé).",
+                "Construire et présenter un rapport complet et synthétique issu de son enquête.",
+                "Repérer des situations problématiques sur le terrain comme au niveau institutionnel, participer aux diagnostics des problèmes repérés.",
+                "Repérer des situations problématiques et proposer, au sein d’une équipe pluridisciplinaire, une analyse et un plan d’action.",
+                "Écouter et dialoguer avec différents publics en situation ordinaire ou de vulnérabilité, recevoir des témoignages en en garantissant la confidentialité.",
+                "Animer des groupes et collectifs aux profils et caractéristiques variés en mettant en œuvre les méthodes et outils propres à la sociologie.",
+                "Identifier et mettre en relation des interlocuteurs pour favoriser une approche collective des problématiques.",
+                "Conseiller en prenant en compte la situation des personnes, des institutions, des groupes.",
+                "Réaliser et communiquer des bilans réguliers sur l’avancement d’un travail, auprès de différents commanditaires, partenaires, décideurs."
+            ]
+        },
+        {
+            "code_rncp": 39023,
+            "title": "Psychologie",
+            "skills":
+            [
+                "Situer les apports de la psychologie dans le champ des Sciences humaines et sociales et des Sciences de la vie",
+                "Situer et articuler les apports des sous- disciplines de la psychologie pour l’analyse de l’activité humaine.",
+                "Situer et articuler les apports des grandes approches théoriques de la psychologie pour expliquer les activités et les états d'un individu ou d’un groupe dans une perspective plurielle",
+                "Rendre compte de la diversité des pratiques professionnelles des psychologues à travers notamment la connaissance des terrains.",                   
+                "Rendre compte du caractère pluridisciplinaire des activités du psychologue",
+                "Caractériser et expliquer les aspects normaux et pathologiques du fonctionnement psychique et des activités d'un individu",
+                "Caractériser et expliquer les fonctionnements cognitif, affectif, conatif et neurocognitif normaux et pathologiques organisant les activités d'un individu",
+                "Caractériser et expliquer l'évolution des activités d'un individu tout au long de sa vie en tenant compte de son exposition à des facteurs de vulnérabilité développementale",
+                "Caractériser et expliquer les influences réciproques entre les activités d'un individu et son environnement social",
+                "Mobiliser des démarches scientifiques allant de l’analyse  à la production des connaissances en psychologie et identifier les processus de production, de diffusion et de valorisation des savoirs en psychologie",
+                "Utiliser les démarches d’évaluation et d’intervention, utiliser les méthodes (méthode expérimentale, clinique), les techniques (entretiens, enquête, observations) et les outils (questionnaires, échelles, tests) de recueil de données",
+                "Utiliser les techniques d’analyses quantitative (statistiques) et qualitative (de contenu, dynamique des interactions, etc.) de données issues de questionnaires, d’entretiens, d’observations, de tests, etc.",
+                "Mettre en œuvre une démarche de recherche ou d’intervention de terrain",
+                "Utiliser des ressources documentaires et développer une argumentation sur la base de théories et d’études préexistantes,",
+                "Fixer les objectifs et la problématique d’une étude, proposer des hypothèses, et mettre en œuvre les méthodes adéquates de recueil et d’analyses de données, et en discuter les implications.",
+                "Interagir avec les publics et les professionnels dans le respect du code de déontologie des psychologues, de l’éthique de la recherche et de la législation concernant spécifiquement les psychologues",
+                "Interaction avec autrui : savoir développer sa posture professionnelle, avoir une écoute bienveillante, adapter sa façon de communiquer dans sa relation à autrui, adopter une attitude réflexive, savoir identifier des vulnérabilités et des fragilités, reconnaître la souffrance d’autrui, etc.",
+                "Questionner son impact sur les personnes et les environnements sociaux au sein desquels on évolue",
+                "Restituer de façon intelligible ses observations, ses questions, et rendre compte de sa découverte d’une pratique professionnelle"
+            ]
+        },
+        {
+            "code_rncp": 38185,
+            "title": "Sciences de l'éducation et de la formation",
+            "skills":
+            [
+                "Décrire un fait éducatif dans son contexte institutionnel, territorial, historique, politique, économique et culturel",
+                "Mobiliser les principaux concepts de différentes approches, permettant de décrire et d’analyser un fait éducatif",
+                "Analyser des situations éducatives en référence aux concepts et outils du domaine",
+                "Adopter une posture distanciée et critique face à une situation éducative ou formative",
+                "Utiliser les outils et méthodes d’analyse adéquats pour traiter une problématique éducative",
+                "Mettre en œuvre un protocole de recueil et de traitement de données",
+                "Proposer des solutions à des situations problèmes",
+                "Participer à l’élaboration d’un cahier des charges",
+                "Maîtriser et mobiliser les données de la recherche en éducation pour éclairer une problématique",
+                "Situer les acteurs dans leurs contextes, leurs interactions et vis-à-vis des enjeux de ces interactions",
+                "Analyser collectivement des situations d’apprentissage, en référence aux conceptions pédagogiques",
+                "Communiquer, partager les savoirs, notions, concepts, outils, démarches, en usage dans les champs scientifiques et professionnels"
+            ]
+        },
+        {
+            "code_rncp": 40616,
+            "title": "Philosophie",
+            "skills":
+            [
+                "Traiter une question en faisant preuve d'esprit critique et d’autonomie du jugement, et en s’inscrivant dans une perspective de souci de la vérité et d’éthique de la pensée, qui fait droit à la complexité de la réalité, et à la diversité de ses approches.",
+                "Construire un problème à partir d’un sujet, d’une question ou d’un écrit en mobilisant des capacités d’abstraction, de conceptualisation, de théorisation et d’articulation de notions ou concepts issus de la philosophie et des sciences humaines et sociales.",
+                "Situer un problème dans l’histoire de la philosophie et, plus largement, dans l’histoire des idées, des connaissances, des sociétés et des civilisations.",
+                "Analyser une question précise de l’histoire des idées politiques, sociales, culturelles, scientifiques ou morales en mobilisant les connaissances fondamentales de la philosophie et de son histoire, ainsi que différentes disciplines de sciences humaines et sociales",
+                "Élaborer des dossiers, rapports, notes de synthèse, comptes rendus, articles en mobilisant ses capacités de synthèse",
+                "Rédiger des argumentaires, discours, plaidoyers, en mobilisant ses capacités de conceptualisation et d’abstraction, en prenant en compte différents points de vue, en hiérarchisant les idées, en sériant les problèmes et les sous-problèmes, ainsi que les étapes de leur traitement argumenté",
+                "Assurer une prestation orale (présentation, argumentaire, discours, plaidoyer…) adaptée au public",
+                "Analyser et synthétiser diverses ressources spécialisées pour documenter un sujet relevant de la philosophie, de l’épistémologie, de la logique, de l’éthique ou de l’histoire des idées, ou sur les enjeux politiques, sociaux, culturels, scientifiques et éthiques du monde contemporain",
+                "Sélectionner les formats et supports de communication et de diffusion des savoirs les plus adaptés au public visé afin de participer à la médiatisation et à la diffusion de contenus sur des sujets relevant de la philosophie, de l’épistémologie, de la logique, de l’éthique ou et de l’histoire des idées, ou sur les enjeux du monde contemporain",
+                "Animer un débat en faisant preuve d’attitude philosophique en en mettant en œuvre une éthique du dialogue, en prenant en compte différents points de vue et en favorisant l’intelligence collective",
+                "Participer à l’animation d’activités collectives reposant sur l’esprit critique et le dialogue, (débats de confrontation d’idées, ateliers de formation à l’esprit critique…), dans une perspective de participation citoyenne et démocratique"
+            ]
+        },
+        {
+            "code_rncp": 39477,
+            "title": "Théologie",
+            "skills":
+            [
+                "Décrire et analyser en regard les principales évolutions de l’histoire du judaïsme, du christianisme et de l'islam (croyances, doctrines, pratiques, institutions), en lien avec le contexte culturel et sociétal",
+                "Expliquer les principes constitutifs des différentes religions monothéistes (judaïsme, christianisme et islam), et rendre compte de leur évolution",
+                "Analyser un fait, une notion, un problème en les situant dans l'histoire des religions monothéistes",
+                "Analyser de manière critique les textes fondateurs des religions monothéistes (judaïsme, christianisme et islam), en se basant sur la langue originale (en particulier hébreu, grec, latin, arabe), en appliquant les méthodes exégétiques pertinentes, et en rendant compte de la diversité des interprétations possibles d’un même texte ",
+                "Proposer une analyse personnelle d’un texte biblique ou coranique ou de sa réception dans la société et la culture",
+                "Analyser et commenter de manière précise et distanciée des documents ou des discours à caractère théologique, philosophique, historique et religieux, en tenant compte de leur contexte et milieu de production",
+                "Identifier, dans une œuvre (littéraire, artistique, musicale, cinématographique, etc.), des éléments relevant de différentes traditions religieuses, en explicitant ses sources",
+                "Analyser et expliquer la place et le rôle du religieux et des pratiques religieuses dans les sociétés européennes contemporaines, les débats actuels sur le religieux dans la sphère publique et les défis principaux auxquels sont confrontées les institutions ecclésiales et les sociétés contemporaines",
+                "Analyser une question de société ou une situation impliquant le religieux dans ses différentes dimensions (ecclésiale, sociale, éthique, culturelle et institutionnelle), en mobilisant les notions fondamentales d’un ou plusieurs champs disciplinaires de la théologie",
+                "Participer à des actions et des projets impliquant le religieux, l’inter-religieux ou le dialogue entre religion et société",
+                "Expliquer de manière raisonnée son positionnement théologique et les différences avec celui des autres, en contexte ecclésial ou non ecclésial",
+                "Rédiger des documents ayant trait à la théologie, la philosophie et la religion pour différents supports de communication",
+                "Animer des activités ecclésiales ou pastorales en tenant compte des besoins spécifiques des publics et du cadre de la structure d’accueil",
+                "Préparer et dispenser un enseignement de religion et de culture religieuse"
+            ]
+        },
+        {
+            "code_rncp": 39698,
+            "title": "Sciences de l'Homme, anthropologie, ethnologie",
+            "skills":
+            [
+                "Définir une problématique anthropologique et situer la réflexion au sein des débats ethnologiques contemporains et/ou historiques, en mobilisant les principales théories ethnologiques contemporaines",
+                "Identifier et distinguer les caractéristiques sociales, écologiques et culturelles des grandes aires géographiques actuelles ou anciennes",
+                "Identifier, en fonction des réalités culturelles, sociales, écologiques, économiques et politiques, les éléments fondamentaux qui caractérisent l’espèce humaine, son évolution et sa place dans le monde du vivant",
+                "Définir une problématique d’enquête en fonction du travail de terrain",
+                "Établir une relation régulière et une interaction avec différents interlocuteurs (partenaires, publics, collaborateurs)",
+                "Construire un protocole d’observation, un questionnaire ou un entretien, les mettre en œuvre en face à face ou en ligne",
+                "Dépouiller une enquête en utilisant un logiciel de traitement des données",
+                "Transcrire avec rigueur et régularité les enquêtes pour rédiger un compte rendu d'observation et réaliser un rapport complet et synthétique",
+                "Collecter des informations et des documents scientifiques, collecter des données d’archives dans la presse écrite ou audiovisuelle, interpréter les données issues de l’IA",
+                "Rédiger des comptes rendus et des synthèses",
+                "Partager des diagnostics et des bilans dans une démarche projet",
+                "Participer à la collecte d’objets et d’archives privés",
+                "Participer aux inventaires des collections muséographiques",
+                "Contribuer à la recherche de subventions",
+                "Participer à la diffusion de connaissances sous différents médias en l'adaptant au public concerné",
+                "Contribuer à la programmation d'évènements dans le cadre d'une manifestation culturelle (ateliers, visites guidées, débats, etc.)"
+            ]
+        },
+        {
+            "code_rncp": 38692,
+            "title": "Sciences du langage",
+            "skills":
+            [
+                "Identifier et mobiliser les principaux concepts permettant de décrire et d’expliquer le fonctionnement des langues du monde dans un certain nombre de dimensions, et ce dans le cadre d’études diverses, qu’il s’agisse, par exemple, d’un contexte académique (présentation, exposé, analyse d’un corpus) ou professionnel (étude de terrain, étude de contexte, étude des modalités d’apprentissage d’une langue maternelle ou seconde).",
+                "Repérer la diversité de la structure des langues du monde pour en apprécier les similitudes et différences.",
+                "Identifier et décrire les usages langagiers dans leur diversité.",
+                "Recueillir et exploiter des matériaux linguistiques (lexiques, transcriptions, corpus...).",
+                "Identifier et mobiliser les principaux concepts permettant de décrire et d’expliquer le fonctionnement du langage humain dans un certain nombre de dimensions (acquisition, compréhension, production, chez l’enfant comme chez l’adulte), dans le cadre d’études diverses.",
+                "Analyser les données langagières d'une situation de communication, en tenant compte à la fois des caractéristiques linguistiques et du contexte de sa production.",
+                "Analyser des discours oraux et des productions écrites à partir des structures, de l’évolution et du fonctionnement de la langue dans des contextes de communications variés.",
+                "Mobiliser des compétences métacognitives et métalinguistiques concernant les langues maitrisées et connues.",
+                "Concevoir et expliciter une problématique du langage et mettre en œuvre son traitement scientifique avec les outils et méthodes de référence, potentiellement les outils numériques spécifiques de la discipline.",
+                "Repérer le rôle des sciences du langage dans la société (éducation inclusive, outils techniques, politiques linguistiques, etc.)."
+            ]
+        },
+        {
+            "code_rncp": 38189,
+            "title": "Information-communication",
+            "skills":
+            [
+                "Identifier les contextes socio-culturels nationaux et internationaux",
+                "Analyser les dispositifs d’information et de communication en mobilisant les fondements théoriques de l’information-communication, dont les concepts relatifs aux processus, productions, objets et usages",
+                "Identifier les organisations, les acteurs et les dispositifs info-communicationnels et leur agencement, ainsi que les processus de médiation et de médiatisation",
+                "Appréhender l’information, son contenu et ses systèmes sous l’angle des représentations, des significations ou des pratiques",
+                "Contribuer à l’élaboration d’une recommandation à l'attention d'un commanditaire dans le champ de l’information-communication",
+                "Appliquer une combinaison d’outils, de méthodes et de techniques d’analyse (analyses sémiotiques, méthodes qualitatives et quantitatives en sciences humaines et sociales, techniques médiatiques, exploitation des ressources et architectures numériques, ingénierie documentaire)",
+                "Mettre en œuvre les cadres juridiques et les principes éthiques pour les enquêtes en information-communication, notamment dans un environnement numérique",
+                "Mobiliser les techniques de communication et d’éditorialisation dans la diversité de leurs supports (écrit, graphique, audiovisuel, numérique)",
+                "Mener une expérience d’analyse et/ou de production de dispositifs, objets et systèmes informationnels et communicationnels"
+            ]
+        },
+        {
+            "code_rncp": 40463,
+            "title": "Arts",
+            "skills":
+            [
+                "Identifier les moyens techniques, logistiques et financiers nécessaires à la réalisation et à l’exploitation des spectacles, évènements et manifestations, dans le cadre des projets artistiques et culturels de la structure.",
+                "Mettre en place des projets artistiques et culturels dans le cadre de partenariats en lien avec les différents interlocuteurs du champ concerné et les réseaux professionnels.",
+                "Contribuer à la coordination des équipes, des collaborateurs et des techniciens (son, scénographie, éclairage, vidéo, costumes et maquillage et régie) intervenant sur le projet en mobilisant des compétences de management, de logistique, de RH.",
+                "Actualiser ses connaissances en matière de réglementation sur le champ de la propriété intellectuelle et des normes de sécurité applicable aux établissements recevant du public (ERP).",
+                "Veiller au respect des procédures à l’œuvre au sein de la structure et informer les équipes de direction ou responsables hiérarchiques lors d’un doute sur leur mise en œuvre.",
+                "Réaliser une veille programmatique dans le domaine de l’art en participant à des évènements et en utilisant les médias et les circuits d’informations de référence.",
+                "S’informer sur la thématique, le public visé et la durée de l’objet de médiation auprès des personnes référentes au sein des structures culturelles.",
+                "Produire des outils de communication et de médiation adaptés aux différents publics visés en lien avec le dispositif institutionnel Education Artistique et Culturelle en veillant au respect des droits culturels de chacun.",
+                "Concevoir et organiser des ateliers, des temps d’échanges pour faciliter l’accès à la culture du public.",
+                "Accueillir et accompagner les publics en vulgarisant et en adaptant son propos en fonction du public.",
+                "Partager avec l’équipe projet sur la qualité et les modifications à apporter à l’action de communication et de médiation et à ses outils.",
+                "Définir les modalités et les situations pédagogiques permettant l’apprentissage par les apprenants des éléments techniques nécessaires à l’expression artistique et à la compréhension des langages corporels, visuels, sonores et formels propres aux arts.",
+                "Concevoir son projet pédagogique en relation avec les autres enseignements dispensés au sein de la structure.",
+                "Accompagner l’apprenant dans le développement de sa créativité et de son autonomie dans l’apprentissage des arts.",
+                "Réaliser, en s’appuyant sur un champ d’étude proposé, une recherche bibliographique et documentaire à partir de sources académiques et institutionnelles fiables et de référence, en lien avec les règlementations en vigueur et les politiques publiques.",
+                "Classer, référencer ou ajouter un ensemble de documents ou d’objets au sein d’un fonds documentaire ou d’une collection en décrivant les caractéristiques physiques et intellectuelles du document ou de l’objet et en se conformant aux règles de classification en vigueur.",
+                "Construire une problématique d’étude en mobilisant une réflexion théorique et critique sur les arts, élaborer un plan en lien avec la problématique, rédiger selon les usages de la recherche académique.",
+                "Étudier les productions artistiques en mobilisant une culture artistique, les principales méthodes ainsi que la terminologie descriptive et critique développées en France et à l’étranger.",
+                "Présenter à l’oral la problématique, la méthode d’enquête et les résultats et discuter avec ses pairs sur les choix, les questions et les critiques soulevés par ce travail."
+            ]
+        },
+        {
+            "code_rncp": 40464,
+            "title": "Arts plastiques",
+            "skills":
+            [
+                "Intégrer dès la phase de conception de la création les contraintes graphiques, formelles et temporelles.",
+                "Adapter le format de la création en fonction des caractéristiques de son support, du matériel à disposition et du budget alloué par le commanditaire.",
+                "Définir un schéma visuel, un croquis, une charte graphique en veillant à choisir un registre visuel adapté à la forme de présentation définie par le thème proposé. ",
+                "Mettre en place des projets artistiques et culturels dans le cadre de partenariats en lien avec les différents interlocuteurs du champ concerné et les réseaux professionnels.",
+                "Réaliser et présenter ou diffuser, auprès d’un public, une production visuelle, audiovisuelle ou multimédia, en collaboration avec une équipe technique.",
+                "Actualiser ses connaissances en matière de règlementation sur le champ de la propriété intellectuelle et des normes de sécurité applicable aux établissements recevant du public (ERP).",
+                "Réaliser une veille programmatique dans le domaine des arts plastiques et de l’art contemporain en participant à des évènements et en utilisant les médias et les circuits d’informations de référence.",
+                "S’informer sur la thématique, le public visé et la durée de l’objet de médiation auprès des personnes référentes au sein des structures culturelles.",
+                "Produire des outils de communication et de médiation adaptés aux différents publics visés en lien avec le dispositif institutionnel Education Artistique et Culturelle et en veillant au respect des droits culturels de chacun.",
+                "Concevoir et organiser des ateliers, des temps d’échanges pour faciliter l’accès à la culture du public.",
+                "Accueillir et accompagner les publics en vulgarisant et en adaptant son propos en fonction du public.",
+                "Partager avec l’équipe projet sur la qualité et les modifications à apporter à l’action de communication et de médiation et à ses outils.",
+                "Définir les modalités et les situations pédagogiques permettant l’apprentissage par les apprenants des éléments techniques nécessaires à l’expression artistique et à la compréhension des langages visuels et formels propres aux arts plastiques.",
+                "Concevoir son projet pédagogique en relation avec les autres enseignements dispensés au sein de la structure.",
+                "Accompagner l’apprenant dans le développement de sa créativité et de son autonomie dans l’apprentissage.",
+                "Réaliser, en s’appuyant sur un champ d’étude proposé, une recherche bibliographique et documentaire à partir de sources académiques et institutionnelles fiables et de référence, en lien avec les règlementations en vigueur et les politiques publiques.",
+                "Classer, référencer ou ajouter un ensemble de documents ou d’objets au sein d’un fonds documentaire ou d’une collection en décrivant les caractéristiques physiques et intellectuelles du document ou de l’objet et en se conformant aux règles de classification en vigueur.",
+                "Construire une problématique d’étude en mobilisant une réflexion théorique et critique sur les arts du spectacle, élaborer un plan en lien avec la problématique, rédiger selon les usages de la recherche académique.",
+                "Étudier les productions plastiques en mobilisant une culture artistique, les principales méthodes ainsi que la terminologie descriptive et critique développées en France et à l’étranger.",
+                "Présenter à l’oral la problématique, la méthode d’enquête et les résultats et discuter avec ses pairs sur les choix, les questions et les critiques soulevés par ce travail."
+            ]
+        },
+        {
+            "code_rncp": 40470,
+            "title": "Arts du spectacle",
+            "skills":
+            [
+                "Documenter des pratiques artistiques contemporaines, analyser des pratiques artistiques en mobilisant des concepts",
+                "Intégrer dès la phase de conception de la création les contraintes scénaristiques et temporelles.",
+                "Adapter le format de la création en fonction des caractéristiques de son support, du matériel à disposition et du budget alloué par le commanditaire.",
+                "Définir un schéma narratif, un script en veillant à choisir un registre de langue adapté au choix narratif et à la forme de présentation définie par le thème proposé.",
+                "Réaliser et présenter ou diffuser, auprès d’un public, une production écrite, théâtrale, audiovisuelle ou multimédia, en collaboration avec une équipe technique et en respectant les principes de l’éco-conception.",
+                "Identifier les moyens techniques, logistiques et financiers nécessaires à la réalisation et à l’exploitation des spectacles, évènements et manifestations, dans le cadre des projets artistiques et culturels de la structure.",
+                "Contribuer à l’élaboration des contrats (de production, co-production, cession, location…).",
+                "Contribuer à la coordination des équipes, des collaborateurs et les techniciens (son, scénographie, éclairage, vidéo, costumes et maquillage et régie) intervenant sur le projet en mobilisant des compétences de management, de logistique, de RH etc.",
+                "Actualiser ses connaissances en matière de réglementation sur le champ de la propriété intellectuelle et des normes de sécurité applicable aux Établissements recevant du public (ERP).",
+                "Veiller au respect des procédures à l’œuvre au sein de la structure et informer les équipes de direction ou responsables hiérarchiques lors d’un doute sur leur mise en œuvre.",
+                "Réaliser une veille programmatique dans le domaine de l’art du spectacle en participant à des évènements et en utilisant les médias et les circuits d’informations de référence.",
+                "S’informer sur la thématique, le public visé et la durée de l’objet de médiation auprès des personnes référentes au sein des structures culturelles.",
+                "Produire des outils de communication et de médiation adaptés aux différents publics visés, en lien avec le dispositif institutionnel Éducation Artistique et Culturelle en veillant au respect des droits culturels de chacun.",
+                "Concevoir et organiser des ateliers, des temps d’échanges pour faciliter l’accès à la culture du public.",
+                "Accueillir et accompagner les publics en vulgarisant et en adaptant son propos en fonction du public.",
+                "Partager avec l’équipe projet sur la qualité et les modifications à apporter à l’action de communication et de médiation et à ses outils.",
+                "Réaliser, en s’appuyant sur un champ d’étude proposé, une recherche bibliographique et documentaire à partir de sources académiques et institutionnelles fiables et de référence, en lien avec les règlementations en vigueur et les politiques publiques.",
+                "Classer, référencer ou ajouter un ensemble de documents ou d’objets au sein d’un fonds documentaire ou d’une collection en décrivant les caractéristiques physiques et intellectuelles du document ou de l’objet et en se conformant aux règles de classification en vigueur.",
+                "Construire une problématique d’étude en mobilisant une réflexion théorique et critique sur les arts du spectacle, élaborer un plan en lien avec la problématique, rédiger selon les usages de la recherche académique.",
+                "Étudier les manifestations, spectacles et évènements artistiques en mobilisant une culture artistique, les principales méthodes ainsi que la terminologie descriptive et critique développées en France et à l’étranger.",
+                "Présenter à l’oral la problématique, la méthode d’enquête et les résultats et discuter avec ses pairs sur les choix, les questions et les critiques soulevés par ce travail."
+            ]
+        },
+        {
+            "code_rncp": 40462,
+            "title": "Musicologie",
+            "skills":
+            [
+                "Documenter des pratiques musicales contemporaines ou actuelles, en utilisant des méthodes d’écoute des paramètres du son adaptées au travail de description, de commentaire et d’analyse.",
+                "Analyser des pratiques musicales dans leur contexte synchronique ou diachronique, en mobilisant des concepts disciplinaires.",
+                "Initier et approfondir une forme de pratique musicale sur un instrument polyphonique.",
+                "Adapter le format de la création en fonction des caractéristiques de son support, du matériel à disposition et du budget alloué par le commanditaire, en intégrant dès la phase de conception de la création les contraintes acoustiques, formelles et temporelles.",
+                "Définir un schéma sonore, musical en veillant à choisir un registre adapté à la forme de présentation définie par le thème proposé et en intégrant les possibilités offertes par les logiciels de musique assistée par ordinateur.",
+                "Réaliser et présenter ou diffuser, auprès d’un public, une production sonore, musicale audiovisuelle ou multimédia, en collaboration avec une équipe technique.",
+                "Identifier les moyens techniques, logistiques et financiers nécessaires à la réalisation et à l’exploitation des spectacles, évènements et manifestations, dans le cadre de projets musicaux, intégrant le concept de performance au sens large (rôle public, publicité, musiciens, concerts…).",
+                "Contribuer à l’élaboration des contrats (de production, co-production, cession, location…).",
+                "Contribuer à la coordination des équipes, des collaborateurs et des techniciens (son, scénographie, éclairage, vidéo, costumes et maquillage et régie) intervenant sur le projet, en mobilisant des compétences de management, de logistique, de RH, etc.",
+                "Actualiser ses connaissances en matière de réglementation sur le champ de la propriété intellectuelle, des normes en matière de seuil sonore et des normes de sécurité applicable aux établissements recevant du public (ERP).",
+                "Veiller au respect des procédures à l’œuvre au sein de la structure et informer les équipes de direction ou responsables hiérarchiques lors d’un doute sur leur mise en œuvre.",
+                "Produire des outils de communication et de médiation adaptés aux différents publics visés en lien avec le dispositif institutionnel Education Artistique et Culturelle et en veillant au respect des droits culturels de chacun.",
+                "Définir les modalités et les situations pédagogiques permettant l’apprentissage par les apprenants des éléments techniques nécessaires à l’expression musicale et à la compréhension des langages sonores et formels propres à la musique.",
+                "Concevoir son projet pédagogique en relation avec les autres enseignements dispensés au sein de la structure et en repérant l’organisation institutionnelle, administrative et associative de la musique en France et à l’étranger.",
+                "Accompagner l’apprenant ou le participant dans le développement de sa créativité et de son autonomie dans la découverte, l’apprentissage ou la pratique de la musique, en pratiquant un instrument polyphonique : accompagnement et improvisation sur des schèmes fondamentaux.",
+                "Réaliser, en s’appuyant sur un champ d’étude proposé, une recherche bibliographique critique, documentaire et sonore à partir de sources académiques et institutionnelles fiables et de référence, en lien avec les règlementations en vigueur et les politiques publiques.",
+                "Classer, référencer ou ajouter un ensemble de documents ou d’objets musicaux et sonores au sein d’un fonds documentaire ou d’une collection en décrivant les caractéristiques physiques et intellectuelles du document ou de l’objet et en se conformant aux règles de classification en vigueur.",
+                "Construire une problématique d’étude en mobilisant une réflexion théorique et critique portant sur les phénomènes musicaux (littérature, esthétique, philosophie de l’art, histoire de l’art, sociologie de l’art, ethnomusicologie, anthropologie, psychanalyse…), élaborer un plan en lien avec la problématique, rédiger selon les usages de la recherche académique.", 
+                "Étudier les phénomènes musicaux en mobilisant une culture artistique, les principales méthodes ainsi que la terminologie descriptive et critique développées en France et à l’étranger.",
+                "Présenter à l’oral la problématique, la méthode d’enquête et les résultats et discuter avec ses pairs sur les choix, les questions et les critiques soulevés par ce travail."
+            ]
+        },
+        {
+            "code_rncp": 40114,
+            "title": "Lettres",
+            "skills":
+            [
+                "Analyser, en les replaçant dans leur contexte littéraire et culturel, des sources, textes ou œuvres issus de différentes périodes (ancienne, médiévale, moderne, contemporaine) et aires géographiques et linguistiques diverses (littérature francophone et littérature comparée)",
+                "Mobiliser des outils conceptuels et des méthodes spécifiques selon les types de sources (sources matérielles, lecture d’images, lecture de documents écrits, lecture d'œuvres littéraires, etc.), dans une perspective à la fois historique et comparatiste",
+                "Interpréter, en les resituant dans leur contexte littéraire et culturel, des textes rédigés en ancien français, en français moderne ou en grec ancien et en latin, après les avoir lus en langue originale et traduits le cas échéant.",
+                "Identifier les phénomènes de transmission et de réception, la construction des patrimoines culturels, de l’Antiquité classique à l’époque contemporaine",
+                "Identifier et décrire les usages langagiers dans leur diversité.",
+                "Analyser les données langagières d'une situation de communication, en tenant compte à la fois des caractéristiques linguistiques et du contexte de sa production.",
+                "Recueillir et exploiter des matériaux linguistiques (lexiques, transcriptions, corpus...).",
+                "Mobiliser des compétences méta-cognitives et métalinguistiques concernant les langues maîtrisées et connues.",
+                "Évaluer la fiabilité d'une étude et d’un discours en questionnant l’origine de ses sources, en contrôlant sa rigueur épistémologique, pour lutter contre la désinformation",
+                "Identifier les biais d’un discours en analysant ses conditions de production (auteur, destinataire, époque, contexte, présupposés, etc.), sa visée, sa construction rhétorique, le recours à l’implicite ou à des procédés destinés à orienter l'opinion de l’auditeur ou du lecteur",
+                "Adopter une démarche réflexive sur les nouvelles modalités de production du savoir (notamment par l’intelligence artificielle) et sur les outils de diffusion des informations (web, numérique, réseaux sociaux) et en éclairer les enjeux grâce au recul historique, à la réflexion épistémologique et aux méthodes des sciences humaines.",
+                "Assurer une veille documentaire sur des sujets nécessitant une expertise pluridisciplinaire",
+                "Élaborer des dossiers, rapports, notes de synthèse, comptes rendus, articles de presse",
+                "Rédiger des argumentaires, discours, plaidoyers adaptés aux destinataires",
+                "Animer des débats et en assurer la restitution orale et écrite",
+                "Concevoir un dispositif de médiatisation et de diffusion autour d’un sujet culturel ou artistique, en sélectionnant les formats et supports de communication et de diffusion des savoirs les plus adaptés au public visé, notamment à un public non spécialisé"
+            ]
+        },
+        {
+            "code_rncp": 40120,
+            "title": "Langues, littératures et civilisations étrangères et régionales",
+            "skills":
+            [
+                "Rédiger des supports de communication variés en français et dans une langue étrangère ou régionale",
+                "Rechercher et mobiliser la terminologie d’un champ donné, y compris professionnel en langue étrangère ou régionale",
+                "Traduire, restituer, analyser et interpréter des contenus d’informations générales",
+                "Interagir à l’oral en français et dans la langue étudiée dans un cadre professionnel (conversations, réunions, présentations, etc.)",
+                "Comprendre et interpréter des ressources dans la langue étudiée",
+                "Analyser un document en le replaçant dans son contexte historique, géographique et culturel",
+                "Situer un discours ou une œuvre dans un genre littéraire ou artistique",
+                "Saisir les implicites linguistiques et culturels dans une production écrite ou orale",
+                "Analyser la production orale des locuteurs du point de vue phonologique et phonétique",
+                "Mobiliser des connaissances linguistiques et grammaticales afin d’évaluer et de corriger  des productions orales et écrites",
+                "Mobiliser des concepts et cadres théoriques en littérature et en civilisation",
+                "Rédiger des supports de communication variés en français et dans la langue étudiée",
+                "Traduire ou restituer des contenus d’une langue à l’autre, à l’oral comme à l’écrit",
+                "Effectuer une veille scientifique ou veille de l’actualité à partir de sources fiables",
+                "Utiliser à bon escient, de façon critique et dans une démarche éthique, les nouvelles technologies (aide à la rédaction, intelligence artificielle, traduction automatique, etc.)",
+                "Produire et animer des contenus web"
+            ]
+        },
+        {
+            "code_rncp": 39173,
+            "title": "Langues étrangères appliquées",
+            "skills": 
+            [
+                "Synthétiser et/ou rédiger des supports de communication variés en français et dans deux langues étrangères",
+                "S’approprier et mobiliser le vocabulaire d’un champ professionnel en langues étrangères",
+                "Traduire, analyser et interpréter des contenus d’informations générales",
+                "Interagir à l’oral en français et dans deux langues étrangères dans un cadre professionnel(conversations, réunions, présentations, etc.)",
+                "Comprendre et interpréter des ressources en langues étrangères",
+                "Mobiliser une bonne connaissance des faits de civilisation, notamment socio-économique, des pays des langues étudiées en vue de la prise de décision",
+                "Prendre en compte les éléments de communication non verbale dans les contextes culturels étudiés",
+                "Effectuer une veille de l’actualité et internationale à partir de sources fiables pour les besoins de l’entreprise ou de l’organisation",
+                "Mobiliser une culture commerciale, juridique et économique au bénéfice de l'international",
+                "Se comporter conformément aux usages en contexte professionnel international.",
+                "Déployer les connaissances acquises en économie, droit, communication, informatique, etc.",
+                "Être capable de rédiger un rapport d’activité professionnelle en langue étrangère"
+            ]
+        },
+        {
+            "code_rncp": 40116,
+            "title": "Informatique",
+            "skills": 
+            [
+                "Appliquer des approches raisonnées de résolution de problèmes complexes par décompositions et/ou approximations successives et mettre en œuvre des méthodes d’analyse pour concevoir des applications et algorithmes à partir d’un cahier des charges",
+                "Manipuler aisément plusieurs paradigmes algorithmiques (approches impérative, fonctionnelle, objet et multitâche).",
+                "Choisir, sur des critères objectifs, les structures de données et construire les algorithmes les mieux adaptés à un problème donné.",
+                "Identifier les concepts fondamentaux de complexité, calculabilité, décidabilité, vérification : apprécier la complexité et les limites de validité d’une solution.",
+                "Caractériser les outils logiques et algébriques fondamentaux (théorie des langages et de la compilation, logique et raisonnement, ordres, induction) et leurs implications dans la programmation et la modélisation.",
+                "Construire et rédiger une démonstration mathématique synthétique et rigoureuse.",
+                "Manipuler aisément plusieurs styles de programmation (approches impérative, fonctionnelle, objet et multitâche) ainsi que plusieurs langages de programmation.",
+                "Concevoir le traitement informatisé d’informations de différentes natures, telles que des données, des images et des textes.",
+                "Caractériser le rôle des tests et des preuves de correction dans le développement des logiciels et mettre en œuvre des tests élémentaires et des invariants de boucle.",
+                "Concevoir, implémenter et exploiter des bases de données.",
+                "Identifier et caractériser les principaux éléments fonctionnels et l’architecture matérielle d’un ordinateur, interpréter les informations techniques fournies par les constructeurs, écrire des routines simples en langage machine.",
+                "Caractériser le fonctionnement des systèmes et des réseaux, ainsi que les pratiques, outils et techniques visant à assurer la sécurité des systèmes informatiques pendant leur développement et leur utilisation.",
+                "Analyser et interpréter les résultats produits par l'exécution d'un programme.",
+                "Expliquer et documenter la mise en œuvre d'une solution technique.",
+                "Caractériser les techniques de gestion de l’aléatoire (probabilités et statistique) et leurs rôles dans le traitement de certaines données.",
+                "Utiliser un logiciel de calcul formel ou scientifique.",
+                "Utiliser les outils numériques de référence et les règles de sécurité informatique pour acquérir, traiter, produire et diffuser de l’information ainsi que pour collaborer en interne et en externe",
+                "Analyser et synthétiser des données en vue de leur exploitation."
+            ]
+        },
+        {
+            "code_rncp": 40806,
+            "title": "Mathématiques et informatique appliquées aux sciences humaines et sociales",
+            "skills":
+            [
+                "Développer des applications informatiques en se servant d’au moins un langage de programmation",
+                "Implémenter et exploiter des bases de données",
+                "Intégrer les tests dans le développement des logiciels",
+                "Synthétiser les données produites par l'exécution d'un programme",
+                "Se servir des bases du raisonnement probabiliste",
+                "Résoudre des équations de façon exacte ou approchée et par des méthodes numériques",
+                "Choisir les techniques mathématiques et informatiques les mieux adaptées à un problème donné dans le domaine des Sciences Humaines et Sociales, économie, gestion",
+                "Définir le modèle de données en fonction des objectifs et des besoins visés",
+                "Caractériser les outils et techniques visant à assurer la sécurité des systèmes informatiques pendant leur développement et leur utilisation",
+                "Intégrer les enjeux de la réduction de l'empreinte écologique liée au numérique dans les choix techniques et organisationnels",
+                "Rédiger une démonstration mathématique synthétique et rigoureuse",
+                "Concevoir le traitement informatisé d’informations de différentes natures, telles que des données, des images et des textes",
+                "Appliquer les principes de la démarche statistique pour traiter des données dans les domaines des Sciences Humaines et Sociales, de l'économie ou de la gestion",
+                "Appliquer des méthodes d’analyse appropriées à la résolution d’un problème issu d’un cahier des charges partiellement donné",
+                "Appliquer des approches raisonnées de résolution de problèmes par décompositions et/ou approximations successives",
+                "Appliquer une démarche Intelligence Artificielle (IA) au traitement de données grâce à une compréhension des grands principes de l’IA",
+                "Traduire un problème simple en langage mathématique",
+                "Réaliser un cahier des charges pour répondre à une problématique d’une organisation en mobilisant ses connaissances en mathématiques, informatique et en Sciences humaines et sociales, droit, économie, et/ou gestion",
+                "Analyser les résultats produits par l'exécution d'un programme",
+                "Valider l'adéquation de la solution avec les demandes métiers",
+                "Documenter la proposition mise en œuvre pour son utilisation et sa maintenance"
+            ]
+        },
+        {
+            "code_rncp": 40113,
+            "title": "Mathématiques",
+            "skills":
+            [
+                "Utiliser les bases de la logique pour organiser un raisonnement mathématique.",
+                "Rédiger un raisonnement mathématique de manière synthétique et rigoureuse.",
+                "Effectuer et comprendre des calculs et des manipulations symboliques.",
+                "Expliquer de manière compréhensible des concepts mathématiques à l'oral et à l'écrit.",
+                "Créer des représentations visuelles mathématiques, représenter géométriquement une situation.",
+                "Effectuer des recherches bibliographiques, lire et comprendre des articles scientifiques",
+                "Modéliser des situations provenant de différents domaines et les traduire en langage mathématique.",
+                "Appliquer les concepts mathématiques fondamentaux pour résoudre des problèmes mathématiques simples.",
+                "Résoudre des équations (linéaires, algébriques, différentielles) de façon exacte.",
+                "Utiliser les bases du raisonnement probabiliste et mettre en œuvre une démarche statistique pour le traitement et l’interprétation des données.",
+                "Résoudre des équations (linéaires, algébriques, différentielles) par des méthodes numériques.",
+                "Écrire et mettre en œuvre des algorithmes de base de calcul scientifique.", 
+                "Utiliser des logiciels de calcul formel et scientifique et des langages de programmation pour résoudre des problèmes mathématiques."
+            ]
+        },
+        {
+            "code_rncp": 38978,
+            "title": "Physique",
+            "skills":
+            [
+                "Manipuler les mécanismes fondamentaux à l’échelle microscopique, modéliser les phénomènes macroscopiques, relier un phénomène macroscopique aux processus microscopiques",
+                "Identifier les techniques couramment utilisées dans les domaines du génie civil, de la mécanique des fluides et des solides et du génie mécanique, de la thermodynamique et de la thermique, de la physique des matériaux, des sciences chimiques, des géosciences, de l’astronomie, de l’informatique",
+                "Proposer des analogies, faire des estimations d’ordres de grandeur et en saisir la signification",
+                "Manipuler les principaux outils mathématiques utiles en physique",
+                "Mobiliser les concepts fondamentaux pour modéliser, analyser et résoudre des problèmes simples de physique",
+                "Aborder et résoudre par approximations successives et décompositions un problème complexe",
+                "Valider un modèle par comparaison de ses prévisions aux résultats expérimentaux et apprécier ses limites de validité",
+                "Utiliser un langage de programmation pour développer des applications simples d’acquisition et de traitements de données, ou de simulation",
+                "Transmettre les résultats obtenus suite à la résolution d’un problème, une analyse ou une campagne expérimentale",
+                "Identifier et mener en autonomie les différentes étapes d’une démarche expérimentale",
+                "Identifier les sources d’erreur pour calculer l’incertitude sur un résultat expérimental",
+                "Exploiter des logiciels d’acquisition et d’analyse de données avec un esprit critique",
+                "Utiliser les appareils et les techniques de mesure en laboratoire les plus courants dans les différents domaines de la physique",
+                "Identifier les réglementations spécifiques et mettre en œuvre les principales mesures de prévention en matière d'hygiène et de sécurité",
+                "Interpréter des données expérimentales pour envisager leur modélisation",
+                "Prendre connaissance des documents réglementaires et en particulier ceux liés à la protection de l’environnement, des personnes et des matériels dans le cadre spécifique des sciences physiques",
+                "Réaliser une veille technologique dans le domaine des sciences physiques sur la base de documents scientifiques ou techniques en anglais et français"
+            ]
+        },
+        {
+            "code_rncp": 38701,
+            "title": "Chimie",
+            "skills":
+            [
+                "Mettre en œuvre des concepts de chimie, y compris la cinétique chimique, la thermodynamique, la chimie organique, la chimie inorganique, le génie des procédés et la chimie analytique.",
+                "Mobiliser les concepts et technologies adéquats pour aborder et résoudre des problèmes dans les différents domaines de la chimie organique, inorganique, du génie des procédés et/ou de la chimie physique et analytique.",
+                "Manipuler les mécanismes fondamentaux à l’échelle microscopique, modéliser les phénomènes macroscopiques, relier un phénomène macroscopique aux processus microscopiques.",
+                "Exécuter des expériences en génie chimique et en génie des procédés en toute sécurité.",
+                "Identifier et mener en autonomie les différentes étapes d’une démarche expérimentale.",
+                "Utiliser les appareils et les techniques de synthèse, de purification et de mesure en laboratoire les plus courants dans les domaines de la chimie organique et inorganique, de la chimie physique et de la chimie analytique.",
+                "Identifier les réglementations spécifiques et mettre en œuvre les principales mesures de prévention en matière d'hygiène et de sécurité.",
+                "S'adapter à de nouvelles méthodes, techniques et technologies dans le domaine de la chimie en constante évolution.",
+                "Réaliser des expériences de laboratoire dans le cadre de contributions à des études dans le domaine de la chimie.",
+                "Utiliser les plans d’expériences et les outils statistiques pour proposer des expérimentations et exploiter des campagnes expérimentales dans le domaine du génie chimique et du génie des procédés",
+                "Identifier les sources d’erreur pour calculer l’incertitude sur un résultat expérimental en relation avec le champ disciplinaire de la chimie.",
+                "Analyser des données, identifier des tendances et en tirer des conclusions pertinentes en relation avec le champ disciplinaire de la chimie.",
+                "Utiliser des logiciels d'analyse de données et d'autres outils informatiques pertinents en chimie.",
+                "Interpréter des données expérimentales pour envisager la formulation d’un modèle.",
+                "Valider un modèle dans le domaine de la chimie par comparaison de ses prévisions aux résultats expérimentaux et apprécier ses limites de validité.",
+                "Exploiter avec un esprit critique les résultats de logiciels d’acquisition et d’analyse de données en chimie."
+            ]
+        },
+        {
+            "code_rncp": 38979,
+            "title": "Physique, chimie",
+            "skills":
+            [
+                "Modéliser, analyser et résoudre des problèmes simples dans les différents domaines de la physique et de la chimie en mobilisant les concepts fondamentaux.",
+                "Identifier et mener en autonomie les différentes étapes d'une démarche expérimentale en physique et en chimie.",
+                "Utiliser les appareils et techniques usuels en laboratoire les plus courants dans les domaines de la chimie et de la physique.",
+                "Identifier les réglementations spécifiques et mettre en œuvre les principales mesures de prévention en matière d'hygiène et de sécurité dans les industries et laboratoires dans le domaine de la physique et de la chimie.",
+                "Identifier et comprendre les phénomènes physiques et chimiques mis en jeu dans différentes situations.",
+                "Manipuler les mécanismes fondamentaux à l’échelle microscopique, modéliser les phénomènes macroscopiques, relier un phénomène macroscopique aux processus microscopiques.",
+                "Proposer des analogies, faire des estimations d’ordres de grandeurs et en saisir la signification afin d’améliorer la compréhension des phénomènes physiques et chimiques.",
+                "Manipuler les principaux outils mathématiques utiles en physique et en chimie.",
+                "Transmettre les résultats obtenus suite à la résolution d’un problème, une analyse ou une campagne expérimentale.",
+                "Exploiter des logiciels d'acquisition et d'analyse de données physiques et chimiques avec un esprit critique.",
+                "Interpréter des données expérimentales physiques et chimiques puis les utiliser le cas échéant à des fins de modélisation.",
+                "Valider un modèle par comparaison de ses prévisions aux résultats expérimentaux et apprécier ses limites de validité pour des applications mettant en jeu des phénomènes physiques et/ou chimiques.",
+                "Identifier les sources d'erreur pour calculer l'incertitude sur un résultat expérimental issu d’un process physique ou chimique.",
+                "Transmettre les résultats obtenus suite à la résolution d’un problème, une analyse ou une campagne expérimentale."
+            ]
+        },
+        {
+            "code_rncp": 39517,
+            "title": "Sciences de la vie",
+            "skills":
+            [
+                "Traiter une problématique du domaine ou analyser un document de recherche ou de présentation en mobilisant les concepts fondamentaux et les technologies des différentes disciplines rattachées à la biologie",
+                "Manipuler les mécanismes fondamentaux à l’échelle microscopique et macroscopique, relier un phénomène macroscopique aux processus microscopiques.",
+                "Mobiliser les concepts et les outils des mathématiques, physique, chimie et informatique dans le cadre des problématiques des sciences de la vie",
+                "Identifier les différentes étapes d’une démarche expérimentale",
+                "Mener en autonomie les différentes étapes d’une démarche expérimentale",
+                "Identifier, choisir et appliquer une combinaison d’outils analytiques (techniques courantes, instrumentation) adaptés pour répondre à une problématique en sciences de la vie",
+                "Exploiter des techniques d’acquisition, de gouvernance et d’analyse de données avec un esprit critique.",
+                "Mettre en œuvre les principales mesures de prévention en matière d'hygiène et de sécurité en appliquant les réglementations spécifiques",
+                "Modéliser et interpréter des données expérimentales",
+                "Identifier les biais et les sources d’erreur pour calculer l’incertitude sur un résultat expérimental."
+            ]
+        },
+        {
+            "code_rncp": 40115,
+            "title": "Sciences de la vie et de la Terre",
+            "skills":
+            [
+                "Traiter une problématique du domaine ou analyser un document de recherche ou de présentation en mobilisant les concepts fondamentaux et les technologies des différentes disciplines rattachées aux sciences de la vie et de la Terre",
+                "Manipuler les mécanismes fondamentaux à l’échelle microscopique et macroscopique, relier un phénomène macroscopique aux processus microscopiques.",
+                "Mobiliser les concepts et les outils des mathématiques, physique, chimie et informatique dans le cadre des problématiques des sciences de la vie et de la Terre",
+                "Identifier et mener en autonomie les différentes étapes d’une démarche expérimentale",
+                "Identifier, choisir et appliquer une combinaison d’outils analytiques de terrain et/ou de laboratoire (techniques courantes, instrumentation) adaptés pour répondre à une problématique en sciences de la vie et de la Terre ",
+                "Exploiter des logiciels d’acquisition et d’analyse de données avec un esprit critique.",
+                "Mettre en œuvre les principales mesures de prévention en matière d'hygiène et de sécurité en appliquant les réglementations spécifiques",
+                "Interpréter des données expérimentales avec pertinence et en respectant le cahier des charges",
+                "Identifier les sources d’erreur pour calculer l’incertitude sur un résultat expérimental",
+                "Exploiter des logiciels d'acquisition et d'analyse de données avec un esprit critique",
+                "Présenter une production fondée scientifiquement"
+            ]
+        },
+        {
+            "code_rncp": 35945,
+            "title": "Sciences et techniques des activités physiques et sportives",
+            "skills":
+            [
+                "Analyser dans une perspective de management la situation d’une collectivité ou d’une organisation centrée sur les activités physiques et/ou sportives (AP/S), en mobilisant des concepts scientifiques pluridisciplinaires",
+                "Diagnostiquer une situation relative à l’activité physique et ou sportive au regard de l'analyse du secteur économique, du système sportif et des formes de pratiques, en vue d’un projet de management ou de développement de structure, de collectivité ou d’organisation",
+                "Mobiliser une culture approfondie des activités physiques et sportives au service des analyses de situations et des projets de développement",
+                "Assurer le suivi du diagnostic en utilisant des outils et techniques d’analyse des activités de la structure (collecte des données par les outils adaptés, traitement et interprétation des résultats)",
+                "Justifier la pertinence de son offre ou des projets proposés auprès des acteurs concernés",
+                "Concevoir et formaliser des projets d’action au sein d’une structure pour dynamiser son projet et/ou pour la transformation d’une situation diagnostiquée",
+                "Mobiliser des analyses sociologiques, démographiques, économiques et politiques permettant de justifier d’un projet",
+                "Organiser un projet au regard des décisions prises par une gouvernance de structure, de service ou d’organisation",
+                "Formaliser des infléchissements possibles d’orientations au regard d’une gestion des ressources humaines",
+                "Communiquer et rendre compte avec l’ensemble des parties prenantes d’un projet ou d’une organisation",
+                "Organiser une séance d’Activité Physique et/ou Sportive en fonction d’un public et d’un objectif",
+                "Mettre en œuvre l’encadrement d’une séance collective d’activité physique et/ou sportive",
+                "Mobiliser une expérience approfondie de la pratique des Activités Physiques Sportives et Artistiques pour adapter l’intervention au public et développer la motivation des pratiquants",
+                "Assurer la sécurité des publics pratiquants",
+                "Ajuster la séance au regard de son déroulement effectif et conseiller les pratiquants",
+                "Concevoir et promouvoir un projet évènementiel sportif",
+                "Gérer les ressources matérielles et financières nécessaires d’un projet",
+                "Organiser et animer des équipes au service d’un projet",
+                "Optimiser l'utilisation des équipements et services dédiés au projet",
+                "Organiser un accueil de public en toute sécurité",
+                "Accompagner la stratégie de développement et la décliner en plans d'action opérationnels",
+                "Mettre en œuvre le projet de la structure en mobilisant les outils dédiés (marketing, RH, droit, comptabilité...)",
+                "Promouvoir l'identité de la structure sportive dans son environnement",
+                "Évaluer l'efficacité des plans d'action et les ajuster au regard des pratiques émergentes, des innovations et de la dynamique du marché"
+            ]
+        },
+        {
+            "code_rncp": 38975,
+            "title": "Électronique, énergie électrique, automatique",
+            "skills":
+            [
+                "Résoudre un problème d’ingénierie courant dans le domaine de l'électronique, énergie électrique, automatique (EEEA) en utilisant les concepts des mathématiques appliquées, de la physique, de la chimie et de l’informatique.",
+                "Caractériser et piloter l’état et les tendances d’évolution d’un système à l’aide d’outils mathématiques, logiques et statistiques.",
+                "Utiliser en autonomie les techniques courantes dans le domaine de l’informatique industrielle : analyse et synthèse de programmes pour les applications dans le domaine de l’EEA (électronique embarquée, systèmes logiques, API, etc.).",
+                "Identifier et mener en autonomie les différentes étapes d’une démarche expérimentale dans le domaine de l’automatique et de l’automatisation.",
+                "Identifier les contraintes d’intégration d’équipements dans un ensemble fonctionnel en respectant un cahier des charges défini.",
+                "Utiliser un langage de programmation pour développer des applications simples d’acquisition et de traitements de données, de commande.",
+                "Réaliser une veille technologique dans le domaine de l’EEEA sur la base de documents scientifiques ou technique en anglais et français.",
+                "Se servir des principaux outils et méthodes de la maintenance industrielle et la sécurité de systèmes.",
+                "Évaluer les performances du système (électrique, électronique, automatique) développé dans l’environnement dans lequel il s’inscrit.",
+                "Utiliser des logiciels d’acquisition et d’analyse de données pour l’observation de phénomènes physiques et l’étude du comportement de systèmes (électrique, électronique, automatique)",
+                "Valider un modèle décrivant l’évolution d’un système (EEEA) par comparaison de ses prévisions aux résultats expérimentaux, et apprécier ses limites de validité.",
+                "Utiliser un langage de programmation pour développer des applications simples d’acquisition et de traitements de données, de commande.",
+                "Prendre connaissance des documents réglementaires et en particulier ceux liés à la protection de l’environnement, des personnes et des matériels dans le cadre spécifique de l’EEEA.",
+                "Transmettre les résultats obtenus suite à la résolution d’un problème, une analyse ou une campagne expérimentale.",
+                "Utiliser et contribuer au développement d’applications embarquées (micro-contrôleur, Rasberry-pi, arduino, dispositifs lora...).",
+                "Mettre en place une chaine métrologique complète pour l’acquisition de données (capteur, conditionneur, amplificateur, filtrage).",
+                "Identifier les contraintes d’intégration d’équipements dans un ensemble fonctionnel en respectant un cahier des charges défini.",
+                "Utiliser en autonomie les techniques courantes dans les domaines des usages de l’électronique, l’électrotechnique et l’automatique : synthèse et analyse de schémas électriques, gestion de la puissance d’une machine, modélisation de systèmes automatiques boucle ouverte et boucle fermée, CAO (Conception Assistée par Ordinateur).",
+                "Réaliser une veille technologique dans le domaine de l’EEEA sur la base de documents scientifiques ou technique en anglais et français."
+            ]
+        },
+        {
+            "code_rncp": 38977,
+            "title": "Mécanique",
+            "skills":
+            [
+                "Formuler un problème de mécanique (fluides et solides) avec ses conditions limites, l’aborder de façon simple, le résoudre et conduire une analyse critique du résultat.",
+                "Identifier les principales familles de matériaux et leurs propriétés.",
+                "Identifier des techniques courantes dans le domaine de l’acoustique, du génie civil, du génie des procédés, de l’électronique, l’électrotechnique, l’automatique et la maintenance industrielle.",
+                "Mobiliser les concepts fondamentaux de la mécanique pour expliquer qualitativement les phénomènes simples mis en jeu dans un système mécanique et dans son environnement.",
+                "Identifier le rôle et le champ d’application de la mécanique appliquée aux solides (indéformables et déformables) et aux fluides dans différents domaines : milieux naturels, milieux industriels, transports, enjeux sociétaux, « bien-être ».",
+                "Utiliser les notions de champ de force, déplacement, vitesse, déformation et contrainte pour proposer des applications simples au mouvement des solides indéformables, aux écoulements de fluides et à la rhéologie des solides et fluides.",
+                "Valider un modèle par comparaison de ses prévisions aux résultats expérimentaux et apprécier ses limites de validité.",
+                "Utiliser des techniques courantes dans le domaine du génie mécanique : faire un schéma cinématique, utiliser les outils de représentation graphique (dessin industriel) et les techniques de fabrication, par enlèvement ou ajout de matière et mise en forme.",
+                "Mobiliser les bases de la Conception Assistée par Ordinateur (CAO) et de la Fabrication Assistée par Ordinateur (FAO).",
+                "Mettre en œuvre des techniques d’algorithmique et de programmation, notamment pour développer des applications simples d’acquisition et de traitements de données.",
+                "Participer au suivi de la mise en œuvre de systèmes mécaniques en maîtrisant les contraintes législatives, économiques et environnementales.",
+                "Participer aux programmes de maîtrise des risques portant sur des installations ou des procédés impliquant des systèmes mécaniques."
+            ]
+        },
+        {
+            "code_rncp": 38976,
+            "title": "Génie civil",
+            "skills":
+            [
+                "Identifier le rôle et le champ d’application du génie civil dans tous les secteurs : milieux naturels, milieux industriels, environnements urbains, etc.",
+                "Identifier les différentes étapes et les acteurs d’une construction",
+                "Mobiliser les concepts fondamentaux de la physique et de la mécanique pour analyser et appréhender les phénomènes physiques",
+                "Formuler un problème de génie civil avec ses conditions limites, l’aborder de façon simple, le résoudre et conduire une analyse critique du résultat",
+                "Mobiliser des concepts et techniques pour résoudre des problèmes simples de génie civil tels que résistance des matériaux, mécanique des solides, calculs de structures, mécanique des fluides, thermique, acoustique",
+                "Traduire en langage de programmation des modèles mathématiques en relation avec le génie civil (structure de l’ouvrage, équipements techniques et énergétiques)",
+                "Valider un modèle par comparaison de ses prévisions aux résultats expérimentaux et apprécier ses limites de validité",
+                "Participer à la réalisation de dimensionnement de structures, d’une étude technique des structures bâtiment et fondations",
+                "Identifier la structure nécessaire d’un ouvrage à partir d’un dossier architectural",
+                "Définir les solutions techniques constructives pour optimiser le bio-climatisme",
+                "Utiliser en autonomie des techniques courantes dans le domaine de la modélisation et de la représentation technique",
+                "Identifier les principales familles de matériaux et leurs caractéristiques",
+                "Réaliser des échantillons ou des maquettes",
+                "Mobiliser les bases du Dessin Assisté par Ordinateur (DAO) et de la Conception Assistée par Ordinateur (CAO) et celles du calcul scientifique afin de modéliser des structures simples en 2D et de les dimensionner sous sollicitations simples",
+                "Utiliser en autonomie des techniques expérimentales courantes dans le domaine du génie civil : pour l’étude des matériaux, pour les interactions sols-ouvrages, pour l’aménagement, et pour les infrastructures",
+                "Caractériser les modes constructifs utilisés au cours de l'histoire et leur impact sur la performance énergétique des bâtiments et plus généralement sur leur durabilité",
+                "Maîtriser les outils de gestion centralisée, automatisée et à distance des bâtiments",
+                "Participer à la réalisation de plans",
+                "Réaliser des relevés topographiques",
+                "Informer et communiquer sur les avancées et difficultés d’un projet à différents niveaux lors d’un travail sur chantier BTP",
+                "Etablir un devis d’un ouvrage simple",
+                "Elaborer un cahier des charges prévisionnel et justifier les choix de conception auprès du commanditaire",
+                "Réaliser des diagnostics immobiliers ou de pathologie",
+                "Participer à l'expertise des bâtiments",
+                "Proposer des solutions pour entretenir, réhabiliter des bâtiments et améliorer leurs performances environnementales",
+                "Identifier les enjeux économiques et les méthodes de programmation, d’entretien, d’adaptation ou d’amélioration du patrimoine",
+                "Appliquer la réglementation, les normes et les règles de sécurité relatives aux contraintes architecturales",
+                "Maîtriser les règles principales d’urbanisme, et les bases du droit de la construction et du droit des marchés"
+            ]
+        },
+        {
+            "code_rncp": 41277,
+            "title": "Sciences pour la santé",
+            "skills":
+            [
+                "Suivre des consignes écrites de manière rigoureuse et respecter les objectifs scientifiques et pratiques du protocole",
+                "Analyser avec un regard critique les publications scientifiques ou professionnelles sélectionnées dans le domaine des sciences pour la santé pour alimenter un projet en sciences pour la santé",
+                "Intégrer les déterminants de santé définis par l’OMS dans l’analyse des problématiques de santé",
+                "Sélectionner la procédure et les outils de recueil et gestion de données pertinents pour répondre à une problématique dans le domaine des sciences pour la santé",
+                "Appliquer les réglementations sur les données de santé, l’éthique de la relation humaine et les données expérimentales afin de respecter les règles de confidentialité, de qualité et de cybersécurité",
+                "Communiquer, à l’oral et à l’écrit, les contenus issus de la recherche documentaire ou d’un projet scientifique ou professionnel en s’adaptant au public concerné",
+                "Sélectionner la procédure adaptée pour réaliser des mesures et analyses dans le respect de la règlementation des professions règlementées et en respectant les bonnes pratiques d’hygiène et de sécurité",
+                "Utiliser les outils, matériels et techniques de laboratoire ou de terrain (ex. capteurs, dispositifs biomédicaux, logiciels de traitement) pour réaliser des mesures fiables dans un cadre normé et sécurisé et dans le respect de la règlementation des professions règlementées",
+                "Extraire des informations et produire des données en sciences pour la santé en estimant leur fiabilité",
+                "Réaliser et mettre au point des produits de santé et de soin, des techniques ou d’appareillages dans le respect de la réglementation des professions réglementées, dans le respect du développement durable et en prenant en compte des informations issues de domaines transdisciplinaires",
+                "Prendre en compte les aspects interdisciplinaires et interprofessionnels des problématiques en sciences pour la santé pour mettre en œuvre une démarche méthodologique en sciences pour la santé",
+                "Vérifier la conformité des produits et des services en respectant les principes d’une démarche qualité et d’amélioration continue dans des contextes variés : laboratoires, services hospitaliers, structures de prévention, entreprises.",
+                "Participer à l’évaluation et à la gestion des risques sanitaires, environnementaux ou professionnels en mobilisant des outils d’analyse adaptés (ex. AMDEC, arbres des causes, indicateurs qualité)",
+                "Participer à la démarche de prévention, de sécurisation ou de normalisation en intégrant les enjeux éthiques, environnementaux, et sociétaux Contribuer à l’amélioration continue de protocoles, procédures ou référentiels qualité en participant activement à la co-construction de solutions avec les équipes et les patients usagers"
+            ]
+        },
+        {
+            "code_rncp": 39690,
+            "title": "Sciences et technologies",
+            "skills":
+            [
+                "Mobiliser les concepts usuels de plusieurs champs disciplinaires au sein d’un sous-domaine scientifique et technique cohérent pour résoudre un problème, notamment un problème de conception ou d’ingénierie",
+                "Identifier et mener en autonomie les différentes étapes d’une démarche expérimentale",
+                "Se servir aisément des outils et méthodes de recueil, de traitement et d’analyse des données pour observer et analyser les phénomènes et/ou les comportements du sous-domaine",
+                "Manipuler les principaux outils de modélisation et de représentation",
+                "Valider un modèle par comparaison de ses prévisions aux résultats expérimentaux, et apprécier ses limites de validité",
+                "Mettre en œuvre des techniques simples d’algorithmique et de programmation pour l’acquisition et le traitement de données",
+                "Identifier et mener en autonomie les différentes étapes d’une démarche expérimentale",
+                "Identifier les contraintes d’intégration d’équipements dans un ensemble fonctionnel (poste de production), en considérant les modalités d’usage par les opérateurs humains en exploitation et en maintenance",
+                "Caractériser les liens de performance (délai, qualité) entre l’activité automatisée et le processus de valeur ajoutée dans lequel elle s’inscrit"
+            ]
+        },
+        {
+            "code_rncp": 38980,
+            "title": "Sciences pour l'ingénieur",
+            "skills":
+            [
+                "Mobiliser les lois de la physique ou de la chimie, à des fins de modélisation ou d’analyse d’un système, d’une structure ou d’un processus.",
+                "Exploiter les concepts mathématiques, utiles à la description, à la caractérisation ou à l’optimisation du comportement d’un système ou à l’analyse de données.",
+                "Produire et analyser des notes techniques et/ou de calcul ou/et des cahiers des charges utiles à la conception, au dimensionnement et/ou à l'interfaçage d'un dispositif ou d’une structure en utilisant les notations et conventions du domaine.",
+                "Utiliser les outils progiciels de dessin technique, de modélisation ou de simulation de systèmes.",
+                "Valider un modèle en le confrontant à un dispositif expérimental permettant d'identifier ses paramètres et d’établir ses limites d'application.",
+                "Contribuer à la conception et à l’étude technique de prototypes de structures ou de systèmes pluritechniques simples.",
+                "Intégrer les enjeux sociétaux, normatifs et de soutenabilité à chaque étape de la conception d’un produit technologique, d’une installation industrielle, d’un bâtiment ou d’une structure.",
+                "Réaliser une analyse fonctionnelle détaillée et mettre en place des procédures de test.",
+                "Associer une technologie à une fonction en intégrant les contraintes induites par un cahier des charges.",
+                "Coder des algorithmes d’acquisition, de traitement de l’information ou de contrôle de système dans un langage de programmation du domaine sur ordinateur (calcul scientifique) ou des cibles plus spécifiques (Automate industriel, SoM, SoC, etc.).",
+                "Déployer des réseaux et des systèmes de communication.",
+                "Appliquer les règles de sécurité accompagnant les phases de déploiement et de test d’une installation.",
+                "Organiser un plan de production.",
+                "Assurer une assistance technique, en identifiant des pannes ou en déboguant un code.",
+                "Contribuer à la mise en place et l’exécution d’un plan de maintenance.",
+                "Piloter un système de production au travers de ses interfaces homme-machine.",
+                "Contribuer au déploiement et à la mise en service d’un système d’information.",
+                "Contribuer à l’administration et à la supervision des réseaux et des systèmes de communication.",
+                "Suivre et analyser des indicateurs de performance dans un cadre normatif (qualité, sécurité, énergie...).",
+                "Intégrer les enjeux sociétaux, normatifs et de soutenabilité à la phase d'exploitation d'une installation, d'un bâtiment ou d'une structure.",
+                "Identifier les évolutions réglementaires du domaine, les innovations et transformations à l'œuvre dans les domaines de la construction, des matériaux, des systèmes pluritechniques ou des technologies numériques et intégrer les enjeux associés (économiques, sociétaux, environnementaux).",
+                "Définir et/ou mettre en place des procédés de test, de suivi et/ou de validation.",
+                "Automatiser une procédure en utilisant les logiciels adéquats.",
+                "Contribuer à l’optimisation des performances d’un produit technologique, d’une installation industrielle, d’un bâtiment ou d’une structure.",
+                "Constituer des indicateurs de performance et produire des analyses dans un objectif de mise à niveau.",
+                "Créer des tableaux de bord techniques sur la base de mesures ou d’états. "
+            ]
+        }
+    ]
+}
