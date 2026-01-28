@@ -314,10 +314,10 @@ class SearchService:
     ) -> list[http_models.ScoredPoint]:
         logger.debug("search_group_by_document collection=%s", collection_info)
         try:
-            resp = await self.client.search_groups(
+            resp = await self.client.query_points_groups(
                 query_filter=filters,
                 collection_name=collection_info,
-                query_vector=embedding,
+                query=embedding,
                 limit=nb_results,
                 with_vectors=True,
                 group_size=1,
@@ -341,10 +341,10 @@ class SearchService:
         with_vectors: bool = True,
     ) -> list[http_models.ScoredPoint]:
         try:
-            resp = await self.client.search(
+            resp = await self.client.query_points(
                 query_filter=filters,
                 collection_name=collection_info,
-                query_vector=embedding,
+                query=embedding,
                 limit=nb_results,
                 with_vectors=with_vectors,
                 with_payload=self.payload_keys,
@@ -352,11 +352,13 @@ class SearchService:
                 search_params=qdrant_models.SearchParams(indexed_only=True),
             )
             logger.debug(
-                "method=search collection=%s nb_results=%s", collection_info, len(resp)
+                "method=search collection=%s nb_results=%s",
+                collection_info,
+                len(resp.points),
             )
         except qdrant_exceptions.ResponseHandlingException:
             return []
-        return resp
+        return resp.points
 
 
 @log_time_and_error_sync
