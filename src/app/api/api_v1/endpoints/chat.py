@@ -3,7 +3,7 @@ from uuid import UUID
 
 import backoff
 import psycopg
-from fastapi import APIRouter, Depends, HTTPException, Request, status
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Request, status
 from fastapi.responses import StreamingResponse
 from langchain_core.messages import ToolMessage
 from langgraph.checkpoint.postgres.aio import AsyncPostgresSaver
@@ -22,6 +22,7 @@ from src.app.services.exceptions import (
     LanguageNotSupportedError,
     bad_request,
 )
+from src.app.services.search import SearchService, get_search_service
 from src.app.utils.logger import logger as utils_logger
 
 logger = utils_logger(__name__)
@@ -345,8 +346,10 @@ async def q_and_a_stream(
     factor=2,
 )
 async def agent_response(
+    background_tasks: BackgroundTasks,
     body: models.AgentContext = Depends(get_agent_params),
     chatfactory=Depends(get_chat_service),
+    sp: SearchService = Depends(get_search_service),
 ) -> Optional[Dict]:
     try:
         if body.query is None:
@@ -367,12 +370,15 @@ async def agent_response(
                     thread_id=body.thread_id,
                     corpora=body.corpora,
                     sdg_filter=body.sdg_filter,
+                    sp=sp,
+                    background_tasks=background_tasks,
                 )
         else:
             res = await chatfactory.agent_message(
                 query=body.query,
                 corpora=body.corpora,
                 sdg_filter=body.sdg_filter,
+                sp=sp,
             )
 
         if isinstance(res["messages"][-2], ToolMessage):

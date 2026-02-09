@@ -20,7 +20,7 @@ import uuid
 from abc import ABC
 from typing import AsyncIterable, Dict, List, Optional
 
-from fastapi import Depends, Request
+from fastapi import BackgroundTasks, Depends, Request
 from langchain_azure_ai.chat_models import AzureAIChatCompletionsModel  # type: ignore
 from langchain_core.runnables import RunnableConfig  # type: ignore
 from langgraph.checkpoint.postgres.aio import AsyncPostgresSaver  # type: ignore
@@ -42,6 +42,7 @@ from src.app.services.helpers import (
 )
 
 # from src.app.services.llm_proxy import LLMProxy
+from src.app.services.search import SearchService
 from src.app.utils.decorators import log_time_and_error
 from src.app.utils.logger import log_environmental_impacts
 from src.app.utils.logger import logger as utils_logger
@@ -404,6 +405,8 @@ class AbstractChat(ABC):
         thread_id: Optional[uuid.UUID] = None,
         corpora: Optional[tuple[str, ...]] = None,
         sdg_filter: Optional[List[int]] = None,
+        sp: SearchService | None = None,
+        background_tasks: BackgroundTasks | None = None,
     ):
         """
         Sends a chat message handled by an agent.
@@ -440,6 +443,8 @@ class AbstractChat(ABC):
                 "thread_id": thread_id,
                 "corpora": corpora,
                 "sdg_filter": sdg_filter,
+                "sp": sp,
+                "background_tasks": background_tasks,
             }
         )
 
@@ -450,7 +455,11 @@ class AbstractChat(ABC):
             },
         ]
 
-        res = await agent_executor.ainvoke(input={"messages": messages}, config=config)
+        res = await agent_executor.ainvoke(
+            input={"messages": messages},
+            config=config,
+            background_tasks=background_tasks,
+        )
         return res
 
 
