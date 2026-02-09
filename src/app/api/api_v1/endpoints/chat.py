@@ -346,12 +346,16 @@ async def q_and_a_stream(
     factor=2,
 )
 async def agent_response(
+    request: Request,
     background_tasks: BackgroundTasks,
     body: models.AgentContext = Depends(get_agent_params),
     chatfactory=Depends(get_chat_service),
     sp: SearchService = Depends(get_search_service),
+    data_collection=Depends(get_data_collection_service),
 ) -> Optional[Dict]:
     try:
+        session_id = request.headers.get("X-Session-ID")
+
         if body.query is None:
             raise EmptyQueryError()
 
@@ -385,6 +389,20 @@ async def agent_response(
             docs = res["messages"][-2].artifact
         else:
             docs = None
-        return {"content": cast(str, res["messages"][-1].content), "docs": docs}
+
+        conversation_id, message_id = await data_collection.register_chat_data(
+            session_id=session_id,
+            user_query=body.query,
+            conversation_id=body.thread_id,
+            answer_content=res["messages"][-1].content,
+            sources=docs,
+        )
+
+        return {
+            "content": cast(str, res["messages"][-1].content),
+            "docs": docs,
+            "message_id": message_id,
+            "conversation_id": conversation_id,
+        }
     except LanguageNotSupportedError as e:
         bad_request(message=e.message, msg_code=e.msg_code)
