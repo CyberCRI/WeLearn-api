@@ -4,6 +4,7 @@ from collections import Counter
 from threading import Lock
 from uuid import UUID
 
+from qdrant_client.http import models as http_models
 from sqlalchemy import func, select
 from welearn_database.data.enumeration import Step
 from welearn_database.data.models import (
@@ -334,6 +335,12 @@ def write_chat_answer(
     )
     returned_docs: list[ReturnedDocument] = []
     for doc in docs:
+        if isinstance(doc, http_models.ScoredPoint):
+            doc = Document(
+                score=0.0,
+                payload=DocumentPayloadModel(**doc.payload),
+            )
+
         returned_doc = ReturnedDocument(
             message_id=chat_msg_id,
             document_id=doc.payload.document_id,

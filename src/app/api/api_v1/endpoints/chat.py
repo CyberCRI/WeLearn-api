@@ -355,6 +355,7 @@ async def agent_response(
 ) -> Optional[Dict]:
     try:
         session_id = request.headers.get("X-Session-ID")
+        docs = []
 
         if body.query is None:
             raise EmptyQueryError()
