@@ -1,4 +1,5 @@
 from typing import List, Tuple
+from fastapi import BackgroundTasks
 
 from langchain_core.messages.utils import trim_messages
 from langchain_core.runnables import RunnableConfig
@@ -15,16 +16,23 @@ logger = utils_logger(__name__)
 
 
 async def _get_resources_about_sustainability(
-    rag_query: str, config: RunnableConfig
+    rag_query: str,
+    config: RunnableConfig,
 ) -> Tuple[str, List[Document]]:
     """Core logic for getting relevant resources about sustainability from WeLearn database."""
-    sp = SearchService()
+
     qp = EnhancedSearchQuery(
         query=rag_query,
         sdg_filter=config["configurable"].get("sdg_filter"),
         corpora=config["configurable"].get("corpora"),
     )
-    docs = await sp.search_handler(qp)
+    sp: SearchService = config["configurable"].get("sp")
+    background_tasks: BackgroundTasks = config["configurable"].get("background_tasks")
+    if not sp:
+        logger.warning("No SearchService found.")
+        return "No relevant documents found.", []
+
+    docs = await sp.search_handler(background_tasks=background_tasks, qp=qp)
     if not docs:
         logger.warning("No documents found for the query.")
         return "No relevant documents found.", []
@@ -36,7 +44,8 @@ async def _get_resources_about_sustainability(
 @tool(response_format="content_and_artifact")
 @log_time_and_error
 async def get_resources_about_sustainability(
-    rag_query: str, config: RunnableConfig
+    rag_query: str,
+    config: RunnableConfig,
 ) -> Tuple[str, List[Document]]:
     """Get relevant resources about sustainability from WeLearn database.
 
