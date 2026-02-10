@@ -352,7 +352,7 @@ class QnATests(unittest.IsolatedAsyncioTestCase):
                     "corpora": ["corpus1"],
                     "sdg_filter": [1, 2, 3],
                 },
-                headers={"X-API-Key": "test"},
+                headers={"X-API-Key": "test", "origin": "test"},
             )
             self.assertEqual(response.status_code, 200)
             self.assertIn("content", response.json())
