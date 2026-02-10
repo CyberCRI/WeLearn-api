@@ -391,19 +391,28 @@ async def agent_response(
         else:
             docs = None
 
-        conversation_id, message_id = await data_collection.register_chat_data(
-            session_id=session_id,
-            user_query=body.query,
-            conversation_id=body.thread_id,
-            answer_content=res["messages"][-1].content,
-            sources=docs,
-        )
-
-        return {
+        agent_ans = {
             "content": cast(str, res["messages"][-1].content),
             "docs": docs,
-            "message_id": message_id,
-            "conversation_id": conversation_id,
         }
+
+        try:
+            conversation_id, message_id = await data_collection.register_chat_data(
+                session_id=session_id,
+                user_query=body.query,
+                conversation_id=body.thread_id,
+                answer_content=res["messages"][-1].content,
+                sources=docs,
+            )
+
+            return {
+                **agent_ans,
+                "message_id": message_id,
+                "conversation_id": conversation_id,
+            }
+        except Exception as e:
+            logger.error("Error while registering chat data: %s", e)
+
+        return agent_ans
     except LanguageNotSupportedError as e:
         bad_request(message=e.message, msg_code=e.msg_code)
