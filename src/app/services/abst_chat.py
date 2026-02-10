@@ -460,6 +460,7 @@ class AbstractChat(ABC):
             config=config,
             background_tasks=background_tasks,
         )
+
         return res
 
 
