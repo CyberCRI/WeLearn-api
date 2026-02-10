@@ -4,7 +4,7 @@ from collections import Counter
 from threading import Lock
 from uuid import UUID
 
-from qdrant_client.http import models as http_models
+from qdrant_client.http.models import ScoredPoint
 from sqlalchemy import func, select
 from welearn_database.data.enumeration import Step
 from welearn_database.data.models import (
@@ -311,7 +311,10 @@ def write_user_query(
 
 
 def write_chat_answer(
-    user_id: UUID, answer: str, docs: list[Document], conversation_id: UUID
+    user_id: UUID,
+    answer: str,
+    docs: list[Document | ScoredPoint] | None,
+    conversation_id: UUID,
 ) -> UUID:
     """
     Write a chat answer to the database along with the referenced documents.
@@ -333,25 +336,40 @@ def write_chat_answer(
         textual_content=answer,
         conversation_id=conversation_id,
     )
-    returned_docs: list[ReturnedDocument] = []
+
+    if docs:
+        write_returned_docs(chat_msg_id, docs)
+
+    with session_maker() as session:
+        session.add(chat_msg)
+        session.commit()
+        return chat_msg.id
+
+
+def write_returned_docs(message_id: UUID, docs: list[Document | ScoredPoint]) -> None:
+    """
+    Register the returned documents for a chat message in the database.
+    Args:
+        message_id: The ID of the chat message.
+        docs: The list of documents to register.
+    """
+    returned_docs = []
     for doc in docs:
-        if isinstance(doc, http_models.ScoredPoint):
+        if isinstance(doc, ScoredPoint):
             doc = Document(
                 score=0.0,
                 payload=DocumentPayloadModel(**doc.payload),
             )
 
         returned_doc = ReturnedDocument(
-            message_id=chat_msg_id,
+            message_id=message_id,
             document_id=doc.payload.document_id,
         )
         returned_docs.append(returned_doc)
 
     with session_maker() as session:
-        session.add(chat_msg)
         session.add_all(returned_docs)
         session.commit()
-        return chat_msg.id
 
 
 def update_returned_document_click(document_id: UUID, message_id: UUID) -> None:
