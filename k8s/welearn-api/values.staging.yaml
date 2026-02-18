@@ -1,0 +1,16 @@
+ingress:
+  hostname: api.welearn.k8s.lp-i.xyz
+
+config:
+  nonSensitive:
+    PG_HOST: dev-lab-projects-backend.postgres.database.azure.com
+    PG_USER: welearn_datastack_staging
+    PG_DATABASE: welearn_datastack_staging
+    TIKA_URL_BASE: https://tika.k8s.lp-i.dev/
+    DATA_COLLECTION_ORIGIN_PREFIX: welearn
+allowedHostsRegexes:
+  mainUrl: |-
+    https:\/\/welearn\.k8s\.lp-i\.xyz
+
+rateLimiting:
+  enabled: true
