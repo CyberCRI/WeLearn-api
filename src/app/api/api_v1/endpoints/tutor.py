@@ -60,6 +60,7 @@ async def extract_files_content(
     response: Response,
     chatfactory=Depends(get_chat_service),
     lang: str = "en",
+    is_syllabus: bool = False,
 ) -> ExtractorOutputList | None:
     files_content = await get_files_content(files)
     files_content_str = ("__DOCUMENT_SEPARATOR__").join(files_content)
@@ -149,6 +150,7 @@ async def tutor_search_extract(
 
 @router.post("/search")
 async def tutor_search(
+    background_tasks: BackgroundTasks,
     files: Annotated[list[UploadFile], File()],
     response: Response,
     sp: SearchService = Depends(get_search_service),
@@ -186,7 +188,7 @@ async def tutor_search(
             raise ValueError("Unexpected response format")
 
         print(jsn)
-        themes_extracted = ExtractorOutputList(**jsn)
+        themes_extracted = ExtractorOutputList(**jsn)  # type: ignore
 
     except Exception as e:
         logger.error(f"Error in chat schema: {e}")
@@ -217,6 +219,7 @@ async def tutor_search(
         search_results = await search_multi_inputs(
             qp=qp,
             callback_function=sp.search_handler,
+            background_tasks=background_tasks,
         )
     except NoResultsError as e:
         response.status_code = 404

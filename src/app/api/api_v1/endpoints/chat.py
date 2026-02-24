@@ -245,6 +245,7 @@ async def q_and_a_ans(
     chatfactory=Depends(get_chat_service),
     data_collection=Depends(get_data_collection_service),
 ) -> dict[str, str | UUID | None] | None:
+    print(">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>")
     """_summary_
 
     Args:
@@ -379,6 +380,7 @@ async def agent_response(
                     background_tasks=background_tasks,
                 )
         else:
+            logger.info("No thread_id provided, calling agent_message without memory")
             res = await chatfactory.agent_message(
                 query=body.query,
                 corpora=body.corpora,
