@@ -1,3 +1,4 @@
+import uuid
 from dataclasses import dataclass
 from typing import Dict, List
 
@@ -40,11 +41,16 @@ class SyllabusResponse(BaseModel):
     syllabus: list[SyllabusResponseAgent]
     documents: list[ScoredPoint]
     extracts: list[ExtractorOutput]
+    syllabus_message_id: uuid.UUID | None = None
 
 
 class SyllabusFeedback(SyllabusResponse):
     feedback: str
     lang: str = "en"
+
+
+class SyllabusUserUpdate(BaseModel):
+    syllabus: str
 
 
 class MessageWithAnalysis(BaseModel):

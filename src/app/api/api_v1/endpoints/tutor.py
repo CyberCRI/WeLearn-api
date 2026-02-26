@@ -1,11 +1,20 @@
 from typing import Annotated
 
 import backoff
-from fastapi import APIRouter, BackgroundTasks, Depends, File, Response, UploadFile
+from fastapi import (
+    APIRouter,
+    BackgroundTasks,
+    Depends,
+    File,
+    Request,
+    Response,
+    UploadFile,
+)
 
 from src.app.api.dependencies import get_settings
 from src.app.models.search import EnhancedSearchQuery
 from src.app.services.abst_chat import get_chat_service
+from src.app.services.data_collection import get_data_collection_service
 from src.app.services.exceptions import NoResultsError
 from src.app.services.helpers import extract_json_from_response
 from src.app.services.search import SearchService, get_search_service
@@ -17,6 +26,7 @@ from src.app.services.tutor.models import (
     SyllabusFeedback,
     SyllabusResponse,
     SyllabusResponseAgent,
+    SyllabusUserUpdate,
     TutorSearchResponse,
     TutorSyllabusRequest,
 )
@@ -147,7 +157,7 @@ async def tutor_search_extract(
     return resp
 
 
-@router.post("/search")
+@router.post("/search", deprecated=True)
 async def tutor_search(
     files: Annotated[list[UploadFile], File()],
     response: Response,
@@ -255,14 +265,28 @@ async def tutor_search(
 )
 @router.post("/syllabus")
 async def create_syllabus(
-    body: TutorSyllabusRequest, lang: str = "en"
+    request: Request,
+    body: TutorSyllabusRequest,
+    lang: str = "en",
+    data_collection=Depends(get_data_collection_service),
 ) -> SyllabusResponse:
+    session_id = request.headers.get("X-Session-ID")
     results = await tutor_manager(body, lang)
 
     # TODO: handle errors
 
+    message_id = await data_collection.register_syllabus_data(
+        session_id=session_id,
+        input_data=body,
+        agent_answer=results[0].content if results else "",
+        feature="syllabus_creation",
+    )
+
     return SyllabusResponse(
-        syllabus=results, documents=body.documents, extracts=body.extracts
+        syllabus=results,
+        documents=body.documents,
+        extracts=body.extracts,
+        syllabus_message_id=message_id,
     )
 
 
@@ -317,8 +341,12 @@ and the themes extracted from those documents:
 )
 @router.post("/syllabus/feedback")
 async def handle_syllabus_feedback(
-    body: SyllabusFeedback, chatfactory=Depends(get_chat_service)
+    request: Request,
+    body: SyllabusFeedback,
+    chatfactory=Depends(get_chat_service),
+    data_collection=Depends(get_data_collection_service),
 ):
+    session_id = request.headers.get("X-Session-ID")
 
     messages = [
         {
@@ -347,6 +375,13 @@ async def handle_syllabus_feedback(
 
         assert isinstance(syllabus, str)
 
+        await data_collection.register_syllabus_data(
+            session_id=session_id,
+            input_data=body,
+            agent_answer=syllabus,
+            feature="syllabus_feedback",
+        )
+
         return SyllabusResponse(
             syllabus=[SyllabusResponseAgent(content=syllabus)],
             documents=body.documents,
@@ -356,3 +391,19 @@ async def handle_syllabus_feedback(
     except Exception as e:
         logger.error(f"Error in chat schema: {e}")
         raise e
+
+
+@router.post("/syllabus/user_update")
+async def register_syllabus_user_update(
+    request: Request,
+    body: SyllabusUserUpdate,
+    data_collection=Depends(get_data_collection_service),
+):
+    session_id = request.headers.get("X-Session-ID")
+
+    await data_collection.register_syllabus_update(
+        session_id=session_id,
+        syllabus_content=body.syllabus,
+    )
+
+    return {"message": "user update registered"}

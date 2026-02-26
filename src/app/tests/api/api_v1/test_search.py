@@ -304,7 +304,7 @@ class SearchTestsSlices(IsolatedAsyncioTestCase):
             self.assertEqual(response.status_code, 204)
 
 
-@patch("src.app.services.sql_db.sql_service.session_maker")
+@patch("src.app.services.sql_db.queries.session_maker")
 @patch(
     "src.app.services.security.check_api_key_sync",
     new=mock.MagicMock(return_value=True),
@@ -330,7 +330,11 @@ class SearchTestsAll(IsolatedAsyncioTestCase):
                 json={
                     "query": "une phrase plus longue pour tester la recherche en français. et voir ce que cela donne"
                 },
-                headers={"X-API-Key": "test"},
+                headers={
+                    "X-API-Key": "test",
+                    "origin": "test.com",
+                    "X-Session-ID": str(uuid.uuid4()),
+                },
             )
             self.assertEqual(response.status_code, 404)
 
@@ -342,8 +346,13 @@ class SearchTestsAll(IsolatedAsyncioTestCase):
                 json={
                     "query": "une phrase plus longue pour tester la recherche en français. et voir ce que cela donne"
                 },
-                headers={"X-API-Key": "test"},
+                headers={
+                    "X-API-Key": "test",
+                    "origin": "test.com",
+                    "X-Session-ID": str(uuid.uuid4()),
+                },  # noqa: E501
             )
+
             self.assertEqual(response.status_code, 204)
 
     async def test_search_all_no_query(self, *mocks):
@@ -351,7 +360,11 @@ class SearchTestsAll(IsolatedAsyncioTestCase):
             response = client.post(
                 f"{settings.API_V1_STR}/search/by_document",
                 json={"query": ""},
-                headers={"X-API-Key": "test"},
+                headers={
+                    "X-API-Key": "test",
+                    "origin": "test.com",
+                    "X-Session-Id": str(uuid.uuid4()),
+                },
             )
             self.assertEqual(response.status_code, 400)
             self.assertEqual(

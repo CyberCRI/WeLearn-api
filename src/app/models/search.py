@@ -1,13 +1,21 @@
+import uuid
 from enum import StrEnum, auto
+from typing import Optional
 
 from pydantic import BaseModel, Field
-from qdrant_client.http.models import Range
+from qdrant_client.http.models import Range, ScoredPoint
 from qdrant_client.models import FieldCondition, Filter, MatchAny
 
+from src.app.models.documents import Document
 from src.app.utils.decorators import log_time_and_error_sync
 from src.app.utils.logger import logger as logger_utils
 
 logger = logger_utils(__name__)
+
+
+class SearchOutput(BaseModel):
+    search_message_id: Optional[uuid.UUID] = None
+    docs: list[Document] | list[ScoredPoint] | None = None
 
 
 class SDGFilter(BaseModel):
