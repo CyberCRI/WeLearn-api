@@ -22,10 +22,12 @@ def get_or_create_user_sync(
 ) -> uuid.UUID:
     with session_maker() as s:
         if user_id:
+            print(">>>>>>>>>>>>>>>>>>>>><, user_id:", user_id)
             user = s.execute(
                 select(InferredUser.id).where(InferredUser.id == user_id)
             ).first()
             if user:
+                print(">>>>>>>>>>>>>>>>>>>>><")
                 return user.id
         user = InferredUser(origin_referrer=referer)
         s.add(user)

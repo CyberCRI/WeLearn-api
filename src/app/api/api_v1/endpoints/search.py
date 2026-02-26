@@ -1,6 +1,13 @@
 # src/app/api/api_v1/endpoints/search.py
 
-from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Response
+from fastapi import (
+    APIRouter,
+    BackgroundTasks,
+    Depends,
+    HTTPException,
+    Request,
+    Response,
+)
 from fastapi.concurrency import run_in_threadpool
 
 from src.app.models.documents import Document
@@ -8,8 +15,10 @@ from src.app.models.search import (
     EnhancedSearchQuery,
     SDGFilter,
     SearchMethods,
+    SearchOutput,
     SearchQuery,
 )
+from src.app.services.data_collection import get_data_collection_service
 from src.app.services.exceptions import (
     CollectionNotFoundError,
     EmptyQueryError,
@@ -185,15 +194,19 @@ async def multi_search_all_slices_by_lang(
     "/by_document",
     summary="search all documents",
     description="Search by documents, returns only one result by document id",
-    response_model=list[Document] | None | str,
+    response_model=SearchOutput | None | str,
 )
 async def search_all(
+    request: Request,
     background_tasks: BackgroundTasks,
     response: Response,
     qp: EnhancedSearchQuery = Depends(get_params),
     sp: SearchService = Depends(get_search_service),
+    data_collection=Depends(get_data_collection_service),
 ):
     try:
+        session_id = request.headers.get("X-Session-ID")
+
         res = await sp.search_handler(
             qp=qp, method=SearchMethods.BY_DOCUMENT, background_tasks=background_tasks
         )
@@ -210,7 +223,16 @@ async def search_all(
 
     response.status_code = 200
 
-    return res
+    search_message_id = await data_collection.register_search_data(
+        session_id=session_id,
+        query=qp.query,
+        sdg_filter=qp.sdg_filter,
+        corpora=qp.corpora,
+        search_results=res,
+        feature="search",
+    )
+
+    return SearchOutput(search_message_id=search_message_id, docs=res)
 
 
 @router.post(

@@ -49,3 +49,12 @@ async def update_clicked_doc_from_chat_message(
 ) -> str:
     await data_collection.register_document_click(body.doc_id, body.message_id)
     return "updated"
+
+
+@router.post("/syllabus_downloaded")
+async def register_syllabus_download(
+    request: Request, data_collection=Depends(get_data_collection_service)
+) -> str:
+    session_id = request.headers.get("X-Session-ID")
+    await data_collection.register_syllabus_download(session_id)
+    return "registered"

@@ -17,6 +17,8 @@ from welearn_database.data.models import (
     EmbeddingModel,
     EndpointRequest,
     ErrorDataQuality,
+    FilterType,
+    FilterUsedInQuery,
     ProcessState,
     QtyDocumentInQdrant,
     QtyDocumentInQdrantPerCorpus,
@@ -284,8 +286,11 @@ def write_process_state(document_id: UUID, process_state: Step) -> UUID:
 
 
 def write_user_query(
-    user_id: UUID, query_content: str, conversation_id: UUID | None
-) -> UUID:
+    user_id: UUID,
+    query_content: str,
+    conversation_id: UUID | None,
+    feature: str | None = None,
+) -> tuple[UUID, UUID]:
     """
     Write a user query to the chat in the database.
     Args:
@@ -303,11 +308,12 @@ def write_user_query(
         role=Role.USER.value,
         textual_content=query_content,
         conversation_id=conversation_id,
+        original_feature_name=feature,
     )
     with session_maker() as session:
         session.add(chat_msg)
         session.commit()
-        return conversation_id
+        return conversation_id, chat_msg.id
 
 
 def write_chat_answer(
@@ -315,6 +321,7 @@ def write_chat_answer(
     answer: str,
     docs: list[Document | ScoredPoint] | None,
     conversation_id: UUID,
+    feature: str | None = None,
 ) -> UUID:
     """
     Write a chat answer to the database along with the referenced documents.
@@ -335,6 +342,7 @@ def write_chat_answer(
         role=Role.ASSISTANT.value,
         textual_content=answer,
         conversation_id=conversation_id,
+        original_feature_name=feature,
     )
 
     if docs:
@@ -346,7 +354,58 @@ def write_chat_answer(
         return chat_msg.id
 
 
-def write_returned_docs(message_id: UUID, docs: list[Document | ScoredPoint]) -> None:
+def get_last_syllabus_conversation_id(user_id: UUID) -> UUID | None:
+    """
+    Get the conversation ID of the last syllabus creation message of the user.
+
+    Args:
+        user_id: The ID of the user.
+
+    Returns:
+        The conversation ID if found, otherwise None.
+    """
+    with session_maker() as session:
+        last_message = (
+            session.query(ChatMessage)
+            .filter(
+                ChatMessage.inferred_user_id == user_id,
+                ChatMessage.original_feature_name == "syllabus_creation",
+            )
+            .order_by(ChatMessage.created_at.desc())
+            .first()
+        )
+        return last_message.conversation_id if last_message else None
+
+
+def get_last_syllabus_id_for_user(user_id: UUID) -> UUID | None:
+    with session_maker() as session:
+        last_message = (
+            session.query(ChatMessage)
+            .filter(
+                ChatMessage.inferred_user_id == user_id,
+                ChatMessage.original_feature_name.in_(
+                    ["syllabus_creation", "syllabus_feedback", "syllabus_user_update"]
+                ),
+            )
+            .order_by(ChatMessage.created_at.desc())
+            .first()
+        )
+        return last_message.id if last_message else None
+
+
+def update_syllabus_retrieved_status_(syllabus_id: UUID) -> None:
+    with session_maker() as session:
+        syllabus_message = (
+            session.query(ChatMessage).filter(ChatMessage.id == syllabus_id).first()
+        )
+        if syllabus_message:
+            syllabus_message.is_retrieved_by_user = True
+            session.commit()
+
+
+def write_returned_docs(
+    message_id: UUID, docs: list[Document | ScoredPoint], is_clicked: bool = False
+) -> None:
     """
     Register the returned documents for a chat message in the database.
     Args:
@@ -364,11 +423,36 @@ def write_returned_docs(message_id: UUID, docs: list[Document | ScoredPoint]) ->
         returned_doc = ReturnedDocument(
             message_id=message_id,
             document_id=doc.payload.document_id,
+            is_clicked=is_clicked,
         )
         returned_docs.append(returned_doc)
 
     with session_maker() as session:
         session.add_all(returned_docs)
+        session.commit()
+
+
+def write_filters_search(
+    message_id: UUID, sdg_filter: list[int] | None, corpora: list[str] | None
+) -> None:
+    filter_entries = []
+    for sdg in sdg_filter or []:
+        filter_entry = FilterUsedInQuery(
+            message_id=message_id,
+            filter_type=FilterType.SDG.value,
+            filter_value=str(sdg),
+        )
+        filter_entries.append(filter_entry)
+    for corpus in corpora or []:
+        filter_entry = FilterUsedInQuery(
+            message_id=message_id,
+            filter_type=FilterType.SOURCE.value,
+            filter_value=corpus,
+        )
+        filter_entries.append(filter_entry)
+
+    with session_maker() as session:
+        session.add_all(filter_entries)
         session.commit()
 
 
