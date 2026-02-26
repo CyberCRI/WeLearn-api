@@ -214,7 +214,7 @@ async def search_all(
         if not res:
             logger.error("No results found")
             response.status_code = 204
-            return []
+            return SearchOutput(search_message_id=None, docs=[])
     except CollectionNotFoundError as e:
         raise HTTPException(
             status_code=404,

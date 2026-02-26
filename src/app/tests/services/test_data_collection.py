@@ -3,8 +3,10 @@ import uuid
 from unittest.mock import MagicMock, patch
 
 from fastapi import HTTPException
+from qdrant_client.models import ScoredPoint
 
 from src.app.services.data_collection import DataCollection, _cache
+from src.app.services.tutor.models import ExtractorOutput, TutorSyllabusRequest
 
 
 async def fake_run_in_threadpool(func, *args, **kwargs):
@@ -71,7 +73,7 @@ class TestRegisterChatData(unittest.IsolatedAsyncioTestCase):
         message_id = uuid.uuid4()
 
         mock_get_user.return_value = user_id
-        mock_write_query.return_value = conversation_id
+        mock_write_query.return_value = (conversation_id, message_id)
         mock_write_answer.return_value = message_id
 
         dc = DataCollection(origin="workshop.example.com")
@@ -152,3 +154,126 @@ class TestRegisterDocumentClick(unittest.IsolatedAsyncioTestCase):
         await dc.register_document_click(doc_id, message_id)
 
         mock_update.assert_called_once_with(doc_id, message_id)
+
+
+class TestRegisterDownloadSyllabus(unittest.IsolatedAsyncioTestCase):
+
+    @patch(
+        "src.app.services.data_collection.run_in_threadpool",
+        side_effect=fake_run_in_threadpool,
+    )
+    @patch("src.app.services.data_collection.update_syllabus_retrieved_status")
+    @patch("src.app.services.data_collection.get_last_syllabus_id_for_user")
+    @patch("src.app.services.data_collection.get_user_from_session_id")
+    @patch("src.app.services.data_collection.get_current_data_collection_campaign")
+    async def test_register_syllabus_download(
+        self,
+        mock_campaign,
+        mock_get_user,
+        mock_get_last_syllabus_id,
+        mock_update_syllabus,
+        _,
+    ):
+        mock_campaign.return_value = MagicMock(is_active=True)
+
+        user_id = uuid.uuid4()
+        syllabus_id = uuid.uuid4()
+
+        mock_get_user.return_value = user_id
+        mock_get_last_syllabus_id.return_value = syllabus_id
+
+        dc = DataCollection(origin="workshop.example.com")
+
+        await dc.register_syllabus_download(session_id=uuid.uuid4())
+
+        mock_update_syllabus.assert_called_once_with(syllabus_id)
+
+
+class TestRegisterSyllabus(unittest.IsolatedAsyncioTestCase):
+
+    @patch(
+        "src.app.services.data_collection.run_in_threadpool",
+        side_effect=fake_run_in_threadpool,
+    )
+    @patch("src.app.services.data_collection.write_user_query")
+    @patch("src.app.services.data_collection.get_last_syllabus_conversation_id")
+    @patch("src.app.services.data_collection.get_user_from_session_id")
+    @patch("src.app.services.data_collection.get_current_data_collection_campaign")
+    async def test_register_syllabus_update(
+        self,
+        mock_campaign,
+        mock_get_user,
+        mock_get_last_syllabus_conversation_id,
+        mock_write_user_query,
+        _,
+    ):
+        mock_campaign.return_value = MagicMock(is_active=True)
+
+        user_id = uuid.uuid4()
+        conversation_id = uuid.uuid4()
+
+        mock_get_user.return_value = user_id
+        mock_get_last_syllabus_conversation_id.return_value = conversation_id
+        dc = DataCollection(origin="workshop.example.com")
+
+        await dc.register_syllabus_update(
+            session_id=uuid.uuid4(),
+            syllabus_content="syllabus query",
+        )
+
+        mock_write_user_query.assert_called_once_with(
+            user_id, "syllabus query", conversation_id, "syllabus_user_update"
+        )
+
+    @patch(
+        "src.app.services.data_collection.run_in_threadpool",
+        side_effect=fake_run_in_threadpool,
+    )
+    @patch("src.app.services.data_collection.write_returned_docs")
+    @patch("src.app.services.data_collection.write_chat_answer")
+    @patch("src.app.services.data_collection.write_user_query")
+    @patch("src.app.services.data_collection.get_user_from_session_id")
+    @patch("src.app.services.data_collection.get_current_data_collection_campaign")
+    async def test_register_syllabus_data(
+        self,
+        mock_campaign,
+        mock_get_user,
+        mock_write_user_query,
+        mock_write_chat_answer,
+        mock_write_returned_docs,
+        _,
+    ):
+        mock_campaign.return_value = MagicMock(is_active=True)
+        user_id = uuid.uuid4()
+        conversation_id = uuid.uuid4()
+        message_id = uuid.uuid4()
+
+        mock_get_user.return_value = user_id
+        mock_write_user_query.return_value = (conversation_id, message_id)
+        mock_write_chat_answer.return_value = message_id
+        dc = DataCollection(origin="workshop.example.com")
+
+        await dc.register_syllabus_data(
+            session_id=uuid.uuid4(),
+            input_data=TutorSyllabusRequest(
+                course_title="course title",
+                level="level",
+                duration="duration",
+                description="description",
+                documents=[],
+                extracts=[ExtractorOutput(summary="summary", themes=[])],
+                nb_results=1,
+            ),
+            agent_answer="SyllabusResponse content",
+            feature="syllabus_creation",
+        )
+
+        mock_write_chat_answer.assert_called_once_with(
+            user_id,
+            "SyllabusResponse content",
+            None,
+            conversation_id,
+            "syllabus_creation",
+        )
+
+        mock_write_returned_docs.assert_not_called()

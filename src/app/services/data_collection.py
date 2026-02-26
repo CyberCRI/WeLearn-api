@@ -2,7 +2,7 @@ import json
 import re
 import uuid
 from datetime import datetime, timedelta
-from typing import Any, Literal, cast
+from typing import Any, Literal
 
 from fastapi import HTTPException, Request, status
 from fastapi.concurrency import run_in_threadpool
@@ -15,7 +15,7 @@ from src.app.services.sql_db.queries import (
     get_last_syllabus_conversation_id,
     get_last_syllabus_id_for_user,
     update_returned_document_click,
-    update_syllabus_retrieved_status_,
+    update_syllabus_retrieved_status,
     write_chat_answer,
     write_filters_search,
     write_returned_docs,
@@ -61,7 +61,7 @@ class DataCollection:
         _cache["is_campaign_active"] = campaign and campaign.is_active
         _cache["expires"] = now + timedelta(hours=6)
 
-        return True  # _cache["is_campaign_active"]
+        return _cache["is_campaign_active"]
 
     async def register_search_data(
         self,
@@ -116,7 +116,7 @@ class DataCollection:
 
     async def register_syllabus_data(
         self,
-        session_id: str | None,
+        session_id: uuid.UUID | None,
         input_data: TutorSyllabusRequest | SyllabusFeedback,
         agent_answer: str,
         feature: Literal["syllabus_creation", "syllabus_feedback"],
@@ -137,9 +137,7 @@ class DataCollection:
                 },
             )
 
-        user_id = await run_in_threadpool(
-            get_user_from_session_id, uuid.UUID(session_id)
-        )
+        user_id = await run_in_threadpool(get_user_from_session_id, session_id)
 
         if not user_id:
             raise HTTPException(
@@ -195,7 +193,7 @@ class DataCollection:
         return chat_msg_id
 
     async def register_syllabus_update(
-        self, session_id: str | None, syllabus_content: str
+        self, session_id: uuid.UUID | None, syllabus_content: str
     ) -> None:
         if not self.should_collect:
             logger.info("data_collection is not enabled.")
@@ -212,9 +210,7 @@ class DataCollection:
                 },
             )
 
-        user_id = await run_in_threadpool(
-            get_user_from_session_id, uuid.UUID(session_id)
-        )
+        user_id = await run_in_threadpool(get_user_from_session_id, session_id)
 
         if not user_id:
             raise HTTPException(
@@ -289,7 +285,7 @@ class DataCollection:
             write_chat_answer,
             user_id,
             answer_content,
-            cast(list[Document | ScoredPoint], sources),
+            sources,  # type: ignore
             conversation_id,
             feature,
         )
@@ -345,7 +341,7 @@ class DataCollection:
             )
             return
 
-        await run_in_threadpool(update_syllabus_retrieved_status_, syllabus_id)
+        await run_in_threadpool(update_syllabus_retrieved_status, syllabus_id)
 
 
 def get_data_collection_service(request: Request) -> DataCollection:

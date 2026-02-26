@@ -1,6 +1,6 @@
+import uuid
 from dataclasses import dataclass
 from typing import Dict, List
-import uuid
 
 from pydantic import BaseModel
 from qdrant_client.models import ScoredPoint

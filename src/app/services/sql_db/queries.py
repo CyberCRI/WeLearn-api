@@ -345,13 +345,14 @@ def write_chat_answer(
         original_feature_name=feature,
     )
 
-    if docs:
-        write_returned_docs(chat_msg_id, docs)
-
     with session_maker() as session:
         session.add(chat_msg)
         session.commit()
-        return chat_msg.id
+
+    if docs:
+        write_returned_docs(chat_msg_id, docs)
+
+    return chat_msg_id
 
 
 def get_last_syllabus_conversation_id(user_id: UUID) -> UUID | None:
@@ -393,7 +394,7 @@ def get_last_syllabus_id_for_user(user_id: UUID) -> UUID | None:
         return last_message.id if last_message else None
 
 
-def update_syllabus_retrieved_status_(syllabus_id: UUID) -> None:
+def update_syllabus_retrieved_status(syllabus_id: UUID) -> None:
     with session_maker() as session:
         syllabus_message = (
             session.query(ChatMessage).filter(ChatMessage.id == syllabus_id).first()

@@ -1,6 +1,6 @@
+import uuid
 from enum import StrEnum, auto
 from typing import Optional
-import uuid
 
 from pydantic import BaseModel, Field
 from qdrant_client.http.models import Range, ScoredPoint
