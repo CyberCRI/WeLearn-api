@@ -304,7 +304,6 @@ class SearchTestsSlices(IsolatedAsyncioTestCase):
             self.assertEqual(response.status_code, 204)
 
 
-# @patch("src.app.services.sql_db.sql_service.session_maker")
 @patch("src.app.services.sql_db.queries.session_maker")
 @patch(
     "src.app.services.security.check_api_key_sync",

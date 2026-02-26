@@ -332,7 +332,7 @@ class DataCollection:
                 },
             )
 
-        # get last syllabus grom the user and update it with the is retrieved event
+        # get last syllabus from the user and update it with the is retrieved event
         syllabus_id = await run_in_threadpool(get_last_syllabus_id_for_user, user_id)
 
         if not syllabus_id:

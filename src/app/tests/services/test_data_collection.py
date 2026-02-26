@@ -3,7 +3,6 @@ import uuid
 from unittest.mock import MagicMock, patch
 
 from fastapi import HTTPException
-from qdrant_client.models import ScoredPoint
 
 from src.app.services.data_collection import DataCollection, _cache
 from src.app.services.tutor.models import ExtractorOutput, TutorSyllabusRequest

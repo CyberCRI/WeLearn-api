@@ -157,7 +157,6 @@ async def tutor_search_extract(
     return resp
 
 
-# add deprecated tag to this endpoint in swagger as it is not used anymore and will be removed in the future
 @router.post("/search", deprecated=True)
 async def tutor_search(
     files: Annotated[list[UploadFile], File()],
