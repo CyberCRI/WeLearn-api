@@ -7584,15 +7584,15 @@ files = [
 
 [[package]]
 name = "welearn-database"
-version = "1.4.0.dev0"
+version = "1.4.0"
 description = "All stuff related to relationnal database from the WeLearn project"
 optional = false
 python-versions = ">=3.10"
 groups = ["main"]
 markers = "sys_platform == \"win32\" or sys_platform == \"emscripten\" or sys_platform != \"win32\" and sys_platform != \"emscripten\""
 files = [
-    {file = "welearn_database-1.4.0.dev0-py3-none-any.whl", hash = "sha256:6c90bb23ea5719043c12ab879a8aa20a057bc2a969d71a566617533d44718d28"},
-    {file = "welearn_database-1.4.0.dev0.tar.gz", hash = "sha256:c52cceb5d17bc69303eb5c128de6d866011bf9d21d320dd20c7f14a2837c967a"},
+    {file = "welearn_database-1.4.0-py3-none-any.whl", hash = "sha256:f07d2d4a150176d5e1e01d440943142e85b0a79174864da987ad4d07b0b59331"},
+    {file = "welearn_database-1.4.0.tar.gz", hash = "sha256:b7bb053fd364d9324fe3055f89ed3008e35aa82a4cb39fc1f9a208b33697de4d"},
 ]
 
 [package.dependencies]
@@ -8226,4 +8226,4 @@ cffi = ["cffi (>=1.17,<2.0) ; platform_python_implementation != \"PyPy\" and pyt
 [metadata]
 lock-version = "2.1"
 python-versions = ">=3.10,<3.13"
-content-hash = "ee4519e720276142eaa8f4d40ca425a0e277706bd349d7b43500fdf842b3b201"
+content-hash = "9dc235ee46a73295928c93bd9429eb30a9ca29e3d49c3f60688a025410f6a8b3"
