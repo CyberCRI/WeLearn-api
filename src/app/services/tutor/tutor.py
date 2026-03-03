@@ -1,6 +1,6 @@
 from langchain_azure_ai.chat_models import AzureAIChatCompletionsModel  # type: ignore
 
-from src.app.api.dependencies import get_settings
+from src.app.core.config import Settings
 from src.app.services.tutor.agents import (
     PedagogicalEngineerAgent,
     SDGExpertAgent,
@@ -12,9 +12,6 @@ from src.app.services.tutor.models import (
     TutorSyllabusRequest,
 )
 from src.app.services.tutor.utils import extract_doc_info
-
-settings = get_settings()
-
 
 GREENCOMP_COMPETENCIES = (
     "Here are the GreenComp competencies: "
@@ -46,7 +43,7 @@ GREENCOMP_COMPETENCIES = (
 )
 
 
-def _build_chat_model() -> AzureAIChatCompletionsModel:
+def _build_chat_model(settings: Settings) -> AzureAIChatCompletionsModel:
     return AzureAIChatCompletionsModel(
         endpoint=settings.AZURE_APIM_API_BASE,
         credential=settings.AZURE_APIM_API_KEY,
@@ -56,7 +53,7 @@ def _build_chat_model() -> AzureAIChatCompletionsModel:
 
 
 async def tutor_manager(
-    content: TutorSyllabusRequest, lang: str
+    content: TutorSyllabusRequest, lang: str, settings: Settings
 ) -> list[SyllabusResponseAgent]:
     formatted_content = MessageWithResources(
         lang=lang,
@@ -70,7 +67,7 @@ async def tutor_manager(
         description=content.description,
     )
 
-    chat_model = _build_chat_model()
+    chat_model = _build_chat_model(settings=settings)
     teacher_agent = UniversityTeacherAgent(chat_model, lang)
     sdg_agent = SDGExpertAgent(chat_model, GREENCOMP_COMPETENCIES, lang)
     pedagogical_agent = PedagogicalEngineerAgent(
