@@ -12,13 +12,27 @@ from src.app.utils.logger import logger as utils_logger
 
 logger = utils_logger(__name__)
 
+
+_DISCIPLINARY_SKILLS = None
+
+
+def get_disciplinary_skills():
+    global _DISCIPLINARY_SKILLS
+    if _DISCIPLINARY_SKILLS is None:
+        try:
+            path = Path(__file__).parent / "disciplinary_skills.json"
+            with open(path, "r", encoding="utf-8") as f:
+                _DISCIPLINARY_SKILLS = {
+                    d["code_rncp"]: d["skills"] for d in json.load(f)["disciplines"]
+                }
+        except Exception:
+            # Handle error, log, or provide fallback
+            _DISCIPLINARY_SKILLS = {}
+    return _DISCIPLINARY_SKILLS
+
+
 # TODO: add template file move this to utils
 TEMPLATES = {"template0": Path("src/app/services/tutor/template.md").read_text()}
-
-with open(
-    "src/app/services/tutor/disciplinary_skills.json", "r", encoding="utf-8"
-) as f:
-    DISCIPLINARY_SKILLS = {d["code_rncp"]: d["skills"] for d in json.load(f)["disciplines"]}
 
 
 class TutorChatAgent:
@@ -65,6 +79,7 @@ class UniversityTeacherAgent(TutorChatAgent):
         super().__init__("UniversityTeacherAgent", model, system_prompt)
 
     async def generate(self, message: MessageWithResources) -> SyllabusResponseAgent:
+        DISCIPLINARY_SKILLS = get_disciplinary_skills()
         contents = "summary :".join(message.summary)
         themes = ",".join([theme["theme"] for theme in message.themes])
         prompt = (
@@ -73,7 +88,7 @@ class UniversityTeacherAgent(TutorChatAgent):
             f"The syllabus should be written in lang: {message.lang} the section names must also be written in {message.lang}, this is important \n\nTEXT CONTENTS:\n{contents}\n\n"
             f"THEMES:\n{themes} \n\nTake into account the users input courses title, level, duration and "
             f"description: {message.course_title}, {message.level}, {message.duration}, {message.description}."
-            f"{'\n\nThe syllabus should also contribute to build the following disciplinary skills:'+('\n- '.join(DISCIPLINARY_SKILLS[message.discipline])) if message.discipline in DISCIPLINARY_SKILLS.keys() else ''}"
+            f"{('\n\nThe syllabus should also contribute to build the following disciplinary skills:'+'\n- '.join(DISCIPLINARY_SKILLS[message.discipline])) if message.discipline in DISCIPLINARY_SKILLS.keys() else ''}"
         )
         response = await self.run(prompt)
         return SyllabusResponseAgent(content=response, source=self.name)
