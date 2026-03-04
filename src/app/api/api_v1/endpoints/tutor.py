@@ -11,7 +11,7 @@ from fastapi import (
     UploadFile,
 )
 
-from src.app.api.dependencies import get_settings
+from src.app.shared.utils.dependencies import get_settings
 from src.app.core.config import Settings
 from src.app.models.search import EnhancedSearchQuery
 from src.app.services.abst_chat import get_chat_service

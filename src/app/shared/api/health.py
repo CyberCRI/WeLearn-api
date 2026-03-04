@@ -4,7 +4,7 @@ import httpx
 from fastapi import APIRouter, HTTPException, status
 from pydantic import BaseModel
 
-from src.app.api.dependencies import ConfigDepend
+from src.app.shared.utils.dependencies import ConfigDepend
 
 router = APIRouter()
 

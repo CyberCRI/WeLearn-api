@@ -8,7 +8,7 @@ from fastapi import HTTPException, Request, status
 from fastapi.concurrency import run_in_threadpool
 from qdrant_client.models import ScoredPoint
 
-from src.app.api.dependencies import get_settings
+from src.app.shared.utils.dependencies import get_settings
 from src.app.models.documents import Document
 from src.app.services.sql_db.queries import (
     get_current_data_collection_campaign,
