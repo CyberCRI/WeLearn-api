@@ -5,7 +5,7 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from qdrant_client import AsyncQdrantClient
 
-from src.app.api.dependencies import get_settings
+from src.app.shared.utils.dependencies import get_settings
 from src.app.services.llm_proxy import LLMProxy
 
 

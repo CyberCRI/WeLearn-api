@@ -22,10 +22,10 @@ class Settings(BaseSettings):
     BACKEND_CORS_ORIGINS_REGEX: str = CLIENT_ORIGINS_REGEX
     DATA_COLLECTION_ORIGIN_PREFIX: str
 
-    def get_api_version(self, cls):
+    def get_api_version(self) -> dict:
         return {
-            "title": cls.PROJECT_NAME,
-            "api_version": cls.API_V1_STR,
+            "title": self.PROJECT_NAME,
+            "api_version": self.API_V1_STR,
             "semver": "0.1.0",
         }
 
