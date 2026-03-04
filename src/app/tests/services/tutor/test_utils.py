@@ -5,7 +5,7 @@ from unittest.mock import Mock, patch
 from fastapi import HTTPException, UploadFile
 from qdrant_client.models import ScoredPoint
 
-from src.app.services.tutor.utils import (
+from src.app.shared.utils.utils import (
     build_system_message,
     extract_doc_info,
     get_file_content,

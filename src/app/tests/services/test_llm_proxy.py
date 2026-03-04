@@ -3,7 +3,7 @@ from unittest import mock
 
 from litellm.types.utils import Choices, Message, ModelResponse
 
-from src.app.services.llm_proxy import LLMProxy
+from src.app.shared.infra.llm_proxy import LLMProxy
 
 
 def create_chat_responses_mocks(response: str):
@@ -16,7 +16,7 @@ def create_chat_responses_mocks(response: str):
     )
 
 
-@mock.patch("src.app.services.llm_proxy.acompletion", new_callable=mock.AsyncMock)
+@mock.patch("src.app.shared.infra.llm_proxy.acompletion", new_callable=mock.AsyncMock)
 class TestLLMProxy(unittest.IsolatedAsyncioTestCase):
     def setUp(self):
         self.proxy = LLMProxy(model="fake_model")

@@ -13,7 +13,7 @@ from pydantic import BaseModel
 
 from src.app.shared.utils.dependencies import get_settings
 from src.app.models import chat as models
-from src.app.services.abst_chat import get_chat_service
+from src.app.shared.infra.abst_chat import get_chat_service
 from src.app.services.constants import subjects as subjectsDict
 from src.app.services.data_collection import get_data_collection_service
 from src.app.services.exceptions import (

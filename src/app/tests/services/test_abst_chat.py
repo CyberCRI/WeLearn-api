@@ -2,7 +2,7 @@ import unittest
 from unittest import mock
 
 from src.app.models.chat import ReformulatedQueryResponse
-from src.app.services.abst_chat import AbstractChat
+from src.app.shared.infra.abst_chat import AbstractChat
 from src.app.services.exceptions import LanguageNotSupportedError
 
 
@@ -11,7 +11,7 @@ class TestAbstractChat(unittest.IsolatedAsyncioTestCase):
         mocked_client = mock.AsyncMock()
         self.chat = AbstractChat(client=mocked_client)
 
-    @mock.patch("src.app.services.abst_chat.detect_language_from_entry")
+    @mock.patch("src.app.shared.infra.abst_chat.detect_language_from_entry")
     async def test_lang_error_helper(self, mock_detect_lang):
         self.chat._detect_lang_with_llm = mock.AsyncMock()
 
@@ -20,14 +20,14 @@ class TestAbstractChat(unittest.IsolatedAsyncioTestCase):
         self.chat._detect_lang_with_llm.assert_called_once()
 
     @mock.patch(
-        "src.app.services.abst_chat.detect_language_from_entry", return_value="en"
+        "src.app.shared.infra.abst_chat.detect_language_from_entry", return_value="en"
     )
     async def test_lang_ok(self, mock_detect_lang):
         lang = await self.chat._detect_language("fake message")
         assert lang == {"ISO_CODE": "en"}
 
     @mock.patch(
-        "src.app.services.abst_chat.detect_language_from_entry",
+        "src.app.shared.infra.abst_chat.detect_language_from_entry",
         side_effect=LanguageNotSupportedError,
     )
     async def test_lang_not_supported(self, mock_detect_lang):
@@ -40,7 +40,7 @@ class TestAbstractChat(unittest.IsolatedAsyncioTestCase):
             await self.chat._detect_language("fake message")
 
     @mock.patch(
-        "src.app.services.abst_chat.detect_language_from_entry",
+        "src.app.shared.infra.abst_chat.detect_language_from_entry",
         side_effect=LanguageNotSupportedError,
     )
     async def test_lang_supported(self, mock_detect_lang):

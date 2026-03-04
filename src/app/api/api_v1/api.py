@@ -7,14 +7,14 @@ from src.app.api.api_v1.endpoints import (
     metric,
     micro_learning,
     search,
-    tutor,
     user,
 )
+from src.app.tutor.api import router
 
 api_router = APIRouter()
 api_router.include_router(chat.router, prefix="/qna", tags=["qna"])
 api_router.include_router(search.router, prefix="/search", tags=["search"])
-api_router.include_router(tutor.router, prefix="/tutor", tags=["tutor"])
+api_router.include_router(router.router, prefix="/tutor", tags=["tutor"])
 api_router.include_router(metric.router, prefix="/metric", tags=["metric"])
 api_router.include_router(
     micro_learning.router, prefix="/micro_learning", tags=["micro_learning"]

@@ -1,17 +1,17 @@
 from langchain_azure_ai.chat_models import AzureAIChatCompletionsModel  # type: ignore
 
 from src.app.core.config import Settings
-from src.app.services.tutor.agents import (
+from src.app.tutor.service.agents import (
     PedagogicalEngineerAgent,
     SDGExpertAgent,
     UniversityTeacherAgent,
 )
-from src.app.services.tutor.models import (
+from src.app.tutor.service.models import (
     MessageWithResources,
     SyllabusResponseAgent,
     TutorSyllabusRequest,
 )
-from src.app.services.tutor.utils import extract_doc_info
+from src.app.shared.utils.utils import extract_doc_info
 
 GREENCOMP_COMPETENCIES = (
     "Here are the GreenComp competencies: "
@@ -43,13 +43,25 @@ GREENCOMP_COMPETENCIES = (
 )
 
 
-def _build_chat_model(settings: Settings) -> AzureAIChatCompletionsModel:
-    return AzureAIChatCompletionsModel(
-        endpoint=settings.AZURE_APIM_API_BASE,
-        credential=settings.AZURE_APIM_API_KEY,
-        model=settings.LLM_MODEL_NAME,
-        temperature=0.4,
-    )
+chat_model: AzureAIChatCompletionsModel | None = None
+
+
+async def init_chat_model(settings) -> None:
+    global chat_model
+    if chat_model is None:
+        chat_model = AzureAIChatCompletionsModel(
+            endpoint=settings.AZURE_APIM_API_BASE,
+            credential=settings.AZURE_APIM_API_KEY,
+            model=settings.LLM_MODEL_NAME,
+            temperature=0.4,
+        )
+
+
+async def close_chat_model() -> None:
+    global chat_model
+    if chat_model is not None:
+        await chat_model.aclose()
+        chat_model = None
 
 
 async def tutor_manager(
@@ -68,7 +80,11 @@ async def tutor_manager(
         description=content.description,
     )
 
-    chat_model = _build_chat_model(settings=settings)
+    if chat_model is None:
+        raise RuntimeError(
+            "Chat model not initialized. Call init_chat_model() at startup."
+        )
+
     teacher_agent = UniversityTeacherAgent(chat_model, lang)
     sdg_agent = SDGExpertAgent(chat_model, GREENCOMP_COMPETENCIES, lang)
     pedagogical_agent = PedagogicalEngineerAgent(

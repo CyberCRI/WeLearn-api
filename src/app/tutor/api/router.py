@@ -14,13 +14,13 @@ from fastapi import (
 from src.app.shared.utils.dependencies import get_settings
 from src.app.core.config import Settings
 from src.app.models.search import EnhancedSearchQuery
-from src.app.services.abst_chat import get_chat_service
+from src.app.shared.infra.abst_chat import get_chat_service
 from src.app.services.data_collection import get_data_collection_service
 from src.app.services.exceptions import NoResultsError
 from src.app.services.search import SearchService, get_search_service
 from src.app.services.search_helpers import search_multi_inputs
-from src.app.services.tutor.agents import TEMPLATES
-from src.app.services.tutor.models import (
+from src.app.tutor.service.agents import TEMPLATES
+from src.app.tutor.service.models import (
     ExtractorOutputList,
     SummariesList,
     SyllabusFeedback,
@@ -30,13 +30,13 @@ from src.app.services.tutor.models import (
     TutorSearchResponse,
     TutorSyllabusRequest,
 )
-from src.app.services.tutor.prompts import (
+from src.app.tutor.service.prompts import (
     extractor_system_prompt,
     extractor_user_prompt,
     summaries_schema,
 )
-from src.app.services.tutor.tutor import tutor_manager
-from src.app.services.tutor.utils import get_files_content
+from src.app.tutor.service.tutor import tutor_manager
+from src.app.shared.utils.utils import get_files_content
 from src.app.utils.logger import logger as utils_logger
 
 logger = utils_logger(__name__)

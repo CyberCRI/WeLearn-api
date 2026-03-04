@@ -41,7 +41,7 @@ from src.app.services.helpers import (
     stringify_docs_content,
 )
 
-# from src.app.services.llm_proxy import LLMProxy
+# from src.app.shared.infra.llm_proxy import LLMProxy
 from src.app.services.search import SearchService
 from src.app.utils.decorators import log_time_and_error
 from src.app.utils.logger import log_environmental_impacts
@@ -85,7 +85,6 @@ class AbstractChat(ABC):
 
     @log_time_and_error
     async def json_formatter_agent(self, unformatted_input, expected_output):
-        print(unformatted_input)
         output = await self.chat_client.completion(
             messages=[
                 {

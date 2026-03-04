@@ -22,7 +22,7 @@ from src.app.services.sql_db.queries import (
     write_user_query,
 )
 from src.app.services.sql_db.queries_user import get_user_from_session_id
-from src.app.services.tutor.models import SyllabusFeedback, TutorSyllabusRequest
+from src.app.tutor.service.models import SyllabusFeedback, TutorSyllabusRequest
 from src.app.utils.logger import logger as utils_logger
 
 logger = utils_logger(__name__)
