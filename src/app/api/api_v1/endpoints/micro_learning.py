@@ -30,10 +30,13 @@ logger = logger_utils(__name__)
 async def get_subject_list(
     lang: str | None = None, sp: SearchService = Depends(get_search_service)
 ) -> list[str]:
-    collection_info, model_id = await collection_and_model_id_according_lang(
+    collection_info, models_ids = await collection_and_model_id_according_lang(
         sp=sp, lang=lang
     )
-    ret = [md.title for md in get_subjects(embedding_model_id=model_id)]
+    ret = [
+        md.title
+        for md in get_subjects(embedding_models_ids=[model.id for model in models_ids])
+    ]
     if len(ret) == 0:
         raise HTTPException(status_code=404, detail="No subjects found.")
     return ret
