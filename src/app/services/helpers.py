@@ -8,6 +8,7 @@ from fastapi import HTTPException
 from json_repair import JSONReturnType
 from langdetect import detect_langs
 from qdrant_client.http.models import models
+from welearn_database.data.models import EmbeddingModel
 
 from src.app.models.collections import Collection
 from src.app.models.documents import JourneySectionType
@@ -184,7 +185,7 @@ def choose_readability_according_journey_section_type(
 @log_time_and_error_sync
 async def collection_and_model_id_according_lang(
     lang: str | None, sp
-) -> tuple[Collection, uuid]:
+) -> tuple[Collection, list[EmbeddingModel]]:
     """
     Get the collection info and model id according to the language.
     Args:
@@ -203,9 +204,9 @@ async def collection_and_model_id_according_lang(
         raise HTTPException(
             status_code=404, detail=f"No collection found for language '{lang}'."
         )
-    model_id = get_embeddings_model_id_according_name(collection_info.model)
-    if not model_id:
+    emb_models = get_embeddings_model_id_according_name(collection_info.model)
+    if not emb_models:
         raise ValueError(
             f"Embedding model '{collection_info.model}' not found in the database."
         )
-    return collection_info, model_id
+    return collection_info, emb_models

@@ -173,7 +173,7 @@ def get_subject(subject: str, embedding_model_id: UUID) -> ContextDocument | Non
     return subject_meta_document
 
 
-def get_subjects(embedding_model_id: UUID) -> list[ContextDocument]:
+def get_subjects(embedding_models_ids: list[UUID]) -> list[ContextDocument]:
     """
     Get all the subject meta documents from the database.
     Returns: List of subject meta documents.
@@ -183,7 +183,7 @@ def get_subjects(embedding_model_id: UUID) -> list[ContextDocument]:
             session.query(ContextDocument)
             .filter(
                 ContextDocument.context_type == ContextType.SUBJECT.value.lower(),
-                ContextDocument.embedding_model_id == embedding_model_id,
+                ContextDocument.embedding_model_id.in_(embedding_models_ids),
             )
             .all()
         )
@@ -214,7 +214,9 @@ def get_context_documents(
     return sdg_meta_documents
 
 
-def get_embeddings_model_id_according_name(model_name: str) -> list[UUID] | None:
+def get_embeddings_model_id_according_name(
+    model_name: str,
+) -> list[EmbeddingModel | None]:
     """
     Get the embeddings model ID according to its name.
 
@@ -225,12 +227,11 @@ def get_embeddings_model_id_according_name(model_name: str) -> list[UUID] | None
         The ID of the embeddings model if found, otherwise None.
     """
     with session_maker() as session:
-        model = (
+        return (
             session.query(EmbeddingModel)
             .filter(EmbeddingModel.title == model_name)
-            .first()
+            .all()
         )
-        return model.id if model else None
 
 
 def write_new_data_quality_error(
