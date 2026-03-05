@@ -151,10 +151,13 @@ def register_endpoint(endpoint, session_id, http_code):
         session.commit()
 
 
-def get_subject(subject: str, embedding_model_id: UUID) -> ContextDocument | None:
+def get_subject(
+    subject: str, embedding_models_ids: list[UUID]
+) -> ContextDocument | None:
     """
     Get the subject meta document from the database.
     Args:
+        embedding_models_ids: Database IDs of embeddings models used for vectorize documents
         subject: The subject to get.
 
     Returns: The subject meta document.
@@ -166,7 +169,7 @@ def get_subject(subject: str, embedding_model_id: UUID) -> ContextDocument | Non
             .filter(
                 ContextDocument.context_type == ContextType.SUBJECT.value.lower(),
                 ContextDocument.title == subject,
-                ContextDocument.embedding_model_id == embedding_model_id,
+                ContextDocument.embedding_model_id.in_(embedding_models_ids),
             )
             .first()
         )
@@ -191,12 +194,13 @@ def get_subjects(embedding_models_ids: list[UUID]) -> list[ContextDocument]:
 
 
 def get_context_documents(
-    journey_part: JourneySection, sdg: int, embedding_model_id: UUID
+    journey_part: list[JourneySection], sdg: int, embedding_models_ids: list[UUID]
 ):
     """
     Get the context documents from the database.
 
     Args:
+        embedding_models_ids: Database IDs of embeddings models used for vectorize documents
         journey_part: The journey part to get the context documents for.
         sdg: The SDG to get the context documents for.
     Returns: List of context documents.
@@ -207,7 +211,7 @@ def get_context_documents(
             .filter(
                 ContextDocument.context_type.in_(journey_part),
                 ContextDocument.sdg_related.contains([sdg]),
-                ContextDocument.embedding_model_id == embedding_model_id,
+                ContextDocument.embedding_model_id.in_(embedding_models_ids),
             )
             .all()
         )

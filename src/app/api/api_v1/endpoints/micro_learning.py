@@ -53,13 +53,13 @@ async def get_full_journey(
     lang: str | None = None,
     sp: SearchService = Depends(get_search_service),
 ):
-    collection_info, model_id = await collection_and_model_id_according_lang(
+    collection_info, models_id = await collection_and_model_id_according_lang(
         sp=sp, lang=lang
     )
-
+    emb_models_ids = [model.id for model in models_id]
     journey_part = [i.lower() for i in JourneySectionType]
     sdg_meta_documents = get_context_documents(
-        journey_part=journey_part, sdg=sdg, embedding_model_id=model_id
+        journey_part=journey_part, sdg=sdg, embedding_models_ids=emb_models_ids
     )
     if not sdg_meta_documents:
         raise HTTPException(
@@ -67,7 +67,7 @@ async def get_full_journey(
         )
 
     subject_meta_document: ContextDocument | None = get_subject(
-        subject=subject, embedding_model_id=model_id
+        subject=subject, embedding_models_ids=emb_models_ids
     )
 
     if not subject_meta_document:
