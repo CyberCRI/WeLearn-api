@@ -34,7 +34,6 @@ from src.app.models.search import ContextType
 from src.app.services.constants import APP_NAME
 from src.app.services.sql_db.sql_service import session_maker
 
-model_id_cache: dict[str, UUID] = {}
 model_id_lock = Lock()
 
 
@@ -215,7 +214,7 @@ def get_context_documents(
     return sdg_meta_documents
 
 
-def get_embeddings_model_id_according_name(model_name: str) -> UUID | None:
+def get_embeddings_model_id_according_name(model_name: str) -> list[UUID] | None:
     """
     Get the embeddings model ID according to its name.
 
@@ -225,10 +224,6 @@ def get_embeddings_model_id_according_name(model_name: str) -> UUID | None:
     Returns:
         The ID of the embeddings model if found, otherwise None.
     """
-    with model_id_lock:
-        if model_name in model_id_cache:
-            return model_id_cache[model_name]
-
     with session_maker() as session:
         model = (
             session.query(EmbeddingModel)
