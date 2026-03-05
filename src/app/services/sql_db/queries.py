@@ -7,7 +7,7 @@ from uuid import UUID
 from qdrant_client.http.models import ScoredPoint
 from sqlalchemy import func, select
 from welearn_database.data.enumeration import Step
-from welearn_database.data.models import (
+from welearn_database.data.models import (  # FilterType,; FilterUsedInQuery,
     ChatMessage,
     ContextDocument,
     Corpus,
@@ -17,8 +17,6 @@ from welearn_database.data.models import (
     EmbeddingModel,
     EndpointRequest,
     ErrorDataQuality,
-    FilterType,
-    FilterUsedInQuery,
     ProcessState,
     QtyDocumentInQdrant,
     QtyDocumentInQdrantPerCorpus,
