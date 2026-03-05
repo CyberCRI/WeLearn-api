@@ -83,3 +83,37 @@ class MessageWithFeedback(BaseModel):
 class TaskResponse:
     task_id: str
     result: str
+
+
+class CourseMetadata(BaseModel):
+    discipline: str | None = None
+    topic: str | None = None
+    level: str | None = None
+    num_sessions: int | None = None
+    session_type: str | None = None
+    session_mode: str | None = None
+    class_size: int | None = None
+    session_duration: int | None = None
+
+
+class Outcome(BaseModel):
+    number: int
+    text: str
+    related_objectives: list[str]
+
+
+class Objective(BaseModel):
+    number: int
+    text: str
+    bloom_level: str
+
+
+class SustainabilityMapping(BaseModel):
+    objective_number: int
+    sdg_themes: list[str]
+    connection_explanation: str
+
+
+class Competency(BaseModel):
+    number: int
+    text: str
