@@ -25,7 +25,7 @@ from src.app.models.search import (
 from src.app.services.data_quality import DataQualityChecker
 from src.app.services.exceptions import CollectionNotFoundError, ModelNotFoundError
 from src.app.services.helpers import convert_embedding_bytes
-from src.app.services.sql_db.queries import get_subject
+from src.app.services.sql_db.queries import get_subject, get_embeddings_model_id_according_name
 from src.app.utils.decorators import log_time_and_error, log_time_and_error_sync
 from src.app.utils.logger import logger as logger_utils
 
@@ -443,7 +443,7 @@ def concatenate_same_doc_id_slices(
 
 
 @log_time_and_error_sync
-def get_subject_vector(subject: str | None) -> list[float] | None:
+def get_subject_vector(subject: str | None, model_name: str) -> list[float] | None:
     """
     Get the subject vector from the database.
     Args:
@@ -455,7 +455,9 @@ def get_subject_vector(subject: str | None) -> list[float] | None:
     if not subject:
         return None
 
-    subject_from_db = get_subject(subject=subject)
+    emb_models = get_embeddings_model_id_according_name(model_name)
+
+    subject_from_db = get_subject(subject=subject, embedding_models_ids=[m.id for m in emb_models])
     if not subject_from_db:
         return None
 
