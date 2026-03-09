@@ -1,8 +1,9 @@
 import unittest
+import uuid
 from unittest import mock
 
 from fastapi.testclient import TestClient
-from welearn_database.data.models import ContextDocument
+from welearn_database.data.models import ContextDocument, EmbeddingModel
 
 from src.app.core.config import settings
 from src.app.models.collections import Collection
@@ -38,7 +39,7 @@ class MicroLearningTests(unittest.IsolatedAsyncioTestCase):
         with TestClient(app) as client:
             mock_collection_and_model_id_according_lang.return_value = (
                 Collection(name="test_collection", lang="en", model="test_model"),
-                "model_id",
+                [EmbeddingModel(id=uuid.uuid4(), title="test_model", lang="en")],
             )
             # Mock data
             mock_get_context_docs.return_value = [
