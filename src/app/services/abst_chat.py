@@ -463,6 +463,27 @@ class AbstractChat(ABC):
 
         return res
 
+    async def run_llm_with_json_parsing(
+        self,
+        messages: list[dict],
+        model_class,
+        fallback_formatter: str | None = None,
+    ):
+        raw = await self.chat_client.completion(messages=messages)
+
+        if not isinstance(raw, str):
+            raise ValueError("LLM response must be string")
+
+        try:
+            json_data = extract_json_from_response(raw)
+            if not isinstance(json_data, dict):
+                raise ValueError("Extracted JSON data is not a dictionary")
+            return model_class(**json_data)
+        except Exception:
+            if fallback_formatter:
+                return await self.json_formatter_agent(raw, fallback_formatter)
+            raise
+
 
 async def get_llm_client(request: Request):
     return request.app.state.llm
