@@ -115,7 +115,7 @@ class MicroLearningTests(unittest.IsolatedAsyncioTestCase):
             ]
             mock_collection_and_model_id_according_lang.return_value = (
                 None,
-                "model_id",
+                [],
             )
 
             # API call

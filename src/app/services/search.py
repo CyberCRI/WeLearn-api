@@ -256,7 +256,9 @@ class SearchService:
         assert isinstance(qp.query, str)
 
         collection = await self.get_collection_by_language(lang="mul")
-        subject_vector = await run_in_threadpool(get_subject_vector, qp.subject)
+        subject_vector = await run_in_threadpool(
+            get_subject_vector, qp.subject, collection.model
+        )
         embedding = await self.get_query_embed(
             model=collection.model,
             query=qp.query,
