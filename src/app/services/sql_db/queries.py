@@ -34,7 +34,6 @@ from src.app.models.search import ContextType
 from src.app.services.constants import APP_NAME
 from src.app.services.sql_db.sql_service import session_maker
 
-model_id_cache: dict[str, UUID] = {}
 model_id_lock = Lock()
 
 
@@ -152,10 +151,13 @@ def register_endpoint(endpoint, session_id, http_code):
         session.commit()
 
 
-def get_subject(subject: str, embedding_model_id: UUID) -> ContextDocument | None:
+def get_subject(
+    subject: str, embedding_models_ids: list[UUID]
+) -> ContextDocument | None:
     """
     Get the subject meta document from the database.
     Args:
+        embedding_models_ids: Database IDs of embeddings models used for vectorize documents
         subject: The subject to get.
 
     Returns: The subject meta document.
@@ -167,14 +169,14 @@ def get_subject(subject: str, embedding_model_id: UUID) -> ContextDocument | Non
             .filter(
                 ContextDocument.context_type == ContextType.SUBJECT.value.lower(),
                 ContextDocument.title == subject,
-                ContextDocument.embedding_model_id == embedding_model_id,
+                ContextDocument.embedding_model_id.in_(embedding_models_ids),
             )
             .first()
         )
     return subject_meta_document
 
 
-def get_subjects(embedding_model_id: UUID) -> list[ContextDocument]:
+def get_subjects(embedding_models_ids: list[UUID]) -> list[ContextDocument]:
     """
     Get all the subject meta documents from the database.
     Returns: List of subject meta documents.
@@ -184,7 +186,7 @@ def get_subjects(embedding_model_id: UUID) -> list[ContextDocument]:
             session.query(ContextDocument)
             .filter(
                 ContextDocument.context_type == ContextType.SUBJECT.value.lower(),
-                ContextDocument.embedding_model_id == embedding_model_id,
+                ContextDocument.embedding_model_id.in_(embedding_models_ids),
             )
             .all()
         )
@@ -192,12 +194,13 @@ def get_subjects(embedding_model_id: UUID) -> list[ContextDocument]:
 
 
 def get_context_documents(
-    journey_part: JourneySection, sdg: int, embedding_model_id: UUID
+    journey_part: list[JourneySection], sdg: int, embedding_models_ids: list[UUID]
 ):
     """
     Get the context documents from the database.
 
     Args:
+        embedding_models_ids: Database IDs of embeddings models used for vectorize documents
         journey_part: The journey part to get the context documents for.
         sdg: The SDG to get the context documents for.
     Returns: List of context documents.
@@ -208,14 +211,16 @@ def get_context_documents(
             .filter(
                 ContextDocument.context_type.in_(journey_part),
                 ContextDocument.sdg_related.contains([sdg]),
-                ContextDocument.embedding_model_id == embedding_model_id,
+                ContextDocument.embedding_model_id.in_(embedding_models_ids),
             )
             .all()
         )
     return sdg_meta_documents
 
 
-def get_embeddings_model_id_according_name(model_name: str) -> UUID | None:
+def get_embeddings_model_id_according_name(
+    model_name: str,
+) -> list[EmbeddingModel | None]:
     """
     Get the embeddings model ID according to its name.
 
@@ -225,17 +230,12 @@ def get_embeddings_model_id_according_name(model_name: str) -> UUID | None:
     Returns:
         The ID of the embeddings model if found, otherwise None.
     """
-    with model_id_lock:
-        if model_name in model_id_cache:
-            return model_id_cache[model_name]
-
     with session_maker() as session:
-        model = (
+        return (
             session.query(EmbeddingModel)
             .filter(EmbeddingModel.title == model_name)
-            .first()
+            .all()
         )
-        return model.id if model else None
 
 
 def write_new_data_quality_error(
