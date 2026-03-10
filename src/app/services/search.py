@@ -461,9 +461,13 @@ def get_subject_vector(subject: str | None, model_name: str) -> list[float] | No
         return None
 
     emb_models = get_embeddings_model_id_according_name(model_name)
+    embedding_model_ids = [m.id for m in emb_models if m is not None]
+    if not embedding_model_ids:
+        return None
 
     subject_from_db = get_subject(
-        subject=subject, embedding_models_ids=[m.id for m in emb_models]  # type: ignore
+        subject=subject,
+        embedding_models_ids=embedding_model_ids,
     )
     if not subject_from_db:
         return None
