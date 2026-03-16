@@ -5,7 +5,7 @@ from typing import Literal, TypedDict
 from pydantic import BaseModel, Field
 from qdrant_client.models import ScoredPoint
 
-from src.app.models.search import SDGFilter
+from src.app.search.models.search import SDGFilter
 
 from .documents import Document
 

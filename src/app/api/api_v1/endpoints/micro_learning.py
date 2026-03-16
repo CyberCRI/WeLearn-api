@@ -3,13 +3,13 @@ from fastapi import APIRouter, Depends, HTTPException
 from welearn_database.data.models import ContextDocument
 
 from src.app.models.documents import JourneySectionType
-from src.app.models.search import FilterDefinition, SearchFilters
+from src.app.search.models.search import FilterDefinition, SearchFilters
+from src.app.search.services.search import SearchService, get_search_service
 from src.app.services.helpers import (
     choose_readability_according_journey_section_type,
     collection_and_model_id_according_lang,
     convert_embedding_bytes,
 )
-from src.app.services.search import SearchService, get_search_service
 from src.app.services.sql_db.queries import (
     get_context_documents,
     get_subject,

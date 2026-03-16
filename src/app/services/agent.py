@@ -6,9 +6,9 @@ from langchain_core.runnables import RunnableConfig
 from langchain_core.tools import tool
 
 from src.app.models.documents import Document
-from src.app.models.search import EnhancedSearchQuery
+from src.app.search.models.search import EnhancedSearchQuery
+from src.app.search.services.search import SearchService
 from src.app.services.helpers import stringify_docs_content
-from src.app.services.search import SearchService
 from src.app.utils.decorators import log_time_and_error
 from src.app.utils.logger import logger as utils_logger
 

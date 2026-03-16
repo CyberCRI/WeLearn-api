@@ -16,19 +16,19 @@ from sklearn.metrics.pairwise import cosine_similarity
 from transformers import AutoModel, AutoTokenizer
 
 from src.app.models.collections import Collection
-from src.app.models.search import (
+from src.app.search.models.search import (
     EnhancedSearchQuery,
     FilterDefinition,
     SearchFilters,
     SearchMethods,
 )
 from src.app.services.data_quality import DataQualityChecker
-from src.app.services.exceptions import CollectionNotFoundError, ModelNotFoundError
 from src.app.services.helpers import convert_embedding_bytes
 from src.app.services.sql_db.queries import (
     get_embeddings_model_id_according_name,
     get_subject,
 )
+from src.app.shared.domain.exceptions import CollectionNotFoundError, ModelNotFoundError
 from src.app.utils.decorators import log_time_and_error, log_time_and_error_sync
 from src.app.utils.logger import logger as logger_utils
 

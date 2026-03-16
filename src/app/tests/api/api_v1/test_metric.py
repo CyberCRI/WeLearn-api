@@ -23,7 +23,7 @@ MOCK_RESULT = [
 
 
 @mock.patch(
-    "src.app.services.security.check_api_key_sync",
+    "src.app.shared.infra.security.check_api_key_sync",
     new=mock.MagicMock(return_value=True),
 )
 class TestMetricEndpoint(unittest.IsolatedAsyncioTestCase):

@@ -4,13 +4,13 @@ import numpy
 from langdetect.language import Language
 
 from src.app.models.documents import Document, DocumentPayloadModel
-from src.app.services.exceptions import LanguageNotSupportedError
 from src.app.services.helpers import (
     convert_embedding_bytes,
     detect_language_from_entry,
     extract_json_from_response,
     stringify_docs_content,
 )
+from src.app.shared.domain.exceptions import LanguageNotSupportedError
 
 
 class HelpersTests(TestCase):

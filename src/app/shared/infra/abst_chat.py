@@ -28,20 +28,20 @@ from langgraph.prebuilt import create_react_agent  # type: ignore
 
 from src.app.models.chat import ReformulatedQueryResponse
 from src.app.models.documents import Document
+
+# from src.app.shared.infra.llm_proxy import LLMProxy
+from src.app.search.services.search import SearchService
 from src.app.services import prompts
 from src.app.services.agent import (
     get_resources_about_sustainability,
     trim_conversation_history,
 )
-from src.app.services.exceptions import LanguageNotSupportedError
 from src.app.services.helpers import (
     detect_language_from_entry,
     extract_json_from_response,
     stringify_docs_content,
 )
-
-# from src.app.shared.infra.llm_proxy import LLMProxy
-from src.app.services.search import SearchService
+from src.app.shared.domain.exceptions import LanguageNotSupportedError
 from src.app.shared.utils.dependencies import get_settings
 from src.app.utils.decorators import log_time_and_error
 from src.app.utils.logger import log_environmental_impacts

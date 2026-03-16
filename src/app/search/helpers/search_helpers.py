@@ -4,8 +4,8 @@ from typing import Awaitable, Callable
 from fastapi import BackgroundTasks
 from qdrant_client.http.models import ScoredPoint
 
-from src.app.models.search import EnhancedSearchQuery, SearchMethods
-from src.app.services.exceptions import handle_error
+from src.app.search.models.search import EnhancedSearchQuery, SearchMethods
+from src.app.shared.domain.exceptions import handle_error
 from src.app.utils.logger import logger as logger_utils
 
 logger = logger_utils(__name__)

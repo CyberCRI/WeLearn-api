@@ -16,7 +16,7 @@ class AsyncMock(mock.MagicMock):
 
 
 @mock.patch(
-    "src.app.services.security.check_api_key_sync",
+    "src.app.shared.infra.security.check_api_key_sync",
     new=mock.MagicMock(return_value=True),
 )
 class MicroLearningTests(unittest.IsolatedAsyncioTestCase):
@@ -26,7 +26,7 @@ class MicroLearningTests(unittest.IsolatedAsyncioTestCase):
     )
     @mock.patch("src.app.api.api_v1.endpoints.micro_learning.get_context_documents")
     @mock.patch("src.app.api.api_v1.endpoints.micro_learning.get_subject")
-    @mock.patch("src.app.services.search.SearchService.search")
+    @mock.patch("src.app.search.services.search.SearchService.search")
     @mock.patch("src.app.api.api_v1.endpoints.micro_learning.convert_embedding_bytes")
     async def test_get_full_journey(
         self,
