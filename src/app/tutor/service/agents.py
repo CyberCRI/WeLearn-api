@@ -6,8 +6,8 @@ from langchain_core.language_models import BaseChatModel
 from langchain_core.output_parsers import StrOutputParser
 from langchain_core.prompts import ChatPromptTemplate
 
-from src.app.services.tutor.models import MessageWithResources, SyllabusResponseAgent
-from src.app.services.tutor.utils import build_system_message
+from src.app.shared.utils.utils import build_system_message
+from src.app.tutor.service.models import MessageWithResources, SyllabusResponseAgent
 from src.app.utils.logger import logger as utils_logger
 
 logger = utils_logger(__name__)
@@ -20,7 +20,7 @@ def get_disciplinary_skills():
     global _DISCIPLINARY_SKILLS
     if _DISCIPLINARY_SKILLS is None:
         try:
-            path = Path(__file__).parent / "disciplinary_skills.json"
+            path = Path(__file__).parent.parent / "domain" / "disciplinary_skills.json"
             with open(path, "r", encoding="utf-8") as f:
                 _DISCIPLINARY_SKILLS = {
                     d["code_rncp"]: d["skills"] for d in json.load(f)["disciplines"]
@@ -32,7 +32,7 @@ def get_disciplinary_skills():
 
 
 # TODO: add template file move this to utils
-TEMPLATES = {"template0": Path("src/app/services/tutor/template.md").read_text()}
+TEMPLATES = {"template0": Path("src/app/tutor/domain/template.md").read_text()}
 
 
 class TutorChatAgent:

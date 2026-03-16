@@ -27,7 +27,7 @@ from ragas.metrics import (  # type: ignore
 )
 
 from src.app.shared.utils.dependencies import get_settings
-from src.app.services.abst_chat import AbstractChat
+from src.app.shared.infra.abst_chat import AbstractChat
 
 logger = logging.getLogger(__name__)
 

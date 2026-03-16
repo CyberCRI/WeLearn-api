@@ -2,8 +2,8 @@ import io
 import unittest
 from unittest.mock import AsyncMock, Mock, patch
 
-from src.app.services import pdf_extractor
-from src.app.services.pdf_extractor import (
+from src.app.shared.infra import pdf_extractor
+from src.app.shared.infra.pdf_extractor import (
     _parse_tika_content,
     _send_pdf_to_tika,
     extract_txt_from_pdf_with_tika,
@@ -28,7 +28,7 @@ class TestPDFExtractor(unittest.TestCase):
 
 
 class TestPDFExtractorAsync(unittest.IsolatedAsyncioTestCase):
-    @patch("src.app.services.pdf_extractor.get_new_https_async_client")
+    @patch("src.app.shared.infra.pdf_extractor.get_new_https_async_client")
     async def test_send_pdf_to_tika(self, mock_get_client):
         # Mock du client HTTPX asynchrone
         mock_client = AsyncMock()
@@ -69,8 +69,10 @@ class TestPDFExtractorAsync(unittest.IsolatedAsyncioTestCase):
         expected_result = [["Page 1 content"], ["Page 2 content"]]
         self.assertEqual(result, expected_result)
 
-    @patch("src.app.services.pdf_extractor._send_pdf_to_tika", new_callable=AsyncMock)
-    @patch("src.app.services.pdf_extractor._parse_tika_content")
+    @patch(
+        "src.app.shared.infra.pdf_extractor._send_pdf_to_tika", new_callable=AsyncMock
+    )
+    @patch("src.app.shared.infra.pdf_extractor._parse_tika_content")
     async def test_extract_txt_from_pdf_with_tika(
         self, mock_parse_tika_content, mock_send_pdf_to_tika
     ):

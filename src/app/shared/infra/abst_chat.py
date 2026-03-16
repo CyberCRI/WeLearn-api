@@ -26,7 +26,6 @@ from langchain_core.runnables import RunnableConfig  # type: ignore
 from langgraph.checkpoint.postgres.aio import AsyncPostgresSaver  # type: ignore
 from langgraph.prebuilt import create_react_agent  # type: ignore
 
-from src.app.shared.utils.dependencies import get_settings
 from src.app.models.chat import ReformulatedQueryResponse
 from src.app.models.documents import Document
 from src.app.services import prompts
@@ -41,8 +40,9 @@ from src.app.services.helpers import (
     stringify_docs_content,
 )
 
-# from src.app.services.llm_proxy import LLMProxy
+# from src.app.shared.infra.llm_proxy import LLMProxy
 from src.app.services.search import SearchService
+from src.app.shared.utils.dependencies import get_settings
 from src.app.utils.decorators import log_time_and_error
 from src.app.utils.logger import log_environmental_impacts
 from src.app.utils.logger import logger as utils_logger
@@ -85,7 +85,6 @@ class AbstractChat(ABC):
 
     @log_time_and_error
     async def json_formatter_agent(self, unformatted_input, expected_output):
-        print(unformatted_input)
         output = await self.chat_client.completion(
             messages=[
                 {

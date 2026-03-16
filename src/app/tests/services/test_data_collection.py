@@ -5,7 +5,7 @@ from unittest.mock import MagicMock, patch
 from fastapi import HTTPException
 
 from src.app.services.data_collection import DataCollection, _cache
-from src.app.services.tutor.models import ExtractorOutput, TutorSyllabusRequest
+from src.app.tutor.service.models import ExtractorOutput, TutorSyllabusRequest
 
 
 async def fake_run_in_threadpool(func, *args, **kwargs):

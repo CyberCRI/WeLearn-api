@@ -69,9 +69,9 @@ JSON = {
     new=mock.MagicMock(return_value=True),
 )
 @mock.patch(
-    "src.app.services.abst_chat.AbstractChat._detect_language",
+    "src.app.shared.infra.abst_chat.AbstractChat._detect_language",
 )
-@mock.patch("src.app.services.abst_chat.AbstractChat.chat_message")
+@mock.patch("src.app.shared.infra.abst_chat.AbstractChat.chat_message")
 class QnATests(unittest.IsolatedAsyncioTestCase):
     def setUp(self):
         backoff.on_exception = MagicMock()
@@ -146,7 +146,7 @@ class QnATests(unittest.IsolatedAsyncioTestCase):
 
     async def test_chat_rephrase(self, *mocks):
         with mock.patch(
-            "src.app.services.abst_chat.AbstractChat.rephrase_message",
+            "src.app.shared.infra.abst_chat.AbstractChat.rephrase_message",
             return_value="ok",
         ) as mock_rephrase:
 
@@ -214,7 +214,7 @@ class QnATests(unittest.IsolatedAsyncioTestCase):
         self, mock_db_session, mock_chat_completion, mock__detect_language
     ):
         with mock.patch(
-            "src.app.services.abst_chat.AbstractChat.get_new_questions",
+            "src.app.shared.infra.abst_chat.AbstractChat.get_new_questions",
             return_value={"NEW_QUESTIONS": ["Your reformulated question"]},
         ) as new_questions_mock:
             mock__detect_language.return_value = {"ISO_CODE": "en"}
@@ -255,10 +255,10 @@ class QnATests(unittest.IsolatedAsyncioTestCase):
         self, mock_db_session, mock_chat_completion, mock__detect_language
     ):
         with mock.patch(
-            "src.app.services.abst_chat.AbstractChat._detect_past_message_ref",
+            "src.app.shared.infra.abst_chat.AbstractChat._detect_past_message_ref",
             return_value={"REF_TO_PAST": "false", "CONFIDENCE": "0.9"},
         ), mock.patch(
-            "src.app.services.abst_chat.AbstractChat.reformulate_user_query",
+            "src.app.shared.infra.abst_chat.AbstractChat.reformulate_user_query",
             return_value=ReformulatedQueryResponse(
                 STANDALONE_QUESTION_EN="Your reformulated question",
                 STANDALONE_QUESTION_FR="Votre question reformulée",
@@ -286,7 +286,7 @@ class QnATests(unittest.IsolatedAsyncioTestCase):
 
     async def test_stream(self, *mocks):
         with mock.patch(
-            "src.app.services.abst_chat.AbstractChat.chat_message",
+            "src.app.shared.infra.abst_chat.AbstractChat.chat_message",
         ) as stream_mock:
 
             with TestClient(app) as client:
@@ -334,7 +334,7 @@ class QnATests(unittest.IsolatedAsyncioTestCase):
         "src.app.services.security.check_api_key_sync",
         new=mock.MagicMock(return_value=True),
     )
-    @mock.patch("src.app.services.abst_chat.AbstractChat.agent_message")
+    @mock.patch("src.app.shared.infra.abst_chat.AbstractChat.agent_message")
     def test_chat_agent(self, agent_message_mock, *mocks):
         agent_message_mock.return_value = {
             "messages": [
