@@ -11,7 +11,7 @@ from openai import RateLimitError
 from psycopg.rows import dict_row
 from pydantic import BaseModel
 
-from src.app.api.dependencies import get_settings
+from src.app.shared.utils.dependencies import get_settings
 from src.app.models import chat as models
 from src.app.services.abst_chat import get_chat_service
 from src.app.services.constants import subjects as subjectsDict

@@ -3,7 +3,7 @@
 from sqlalchemy import URL, create_engine
 from sqlalchemy.orm import sessionmaker
 
-from src.app.api.dependencies import get_settings
+from src.app.shared.utils.dependencies import get_settings
 from src.app.utils.decorators import singleton
 
 settings = get_settings()

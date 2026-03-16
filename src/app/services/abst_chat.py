@@ -26,7 +26,7 @@ from langchain_core.runnables import RunnableConfig  # type: ignore
 from langgraph.checkpoint.postgres.aio import AsyncPostgresSaver  # type: ignore
 from langgraph.prebuilt import create_react_agent  # type: ignore
 
-from src.app.api.dependencies import get_settings
+from src.app.shared.utils.dependencies import get_settings
 from src.app.models.chat import ReformulatedQueryResponse
 from src.app.models.documents import Document
 from src.app.services import prompts
