@@ -12,15 +12,15 @@ from psycopg.rows import dict_row
 from pydantic import BaseModel
 
 from src.app.models import chat as models
-from src.app.services.constants import subjects as subjectsDict
+from src.app.search.services.search import SearchService, get_search_service
 from src.app.services.data_collection import get_data_collection_service
-from src.app.services.exceptions import (
+from src.app.shared.domain.constants import subjects as subjectsDict
+from src.app.shared.domain.exceptions import (
     EmptyQueryError,
     InvalidQuestionError,
     LanguageNotSupportedError,
     bad_request,
 )
-from src.app.services.search import SearchService, get_search_service
 from src.app.shared.infra.abst_chat import get_chat_service
 from src.app.shared.utils.dependencies import get_settings
 from src.app.utils.logger import logger as utils_logger

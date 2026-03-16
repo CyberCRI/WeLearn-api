@@ -30,9 +30,9 @@ from welearn_database.data.models import (
 
 from src.app.models.chat import Role
 from src.app.models.documents import Document, DocumentPayloadModel, JourneySection
-from src.app.models.search import ContextType
-from src.app.services.constants import APP_NAME
+from src.app.search.models.search import ContextType
 from src.app.services.sql_db.sql_service import session_maker
+from src.app.shared.domain.constants import APP_NAME
 
 model_id_lock = Lock()
 

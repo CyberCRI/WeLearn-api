@@ -12,11 +12,11 @@ from fastapi import (
 )
 
 from src.app.core.config import Settings
-from src.app.models.search import EnhancedSearchQuery
+from src.app.search.helpers.search_helpers import search_multi_inputs
+from src.app.search.models.search import EnhancedSearchQuery
+from src.app.search.services.search import SearchService, get_search_service
 from src.app.services.data_collection import get_data_collection_service
-from src.app.services.exceptions import NoResultsError
-from src.app.services.search import SearchService, get_search_service
-from src.app.services.search_helpers import search_multi_inputs
+from src.app.shared.domain.exceptions import NoResultsError
 from src.app.shared.infra.abst_chat import get_chat_service
 from src.app.shared.utils.dependencies import get_settings
 from src.app.shared.utils.utils import get_files_content

@@ -15,8 +15,8 @@ from src.app.api.api_v1.api import api_router, api_tags_metadata
 from src.app.core.config import settings
 from src.app.core.lifespan import lifespan
 from src.app.middleware.monitor_requests import MonitorRequestsMiddleware
-from src.app.services.security import get_user
 from src.app.shared.api import health
+from src.app.shared.infra.security import get_user
 from src.app.utils.logger import logger as utils_logger
 
 logger = utils_logger(__name__)

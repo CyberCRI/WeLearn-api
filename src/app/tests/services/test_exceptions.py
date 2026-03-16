@@ -2,7 +2,7 @@ import unittest
 
 from fastapi import HTTPException
 
-from src.app.services.exceptions import (
+from src.app.shared.domain.exceptions import (
     CollectionNotFoundError,
     EmptyQueryError,
     InvalidQuestionError,

@@ -3,7 +3,7 @@ from unittest.mock import AsyncMock
 import pytest
 from fastapi.testclient import TestClient
 
-from src.app.services.search import get_qdrant
+from src.app.search.services.search import get_qdrant
 from src.main import app
 
 

@@ -9,14 +9,14 @@ from qdrant_client.http import models
 from src.app.core.config import settings
 from src.app.models import collections
 from src.app.models.documents import Document, DocumentPayloadModel
-from src.app.models.search import EnhancedSearchQuery
-from src.app.services.exceptions import CollectionNotFoundError, ModelNotFoundError
-from src.app.services.search import SearchService, sort_slices_using_mmr
+from src.app.search.models.search import EnhancedSearchQuery
+from src.app.search.services.search import SearchService, sort_slices_using_mmr
+from src.app.shared.domain.exceptions import CollectionNotFoundError, ModelNotFoundError
 from src.main import app
 
 client = TestClient(app)
 
-search_pipeline_path = "src.app.services.search.SearchService"
+search_pipeline_path = "src.app.search.services.search.SearchService"
 
 mocked_collection = collections.Collection(
     lang="mul",
@@ -149,7 +149,7 @@ long_query = "français with a very long sentence to test what you are saying an
 
 @patch("src.app.services.sql_db.sql_service.session_maker")
 @mock.patch(
-    "src.app.services.security.check_api_key_sync",
+    "src.app.shared.infra.security.check_api_key_sync",
     new=mock.MagicMock(return_value=True),
 )
 @patch(
@@ -238,7 +238,7 @@ class SearchTests(IsolatedAsyncioTestCase):
 
 @patch("src.app.services.sql_db.sql_service.session_maker")
 @patch(
-    "src.app.services.security.check_api_key_sync",
+    "src.app.shared.infra.security.check_api_key_sync",
     new=mock.MagicMock(return_value=True),
 )
 class SearchTestsSlices(IsolatedAsyncioTestCase):
@@ -306,7 +306,7 @@ class SearchTestsSlices(IsolatedAsyncioTestCase):
 
 @patch("src.app.services.sql_db.queries.session_maker")
 @patch(
-    "src.app.services.security.check_api_key_sync",
+    "src.app.shared.infra.security.check_api_key_sync",
     new=mock.MagicMock(return_value=True),
 )
 class SearchTestsAll(IsolatedAsyncioTestCase):
@@ -389,7 +389,7 @@ class TestSortSlicesUsingMMR(IsolatedAsyncioTestCase):
 
 @patch("src.app.services.sql_db.queries.session_maker")
 @patch(
-    "src.app.services.security.check_api_key_sync",
+    "src.app.shared.infra.security.check_api_key_sync",
     new=mock.MagicMock(return_value=True),
 )
 class SearchTestsMultiInput(IsolatedAsyncioTestCase):
@@ -414,7 +414,7 @@ class SearchTestsMultiInput(IsolatedAsyncioTestCase):
 
 @patch("src.app.services.sql_db.queries.session_maker")
 @patch(
-    "src.app.services.security.check_api_key_sync",
+    "src.app.shared.infra.security.check_api_key_sync",
     new=mock.MagicMock(return_value=True),
 )
 class DocumentsByIdsTests(IsolatedAsyncioTestCase):
@@ -540,7 +540,7 @@ class DocumentsByIdsTests(IsolatedAsyncioTestCase):
 
     async def test_search_multi_single_query(self, *mocks):
         with mock.patch(
-            "src.app.api.api_v1.endpoints.search.search_multi_inputs",
+            "src.app.search.api.router.search_multi_inputs",
         ) as search_multi, mock.patch.object(
             SearchService, "search_handler", return_value=mocked_documents
         ) as search_handler:

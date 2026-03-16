@@ -10,7 +10,7 @@ from src.app.core.config import settings
 from src.app.models.chat import ReformulatedQueryResponse
 from src.app.models.documents import Document as DocumentModel
 from src.app.models.documents import DocumentPayloadModel
-from src.app.services.exceptions import LanguageNotSupportedError
+from src.app.shared.domain.exceptions import LanguageNotSupportedError
 from src.main import app
 
 client = TestClient(app)
@@ -65,7 +65,7 @@ JSON = {
 
 @mock.patch("src.app.services.sql_db.queries.session_maker")
 @mock.patch(
-    "src.app.services.security.check_api_key_sync",
+    "src.app.shared.infra.security.check_api_key_sync",
     new=mock.MagicMock(return_value=True),
 )
 @mock.patch(
@@ -331,7 +331,7 @@ class QnATests(unittest.IsolatedAsyncioTestCase):
 
     @mock.patch("psycopg.AsyncConnection.connect", new_callable=mock.AsyncMock)
     @mock.patch(
-        "src.app.services.security.check_api_key_sync",
+        "src.app.shared.infra.security.check_api_key_sync",
         new=mock.MagicMock(return_value=True),
     )
     @mock.patch("src.app.shared.infra.abst_chat.AbstractChat.agent_message")

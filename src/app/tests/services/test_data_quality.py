@@ -16,8 +16,8 @@ from welearn_database.data.models import (
     WeLearnDocument,
 )
 
-from src.app.services.constants import APP_NAME
 from src.app.services.data_quality import DataQualityChecker
+from src.app.shared.domain.constants import APP_NAME
 
 
 def handle_schema_with_sqlite(db_engine: Engine):

@@ -11,26 +11,26 @@ from fastapi import (
 from fastapi.concurrency import run_in_threadpool
 
 from src.app.models.documents import Document
-from src.app.models.search import (
+from src.app.search.helpers.search_helpers import search_multi_inputs
+from src.app.search.models.search import (
     EnhancedSearchQuery,
     SDGFilter,
     SearchMethods,
     SearchOutput,
     SearchQuery,
 )
+from src.app.search.services.search import SearchService, get_search_service
 from src.app.services.data_collection import get_data_collection_service
-from src.app.services.exceptions import (
-    CollectionNotFoundError,
-    EmptyQueryError,
-    ModelNotFoundError,
-    bad_request,
-)
-from src.app.services.search import SearchService, get_search_service
-from src.app.services.search_helpers import search_multi_inputs
 from src.app.services.sql_db.queries import (
     get_collections_sync,
     get_documents_payload_by_ids_sync,
     get_nb_docs_sync,
+)
+from src.app.shared.domain.exceptions import (
+    CollectionNotFoundError,
+    EmptyQueryError,
+    ModelNotFoundError,
+    bad_request,
 )
 from src.app.utils.logger import logger as logger_utils
 

@@ -2,7 +2,7 @@ import unittest
 from unittest import mock
 
 from src.app.models.chat import ReformulatedQueryResponse
-from src.app.services.exceptions import LanguageNotSupportedError
+from src.app.shared.domain.exceptions import LanguageNotSupportedError
 from src.app.shared.infra.abst_chat import AbstractChat
 
 
