@@ -2,10 +2,10 @@ from fastapi import APIRouter, Depends, Request, Response, status
 from pydantic import ValidationError
 from starlette.concurrency import run_in_threadpool
 
-from src.app.shared.utils.dependencies import get_settings
 from src.app.models.metric import DocumentClickUpdateResponse, RowCorpusQtyDocInfo
 from src.app.services.data_collection import get_data_collection_service
 from src.app.services.sql_db.queries import get_document_qty_table_info_sync
+from src.app.shared.utils.dependencies import get_settings
 from src.app.utils.logger import logger as utils_logger
 
 logger = utils_logger(__name__)
