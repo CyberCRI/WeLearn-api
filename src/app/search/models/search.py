@@ -31,11 +31,13 @@ class SDGFilter(BaseModel):
 class SearchQuery(SDGFilter):
     query: str | list[str] | None
     corpora: list[str] | None = None
+    lang: list[str] | None = None
 
 
 class EnhancedSearchQuery(SDGFilter):
     query: str | list[str]
     corpora: tuple[str, ...] | None = None
+    lang: list[str] | None = None
     nb_results: int = 30
     subject: str | None = None
     influence_factor: float = 2
