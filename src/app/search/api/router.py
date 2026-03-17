@@ -50,6 +50,7 @@ def get_params(
         query=body.query or "",
         nb_results=nb_results,
         corpora=tuple(body.corpora) if body.corpora else None,
+        lang=body.lang,
         subject=subject,
         influence_factor=influence_factor,
         relevance_factor=relevance_factor,

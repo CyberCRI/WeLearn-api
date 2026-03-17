@@ -267,6 +267,7 @@ class SearchService:
         )
 
         filter_content = [
+            FilterDefinition(key="document_lang", value=qp.lang),
             FilterDefinition(key="document_corpus", value=qp.corpora),
             FilterDefinition(key="document_details.readability", value=qp.readability),
             FilterDefinition(
