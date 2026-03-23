@@ -3,6 +3,7 @@
 import uuid
 from datetime import datetime, timedelta
 
+from fastapi import HTTPException
 from sqlalchemy.sql import select
 from welearn_database.data.models import Bookmark, InferredUser, Session
 
@@ -27,6 +28,12 @@ def get_or_create_user_sync(
             ).first()
             if user:
                 return user.id
+            else:
+                logger.error(f"User with id {user_id} not found,")
+                raise HTTPException(
+                    status_code=404, detail=f"User with id {user_id} not found"
+                )
+
         user = InferredUser(origin_referrer=referer)
         s.add(user)
         s.commit()
@@ -70,11 +77,23 @@ def get_or_create_session_sync(
         return new_session.id
 
 
-def get_user_from_session_id(session_id: uuid.UUID) -> uuid.UUID | None:
+def get_user_from_session_id(session_id: uuid.UUID | None) -> uuid.UUID | None:
+    if not session_id:
+        return None
+
     with session_maker() as s:
         session = s.execute(select(Session).where(Session.id == session_id)).first()
         if session:
+            logger.info(
+                "Valid session. user_id=%s session_id=%s",
+                session[0].inferred_user_id,
+                session_id,
+            )
             return session[0].inferred_user_id
+        else:
+            HTTPException(
+                status_code=404, detail=f"Session with id {session_id} not found"
+            )
     return None
 
 

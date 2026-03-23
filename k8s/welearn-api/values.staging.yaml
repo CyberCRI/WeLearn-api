@@ -8,6 +8,7 @@ config:
     PG_DATABASE: welearn_datastack_staging
     TIKA_URL_BASE: https://tika.k8s.lp-i.dev/
     DATA_COLLECTION_ORIGIN_PREFIX: welearn
+    ENV: staging
 allowedHostsRegexes:
   mainUrl: |-
     https:\/\/welearn\.k8s\.lp-i\.xyz

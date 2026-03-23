@@ -1,6 +1,6 @@
 import uuid
 
-from fastapi import APIRouter, HTTPException, Request
+from fastapi import APIRouter, HTTPException, Request, Response
 from fastapi.concurrency import run_in_threadpool
 
 from src.app.services.sql_db.queries_user import (
@@ -10,11 +10,46 @@ from src.app.services.sql_db.queries_user import (
     get_or_create_session_sync,
     get_or_create_user_sync,
     get_user_bookmarks_sync,
+    get_user_from_session_id,
 )
+from src.app.shared.domain.constants import SESSION_COOKIE_NAME, SESSION_TTL_SECONDS
+from src.app.shared.utils.requests import (
+    extract_origin_from_request,
+    extract_session_cookie,
+)
+from src.app.user.utils.utils import resolve_user_and_session
 from src.app.utils.logger import logger as logger_utils
+
 
 router = APIRouter()
 logger = logger_utils(__name__)
+
+
+@router.post(
+    "/user_and_session", summary="Create new user and session", response_model=dict
+)
+async def handle_user_and_session(
+    request: Request, response: Response, referer: str | None = None
+):
+    host = extract_origin_from_request(request)
+    session_uuid = extract_session_cookie(request)
+
+    _, session_uuid = await resolve_user_and_session(
+        session_uuid=session_uuid,
+        host=host,
+        referer=referer,
+    )
+
+    response.set_cookie(
+        key=SESSION_COOKIE_NAME,
+        value=str(session_uuid),
+        max_age=SESSION_TTL_SECONDS,
+        httponly=True,
+        samesite="lax",
+        secure=False,  #  True in production (HTTPS)
+    )
+
+    return {"message": "session created"}
 
 
 @router.post("/user", summary="Create new user", response_model=dict)
@@ -35,7 +70,7 @@ async def handle_session(
     referer: str | None = None,
 ):
     try:
-        host = request.headers.get("origin", "unknown")
+        host = extract_origin_from_request(request)
         session_id = await run_in_threadpool(
             get_or_create_session_sync, user_id, session_id, host, referer
         )
@@ -47,10 +82,19 @@ async def handle_session(
         raise HTTPException(status_code=500, detail=str(e))
 
 
-@router.get("/:user_id/bookmarks", summary="Get user bookmarks")
-async def get_user_bookmarks(user_id: uuid.UUID):
+@router.get("/bookmarks", summary="Get user bookmarks")
+async def get_user_bookmarks(request: Request):
+    session_uuid = extract_session_cookie(request)
+    host = extract_origin_from_request(request)
+
+    user_id, _ = await resolve_user_and_session(
+        session_uuid=session_uuid,
+        host=host,
+        referer=None,
+    )
     try:
         bookmarks = await run_in_threadpool(get_user_bookmarks_sync, user_id)
+        print(f"Bookmarks for user {user_id}: {bookmarks}")
         return {"bookmarks": bookmarks}
     except ValueError as e:
         raise HTTPException(status_code=404, detail=str(e))
@@ -59,10 +103,16 @@ async def get_user_bookmarks(user_id: uuid.UUID):
         raise HTTPException(status_code=500, detail=str(e))
 
 
-@router.delete(
-    "/:user_id/bookmarks", summary="Delete all user bookmarks", response_model=dict
-)
-async def delete_user_bookmarks(user_id: uuid.UUID):
+@router.delete("/bookmarks", summary="Delete all user bookmarks", response_model=dict)
+async def delete_user_bookmarks(request: Request):
+    session_uuid = extract_session_cookie(request)
+    host = extract_origin_from_request(request)
+
+    user_id, _ = await resolve_user_and_session(
+        session_uuid=session_uuid,
+        host=host,
+        referer=None,
+    )
     try:
         deleted_count = await run_in_threadpool(delete_user_bookmarks_sync, user_id)
         return {"deleted": deleted_count}
@@ -74,11 +124,19 @@ async def delete_user_bookmarks(user_id: uuid.UUID):
 
 
 @router.delete(
-    "/:user_id/bookmarks/:document_id",
+    "/bookmarks/:document_id",
     summary="Delete a user bookmark",
     response_model=dict,
 )
-async def delete_user_bookmark(user_id: uuid.UUID, document_id: uuid.UUID):
+async def delete_user_bookmark(request: Request, document_id: uuid.UUID):
+    session_uuid = extract_session_cookie(request)
+    host = extract_origin_from_request(request)
+
+    user_id, _ = await resolve_user_and_session(
+        session_uuid=session_uuid,
+        host=host,
+        referer=None,
+    )
     try:
         deleted_id = await run_in_threadpool(
             delete_user_bookmark_sync, user_id, document_id
@@ -92,9 +150,17 @@ async def delete_user_bookmark(user_id: uuid.UUID, document_id: uuid.UUID):
 
 
 @router.post(
-    "/:user_id/bookmarks/:document_id", summary="Add user bookmark", response_model=dict
+    "/bookmarks/:document_id", summary="Add user bookmark", response_model=dict
 )
-async def add_user_bookmark(user_id: uuid.UUID, document_id: uuid.UUID):
+async def add_user_bookmark(request: Request, document_id: uuid.UUID):
+    session_uuid = extract_session_cookie(request)
+    host = extract_origin_from_request(request)
+
+    user_id, _ = await resolve_user_and_session(
+        session_uuid=session_uuid,
+        host=host,
+        referer=None,
+    )
     try:
         added_id = await run_in_threadpool(add_user_bookmark_sync, user_id, document_id)
         return {"added": added_id}

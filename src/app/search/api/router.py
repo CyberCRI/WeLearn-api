@@ -32,6 +32,7 @@ from src.app.shared.domain.exceptions import (
     ModelNotFoundError,
     bad_request,
 )
+from src.app.shared.utils.requests import extract_session_cookie
 from src.app.utils.logger import logger as logger_utils
 
 router = APIRouter()
@@ -207,7 +208,7 @@ async def search_all(
     data_collection=Depends(get_data_collection_service),
 ):
     try:
-        session_id = request.headers.get("X-Session-ID")
+        session_id = extract_session_cookie(request)
 
         res = await sp.search_handler(
             qp=qp, method=SearchMethods.BY_DOCUMENT, background_tasks=background_tasks

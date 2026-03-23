@@ -42,6 +42,7 @@ class Settings(BaseSettings):
     AZURE_API_VERSION: str
 
     LLM_MODEL_NAME: str
+    ENV: str
 
     # PG
     PG_USER: Optional[str] = None

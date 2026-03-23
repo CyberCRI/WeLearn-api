@@ -65,7 +65,7 @@ class DataCollection:
 
     async def register_search_data(
         self,
-        session_id: str | None,
+        session_id: uuid.UUID | None,
         query: str,
         search_results: list[Document | ScoredPoint],
         sdg_filter: list[int] | None = None,
@@ -88,9 +88,7 @@ class DataCollection:
                 },
             )
 
-        user_id = await run_in_threadpool(
-            get_user_from_session_id, uuid.UUID(session_id)
-        )
+        user_id = await run_in_threadpool(get_user_from_session_id, session_id)
 
         if not user_id:
             raise HTTPException(
@@ -241,7 +239,7 @@ class DataCollection:
 
     async def register_chat_data(
         self,
-        session_id: str | None,
+        session_id: uuid.UUID | None,
         user_query: str,
         conversation_id: uuid.UUID | None,
         answer_content: str,
@@ -264,9 +262,7 @@ class DataCollection:
                 },
             )
 
-        user_id = await run_in_threadpool(
-            get_user_from_session_id, uuid.UUID(session_id)
-        )
+        user_id = await run_in_threadpool(get_user_from_session_id, session_id)
 
         if not user_id:
             raise HTTPException(

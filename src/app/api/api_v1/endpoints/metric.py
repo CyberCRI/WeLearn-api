@@ -6,6 +6,7 @@ from src.app.models.metric import DocumentClickUpdateResponse, RowCorpusQtyDocIn
 from src.app.services.data_collection import get_data_collection_service
 from src.app.services.sql_db.queries import get_document_qty_table_info_sync
 from src.app.shared.utils.dependencies import get_settings
+from src.app.shared.utils.requests import extract_session_cookie
 from src.app.utils.logger import logger as utils_logger
 
 logger = utils_logger(__name__)
@@ -55,6 +56,6 @@ async def update_clicked_doc_from_chat_message(
 async def register_syllabus_download(
     request: Request, data_collection=Depends(get_data_collection_service)
 ) -> str:
-    session_id = request.headers.get("X-Session-ID")
+    session_id = extract_session_cookie(request)
     await data_collection.register_syllabus_download(session_id)
     return "registered"
