@@ -10,7 +10,6 @@ from src.app.services.sql_db.queries_user import (
     get_or_create_session_sync,
     get_or_create_user_sync,
     get_user_bookmarks_sync,
-    get_user_from_session_id,
 )
 from src.app.shared.domain.constants import SESSION_COOKIE_NAME, SESSION_TTL_SECONDS
 from src.app.shared.utils.requests import (
@@ -87,6 +86,9 @@ async def get_user_bookmarks(request: Request):
     session_uuid = extract_session_cookie(request)
     host = extract_origin_from_request(request)
 
+    if not session_uuid:
+        raise HTTPException(status_code=401, detail="Session cookie is missing")
+
     user_id, _ = await resolve_user_and_session(
         session_uuid=session_uuid,
         host=host,
@@ -94,7 +96,6 @@ async def get_user_bookmarks(request: Request):
     )
     try:
         bookmarks = await run_in_threadpool(get_user_bookmarks_sync, user_id)
-        print(f"Bookmarks for user {user_id}: {bookmarks}")
         return {"bookmarks": bookmarks}
     except ValueError as e:
         raise HTTPException(status_code=404, detail=str(e))
@@ -106,6 +107,8 @@ async def get_user_bookmarks(request: Request):
 @router.delete("/bookmarks", summary="Delete all user bookmarks", response_model=dict)
 async def delete_user_bookmarks(request: Request):
     session_uuid = extract_session_cookie(request)
+    if not session_uuid:
+        raise HTTPException(status_code=401, detail="Session cookie is missing")
     host = extract_origin_from_request(request)
 
     user_id, _ = await resolve_user_and_session(
@@ -130,6 +133,8 @@ async def delete_user_bookmarks(request: Request):
 )
 async def delete_user_bookmark(request: Request, document_id: uuid.UUID):
     session_uuid = extract_session_cookie(request)
+    if not session_uuid:
+        raise HTTPException(status_code=401, detail="Session cookie is missing")
     host = extract_origin_from_request(request)
 
     user_id, _ = await resolve_user_and_session(
@@ -154,6 +159,8 @@ async def delete_user_bookmark(request: Request, document_id: uuid.UUID):
 )
 async def add_user_bookmark(request: Request, document_id: uuid.UUID):
     session_uuid = extract_session_cookie(request)
+    if not session_uuid:
+        raise HTTPException(status_code=401, detail="Session cookie is missing")
     host = extract_origin_from_request(request)
 
     user_id, _ = await resolve_user_and_session(
