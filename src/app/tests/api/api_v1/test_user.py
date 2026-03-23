@@ -1,4 +1,5 @@
 import unittest
+import uuid
 from unittest import mock
 from unittest.mock import MagicMock
 
@@ -231,30 +232,36 @@ class UserApiTests(unittest.IsolatedAsyncioTestCase):
         session.execute.return_value.all.return_value = []
         session_maker_mock.return_value.__enter__.return_value = session
 
-        user_id = "22222222-2222-2222-2222-222222222222"
         response = client.get(
-            f"{settings.API_V1_STR}/user/:user_id/bookmarks",
-            params={"user_id": user_id},
+            f"{settings.API_V1_STR}/user/bookmarks",
             headers={"X-API-Key": "test"},
+            cookies={"x-session-id": "bdb62bb2-1fe5-4d14-92fd-60a041355aea"},
         )
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.json(), {"bookmarks": []})
 
-    @mock.patch("src.app.services.sql_db.queries_user.session_maker")
-    async def test_add_user_bookmark_success(self, session_maker_mock, *mocks):
-        """Ajout d'un bookmark"""
-        session = MagicMock()
-        session.execute.return_value.first.side_effect = [MagicMock(id="user-1"), None]
-        session_maker_mock.return_value.__enter__.return_value = session
+    @mock.patch("src.app.user.api.router.run_in_threadpool")
+    @mock.patch("src.app.user.api.router.resolve_user_and_session")
+    async def test_add_user_bookmark_success(
+        self, resolve_user_and_session_mock, run_in_threadpool_mock, *mocks
+    ):
+        """Ajout d'un bookmark - mocks only what is needed"""
+        # Mock resolve_user_and_session to return user_id and session_id
+        user_id = uuid.UUID("cfc8072c-a055-442a-9878-b5a73d9141b2")
+        session_id = uuid.UUID("bdb62bb2-1fe5-4d14-92fd-60a041355aea")
+        resolve_user_and_session_mock.return_value = (user_id, session_id)
 
-        user_id = "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa"
+        # Mock run_in_threadpool to simulate DB add_user_bookmark_sync
         document_id = "ffffffff-ffff-ffff-ffff-ffffffffffff"
+        run_in_threadpool_mock.return_value = document_id
+
         response = client.post(
-            f"{settings.API_V1_STR}/user/:user_id/bookmarks/:document_id",
-            params={"user_id": user_id, "document_id": document_id},
+            f"{settings.API_V1_STR}/user/bookmarks/:document_id",
+            params={"document_id": document_id},
             headers={"X-API-Key": "test"},
+            cookies={"x-session-id": str(session_id)},
         )
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.json(), {"added": document_id})
-        session.add.assert_called_once()
-        session.commit.assert_called_once()
+        resolve_user_and_session_mock.assert_called_once()
+        run_in_threadpool_mock.assert_called_once()

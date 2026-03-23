@@ -1,11 +1,12 @@
-from uuid import UUID
 from typing import Optional
+from uuid import UUID
+
 from fastapi.concurrency import run_in_threadpool
 
 from src.app.services.sql_db.queries_user import (
-    get_user_from_session_id,
     get_or_create_session_sync,
     get_or_create_user_sync,
+    get_user_from_session_id,
 )
 from src.app.utils.logger import logger as logger_utils
 

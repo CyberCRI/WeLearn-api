@@ -12,6 +12,7 @@ from src.app.services.sql_db.queries_user import (
     get_user_bookmarks_sync,
 )
 from src.app.shared.domain.constants import SESSION_COOKIE_NAME, SESSION_TTL_SECONDS
+from src.app.shared.utils.dependencies import get_settings
 from src.app.shared.utils.requests import (
     extract_origin_from_request,
     extract_session_cookie,
@@ -19,9 +20,9 @@ from src.app.shared.utils.requests import (
 from src.app.user.utils.utils import resolve_user_and_session
 from src.app.utils.logger import logger as logger_utils
 
-
 router = APIRouter()
 logger = logger_utils(__name__)
+settings = get_settings()
 
 
 @router.post(
@@ -45,7 +46,7 @@ async def handle_user_and_session(
         max_age=SESSION_TTL_SECONDS,
         httponly=True,
         samesite="lax",
-        secure=False,  #  True in production (HTTPS)
+        secure=settings.ENV == "production",
     )
 
     return {"message": "session created"}
