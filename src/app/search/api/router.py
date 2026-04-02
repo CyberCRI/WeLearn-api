@@ -22,7 +22,7 @@ from src.app.search.models.search import (
 from src.app.search.services.search import SearchService, get_search_service
 from src.app.services.data_collection import get_data_collection_service
 from src.app.services.sql_db.queries import (
-    get_collections_sync,
+    get_collections_info_sync,
     get_documents_payload_by_ids_sync,
     get_nb_docs_sync,
 )
@@ -67,16 +67,17 @@ def get_params(
 
 @router.get("/collections")
 async def get_corpus():
-    collections = await run_in_threadpool(get_collections_sync)
+    collections = await run_in_threadpool(get_collections_info_sync)
 
     return [
         {
-            "name": name,
-            "lang": lang,
-            "model": model,
-            "corpus": f"{name}_{lang}_{model}",
+            "name": source_name,
+            "category": (
+                category_name.replace(" ", "_").lower() if category_name else None
+            ),
+            "is_active": is_active,
         }
-        for name, lang, model in collections
+        for source_name, is_active, category_name in collections
     ]
 
 

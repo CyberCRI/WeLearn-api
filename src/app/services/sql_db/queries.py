@@ -8,6 +8,7 @@ from qdrant_client.http.models import ScoredPoint
 from sqlalchemy import func, select
 from welearn_database.data.enumeration import Step
 from welearn_database.data.models import (
+    Category,
     ChatMessage,
     ContextDocument,
     Corpus,
@@ -45,6 +46,16 @@ def get_collections_sync():
     )
     with session_maker() as s:
         return s.execute(statement).all()
+
+
+def get_collections_info_sync():
+    stmt = select(
+        Corpus.source_name, Corpus.is_active, Category.title.label("category_name")
+    ).outerjoin(Category, Corpus.category_id == Category.id)
+
+    with session_maker() as session:
+        results = session.execute(stmt).all()
+        return results
 
 
 def get_nb_docs_sync():
