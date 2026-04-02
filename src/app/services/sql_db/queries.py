@@ -55,7 +55,6 @@ def get_collections_info_sync():
 
     with session_maker() as session:
         results = session.execute(stmt).all()
-        print(results)
         return results
 
 
