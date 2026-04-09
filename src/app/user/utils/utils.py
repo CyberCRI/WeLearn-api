@@ -23,6 +23,7 @@ async def resolve_user_and_session(
     if not user_id:
         logger.info("No user found. Creating new user and session.")
         user_id = await run_in_threadpool(get_or_create_user_sync, None, referer)
+
         session_uuid = await run_in_threadpool(
             get_or_create_session_sync, user_id, None, host, referer
         )

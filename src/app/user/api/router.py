@@ -12,6 +12,7 @@ from src.app.services.sql_db.queries_user import (
     get_user_bookmarks_sync,
 )
 from src.app.shared.domain.constants import SESSION_COOKIE_NAME, SESSION_TTL_SECONDS
+from src.app.shared.domain.exceptions import UserNotFoundError
 from src.app.shared.utils.dependencies import get_settings
 from src.app.shared.utils.requests import (
     extract_origin_from_request,
@@ -34,11 +35,17 @@ async def handle_user_and_session(
     host = extract_origin_from_request(request)
     session_uuid = extract_session_cookie(request)
 
-    _, session_uuid = await resolve_user_and_session(
-        session_uuid=session_uuid,
-        host=host,
-        referer=referer,
-    )
+    try:
+        _, session_uuid = await resolve_user_and_session(
+            session_uuid=session_uuid,
+            host=host,
+            referer=referer,
+        )
+    except UserNotFoundError as e:
+        raise HTTPException(status_code=404, detail=str(e))
+    except Exception as e:
+        logger.error(f"Error creating user and session: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
 
     response.set_cookie(
         key=SESSION_COOKIE_NAME,
@@ -57,6 +64,7 @@ async def handle_user(user_id: uuid.UUID | None = None, referer: str | None = No
     try:
         user_id = await run_in_threadpool(get_or_create_user_sync, user_id, referer)
         return {"user_id": user_id}
+
     except Exception as e:
         logger.error(f"Error creating user: {e}")
         raise HTTPException(status_code=500, detail=str(e))
@@ -75,7 +83,7 @@ async def handle_session(
             get_or_create_session_sync, user_id, session_id, host, referer
         )
         return {"session_id": session_id}
-    except ValueError as e:
+    except UserNotFoundError as e:
         raise HTTPException(status_code=404, detail=str(e))
     except Exception as e:
         logger.error(f"Error creating session: {e}")
@@ -89,12 +97,15 @@ async def get_user_bookmarks(request: Request):
 
     if not session_uuid:
         raise HTTPException(status_code=401, detail="Session cookie is missing")
+    try:
+        user_id, _ = await resolve_user_and_session(
+            session_uuid=session_uuid,
+            host=host,
+            referer=None,
+        )
+    except UserNotFoundError as e:
+        raise HTTPException(status_code=404, detail=str(e))
 
-    user_id, _ = await resolve_user_and_session(
-        session_uuid=session_uuid,
-        host=host,
-        referer=None,
-    )
     try:
         bookmarks = await run_in_threadpool(get_user_bookmarks_sync, user_id)
         return {"bookmarks": bookmarks}
@@ -111,12 +122,15 @@ async def delete_user_bookmarks(request: Request):
     if not session_uuid:
         raise HTTPException(status_code=401, detail="Session cookie is missing")
     host = extract_origin_from_request(request)
+    try:
+        user_id, _ = await resolve_user_and_session(
+            session_uuid=session_uuid,
+            host=host,
+            referer=None,
+        )
+    except UserNotFoundError as e:
+        raise HTTPException(status_code=404, detail=str(e))
 
-    user_id, _ = await resolve_user_and_session(
-        session_uuid=session_uuid,
-        host=host,
-        referer=None,
-    )
     try:
         deleted_count = await run_in_threadpool(delete_user_bookmarks_sync, user_id)
         return {"deleted": deleted_count}
@@ -137,12 +151,15 @@ async def delete_user_bookmark(request: Request, document_id: uuid.UUID):
     if not session_uuid:
         raise HTTPException(status_code=401, detail="Session cookie is missing")
     host = extract_origin_from_request(request)
+    try:
+        user_id, _ = await resolve_user_and_session(
+            session_uuid=session_uuid,
+            host=host,
+            referer=None,
+        )
+    except UserNotFoundError as e:
+        raise HTTPException(status_code=404, detail=str(e))
 
-    user_id, _ = await resolve_user_and_session(
-        session_uuid=session_uuid,
-        host=host,
-        referer=None,
-    )
     try:
         deleted_id = await run_in_threadpool(
             delete_user_bookmark_sync, user_id, document_id
@@ -164,11 +181,15 @@ async def add_user_bookmark(request: Request, document_id: uuid.UUID):
         raise HTTPException(status_code=401, detail="Session cookie is missing")
     host = extract_origin_from_request(request)
 
-    user_id, _ = await resolve_user_and_session(
-        session_uuid=session_uuid,
-        host=host,
-        referer=None,
-    )
+    try:
+        user_id, _ = await resolve_user_and_session(
+            session_uuid=session_uuid,
+            host=host,
+            referer=None,
+        )
+    except UserNotFoundError as e:
+        raise HTTPException(status_code=404, detail=str(e))
+
     try:
         added_id = await run_in_threadpool(add_user_bookmark_sync, user_id, document_id)
         return {"added": added_id}

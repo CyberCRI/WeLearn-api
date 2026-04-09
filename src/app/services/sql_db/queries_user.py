@@ -8,6 +8,7 @@ from sqlalchemy.sql import select
 from welearn_database.data.models import Bookmark, InferredUser, Session
 
 from src.app.services.sql_db.sql_service import session_maker
+from src.app.shared.domain.exceptions import UserNotFoundError
 from src.app.utils.logger import logger as logger_utils
 
 logger = logger_utils(__name__)
@@ -28,12 +29,8 @@ def get_or_create_user_sync(
             ).first()
             if user:
                 return user.id
-            else:
-                logger.error(f"User with id {user_id} not found,")
-                raise HTTPException(
-                    status_code=404, detail=f"User with id {user_id} not found"
-                )
 
+        logger.info("Creating new user with referer: %s", referer)
         user = InferredUser(origin_referrer=referer)
         s.add(user)
         s.commit()
@@ -52,7 +49,7 @@ def get_or_create_session_sync(
             select(InferredUser.id).where(InferredUser.id == user_id)
         ).first()
         if not user:
-            raise ValueError(f"User {user_id} does not exist")
+            raise UserNotFoundError(f"User {user_id} does not exist")
 
         if session_id:
             session = s.execute(
@@ -65,6 +62,9 @@ def get_or_create_session_sync(
             if session:
                 return session.id
 
+        logger.info(
+            "Creating new session for user_id=%s with referer: %s", user_id, referer
+        )
         new_session = Session(
             inferred_user_id=user_id,
             origin_referrer=referer,
