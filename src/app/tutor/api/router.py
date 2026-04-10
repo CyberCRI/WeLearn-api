@@ -19,6 +19,7 @@ from src.app.services.data_collection import get_data_collection_service
 from src.app.shared.domain.exceptions import NoResultsError
 from src.app.shared.infra.abst_chat import get_chat_service
 from src.app.shared.utils.dependencies import get_settings
+from src.app.shared.utils.requests import extract_session_cookie
 from src.app.shared.utils.utils import get_files_content
 from src.app.tutor.service.agents import TEMPLATES
 from src.app.tutor.service.models import (
@@ -161,7 +162,7 @@ async def create_syllabus(
     data_collection=Depends(get_data_collection_service),
     settings: Settings = Depends(get_settings),
 ) -> SyllabusResponse:
-    session_id = request.headers.get("X-Session-ID")
+    session_id = extract_session_cookie(request)
     results = await tutor_manager(body, lang, settings)
 
     # TODO: handle errors
@@ -228,7 +229,7 @@ async def handle_syllabus_feedback(
     chatfactory=Depends(get_chat_service),
     data_collection=Depends(get_data_collection_service),
 ):
-    session_id = request.headers.get("X-Session-ID")
+    session_id = extract_session_cookie(request)
 
     messages = [
         {
@@ -282,7 +283,7 @@ async def register_syllabus_user_update(
     body: SyllabusUserUpdate,
     data_collection=Depends(get_data_collection_service),
 ):
-    session_id = request.headers.get("X-Session-ID")
+    session_id = extract_session_cookie(request)
 
     await data_collection.register_syllabus_update(
         session_id=session_id,

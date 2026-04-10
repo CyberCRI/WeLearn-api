@@ -6,6 +6,7 @@ config:
     PG_HOST: prod-prod-projects-backend.postgres.database.azure.com
     TIKA_URL_BASE: https://tika.k8s.lp-i.org/
     DATA_COLLECTION_ORIGIN_PREFIX: workshop
+    ENV: production
 allowedHostsRegexes:
   alphaUrls: |-
     https://[a-zA-Z0-9-]*\.alpha-welearn\.lp-i\.org

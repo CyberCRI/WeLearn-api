@@ -2,9 +2,10 @@
 
 from fastapi import APIRouter
 
-from src.app.api.api_v1.endpoints import chat, metric, micro_learning, user
+from src.app.api.api_v1.endpoints import chat, metric, micro_learning
 from src.app.search.api import router as search_router
 from src.app.tutor.api import router as tutor_router
+from src.app.user.api import router as user_router
 
 api_router = APIRouter()
 api_router.include_router(chat.router, prefix="/qna", tags=["qna"])
@@ -14,7 +15,7 @@ api_router.include_router(metric.router, prefix="/metric", tags=["metric"])
 api_router.include_router(
     micro_learning.router, prefix="/micro_learning", tags=["micro_learning"]
 )
-api_router.include_router(user.router, prefix="/user", tags=["user"])
+api_router.include_router(user_router.router, prefix="/user", tags=["user"])
 
 
 api_tags_metadata = [

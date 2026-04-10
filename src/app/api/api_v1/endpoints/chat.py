@@ -23,6 +23,7 @@ from src.app.shared.domain.exceptions import (
 )
 from src.app.shared.infra.abst_chat import get_chat_service
 from src.app.shared.utils.dependencies import get_settings
+from src.app.shared.utils.requests import extract_session_cookie
 from src.app.utils.logger import logger as utils_logger
 
 logger = utils_logger(__name__)
@@ -256,7 +257,7 @@ async def q_and_a_ans(
         str: openai chat completion content
     """
 
-    session_id = request.headers.get("X-Session-ID")
+    session_id = extract_session_cookie(request)
 
     try:
         content = await chatfactory.chat_message(
@@ -354,7 +355,7 @@ async def agent_response(
     data_collection=Depends(get_data_collection_service),
 ) -> Optional[Dict]:
     try:
-        session_id = request.headers.get("X-Session-ID")
+        session_id = extract_session_cookie(request)
         docs = []
 
         if body.query is None:

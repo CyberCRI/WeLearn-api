@@ -7,6 +7,7 @@ from sqlalchemy.sql import select
 from welearn_database.data.models import Bookmark, InferredUser, Session
 
 from src.app.services.sql_db.sql_service import session_maker
+from src.app.shared.domain.exceptions import SessionNotFoundError, UserNotFoundError
 from src.app.utils.logger import logger as logger_utils
 
 logger = logger_utils(__name__)
@@ -27,6 +28,8 @@ def get_or_create_user_sync(
             ).first()
             if user:
                 return user.id
+
+        logger.info("Creating new user with referer: %s", referer)
         user = InferredUser(origin_referrer=referer)
         s.add(user)
         s.commit()
@@ -45,7 +48,7 @@ def get_or_create_session_sync(
             select(InferredUser.id).where(InferredUser.id == user_id)
         ).first()
         if not user:
-            raise ValueError(f"User {user_id} does not exist")
+            raise UserNotFoundError(f"User {user_id} does not exist")
 
         if session_id:
             session = s.execute(
@@ -58,6 +61,9 @@ def get_or_create_session_sync(
             if session:
                 return session.id
 
+        logger.info(
+            "Creating new session for user_id=%s with referer: %s", user_id, referer
+        )
         new_session = Session(
             inferred_user_id=user_id,
             origin_referrer=referer,
@@ -70,11 +76,21 @@ def get_or_create_session_sync(
         return new_session.id
 
 
-def get_user_from_session_id(session_id: uuid.UUID) -> uuid.UUID | None:
+def get_user_from_session_id(session_id: uuid.UUID | None) -> uuid.UUID | None:
+    if not session_id:
+        return None
+
     with session_maker() as s:
         session = s.execute(select(Session).where(Session.id == session_id)).first()
         if session:
+            logger.info(
+                "Valid session. user_id=%s session_id=%s",
+                session[0].inferred_user_id,
+                session_id,
+            )
             return session[0].inferred_user_id
+        else:
+            raise SessionNotFoundError(f"Session with id {session_id} not found")
     return None
 
 

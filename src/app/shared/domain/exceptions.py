@@ -32,6 +32,34 @@ def not_found(message: str, msg_code: str):
     )
 
 
+class SessionNotFoundError(BaseException):
+    """Raised when a session is not found"""
+
+    def __init__(
+        self,
+        message="Session not found",
+        msg_code="SESSION_NOT_FOUND",
+    ):
+        self.message = message
+        self.msg_code = msg_code
+        logger.error("SessionNotFoundError: %s, Code: %s", self.message, self.msg_code)
+        super().__init__(self.message, self.msg_code)
+
+
+class UserNotFoundError(BaseException):
+    """Raised when a user is not found"""
+
+    def __init__(
+        self,
+        message="User not found",
+        msg_code="USER_NOT_FOUND",
+    ):
+        self.message = message
+        self.msg_code = msg_code
+        logger.error("UserNotFoundError: %s, Code: %s", self.message, self.msg_code)
+        super().__init__(self.message, self.msg_code)
+
+
 class EmptyQueryError(BaseException):
     """Raised when an invalid language code is used"""
 

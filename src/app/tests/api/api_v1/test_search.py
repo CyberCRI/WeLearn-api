@@ -333,7 +333,7 @@ class SearchTestsAll(IsolatedAsyncioTestCase):
                 headers={
                     "X-API-Key": "test",
                     "origin": "test.com",
-                    "X-Session-ID": str(uuid.uuid4()),
+                    "Cookie": f"x-session-id={str(uuid.uuid4())}",
                 },
             )
             self.assertEqual(response.status_code, 404)
@@ -349,7 +349,7 @@ class SearchTestsAll(IsolatedAsyncioTestCase):
                 headers={
                     "X-API-Key": "test",
                     "origin": "test.com",
-                    "X-Session-ID": str(uuid.uuid4()),
+                    "Cookie": f"x-session-id={str(uuid.uuid4())}",
                 },  # noqa: E501
             )
 
@@ -363,7 +363,7 @@ class SearchTestsAll(IsolatedAsyncioTestCase):
                 headers={
                     "X-API-Key": "test",
                     "origin": "test.com",
-                    "X-Session-Id": str(uuid.uuid4()),
+                    "Cookie": f"x-session-id={str(uuid.uuid4())}",
                 },
             )
             self.assertEqual(response.status_code, 400)
