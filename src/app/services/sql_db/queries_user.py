@@ -3,12 +3,11 @@
 import uuid
 from datetime import datetime, timedelta
 
-from fastapi import HTTPException
 from sqlalchemy.sql import select
 from welearn_database.data.models import Bookmark, InferredUser, Session
 
 from src.app.services.sql_db.sql_service import session_maker
-from src.app.shared.domain.exceptions import UserNotFoundError
+from src.app.shared.domain.exceptions import SessionNotFoundError, UserNotFoundError
 from src.app.utils.logger import logger as logger_utils
 
 logger = logger_utils(__name__)
@@ -91,9 +90,7 @@ def get_user_from_session_id(session_id: uuid.UUID | None) -> uuid.UUID | None:
             )
             return session[0].inferred_user_id
         else:
-            HTTPException(
-                status_code=404, detail=f"Session with id {session_id} not found"
-            )
+            raise SessionNotFoundError(f"Session with id {session_id} not found")
     return None
 
 

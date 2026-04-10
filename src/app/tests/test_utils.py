@@ -2,6 +2,7 @@ import unittest
 import uuid
 from unittest.mock import patch
 
+from src.app.shared.domain.exceptions import SessionNotFoundError
 from src.app.user.utils import utils
 
 
@@ -23,6 +24,22 @@ class TestResolveUserAndSession(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(result_user_id, user_id)
         self.assertEqual(result_session_uuid, session_uuid)
         self.assertEqual(run_in_threadpool_mock.call_count, 2)
+
+    @patch("src.app.user.utils.utils.get_user_from_session_id")
+    async def test_session_not_existing(self, get_user_from_session_id_mock):
+        """Should return user_id and session_uuid for existing user and session"""
+        session_uuid = uuid.uuid4()
+        host = "localhost"
+        referer = "test"
+        # First call: get_user_from_session_id returns user_id
+        # Second call: get_or_create_session_sync returns session_uuid
+        get_user_from_session_id_mock.side_effect = SessionNotFoundError(
+            "Session not found"
+        )
+
+        # expect resolve_user_and_session to raise SessionNotFoundError
+        with self.assertRaises(SessionNotFoundError):
+            await utils.resolve_user_and_session(session_uuid, host, referer)
 
     @patch("src.app.user.utils.utils.run_in_threadpool")
     async def test_new_user_and_session(self, run_in_threadpool_mock):
