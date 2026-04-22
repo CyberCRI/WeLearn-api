@@ -64,8 +64,8 @@ evaluator_llm = LangchainLLMWrapper(
 )
 
 models = {
-    "fr": "dangvantuan/sentence-camembert-base",
-    "en": "sentence-transformers/all-MiniLM-L6-v2",
+    "fr": "ibm-granite/granite-embedding-107m-multilingual",
+    "en": "ibm-granite/granite-embedding-107m-multilingual",
 }
 
 
@@ -118,7 +118,7 @@ async def get_messages(
 
         resp = requests.get(
             url="https://api.welearn.k8s.lp-i.dev/api/v1/search/collections",
-            headers={"x-API-Key": "welearn"},
+            headers={"x-API-Key": settings.WL_API_KEY, "Origin": settings.CLIENT_ORIGINS},
         )
         corpus = resp.json()
 
@@ -129,16 +129,16 @@ async def get_messages(
 
             corpus = [
                 {
-                    "corpus": "all_corpus_en_all-minilm-l6-v2",
+                    "corpus": "all_corpus_granite-embedding-107m-multilingual",
                     "name": "|".join(names["en"]),
                     "lang": "en",
-                    "model": "all-minilm-l6-v2",
+                    "model": "granite-embedding-107m-multilingual",
                 },
                 {
-                    "corpus": "all_corpus_fr_sentence-camembert-base",
+                    "corpus": "all_corpus_granite-embedding-107m-multilingual",
                     "name": "|".join(names["fr"]),
                     "lang": "fr",
-                    "model": "sentence-camembert-base",
+                    "model": "granite-embedding-107m-multilingual",
                 },
             ]
 

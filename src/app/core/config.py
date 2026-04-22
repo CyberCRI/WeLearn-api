@@ -57,6 +57,9 @@ class Settings(BaseSettings):
     # TIKA
     TIKA_URL_BASE: str
 
+    WL_API_KEY: str
+    CLIENT_ORIGINS: str
+
     model_config = SettingsConfigDict(
         env_file=".env", extra="ignore", case_sensitive=True
     )
