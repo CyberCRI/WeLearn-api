@@ -53,16 +53,3 @@ async def get_resources_about_sustainability(
         rag_query (str): The query string to search for relevant resources.
     """
     return await _get_resources_about_sustainability(rag_query, config)
-
-
-def trim_conversation_history(state):
-    trimmed_messages = trim_messages(
-        state["messages"],
-        strategy="last",
-        token_counter=len,
-        max_tokens=5,
-        start_on="human",
-        end_on=("human", "tool"),
-        include_system=True,
-    )
-    return {"llm_input_messages": trimmed_messages}

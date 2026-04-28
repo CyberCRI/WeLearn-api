@@ -21,20 +21,18 @@ from abc import ABC
 from typing import AsyncIterable, Dict, List, Optional
 
 from fastapi import BackgroundTasks, Depends, Request
-from langchain_azure_ai.chat_models import AzureAIChatCompletionsModel  # type: ignore
+from langchain_mistralai import ChatMistralAI
 from langchain_core.runnables import RunnableConfig  # type: ignore
 from langgraph.checkpoint.postgres.aio import AsyncPostgresSaver  # type: ignore
-from langgraph.prebuilt import create_react_agent  # type: ignore
-
+from langchain.agents import create_agent  # type: ignore
+from langchain.agents.middleware import SummarizationMiddleware  # type: ignore
 from src.app.models.chat import ReformulatedQueryResponse
 from src.app.models.documents import Document
 
-# from src.app.shared.infra.llm_proxy import LLMProxy
 from src.app.search.services.search import SearchService
 from src.app.services import prompts
 from src.app.services.agent import (
     get_resources_about_sustainability,
-    trim_conversation_history,
 )
 from src.app.services.helpers import (
     detect_language_from_entry,
@@ -421,20 +419,21 @@ class AbstractChat(ABC):
             str: The chat message content.
         """
         settings = get_settings()
-        agent_model = AzureAIChatCompletionsModel(
-            endpoint=settings.AZURE_MISTRAL_API_BASE,
-            credential=settings.AZURE_MISTRAL_API_KEY,
-            model=settings.LLM_MODEL_NAME,
+        agent_model = ChatMistralAI(
+            model_name=settings.MISTRAL_LLM_MODEL_NAME,
         )
 
-        agent_executor = create_react_agent(
+        agent_executor = create_agent(
             model=agent_model,
             tools=[
                 get_resources_about_sustainability,
             ],
             checkpointer=memory,
-            prompt=prompts.AGENT_SYSTEM_PROMPT,
-            pre_model_hook=trim_conversation_history,
+            system_prompt=prompts.AGENT_SYSTEM_PROMPT,
+            middleware=[SummarizationMiddleware(
+                model=agent_model,
+                trigger=("tokens", 32000),
+            )],
         )
 
         config = RunnableConfig(
