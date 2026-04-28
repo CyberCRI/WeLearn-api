@@ -1,7 +1,6 @@
 from typing import List, Tuple
 
 from fastapi import BackgroundTasks
-from langchain_core.messages.utils import trim_messages
 from langchain_core.runnables import RunnableConfig
 from langchain_core.tools import tool
 
