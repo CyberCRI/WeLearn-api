@@ -26,6 +26,7 @@ from langchain_core.runnables import RunnableConfig  # type: ignore
 from langgraph.checkpoint.postgres.aio import AsyncPostgresSaver  # type: ignore
 from langchain.agents import create_agent  # type: ignore
 from langchain.agents.middleware import SummarizationMiddleware  # type: ignore
+from langchain.messages import HumanMessage  # type: ignore
 from src.app.models.chat import ReformulatedQueryResponse
 from src.app.models.documents import Document
 
@@ -446,15 +447,15 @@ class AbstractChat(ABC):
             }
         )
 
-        messages = [
-            {
-                "role": "user",
-                "content": query,
-            },
-        ]
-
+        state = {
+            'messages':
+            [
+                HumanMessage(content=query)
+            ]
+            }
+        
         res = await agent_executor.ainvoke(
-            input={"messages": messages},
+            input=state,
             config=config,
             background_tasks=background_tasks,
         )
