@@ -21,20 +21,18 @@ from abc import ABC
 from typing import AsyncIterable, Dict, List, Optional
 
 from fastapi import BackgroundTasks, Depends, Request
-from langchain_mistralai import ChatMistralAI
-from langchain_core.runnables import RunnableConfig  # type: ignore
-from langgraph.checkpoint.postgres.aio import AsyncPostgresSaver  # type: ignore
 from langchain.agents import create_agent  # type: ignore
 from langchain.agents.middleware import SummarizationMiddleware  # type: ignore
 from langchain.messages import HumanMessage  # type: ignore
+from langchain_core.runnables import RunnableConfig  # type: ignore
+from langchain_mistralai import ChatMistralAI
+from langgraph.checkpoint.postgres.aio import AsyncPostgresSaver  # type: ignore
+
 from src.app.models.chat import ReformulatedQueryResponse
 from src.app.models.documents import Document
-
 from src.app.search.services.search import SearchService
 from src.app.services import prompts
-from src.app.services.agent import (
-    get_resources_about_sustainability,
-)
+from src.app.services.agent import get_resources_about_sustainability
 from src.app.services.helpers import (
     detect_language_from_entry,
     extract_json_from_response,
@@ -431,10 +429,12 @@ class AbstractChat(ABC):
             ],
             checkpointer=memory,
             system_prompt=prompts.AGENT_SYSTEM_PROMPT,
-            middleware=[SummarizationMiddleware(
-                model=agent_model,
-                trigger=("tokens", 32000),
-            )],
+            middleware=[
+                SummarizationMiddleware(
+                    model=agent_model,
+                    trigger=("tokens", 32000),
+                )
+            ],
         )
 
         config = RunnableConfig(
@@ -447,13 +447,8 @@ class AbstractChat(ABC):
             }
         )
 
-        state = {
-            'messages':
-            [
-                HumanMessage(content=query)
-            ]
-            }
-        
+        state = {"messages": [HumanMessage(content=query)]}
+
         res = await agent_executor.ainvoke(
             input=state,
             config=config,

@@ -1,4 +1,3 @@
-import json
 from abc import ABC
 from typing import Optional, Type, Union
 
@@ -6,8 +5,6 @@ import litellm
 from azure.ai.inference.aio import ChatCompletionsClient
 from azure.core.credentials import AzureKeyCredential
 from mistralai.client import Mistral
-from litellm import acompletion
-from litellm.types.utils import ModelResponse
 from pydantic import BaseModel
 
 from src.app.utils.decorators import log_time_and_error
@@ -53,18 +50,16 @@ class LLMProxy(ABC):
         else:
             # We assume that if it's not an Azure model, it's a Mistral model for now. This can be extended in the future to support other types of models.
             if api_key is None:
-                raise ValueError(
-                    "For Mistral models, api_key must be provided."
-                )
+                raise ValueError("For Mistral models, api_key must be provided.")
             logger.debug("Initializing Mistral client")
 
             self.client = Mistral(
                 api_key=api_key,
             )
- 
+
     @log_time_and_error
     async def close_client(self):
-        if self.client:
+        if self.client and self.is_azure_model:
             await self.client.close()
 
     @log_time_and_error
@@ -78,49 +73,10 @@ class LLMProxy(ABC):
 
         if self.is_azure_model:
             return await self.az_completion(messages)
-        
+
         else:
+            # We assume that if it's not an Azure model, it's a Mistral model for now. This can be extended in the future to support other types of models.
             return await self.mistral_completion(messages)
-
-        response = await acompletion(
-            model=self.model,
-            api_key=self.api_key,
-            api_base=self.api_base,
-            api_version=None,
-            messages=messages,
-            response_format=response_format,
-        )
-
-        assert isinstance(response, ModelResponse)
-
-        response = response["choices"][0]["message"]["content"].strip()
-
-        try:
-            return json.loads(response)
-        except json.JSONDecodeError:
-            logger.warning(
-                "Response content is not valid JSON. Returning raw content instead."
-            )
-            return response
-
-    async def completion_stream(
-        self,
-        messages: list,
-    ):
-
-        if self.is_azure_model:
-            return await self.az_completion_stream(messages)
-
-        response = await acompletion(
-            model=self.model,
-            api_key=self.api_key,
-            api_base=self.api_base,
-            api_version=self.api_version,
-            messages=messages,
-            stream=True,
-        )
-
-        return response
 
     async def az_completion(self, messages: list):
         if self.client is None:
