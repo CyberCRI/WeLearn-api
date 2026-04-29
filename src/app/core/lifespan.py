@@ -20,11 +20,9 @@ async def lifespan(app: FastAPI):
         timeout=100,
     )
     app.state.llm = LLMProxy(
-        model=settings.LLM_MODEL_NAME,
-        api_key=settings.AZURE_APIM_API_KEY,
-        api_base=settings.AZURE_APIM_API_BASE,
-        api_version="2024-05-01-preview",
-        is_azure_model=True,
+        model=settings.MISTRAL_LLM_MODEL_NAME,
+        api_key=settings.MISTRAL_API_KEY,
+        is_azure_model=False,
     )
 
     yield

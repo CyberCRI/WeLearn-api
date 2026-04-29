@@ -5,6 +5,7 @@ from typing import Optional, Type, Union
 import litellm
 from azure.ai.inference.aio import ChatCompletionsClient
 from azure.core.credentials import AzureKeyCredential
+from mistralai.client import Mistral
 from litellm import acompletion
 from litellm.types.utils import ModelResponse
 from pydantic import BaseModel
@@ -49,7 +50,18 @@ class LLMProxy(ABC):
                 credential=AzureKeyCredential(api_key),
                 api_version=api_version,
             )
+        else:
+            # We assume that if it's not an Azure model, it's a Mistral model for now. This can be extended in the future to support other types of models.
+            if api_key is None:
+                raise ValueError(
+                    "For Mistral models, api_key must be provided."
+                )
+            logger.debug("Initializing Mistral client")
 
+            self.client = Mistral(
+                api_key=api_key,
+            )
+ 
     @log_time_and_error
     async def close_client(self):
         if self.client:
@@ -66,6 +78,9 @@ class LLMProxy(ABC):
 
         if self.is_azure_model:
             return await self.az_completion(messages)
+        
+        else:
+            return await self.mistral_completion(messages)
 
         response = await acompletion(
             model=self.model,
@@ -130,3 +145,17 @@ class LLMProxy(ABC):
         )
 
         return response
+
+    async def mistral_completion(self, messages: list):
+        if self.client is None:
+            raise ValueError("Mistral client is not initialized.")
+
+        response = await self.client.chat.complete_async(
+            messages=messages,
+            max_tokens=2048,
+            temperature=0.8,
+            top_p=0.1,
+            model=self.model,
+        )
+
+        return response.choices[0].message.content
