@@ -18,6 +18,7 @@ RUN apt update && apt install -y --no-install-recommends make
 
 COPY --from=requirements-stage ./tmp/requirements.txt ./requirements.txt
 
+RUN pip install --upgrade pip
 RUN pip install --no-cache-dir --upgrade -r requirements.txt
 
 COPY . .
