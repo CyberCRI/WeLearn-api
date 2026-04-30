@@ -1,9 +1,10 @@
 from io import BytesIO
-from unittest import TestCase
+from unittest import IsolatedAsyncioTestCase
 from unittest.mock import Mock, patch
 
 from fastapi import HTTPException, UploadFile
 from qdrant_client.models import ScoredPoint
+from starlette.datastructures import Headers
 
 from src.app.shared.utils.utils import (
     build_system_message,
@@ -12,7 +13,7 @@ from src.app.shared.utils.utils import (
 )
 
 
-class TestTutorUtils(TestCase):
+class TestTutorUtils(IsolatedAsyncioTestCase):
     def test_build_system_message_with_all_params(self):
         message = build_system_message(
             role="tutor",
@@ -68,37 +69,37 @@ class TestTutorUtils(TestCase):
 
         self.assertEqual(result, expected)
 
-    @patch("src.app.services.tutor.utils._extract_docx_content")
+    @patch("src.app.shared.utils.utils._extract_docx_content")
     async def test_get_file_content_docx(self, mock_extract_docx):
         mock_extract_docx.return_value = "Hello, world!"
         file = UploadFile(
             file=BytesIO(b"test content"),
             filename="test.docx",
-            content_type="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+            headers=Headers({"content-type": "application/vnd.openxmlformats-officedocument.wordprocessingml.document"}),
         )
         content = await get_file_content(file)
         self.assertEqual(content, "Hello, world!")
         mock_extract_docx.assert_called_once()
 
-    @patch("src.app.services.tutor.utils._extract_pdf_content")
+    @patch("src.app.shared.utils.utils._extract_pdf_content")
     async def test_get_file_content_pdf(self, mock_extract_pdf):
         mock_extract_pdf.return_value = "Hello, world!"
         file = UploadFile(
             file=BytesIO(b"test content"),
             filename="test.pdf",
-            content_type="application/pdf",
+            headers=Headers({"content-type": "application/pdf"}),
         )
         content = await get_file_content(file)
         self.assertEqual(content, "Hello, world!")
         mock_extract_pdf.assert_called_once()
 
-    @patch("src.app.services.tutor.utils._extract_text_content")
+    @patch("src.app.shared.utils.utils._extract_text_content")
     async def test_get_file_content_txt(self, mock_extract_text):
         mock_extract_text.return_value = "Hello, world!"
         file = UploadFile(
             file=BytesIO(b"test content"),
             filename="test.txt",
-            content_type="text/plain",
+            headers=Headers({"content-type": "text/plain"}),
         )
         content = await get_file_content(file)
         self.assertEqual(content, "Hello, world!")
@@ -108,16 +109,16 @@ class TestTutorUtils(TestCase):
         file = UploadFile(
             file=BytesIO(b"test content"),
             filename="test.unsupported",
-            content_type="application/unsupported",
+            headers=Headers({"content-type": "application/unsupported"}),
         )
         with self.assertRaises(HTTPException):
             await get_file_content(file)
 
     async def test_get_file_content_empty(self):
         file = UploadFile(
-            file=open("test.empty.txt", "rb"),
+            file=BytesIO(b""),
             filename="test.empty.txt",
-            content_type="text/plain",
+            headers=Headers({"content-type": "text/plain"}),
         )
         with self.assertRaises(HTTPException):
             await get_file_content(file)
