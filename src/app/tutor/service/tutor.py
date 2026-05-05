@@ -1,4 +1,4 @@
-from langchain_azure_ai.chat_models import AzureAIChatCompletionsModel  # type: ignore
+from langchain_mistralai import ChatMistralAI  # type: ignore
 
 from src.app.core.config import Settings
 from src.app.shared.utils.utils import extract_doc_info
@@ -43,17 +43,14 @@ GREENCOMP_COMPETENCIES = (
 )
 
 
-chat_model: AzureAIChatCompletionsModel | None = None
+chat_model: ChatMistralAI | None = None
 
 
 async def init_chat_model(settings) -> None:
     global chat_model
     if chat_model is None:
-        chat_model = AzureAIChatCompletionsModel(
-            endpoint=settings.AZURE_APIM_API_BASE,
-            credential=settings.AZURE_APIM_API_KEY,
-            model=settings.LLM_MODEL_NAME,
-            temperature=0.4,
+        chat_model = ChatMistralAI(
+            model_name=settings.MISTRAL_LLM_MODEL_NAME,
         )
 
 

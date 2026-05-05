@@ -36,6 +36,10 @@ class Settings(BaseSettings):
     AZURE_APIM_API_KEY: str
     AZURE_APIM_API_BASE: str
 
+    # MISTRAL ENV VARS
+    MISTRAL_API_KEY: str
+    MISTRAL_LLM_MODEL_NAME: str
+
     # OPENAI_API FOR RAG METRICS (To be challenged)
     AZURE_API_KEY: str
     AZURE_API_BASE: str

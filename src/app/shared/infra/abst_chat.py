@@ -21,21 +21,18 @@ from abc import ABC
 from typing import AsyncIterable, Dict, List, Optional
 
 from fastapi import BackgroundTasks, Depends, Request
-from langchain_azure_ai.chat_models import AzureAIChatCompletionsModel  # type: ignore
+from langchain.agents import create_agent  # type: ignore
+from langchain.agents.middleware import SummarizationMiddleware  # type: ignore
+from langchain.messages import HumanMessage  # type: ignore
 from langchain_core.runnables import RunnableConfig  # type: ignore
+from langchain_mistralai import ChatMistralAI
 from langgraph.checkpoint.postgres.aio import AsyncPostgresSaver  # type: ignore
-from langgraph.prebuilt import create_react_agent  # type: ignore
 
 from src.app.models.chat import ReformulatedQueryResponse
 from src.app.models.documents import Document
-
-# from src.app.shared.infra.llm_proxy import LLMProxy
 from src.app.search.services.search import SearchService
 from src.app.services import prompts
-from src.app.services.agent import (
-    get_resources_about_sustainability,
-    trim_conversation_history,
-)
+from src.app.services.agent import get_resources_about_sustainability
 from src.app.services.helpers import (
     detect_language_from_entry,
     extract_json_from_response,
@@ -70,6 +67,7 @@ class AbstractChat(ABC):
         self,
         client,
     ):
+        self.agent_executor = None
         self.chat_client = client
 
         self.system_prompts = {
@@ -397,6 +395,34 @@ class AbstractChat(ABC):
         )
         return res
 
+    async def _create_agent(
+        self,
+        memory: AsyncPostgresSaver | None = None,
+    ):
+        if self.agent_executor:
+            return self.agent_executor
+
+        settings = get_settings()
+        agent_model = ChatMistralAI(
+            model_name=settings.MISTRAL_LLM_MODEL_NAME,
+        )
+
+        self.agent_executor = create_agent(
+            model=agent_model,
+            tools=[
+                get_resources_about_sustainability,
+            ],
+            checkpointer=memory,
+            system_prompt=prompts.AGENT_SYSTEM_PROMPT,
+            middleware=[
+                SummarizationMiddleware(
+                    model=agent_model,
+                    trigger=("tokens", 32000),
+                )
+            ],
+        )
+        return self.agent_executor
+
     async def agent_message(
         self,
         query: str,
@@ -420,21 +446,9 @@ class AbstractChat(ABC):
         Returns:
             str: The chat message content.
         """
-        settings = get_settings()
-        agent_model = AzureAIChatCompletionsModel(
-            endpoint=settings.AZURE_MISTRAL_API_BASE,
-            credential=settings.AZURE_MISTRAL_API_KEY,
-            model=settings.LLM_MODEL_NAME,
-        )
 
-        agent_executor = create_react_agent(
-            model=agent_model,
-            tools=[
-                get_resources_about_sustainability,
-            ],
-            checkpointer=memory,
-            prompt=prompts.AGENT_SYSTEM_PROMPT,
-            pre_model_hook=trim_conversation_history,
+        agent_executor = await self._create_agent(
+            memory=memory,
         )
 
         config = RunnableConfig(
@@ -447,20 +461,33 @@ class AbstractChat(ABC):
             }
         )
 
-        messages = [
-            {
-                "role": "user",
-                "content": query,
-            },
-        ]
+        state = {"messages": [HumanMessage(content=query)]}
 
         res = await agent_executor.ainvoke(
-            input={"messages": messages},
+            input=state,
             config=config,
             background_tasks=background_tasks,
         )
 
         return res
+
+    async def agent_get_history(
+        self,
+        thread_id: uuid.UUID,
+        memory: AsyncPostgresSaver,
+    ) -> list[dict[str, str]]:
+
+        agent = await self._create_agent(memory=memory)
+        config = RunnableConfig(configurable={"thread_id": thread_id})
+
+        state = await agent.aget_state(config)
+        messages = state.values.get("messages", [])
+
+        return [
+            {"role": "user" if m.type == "human" else "assistant", "content": m.content}
+            for m in messages
+            if m.type in ("human", "ai")
+        ]
 
     async def run_llm_with_json_parsing(
         self,

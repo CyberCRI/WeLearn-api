@@ -3,10 +3,7 @@ from unittest.mock import AsyncMock
 
 from fastapi import BackgroundTasks
 
-from src.app.services.agent import (
-    _get_resources_about_sustainability,
-    trim_conversation_history,
-)
+from src.app.services.agent import _get_resources_about_sustainability
 
 
 class TestAgent(IsolatedAsyncioTestCase):
@@ -47,12 +44,6 @@ class TestAgent(IsolatedAsyncioTestCase):
             )
             self.assertEqual(content, "No relevant documents found.")
             self.assertEqual(docs, [])
-
-    def test_trim_conversation_history(self):
-        state = {"messages": ["msg1", "msg2", "msg3", "msg4", "msg5", "msg6"]}
-        result = trim_conversation_history(state)
-        self.assertIn("llm_input_messages", result)
-        self.assertIsInstance(result["llm_input_messages"], list)
 
     async def test_get_resources_about_sustainability_no_search_service(self):
         # config without 'sp' (SearchService)

@@ -1,3 +1,4 @@
+import uuid
 from typing import Dict, Optional, cast
 from uuid import UUID
 
@@ -331,6 +332,25 @@ async def q_and_a_stream(
         )
 
 
+@router.get("/chat/history")
+async def get_chat_history(
+    thread_id: UUID,
+    chatfactory=Depends(get_chat_service),
+) -> list[Dict[str, str | list[Dict[str, str]] | None]]:
+    if thread_id:
+        async with await psycopg.AsyncConnection.connect(
+            DB_URI, autocommit=True, prepare_threshold=0, row_factory=dict_row
+        ) as conn:
+            await conn.execute("SET SEARCH_PATH to agent_related")
+            await conn.commit()
+
+            memory = AsyncPostgresSaver(conn)
+            res = await chatfactory.agent_get_history(
+                thread_id=thread_id, memory=memory
+            )
+            return res
+
+
 @router.post(
     "/chat/agent",
     summary="Agent Response",
@@ -353,15 +373,21 @@ async def agent_response(
     chatfactory=Depends(get_chat_service),
     sp: SearchService = Depends(get_search_service),
     data_collection=Depends(get_data_collection_service),
-) -> Optional[Dict]:
+):
     try:
         session_id = extract_session_cookie(request)
         docs = []
 
+        thread_id = body.thread_id if body.thread_id else None
+
+        if not thread_id:
+            logger.info("No thread_id provided. Generating new thread_id.")
+            thread_id = uuid.uuid4()
+
         if body.query is None:
             raise EmptyQueryError()
 
-        if body.thread_id:
+        if thread_id:
             async with await psycopg.AsyncConnection.connect(
                 DB_URI, autocommit=True, prepare_threshold=0, row_factory=dict_row
             ) as conn:
@@ -373,7 +399,7 @@ async def agent_response(
                 res = await chatfactory.agent_message(
                     query=body.query,
                     memory=memory,
-                    thread_id=body.thread_id,
+                    thread_id=thread_id,
                     corpora=body.corpora,
                     sdg_filter=body.sdg_filter,
                     sp=sp,
@@ -395,22 +421,25 @@ async def agent_response(
         agent_ans = {
             "content": cast(str, res["messages"][-1].content),
             "docs": docs,
+            "thread_id": thread_id,
         }
 
         try:
             conversation_id, message_id = await data_collection.register_chat_data(
                 session_id=session_id,
                 user_query=body.query,
-                conversation_id=body.thread_id,
+                conversation_id=thread_id,
                 answer_content=res["messages"][-1].content,
                 sources=docs,
             )
 
-            return {
+            agent_ans = {
                 **agent_ans,
                 "message_id": message_id,
-                "conversation_id": conversation_id,
+                "thread_id": thread_id,
             }
+
+            return agent_ans
         except Exception as e:
             logger.error("Error while registering chat data: %s", e)
 

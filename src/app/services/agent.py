@@ -1,7 +1,6 @@
 from typing import List, Tuple
 
 from fastapi import BackgroundTasks
-from langchain_core.messages.utils import trim_messages
 from langchain_core.runnables import RunnableConfig
 from langchain_core.tools import tool
 
@@ -53,16 +52,3 @@ async def get_resources_about_sustainability(
         rag_query (str): The query string to search for relevant resources.
     """
     return await _get_resources_about_sustainability(rag_query, config)
-
-
-def trim_conversation_history(state):
-    trimmed_messages = trim_messages(
-        state["messages"],
-        strategy="last",
-        token_counter=len,
-        max_tokens=5,
-        start_on="human",
-        end_on=("human", "tool"),
-        include_system=True,
-    )
-    return {"llm_input_messages": trimmed_messages}
