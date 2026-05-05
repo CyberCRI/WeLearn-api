@@ -67,6 +67,7 @@ class AbstractChat(ABC):
         self,
         client,
     ):
+        self.agent_executor = None
         self.chat_client = client
 
         self.system_prompts = {
@@ -394,6 +395,34 @@ class AbstractChat(ABC):
         )
         return res
 
+    async def _create_agent(
+        self,
+        memory: AsyncPostgresSaver | None = None,
+    ):
+        if self.agent_executor:
+            return self.agent_executor
+
+        settings = get_settings()
+        agent_model = ChatMistralAI(
+            model_name=settings.MISTRAL_LLM_MODEL_NAME,
+        )
+
+        self.agent_executor = create_agent(
+            model=agent_model,
+            tools=[
+                get_resources_about_sustainability,
+            ],
+            checkpointer=memory,
+            system_prompt=prompts.AGENT_SYSTEM_PROMPT,
+            middleware=[
+                SummarizationMiddleware(
+                    model=agent_model,
+                    trigger=("tokens", 32000),
+                )
+            ],
+        )
+        return self.agent_executor
+
     async def agent_message(
         self,
         query: str,
@@ -422,19 +451,8 @@ class AbstractChat(ABC):
             model_name=settings.MISTRAL_LLM_MODEL_NAME,
         )
 
-        agent_executor = create_agent(
-            model=agent_model,
-            tools=[
-                get_resources_about_sustainability,
-            ],
-            checkpointer=memory,
-            system_prompt=prompts.AGENT_SYSTEM_PROMPT,
-            middleware=[
-                SummarizationMiddleware(
-                    model=agent_model,
-                    trigger=("tokens", 32000),
-                )
-            ],
+        agent_executor = await self._create_agent(
+            memory=memory,
         )
 
         config = RunnableConfig(
@@ -456,6 +474,24 @@ class AbstractChat(ABC):
         )
 
         return res
+
+    async def agent_get_history(
+        self,
+        thread_id: uuid.UUID,
+        memory: AsyncPostgresSaver,
+    ) -> list[dict[str, str]]:
+
+        agent = await self._create_agent(memory=memory)
+        config = RunnableConfig(configurable={"thread_id": thread_id})
+
+        state = await agent.aget_state(config)
+        messages = state.values.get("messages", [])
+
+        return [
+            {"role": "user" if m.type == "human" else "assistant", "content": m.content}
+            for m in messages
+            if m.type in ("human", "ai")
+        ]
 
     async def run_llm_with_json_parsing(
         self,
