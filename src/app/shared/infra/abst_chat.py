@@ -446,10 +446,6 @@ class AbstractChat(ABC):
         Returns:
             str: The chat message content.
         """
-        settings = get_settings()
-        agent_model = ChatMistralAI(
-            model_name=settings.MISTRAL_LLM_MODEL_NAME,
-        )
 
         agent_executor = await self._create_agent(
             memory=memory,

@@ -75,7 +75,11 @@ class TestTutorUtils(IsolatedAsyncioTestCase):
         file = UploadFile(
             file=BytesIO(b"test content"),
             filename="test.docx",
-            headers=Headers({"content-type": "application/vnd.openxmlformats-officedocument.wordprocessingml.document"}),
+            headers=Headers(
+                {
+                    "content-type": "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+                }
+            ),
         )
         content = await get_file_content(file)
         self.assertEqual(content, "Hello, world!")

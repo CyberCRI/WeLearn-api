@@ -1,6 +1,6 @@
+import uuid
 from typing import Dict, Optional, cast
 from uuid import UUID
-import uuid
 
 import backoff
 import psycopg
@@ -24,11 +24,7 @@ from src.app.shared.domain.exceptions import (
 )
 from src.app.shared.infra.abst_chat import get_chat_service
 from src.app.shared.utils.dependencies import get_settings
-from src.app.shared.utils.requests import (
-    extract_origin_from_request,
-    extract_session_cookie,
-)
-from src.app.user.utils.utils import resolve_user_and_session
+from src.app.shared.utils.requests import extract_session_cookie
 from src.app.utils.logger import logger as utils_logger
 
 logger = utils_logger(__name__)
