@@ -53,7 +53,7 @@ langgraph = "^1.1.10"
 mistralai = "^2.4.3"
 
 [tool.poetry.group.dev.dependencies]
-pytest = "^7.4.0"
+pytest = ">=7.4,<10.0"
 pytest-cov = "^4.1.0"
 pytest-env = "^1.0.1"
 flake8 = "^6.1.0"
