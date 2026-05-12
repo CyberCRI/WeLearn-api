@@ -59,8 +59,15 @@ class Settings(BaseSettings):
     QDRANT_HOST: str
     QDRANT_PORT: int
 
+    # LANGSMITH
+    LANGSMITH_ENDPOINT: str
+    LANGSMITH_API_KEY: str
+    LANGSMITH_PROJECT: str
+
     # TIKA
     TIKA_URL_BASE: str
+
+    WL_API_KEY: str
 
     model_config = SettingsConfigDict(
         env_file=".env", extra="ignore", case_sensitive=True
