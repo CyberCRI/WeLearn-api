@@ -1,8 +1,11 @@
-import json
+from dotenv import load_dotenv
+from locust import HttpUser, constant_pacing, task
+import os
 import random
-import time
+import uuid
 
-from locust import HttpUser, between, constant_pacing, task
+load_dotenv()
+API_KEY = os.getenv("WL_API_KEY")
 
 french_paragraphs = [
     "L'objectif de Développement Durable numéro 1 est d'éliminer la pauvreté sous toutes ses formes et partout dans le monde. Cela comprend la réduction de la pauvreté extrême, la promotion de l'emploi décent et la mise en place de systèmes de protection sociale pour les plus vulnérables.",
@@ -58,8 +61,7 @@ english_paragraphs = [
 
 paragraphs = {"en": english_paragraphs, "fr": french_paragraphs}
 
-corpus = ["ted", "conversation", "wikipedia", "hal"]
-
+corpus = ["ted", "conversation", "wikipedia", "hal", "open-edition-books", "openalex", "ipcc", "uved", "peerj", "plos", "oapen", "ipbes", "fao-open-knowledge", "unccelearn", "unesdoc", "ird-le-mag"]
 
 french_questions = [
     "Quel est le pourcentage de la population mondiale vivant en dessous du seuil de pauvreté ?",
@@ -134,11 +136,11 @@ class QuickstartUser(HttpUser):
         corpora = random.sample(corpus, random.randint(1, 4))
         self.client.post(
             "/api/v1/search/by_document",
-            json={"corpora": corpora},
-            params={
-                "query": " ".join(random.sample(paragraphs[lang], 2)),
-                "nb_results": 10,
-            },
+            json={"corpora": corpora,
+                  "query": " ".join(random.sample(paragraphs[lang], 2)),
+                  "nb_results": 10,
+                  },
+            headers={"x-API-Key": API_KEY, "origin": ""},
             name=f"/search/{lang}/{'&'.join(corpora)}",
         )
 
@@ -147,35 +149,26 @@ class QuickstartUser(HttpUser):
         lang = random.choice(["en", "fr"])
         self.client.post(
             "/api/v1/search/by_slices",
-            params={
+            json={
                 "query": " ".join(random.sample(paragraphs[lang], 2)),
                 "nb_results": 10,
                 "concatenate": True,
             },
+            headers={"x-API-Key": API_KEY, "origin": ""},
             name=f"/search/by_slices/{lang}",
         )
 
     @task(2)
-    def chat(self):
+    def agent(self):
         lang = random.choice(["en", "fr"])
-        with self.client.post(
-            "/api/v1/qna/reformulate",
-            params={"query": random.choice(questions[lang])},
-            name=f"/qna/reformulate/{lang}",
-        ) as resp1:
-            try:
-                reformulated_query = json.loads(resp1.text)["STANDALONE_QUESTION"]
-            except json.decoder.JSONDecodeError:
-                raise Exception("Question could not be reformulated")
-        with self.client.post(
-            "/api/v1/search/by_slices",
-            params={"query": reformulated_query, "nb_results": 10, "concatenate": True},
-            name=f"/search/by_slices/{lang}",
-        ) as resp2:
-            sources = json.loads(resp2.text)
         self.client.post(
-            "/api/v1/qna/chat/answer",
-            json={"sources": sources},
-            params={"query": reformulated_query},
-            name=f"/qna/chat/answer/{lang}",
+            "/api/v1/qna/chat/agent",
+            json={
+                "query": random.choice(questions[lang]),
+                "sdg_filter": [],
+                "thread_id": str(uuid.uuid4()),
+                "corpora": [],
+            },
+            headers={"x-API-Key": API_KEY, "origin": ""},
+            name=f"/qna/chat/agent/{lang}",
         )
