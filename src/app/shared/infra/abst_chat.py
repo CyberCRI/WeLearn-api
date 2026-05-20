@@ -207,7 +207,7 @@ class AbstractChat(ABC):
             stream (Generator[dict]): The streamed chat response.
 
         Yields:
-            str: The openai stream content.
+            str: The stream content.
         """
         try:
             async for chunk in stream:
@@ -231,6 +231,58 @@ class AbstractChat(ABC):
             finish_reason = getattr(choices[0], "finish_reason", None)
             if finish_reason:
                 log_environmental_impacts(chunk, logger)
+
+    async def get_agent_chunks(self, stream) -> AsyncIterable[str]:
+        """
+        Gets content from streamed response of an agent.
+
+        Args:
+            stream (Generator[dict]): The streamed agent response.
+
+        Yields:
+            str: The agent stream content.
+        """
+        try:
+            async for chunk in stream:
+                for part in self._extract_agent_chunk(chunk):
+                    yield part
+        except Exception as e:
+            logger.error("get_agent_chunks api_error=%s", e)
+            raise e
+
+    def _extract_agent_chunk(self, chunk):
+        if not isinstance(chunk, dict):
+            logger.debug(
+                "agent_stream chunk_skipped=invalid_type type=%s",
+                type(chunk).__name__,
+            )
+            return
+
+        if chunk.get("tools"):
+            yield {
+                "status": "processing",
+                "content": "Analyzing relevant resources...",
+                "docs": chunk['tools']['messages'][0].artifact
+            }
+
+        elif chunk.get("model"):
+            messages = chunk['model'].get("messages")
+            if not messages:
+                logger.debug("agent_stream chunk_skipped=missing_or_empty_messages")
+                return
+
+            last_message = messages[-1]
+            response_metadata = getattr(last_message, "response_metadata", None) or {}
+            finish_reason = response_metadata.get("finish_reason")
+
+            if finish_reason == "tool_calls":
+                yield {
+                    "status": "processing",
+                    "content": "Getting resources from WeLearn database...",
+                }
+            elif finish_reason == "stop":
+                content = getattr(last_message, "content", "")
+                yield {"status": "stop", "content": content}
 
     @log_time_and_error
     async def reformulate_user_query(self, query: str, history: List[Dict[str, str]]):
@@ -432,6 +484,7 @@ class AbstractChat(ABC):
         sdg_filter: Optional[List[int]] = None,
         sp: SearchService | None = None,
         background_tasks: BackgroundTasks | None = None,
+        streamed_ans: bool = False,
     ):
         """
         Sends a chat message handled by an agent.
@@ -442,6 +495,9 @@ class AbstractChat(ABC):
             thread_id (uuid.UUID): The thread ID.
             corpora (tuple[str, ...] | None): The corpora to search resources.
             sdg_filter (list[int] | None): The SDG filters to apply to the search.
+            sp (SearchService | None): The search service to use for retrieving resources.
+            background_tasks (BackgroundTasks | None): The background tasks to use for the search.
+            streamed_ans (bool): Whether to stream the answer.
 
         Returns:
             str: The chat message content.
@@ -463,12 +519,18 @@ class AbstractChat(ABC):
 
         state = {"messages": [HumanMessage(content=query)]}
 
+        if streamed_ans:
+            res = agent_executor.astream(
+                input=state,
+                config=config,
+                stream_mode="updates",
+            )
+            return self.get_agent_chunks(res)
+
         res = await agent_executor.ainvoke(
             input=state,
             config=config,
-            background_tasks=background_tasks,
         )
-
         return res
 
     async def agent_get_history(

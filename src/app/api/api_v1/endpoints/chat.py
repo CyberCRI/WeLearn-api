@@ -1,9 +1,11 @@
+import json
 import uuid
 from typing import Dict, Optional, cast
 from uuid import UUID
 
 import backoff
 import psycopg
+from fastapi.encoders import jsonable_encoder
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Request, status
 from fastapi.responses import StreamingResponse
 from langchain_core.messages import ToolMessage
@@ -352,6 +354,127 @@ async def get_chat_history(
 
 
 @router.post(
+    "/chat/agent_stream",
+    summary="Agent Response Stream",
+    description="This endpoint streams an agent response to the user's message and ends with the full response payload.",
+    response_model=models.AgentResponse,
+    response_class=StreamingResponse,
+)
+@backoff.on_exception(
+    wait_gen=backoff.expo,
+    exception=RateLimitError,
+    logger=logger,
+    max_tries=5,
+    max_time=180,
+    jitter=backoff.random_jitter,
+    factor=2,
+)
+async def agent_stream_response(
+    request: Request,
+    background_tasks: BackgroundTasks,
+    body: models.AgentContext = Depends(get_agent_params),
+    chatfactory=Depends(get_chat_service),
+    sp: SearchService = Depends(get_search_service),
+    data_collection=Depends(get_data_collection_service),
+) -> StreamingResponse:
+    try:
+        session_id = extract_session_cookie(request)
+
+        thread_id = body.thread_id if body.thread_id else None
+
+        if not thread_id:
+            logger.info("No thread_id provided. Generating new thread_id.")
+            thread_id = uuid.uuid4()
+
+        if body.query is None:
+            raise EmptyQueryError()
+
+        async def _stream_agent_response():
+            final_content = ""
+            docs = None
+
+            if thread_id:
+                async with await psycopg.AsyncConnection.connect(
+                    DB_URI, autocommit=True, prepare_threshold=0, row_factory=dict_row
+                ) as conn:
+                    await conn.execute("SET SEARCH_PATH to agent_related")
+                    await conn.commit()
+
+                    memory = AsyncPostgresSaver(conn)
+
+                    stream = await chatfactory.agent_message(
+                        query=body.query,
+                        memory=memory,
+                        thread_id=thread_id,
+                        corpora=body.corpora,
+                        sdg_filter=body.sdg_filter,
+                        sp=sp,
+                        background_tasks=background_tasks,
+                        streamed_ans=True,
+                    )
+                    async for chunk in stream:
+                        print("Chunk received!")
+                        if chunk['status'] == "processing" and chunk.get("docs"):
+                            docs = chunk["docs"]
+                        elif chunk['status'] == "stop":
+                            final_content = chunk['content']
+                        try:
+                            yield json.dumps({"content": chunk['content'], "status": chunk['status']})
+                        except Exception as e:
+                            logger.error("Error while yielding chunk: %s", e)
+            else:
+                stream = await chatfactory.agent_message(
+                    query=body.query,
+                    corpora=body.corpora,
+                    sdg_filter=body.sdg_filter,
+                    sp=sp,
+                    streamed_ans=True,
+                )
+                async for chunk in stream:
+                    print("Chunk received!")
+                    if chunk['status'] == "processing" and chunk.get("docs"):
+                        docs = chunk["docs"]
+                    elif chunk['status'] == "stop":
+                        final_content = chunk['content']
+                    try:
+                        yield json.dumps({"content": chunk['content'], "status": chunk['status']})
+                    except Exception as e:
+                        logger.error("Error while yielding chunk: %s", e)
+
+            final_payload = {
+                "content": final_content,
+                "status": "stop",
+                "docs": docs,
+                "thread_id": thread_id,
+            }
+
+            try:
+                _, message_id = await data_collection.register_chat_data(
+                    session_id=session_id,
+                    user_query=body.query,
+                    conversation_id=thread_id,
+                    answer_content=final_content,
+                    sources=docs,
+                )
+
+                final_payload = {
+                    **final_payload,
+                    "message_id": message_id,
+                }
+            except Exception as e:
+                logger.error("Error while registering chat data: %s", e)
+
+            yield json.dumps(jsonable_encoder(final_payload))
+
+        return StreamingResponse(
+            content=_stream_agent_response(),
+            media_type="text/event-stream",
+        )
+    except LanguageNotSupportedError as e:
+        bad_request(message=e.message, msg_code=e.msg_code)
+
+
+@router.post(
     "/chat/agent",
     summary="Agent Response",
     description="This endpoint is used to get an agent response to the user's message",
@@ -425,7 +548,7 @@ async def agent_response(
         }
 
         try:
-            conversation_id, message_id = await data_collection.register_chat_data(
+            _, message_id = await data_collection.register_chat_data(
                 session_id=session_id,
                 user_query=body.query,
                 conversation_id=thread_id,
