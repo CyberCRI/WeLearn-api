@@ -262,11 +262,11 @@ class AbstractChat(ABC):
             yield {
                 "status": "processing",
                 "content": "Analyzing relevant resources...",
-                "docs": chunk['tools']['messages'][0].artifact
+                "docs": chunk["tools"]["messages"][0].artifact,
             }
 
         elif chunk.get("model"):
-            messages = chunk['model'].get("messages")
+            messages = chunk["model"].get("messages")
             if not messages:
                 logger.debug("agent_stream chunk_skipped=missing_or_empty_messages")
                 return
