@@ -1,6 +1,6 @@
 import json
 import uuid
-from typing import Dict, Optional, cast
+from typing import Any, AsyncGenerator, Dict, Optional, cast
 from uuid import UUID
 
 import backoff
@@ -11,7 +11,7 @@ from fastapi.responses import StreamingResponse
 from langchain_core.messages import ToolMessage
 from langgraph.checkpoint.postgres.aio import AsyncPostgresSaver
 from openai import RateLimitError
-from psycopg.rows import dict_row
+from psycopg.rows import DictRow, dict_row
 from pydantic import BaseModel
 
 from src.app.models import chat as models
@@ -44,6 +44,10 @@ DB_URI = "postgresql://{user}:{password}@{host}:{port}/{database}".format(
     database=settings.PG_DATABASE,
 )
 
+# psycopg exposes dict_row with a BaseCursor annotation, while AsyncConnection.connect
+# expects an async row factory type. Runtime is valid; cast keeps static typing happy.
+ASYNC_DICT_ROW_FACTORY = cast(Any, dict_row)
+
 
 def get_params(body: models.Context) -> models.ContextOut:
     body.sources = body.sources[:7]
@@ -57,6 +61,7 @@ def get_params(body: models.Context) -> models.ContextOut:
         history=body.history or [],
         query=body.query,
         subject=body.subject,
+        conversation_id=None,
     )
 
 
@@ -340,8 +345,11 @@ async def get_chat_history(
     chatfactory=Depends(get_chat_service),
 ) -> list[Dict[str, str | list[Dict[str, str]] | None]]:
     if thread_id:
-        async with await psycopg.AsyncConnection.connect(
-            DB_URI, autocommit=True, prepare_threshold=0, row_factory=dict_row
+        async with await psycopg.AsyncConnection[DictRow].connect(
+            DB_URI,
+            autocommit=True,
+            prepare_threshold=0,
+            row_factory=ASYNC_DICT_ROW_FACTORY,
         ) as conn:
             await conn.execute("SET SEARCH_PATH to agent_related")
             await conn.commit()
@@ -351,6 +359,156 @@ async def get_chat_history(
                 thread_id=thread_id, memory=memory
             )
             return res
+
+
+def _resolve_thread_id(thread_id: UUID | None) -> UUID:
+    if thread_id:
+        return thread_id
+
+    logger.info("No thread_id provided. Generating new thread_id.")
+    return uuid.uuid4()
+
+
+def _update_agent_stream_state(
+    chunk: dict[str, Any],
+    current_final_content: str,
+    current_docs: Any,
+) -> tuple[str, Any]:
+    status = chunk.get("status")
+    docs = current_docs
+    final_content = current_final_content
+
+    if status == "processing" and chunk.get("docs"):
+        docs = chunk["docs"]
+    elif status == "stop":
+        final_content = cast(str, chunk.get("content", ""))
+
+    return final_content, docs
+
+
+def _serialize_agent_stream_chunk(chunk: dict[str, Any]) -> str:
+    return json.dumps(
+        {
+            "content": chunk.get("content"),
+            "status": chunk.get("status"),
+        }
+    )
+
+
+async def _stream_agent_with_memory(
+    *,
+    chatfactory: Any,
+    body: models.AgentContext,
+    sp: SearchService,
+    background_tasks: BackgroundTasks,
+    thread_id: UUID,
+) -> AsyncGenerator[dict[str, Any], None]:
+    async with await psycopg.AsyncConnection[DictRow].connect(
+        DB_URI,
+        autocommit=True,
+        prepare_threshold=0,
+        row_factory=ASYNC_DICT_ROW_FACTORY,
+    ) as conn:
+        await conn.execute("SET SEARCH_PATH to agent_related")
+        await conn.commit()
+
+        memory = AsyncPostgresSaver(conn)
+        stream = await chatfactory.agent_message(
+            query=body.query,
+            memory=memory,
+            thread_id=thread_id,
+            corpora=body.corpora,
+            sdg_filter=body.sdg_filter,
+            sp=sp,
+            background_tasks=background_tasks,
+            streamed_ans=True,
+        )
+
+        async for chunk in stream:
+            yield chunk
+
+
+def _build_final_stream_payload(
+    *,
+    final_content: str,
+    docs: Any,
+    thread_id: UUID,
+) -> dict[str, Any]:
+    return {
+        "content": final_content,
+        "status": "stop",
+        "docs": docs,
+        "thread_id": thread_id,
+    }
+
+
+async def _register_stream_chat_data(
+    *,
+    data_collection: Any,
+    session_id: UUID | None,
+    user_query: str,
+    conversation_id: UUID,
+    answer_content: str,
+    sources: Any,
+) -> Any:
+    _, message_id = await data_collection.register_chat_data(
+        session_id=session_id,
+        user_query=user_query,
+        conversation_id=conversation_id,
+        answer_content=answer_content,
+        sources=sources,
+    )
+    return message_id
+
+
+async def _stream_agent_response(
+    *,
+    body: models.AgentContext,
+    chatfactory: Any,
+    sp: SearchService,
+    background_tasks: BackgroundTasks,
+    data_collection: Any,
+    session_id: UUID | None,
+    thread_id: UUID,
+) -> AsyncGenerator[str, None]:
+    final_content = ""
+    docs = None
+
+    stream = _stream_agent_with_memory(
+        chatfactory=chatfactory,
+        body=body,
+        sp=sp,
+        background_tasks=background_tasks,
+        thread_id=thread_id,
+    )
+
+    async for chunk in stream:
+        final_content, docs = _update_agent_stream_state(chunk, final_content, docs)
+        try:
+            yield _serialize_agent_stream_chunk(chunk)
+        except Exception as e:
+            logger.error("Error while yielding chunk: %s", e)
+
+    final_payload = _build_final_stream_payload(
+        final_content=final_content,
+        docs=docs,
+        thread_id=thread_id,
+    )
+
+    try:
+        message_id = await _register_stream_chat_data(
+            data_collection=data_collection,
+            session_id=session_id,
+            user_query=cast(str, body.query),
+            conversation_id=thread_id,
+            answer_content=final_content,
+            sources=docs,
+        )
+        final_payload = {**final_payload, "message_id": message_id}
+    except Exception as e:
+        logger.error("Error while registering chat data: %s", e)
+
+    yield json.dumps(jsonable_encoder(final_payload))
 
 
 @router.post(
@@ -379,99 +537,26 @@ async def agent_stream_response(
 ) -> StreamingResponse:
     try:
         session_id = extract_session_cookie(request)
-
-        thread_id = body.thread_id if body.thread_id else None
-
-        if not thread_id:
-            logger.info("No thread_id provided. Generating new thread_id.")
-            thread_id = uuid.uuid4()
+        thread_id = _resolve_thread_id(body.thread_id)
 
         if body.query is None:
             raise EmptyQueryError()
 
-        async def _stream_agent_response():
-            final_content = ""
-            docs = None
-
-            if thread_id:
-                async with await psycopg.AsyncConnection.connect(
-                    DB_URI, autocommit=True, prepare_threshold=0, row_factory=dict_row
-                ) as conn:
-                    await conn.execute("SET SEARCH_PATH to agent_related")
-                    await conn.commit()
-
-                    memory = AsyncPostgresSaver(conn)
-
-                    stream = await chatfactory.agent_message(
-                        query=body.query,
-                        memory=memory,
-                        thread_id=thread_id,
-                        corpora=body.corpora,
-                        sdg_filter=body.sdg_filter,
-                        sp=sp,
-                        background_tasks=background_tasks,
-                        streamed_ans=True,
-                    )
-                    async for chunk in stream:
-                        print("Chunk received!")
-                        if chunk['status'] == "processing" and chunk.get("docs"):
-                            docs = chunk["docs"]
-                        elif chunk['status'] == "stop":
-                            final_content = chunk['content']
-                        try:
-                            yield json.dumps({"content": chunk['content'], "status": chunk['status']})
-                        except Exception as e:
-                            logger.error("Error while yielding chunk: %s", e)
-            else:
-                stream = await chatfactory.agent_message(
-                    query=body.query,
-                    corpora=body.corpora,
-                    sdg_filter=body.sdg_filter,
-                    sp=sp,
-                    streamed_ans=True,
-                )
-                async for chunk in stream:
-                    print("Chunk received!")
-                    if chunk['status'] == "processing" and chunk.get("docs"):
-                        docs = chunk["docs"]
-                    elif chunk['status'] == "stop":
-                        final_content = chunk['content']
-                    try:
-                        yield json.dumps({"content": chunk['content'], "status": chunk['status']})
-                    except Exception as e:
-                        logger.error("Error while yielding chunk: %s", e)
-
-            final_payload = {
-                "content": final_content,
-                "status": "stop",
-                "docs": docs,
-                "thread_id": thread_id,
-            }
-
-            try:
-                _, message_id = await data_collection.register_chat_data(
-                    session_id=session_id,
-                    user_query=body.query,
-                    conversation_id=thread_id,
-                    answer_content=final_content,
-                    sources=docs,
-                )
-
-                final_payload = {
-                    **final_payload,
-                    "message_id": message_id,
-                }
-            except Exception as e:
-                logger.error("Error while registering chat data: %s", e)
-
-            yield json.dumps(jsonable_encoder(final_payload))
-
         return StreamingResponse(
-            content=_stream_agent_response(),
+            content=_stream_agent_response(
+                body=body,
+                chatfactory=chatfactory,
+                sp=sp,
+                background_tasks=background_tasks,
+                data_collection=data_collection,
+                session_id=session_id,
+                thread_id=thread_id,
+            ),
             media_type="text/event-stream",
         )
     except LanguageNotSupportedError as e:
         bad_request(message=e.message, msg_code=e.msg_code)
+        raise
 
 
 @router.post(
@@ -511,8 +596,11 @@ async def agent_response(
             raise EmptyQueryError()
 
         if thread_id:
-            async with await psycopg.AsyncConnection.connect(
-                DB_URI, autocommit=True, prepare_threshold=0, row_factory=dict_row
+            async with await psycopg.AsyncConnection[DictRow].connect(
+                DB_URI,
+                autocommit=True,
+                prepare_threshold=0,
+                row_factory=ASYNC_DICT_ROW_FACTORY,
             ) as conn:
                 await conn.execute("SET SEARCH_PATH to agent_related")
                 await conn.commit()
