@@ -74,9 +74,9 @@ def normalize_payload(payload: Any) -> dict:
     # Normalize payload to a dict
     if payload is None:
         payload = {}
-    elif hasattr(payload, "dict") and callable(getattr(payload, "dict")):
+    elif hasattr(payload, "model_dump") and callable(getattr(payload, "model_dump")):
         try:
-            payload = payload.dict()
+            payload = payload.model_dump()
         except Exception:
             payload = dict(payload)
     elif not isinstance(payload, dict):
