@@ -366,8 +366,7 @@ class QnATests(unittest.IsolatedAsyncioTestCase):
     @mock.patch("src.app.shared.infra.abst_chat.AbstractChat.agent_message")
     def test_chat_agent_stream(self, agent_message_mock, *mocks):
         async def _fake_stream():
-            yield "Agent "
-            yield "response"
+            yield {"status": "test", "content": "fake content"}
 
         agent_message_mock.return_value = _fake_stream()
 
@@ -377,13 +376,16 @@ class QnATests(unittest.IsolatedAsyncioTestCase):
                 json={
                     "query": "What are the SDGs?",
                     "thread_id": str(uuid.uuid4()),
-                    "corpora": ["corpus1"],
-                    "sdg_filter": [1, 2, 3],
+                    "corpora": [],
+                    "sdg_filter": [],
                 },
                 headers={"X-API-Key": "test", "origin": "test"},
             )
+            print(response.text)
 
             self.assertEqual(response.status_code, 200)
-            self.assertIn("Agent response", response.text)
+            self.assertIn(
+                '{"content": "fake content", "status": "test"}', response.text
+            )
             self.assertTrue(agent_message_mock.called)
             self.assertTrue(agent_message_mock.call_args.kwargs["streamed_ans"])
