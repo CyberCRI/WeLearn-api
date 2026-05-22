@@ -3,6 +3,8 @@ ingress:
 
 config:
   nonSensitive:
+    QDRANT_HOST: "http://stag-qdrant.stag-qdrant"
+    QDRANT_PORT: "6333"
     PG_HOST: dev-lab-projects-backend.postgres.database.azure.com
     PG_USER: welearn_datastack_staging
     PG_DATABASE: welearn_datastack_staging
