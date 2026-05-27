@@ -49,9 +49,13 @@ def get_collections_sync():
 
 
 def get_collections_info_sync():
-    stmt = select(
-        Corpus.source_name, Corpus.is_active, Category.title.label("category_name")
-    ).outerjoin(Category, Corpus.category_id == Category.id)
+    stmt = (
+        select(
+            Corpus.source_name, Corpus.is_active, Category.title.label("category_name")
+        )
+        .outerjoin(Category, Corpus.category_id == Category.id)
+        .where(Corpus.is_active)
+    )
 
     with session_maker() as session:
         results = session.execute(stmt).all()
