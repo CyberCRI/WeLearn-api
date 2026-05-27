@@ -54,7 +54,6 @@ async def handle_user_and_session(
         httponly=True,
         samesite=None,
         domain=settings.SESSION_COOKIE_DOMAIN,
-        secure=settings.ENV == "production",
     )
 
     return {"message": "session created"}
