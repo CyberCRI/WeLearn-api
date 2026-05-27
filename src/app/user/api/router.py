@@ -52,7 +52,8 @@ async def handle_user_and_session(
         value=str(session_uuid),
         max_age=SESSION_TTL_SECONDS,
         httponly=True,
-        samesite="lax",
+        samesite=None,
+        domain=settings.SESSION_COOKIE_DOMAIN,
         secure=settings.ENV == "production",
     )
 
