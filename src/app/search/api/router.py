@@ -79,6 +79,7 @@ async def get_corpus():
             "is_active": is_active,
         }
         for source_name, is_active, category_name in collections
+        if is_active
     ]
 
 

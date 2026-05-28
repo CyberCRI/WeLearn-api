@@ -52,11 +52,12 @@ async def handle_user_and_session(
         value=str(session_uuid),
         max_age=SESSION_TTL_SECONDS,
         httponly=True,
-        samesite="lax",
-        secure=settings.ENV == "production",
+        samesite=None,
+        secure=True,
+        domain=settings.SESSION_COOKIE_DOMAIN,
     )
 
-    return {"message": "session created"}
+    return {"message": "session created", "session_id": session_uuid}
 
 
 @router.post("/user", summary="Create new user", response_model=dict)

@@ -21,6 +21,7 @@ class Settings(BaseSettings):
 
     BACKEND_CORS_ORIGINS_REGEX: str = CLIENT_ORIGINS_REGEX
     DATA_COLLECTION_ORIGIN_PREFIX: str
+    SESSION_COOKIE_DOMAIN: str
 
     def get_api_version(self) -> dict:
         return {

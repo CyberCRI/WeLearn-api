@@ -12,7 +12,11 @@ logger = utils_logger(__name__)
 def extract_session_cookie(request: Request) -> Optional[UUID]:
     cookie_value = request.cookies.get(SESSION_COOKIE_NAME)
     if not cookie_value:
-        return None
+        cookie_value = request.headers.get("X-Session-Id", None)
+
+        if not cookie_value:
+            logger.debug("No session cookie found in request")
+            return None
 
     try:
         return UUID(cookie_value)
