@@ -4,6 +4,7 @@ from fastapi import APIRouter, HTTPException, Request, Response
 from fastapi.concurrency import run_in_threadpool
 
 from src.app.services.sql_db.queries_user import (
+    add_institution_data_to_user_sync,
     add_user_bookmark_sync,
     delete_user_bookmark_sync,
     delete_user_bookmarks_sync,
@@ -18,6 +19,7 @@ from src.app.shared.utils.requests import (
     extract_origin_from_request,
     extract_session_cookie,
 )
+from src.app.user.models.models import InstitutionData
 from src.app.user.utils.utils import resolve_user_and_session
 from src.app.utils.logger import logger as logger_utils
 
@@ -199,3 +201,40 @@ async def add_user_bookmark(request: Request, document_id: uuid.UUID):
     except Exception as e:
         logger.error(f"Error adding bookmark: {e}")
         raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.post(
+    "/institution-data", summary="Add institution data to user", response_model=dict
+)
+async def add_institution_data_to_user(request: Request, data: InstitutionData):
+    session_uuid = extract_session_cookie(request)
+    if not session_uuid:
+        raise HTTPException(status_code=401, detail="Session cookie is missing")
+    host = extract_origin_from_request(request)
+
+    try:
+        user_id, _ = await resolve_user_and_session(
+            session_uuid=session_uuid,
+            host=host,
+            referer=None,
+        )
+    except UserNotFoundError as e:
+        raise HTTPException(status_code=404, detail=str(e))
+
+    try:
+        resp = await run_in_threadpool(
+            add_institution_data_to_user_sync, user_id, data.institution, data.role
+        )
+
+        print(f"add_institution_data_to_user_sync response: {resp}")
+    except ValueError as e:
+        raise HTTPException(status_code=404, detail=str(e))
+    except Exception as e:
+        logger.error(f"Error adding institution data: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+    return {
+        "message": "Institution data added to user",
+        "institution": data.institution,
+        "role": data.role,
+    }

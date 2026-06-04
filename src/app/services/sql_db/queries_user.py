@@ -164,3 +164,18 @@ def add_user_bookmark_sync(user_id: uuid.UUID, document_id: uuid.UUID) -> uuid.U
         s.add(new_bookmark)
         s.commit()
         return document_id
+
+
+def add_institution_data_to_user_sync(
+    user_id: uuid.UUID, institution: str, role: str
+) -> uuid.UUID:
+    with session_maker() as s:
+        user = s.execute(select(InferredUser).where(InferredUser.id == user_id)).first()
+        if not user:
+            raise ValueError(f"User {user_id} does not exist")
+        user = user[0]
+        user.university_title = institution
+        user.role = role
+        s.add(user)
+        s.commit()
+        return user_id
