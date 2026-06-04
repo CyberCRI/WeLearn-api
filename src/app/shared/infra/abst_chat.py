@@ -18,7 +18,7 @@ Functions:
 import json
 import uuid
 from abc import ABC
-from typing import AsyncIterable, Dict, List, Optional
+from typing import Any, AsyncIterable, Dict, List, Optional
 
 from fastapi import BackgroundTasks, Depends, Request
 from langchain.agents import create_agent  # type: ignore
@@ -232,7 +232,7 @@ class AbstractChat(ABC):
             if finish_reason:
                 log_environmental_impacts(chunk, logger)
 
-    async def get_agent_chunks(self, stream) -> AsyncIterable[str]:
+    async def get_agent_chunks(self, stream) -> AsyncIterable[dict[str, Any]]:
         """
         Gets content from streamed response of an agent.
 
@@ -240,7 +240,7 @@ class AbstractChat(ABC):
             stream (Generator[dict]): The streamed agent response.
 
         Yields:
-            str: The agent stream content.
+            dict[str, Any]: Normalized agent stream payload chunks.
         """
         try:
             async for chunk in stream:
@@ -251,38 +251,96 @@ class AbstractChat(ABC):
             raise e
 
     def _extract_agent_chunk(self, chunk):
-        if not isinstance(chunk, dict):
+        if isinstance(chunk, dict):
+            if chunk.get("tools"):
+                yield {
+                    "status": "processing",
+                    "step": "analyzing_resources",
+                    "label": "Analyzing relevant resources",
+                    "docs": chunk["tools"]["messages"][0].artifact,
+                }
+
+            elif chunk.get("model"):
+                messages = chunk["model"].get("messages")
+                if not messages:
+                    logger.debug("agent_stream chunk_skipped=missing_or_empty_messages")
+                    return
+
+                last_message = messages[-1]
+                response_metadata = (
+                    getattr(last_message, "response_metadata", None) or {}
+                )
+                finish_reason = response_metadata.get("finish_reason")
+
+                if finish_reason == "tool_calls":
+                    yield {
+                        "status": "processing",
+                        "step": "fetching_resources",
+                        "label": "Getting resources from WeLearn database",
+                    }
+                else:
+                    content = self._extract_text_from_message_content(
+                        getattr(last_message, "content", "")
+                    )
+                    if content:
+                        yield {"status": "streaming", "content": content}
+            return
+
+        if not (isinstance(chunk, tuple) and len(chunk) == 2):
             logger.debug(
                 "agent_stream chunk_skipped=invalid_type type=%s",
                 type(chunk).__name__,
             )
             return
 
-        if chunk.get("tools"):
+        message, metadata = chunk
+        node_name = metadata.get("langgraph_node") if isinstance(metadata, dict) else None
+
+        if node_name == "tools":
+            docs = getattr(message, "artifact", None)
+            payload: dict[str, Any] = {
+                "status": "processing",
+                "step": "analyzing_resources",
+                "label": "Analyzing relevant resources",
+            }
+            if docs is not None:
+                payload["docs"] = docs
+            yield payload
+            return
+
+        response_metadata = getattr(message, "response_metadata", None) or {}
+        finish_reason = response_metadata.get("finish_reason")
+
+        if finish_reason == "tool_calls":
             yield {
                 "status": "processing",
-                "content": "Analyzing relevant resources...",
-                "docs": chunk["tools"]["messages"][0].artifact,
+                "step": "fetching_resources",
+                "label": "Getting resources from WeLearn database",
             }
+            return
 
-        elif chunk.get("model"):
-            messages = chunk["model"].get("messages")
-            if not messages:
-                logger.debug("agent_stream chunk_skipped=missing_or_empty_messages")
-                return
+        content = self._extract_text_from_message_content(
+            getattr(message, "content", "")
+        )
+        if content:
+            yield {"status": "streaming", "content": content}
 
-            last_message = messages[-1]
-            response_metadata = getattr(last_message, "response_metadata", None) or {}
-            finish_reason = response_metadata.get("finish_reason")
+    def _extract_text_from_message_content(self, content: Any) -> str:
+        if isinstance(content, str):
+            return content
 
-            if finish_reason == "tool_calls":
-                yield {
-                    "status": "processing",
-                    "content": "Getting resources from WeLearn database...",
-                }
-            elif finish_reason == "stop":
-                content = getattr(last_message, "content", "")
-                yield {"status": "stop", "content": content}
+        if isinstance(content, list):
+            text_parts: list[str] = []
+            for item in content:
+                if isinstance(item, str):
+                    text_parts.append(item)
+                elif isinstance(item, dict):
+                    text = item.get("text")
+                    if isinstance(text, str):
+                        text_parts.append(text)
+            return "".join(text_parts)
+
+        return ""
 
     @log_time_and_error
     async def reformulate_user_query(self, query: str, history: List[Dict[str, str]]):
@@ -523,7 +581,7 @@ class AbstractChat(ABC):
             res = agent_executor.astream(
                 input=state,
                 config=config,
-                stream_mode="updates",
+                stream_mode="messages",
             )
             return self.get_agent_chunks(res)
 

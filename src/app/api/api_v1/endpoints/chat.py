@@ -48,6 +48,22 @@ DB_URI = "postgresql://{user}:{password}@{host}:{port}/{database}".format(
 # expects an async row factory type. Runtime is valid; cast keeps static typing happy.
 ASYNC_DICT_ROW_FACTORY = cast(Any, dict_row)
 
+SSE_HEADERS = {
+    "Cache-Control": "no-cache",
+    "Connection": "keep-alive",
+    "X-Accel-Buffering": "no",
+}
+
+
+def _format_sse_event(data: str) -> str:
+    lines = data.splitlines() or [""]
+    return "".join(f"data: {line}\n" for line in lines) + "\n"
+
+
+async def _sse_wrap(stream: Any) -> AsyncGenerator[str, None]:
+    async for chunk in stream:
+        yield _format_sse_event(str(chunk))
+
 
 def get_params(body: models.Context) -> models.ContextOut:
     body.sources = body.sources[:7]
@@ -228,8 +244,9 @@ async def q_and_a_rephrase_stream(
         )
 
     return StreamingResponse(
-        content=content,
+        content=_sse_wrap(content),
         media_type="text/event-stream",
+        headers=SSE_HEADERS,
     )
 
 
@@ -323,8 +340,9 @@ async def q_and_a_stream(
         )
 
         return StreamingResponse(
-            content=content,
+            content=_sse_wrap(content),
             media_type="text/event-stream",
+            headers=SSE_HEADERS,
         )
     except LanguageNotSupportedError as e:
         bad_request(message=e.message, msg_code=e.msg_code)
@@ -380,19 +398,32 @@ def _update_agent_stream_state(
 
     if status == "processing" and chunk.get("docs"):
         docs = chunk["docs"]
+    elif status == "streaming":
+        final_content += cast(str, chunk.get("content", ""))
     elif status == "stop":
-        final_content = cast(str, chunk.get("content", ""))
+        stop_content = cast(str, chunk.get("content", ""))
+        if stop_content:
+            final_content = stop_content
 
     return final_content, docs
 
 
 def _serialize_agent_stream_chunk(chunk: dict[str, Any]) -> str:
-    return json.dumps(
-        {
-            "content": chunk.get("content"),
-            "status": chunk.get("status"),
-        }
-    )
+    payload = {
+        "content": chunk.get("content"),
+        "status": chunk.get("status"),
+    }
+
+    if chunk.get("step") is not None:
+        payload["step"] = chunk.get("step")
+
+    if chunk.get("label") is not None:
+        payload["label"] = chunk.get("label")
+
+    if chunk.get("docs") is not None:
+        payload["docs"] = chunk.get("docs")
+
+    return json.dumps(jsonable_encoder(payload))
 
 
 async def _stream_agent_with_memory(
@@ -473,6 +504,7 @@ async def _stream_agent_response(
 ) -> AsyncGenerator[str, None]:
     final_content = ""
     docs = None
+    has_streamed_content = False
 
     stream = _stream_agent_with_memory(
         chatfactory=chatfactory,
@@ -484,8 +516,12 @@ async def _stream_agent_response(
 
     async for chunk in stream:
         final_content, docs = _update_agent_stream_state(chunk, final_content, docs)
+        if chunk.get("status") == "streaming" and chunk.get("content"):
+            has_streamed_content = True
+        if chunk.get("status") == "stop":
+            continue
         try:
-            yield _serialize_agent_stream_chunk(chunk)
+            yield _format_sse_event(_serialize_agent_stream_chunk(chunk))
         except Exception as e:
             logger.error("Error while yielding chunk: %s", e)
 
@@ -494,6 +530,9 @@ async def _stream_agent_response(
         docs=docs,
         thread_id=thread_id,
     )
+
+    if has_streamed_content:
+        final_payload = {**final_payload, "content": ""}
 
     try:
         message_id = await _register_stream_chat_data(
@@ -508,7 +547,7 @@ async def _stream_agent_response(
     except Exception as e:
         logger.error("Error while registering chat data: %s", e)
 
-    yield json.dumps(jsonable_encoder(final_payload))
+    yield _format_sse_event(json.dumps(jsonable_encoder(final_payload)))
 
 
 @router.post(
@@ -553,6 +592,7 @@ async def agent_stream_response(
                 thread_id=thread_id,
             ),
             media_type="text/event-stream",
+            headers=SSE_HEADERS,
         )
     except LanguageNotSupportedError as e:
         bad_request(message=e.message, msg_code=e.msg_code)
