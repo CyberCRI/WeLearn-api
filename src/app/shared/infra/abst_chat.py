@@ -256,7 +256,6 @@ class AbstractChat(ABC):
                 yield {
                     "status": "processing",
                     "step": "analyzing_resources",
-                    "label": "Analyzing relevant resources",
                     "docs": chunk["tools"]["messages"][0].artifact,
                 }
 
@@ -276,14 +275,17 @@ class AbstractChat(ABC):
                     yield {
                         "status": "processing",
                         "step": "fetching_resources",
-                        "label": "Getting resources from WeLearn database",
                     }
                 else:
                     content = self._extract_text_from_message_content(
                         getattr(last_message, "content", "")
                     )
                     if content:
-                        yield {"status": "streaming", "content": content}
+                        yield {
+                            "status": "streaming",
+                            "step": "generating_answer",
+                            "content": content,
+                        }
             return
 
         if not (isinstance(chunk, tuple) and len(chunk) == 2):
@@ -301,7 +303,6 @@ class AbstractChat(ABC):
             payload: dict[str, Any] = {
                 "status": "processing",
                 "step": "analyzing_resources",
-                "label": "Analyzing relevant resources",
             }
             if docs is not None:
                 payload["docs"] = docs
@@ -315,7 +316,6 @@ class AbstractChat(ABC):
             yield {
                 "status": "processing",
                 "step": "fetching_resources",
-                "label": "Getting resources from WeLearn database",
             }
             return
 
@@ -323,7 +323,11 @@ class AbstractChat(ABC):
             getattr(message, "content", "")
         )
         if content:
-            yield {"status": "streaming", "content": content}
+            yield {
+                "status": "streaming",
+                "step": "generating_answer",
+                "content": content,
+            }
 
     def _extract_text_from_message_content(self, content: Any) -> str:
         if isinstance(content, str):
