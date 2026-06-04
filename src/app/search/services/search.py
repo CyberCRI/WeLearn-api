@@ -252,6 +252,7 @@ class SearchService:
         background_tasks: BackgroundTasks,
         qp: EnhancedSearchQuery,
         method: SearchMethods = SearchMethods.BY_SLICES,
+        without_vectors: bool = False,
     ) -> list[http_models.ScoredPoint]:
         assert isinstance(qp.query, str)
 
@@ -313,6 +314,10 @@ class SearchService:
                 "Error during duplicate removal: %s, ignore it for letting the user see results",
                 ex,
             )
+
+        if without_vectors:
+            points_without_vectors = [point.model_copy(update={"vector": None}) for point in sorted_data]
+            return points_without_vectors
 
         return sorted_data
 
