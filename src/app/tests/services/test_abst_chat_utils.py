@@ -124,7 +124,10 @@ class TestAbstChatUtils(unittest.IsolatedAsyncioTestCase):
         chunk = (msg, {"langgraph_node": "model"})
 
         result = next(self.chat._extract_agent_chunk(chunk))
-        self.assertEqual(result, {"status": "streaming", "step": "generating_answer", "content": "hello"})
+        self.assertEqual(
+            result,
+            {"status": "streaming", "step": "generating_answer", "content": "hello"},
+        )
 
     def test_extract_agent_chunk_messages_tuple_tool_call(self):
         msg = mock.Mock(content="", response_metadata={"finish_reason": "tool_calls"})
