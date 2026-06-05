@@ -20,6 +20,12 @@ class TestChatUtils(unittest.TestCase):
         self.assertEqual(docs, ["doc1"])
         self.assertEqual(final_content, "")
 
+    def test_update_agent_stream_state_streaming(self):
+        chunk = {"status": "streaming", "content": "new token"}
+        final_content, docs = chat._update_agent_stream_state(chunk, "old ", "docs")
+        self.assertEqual(final_content, "old new token")
+        self.assertEqual(docs, "docs")
+
     def test_update_agent_stream_state_stop(self):
         chunk = {"status": "stop", "content": "final answer"}
         final_content, docs = chat._update_agent_stream_state(chunk, "old", "docs")
@@ -33,9 +39,31 @@ class TestChatUtils(unittest.TestCase):
         self.assertEqual(docs, "docs")
 
     def test_serialize_agent_stream_chunk(self):
-        chunk = {"content": "abc", "status": "processing"}
+        chunk = {
+            "status": "processing",
+            "step": "fetching_resources",
+        }
         result = chat._serialize_agent_stream_chunk(chunk)
-        self.assertEqual(result, '{"content": "abc", "status": "processing"}')
+        self.assertEqual(
+            result,
+            '{"content": null, "status": "processing", "step": "fetching_resources"}',
+        )
+
+    def test_serialize_agent_stream_chunk_with_docs(self):
+        chunk = {
+            "status": "processing",
+            "step": "analyzing_resources",
+            "docs": [{"id": "doc-1"}],
+        }
+        result = chat._serialize_agent_stream_chunk(chunk)
+        self.assertEqual(
+            result,
+            '{"content": null, "status": "processing", "step": "analyzing_resources", "docs": [{"id": "doc-1"}]}',
+        )
+
+    def test_format_sse_event(self):
+        result = chat._format_sse_event('{"content": "abc"}')
+        self.assertEqual(result, 'data: {"content": "abc"}\n\n')
 
 
 if __name__ == "__main__":

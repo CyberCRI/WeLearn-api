@@ -385,7 +385,12 @@ class QnATests(unittest.IsolatedAsyncioTestCase):
 
             self.assertEqual(response.status_code, 200)
             self.assertIn(
-                '{"content": "fake content", "status": "test"}', response.text
+                'data: {"content": "fake content", "status": "test"}',
+                response.text,
+            )
+            self.assertIn(
+                'data: {"content": "", "status": "stop"',
+                response.text,
             )
             self.assertTrue(agent_message_mock.called)
             self.assertTrue(agent_message_mock.call_args.kwargs["streamed_ans"])

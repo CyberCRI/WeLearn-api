@@ -18,12 +18,13 @@ Functions:
 import json
 import uuid
 from abc import ABC
-from typing import Any, AsyncIterable, Dict, List, Optional
+from typing import Any, AsyncIterable, Dict, List, Optional, TypedDict, cast
 
 from fastapi import BackgroundTasks, Depends, Request
 from langchain.agents import create_agent  # type: ignore
 from langchain.agents.middleware import SummarizationMiddleware  # type: ignore
 from langchain.messages import HumanMessage  # type: ignore
+from langchain_core.messages import BaseMessage  # type: ignore
 from langchain_core.runnables import RunnableConfig  # type: ignore
 from langchain_mistralai import ChatMistralAI
 from langgraph.checkpoint.postgres.aio import AsyncPostgresSaver  # type: ignore
@@ -49,6 +50,10 @@ from src.app.utils.logger import logger as utils_logger
 
 logger = utils_logger(__name__)
 # EcoLogits.init(["openai", "mistralai"])
+
+
+class _AgentInputState(TypedDict):
+    messages: list[BaseMessage]
 
 
 class AbstractChat(ABC):
@@ -147,18 +152,27 @@ class AbstractChat(ABC):
         )
 
         if isinstance(detected_lang, str):
-            jsn = extract_json_from_response(detected_lang)
+            parsed = extract_json_from_response(detected_lang)
         elif isinstance(detected_lang, dict):
-            jsn = detected_lang
+            parsed = detected_lang
         else:
             raise ValueError("Invalid response from model")
+
+        if not isinstance(parsed, dict):
+            raise ValueError("Invalid response from model")
+
+        jsn: Dict[str, str] = {}
+        for key, value in parsed.items():
+            if not isinstance(key, str) or not isinstance(value, str):
+                raise ValueError("Invalid response from model")
+            jsn[key] = value
 
         return jsn
 
     @log_time_and_error
     async def _detect_past_message_ref(
         self, query: str, history: List[Dict[str, str]]
-    ) -> dict | None:
+    ) -> dict[str, bool] | None:
         """
         Detects reference to past messages.
 
@@ -178,26 +192,28 @@ class AbstractChat(ABC):
                     "content": prompts.PAST_MESSAGE_REF.format(query=query),
                 },
             ],
-            response_format={
-                "type": "json_object",
-            },
+            response_format={"type": "json_object"},
         )
 
         try:
-            jsn = {}
             if isinstance(completion, str):
-                jsn = extract_json_from_response(completion)
+                raw = extract_json_from_response(completion)
             elif isinstance(completion, dict):
-                jsn = completion
+                raw = completion
             else:
                 raise ValueError("Invalid response from model")
 
-            if "REF_TO_PAST" not in jsn or jsn["REF_TO_PAST"] not in [True, False]:
+            if not isinstance(raw, dict):
                 raise ValueError("Invalid response from model")
 
-            return jsn
+            ref_to_past = raw.get("REF_TO_PAST")
+            if not isinstance(ref_to_past, bool):
+                raise ValueError("Invalid response from model")
+
+            return {"REF_TO_PAST": ref_to_past}
         except json.JSONDecodeError:
             logger.error("api_error=invalid_json, response=%s", completion)
+            return None
 
     async def get_stream_chunks(self, stream) -> AsyncIterable[str]:
         """
@@ -296,7 +312,9 @@ class AbstractChat(ABC):
             return
 
         message, metadata = chunk
-        node_name = metadata.get("langgraph_node") if isinstance(metadata, dict) else None
+        node_name = (
+            metadata.get("langgraph_node") if isinstance(metadata, dict) else None
+        )
 
         if node_name == "tools":
             docs = getattr(message, "artifact", None)
@@ -359,7 +377,7 @@ class AbstractChat(ABC):
             dict: The reformulated query or None.
         """
 
-        ref_to_past: dict | None = await self._detect_past_message_ref(query, history)
+        ref_to_past = await self._detect_past_message_ref(query, history)
         if ref_to_past and ref_to_past["REF_TO_PAST"]:
             return ReformulatedQueryResponse(
                 STANDALONE_QUESTION=None,
@@ -565,9 +583,7 @@ class AbstractChat(ABC):
             str: The chat message content.
         """
 
-        agent_executor = await self._create_agent(
-            memory=memory,
-        )
+        agent_executor = await self._create_agent(memory=memory)
 
         config = RunnableConfig(
             configurable={
@@ -579,20 +595,16 @@ class AbstractChat(ABC):
             }
         )
 
-        state = {"messages": [HumanMessage(content=query)]}
+        messages: list[BaseMessage] = [HumanMessage(content=query)]
+        state: _AgentInputState = {"messages": messages}
 
         if streamed_ans:
             res = agent_executor.astream(
-                input=state,
-                config=config,
-                stream_mode="messages",
+                input=cast(Any, state), config=config, stream_mode="messages"
             )
             return self.get_agent_chunks(res)
 
-        res = await agent_executor.ainvoke(
-            input=state,
-            config=config,
-        )
+        res = await agent_executor.ainvoke(input=cast(Any, state), config=config)
         return res
 
     async def agent_get_history(

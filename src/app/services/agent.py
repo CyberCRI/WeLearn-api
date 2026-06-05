@@ -31,7 +31,9 @@ async def _get_resources_about_sustainability(
         logger.warning("No SearchService found.")
         return "No relevant documents found.", []
 
-    docs = await sp.search_handler(background_tasks=background_tasks, qp=qp, without_vectors=True)
+    docs = await sp.search_handler(
+        background_tasks=background_tasks, qp=qp, without_vectors=True
+    )
     if not docs:
         logger.warning("No documents found for the query.")
         return "No relevant documents found.", []
