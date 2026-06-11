@@ -235,7 +235,7 @@ class AbstractChat(ABC):
                         yield part
             except Exception as e:
                 logger.error("get_stream_chunks api_error=%s", e)
-                raise e
+                raise
 
     def _extract_stream_chunk(self, chunk):
         choices = getattr(chunk, "choices", None)

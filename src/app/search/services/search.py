@@ -316,7 +316,9 @@ class SearchService:
             )
 
         if without_vectors:
-            points_without_vectors = [point.model_copy(update={"vector": None}) for point in sorted_data]
+            points_without_vectors = [
+                point.model_copy(update={"vector": None}) for point in sorted_data
+            ]
             return points_without_vectors
 
         return sorted_data
