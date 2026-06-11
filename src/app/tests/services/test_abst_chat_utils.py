@@ -49,15 +49,15 @@ class TestAbstChatUtils(unittest.IsolatedAsyncioTestCase):
         def sync_stream():
             yield MockChunk("abc")
 
-        # Patch async for to raise to force sync fallback
-        async def broken_async_for(*args, **kwargs):
-            raise Exception()
-
         with mock.patch.object(
             self.chat, "_extract_stream_chunk", wraps=self.chat._extract_stream_chunk
-        ):
-            with self.assertRaises(Exception):
-                await self.chat.get_stream_chunks(broken_async_for())
+        ) as extract_mock:
+            sync_chunks = []
+            async for part in self.chat.get_stream_chunks(sync_stream()):
+                sync_chunks.append(part)
+
+            self.assertIn("abc", sync_chunks)
+            self.assertGreaterEqual(extract_mock.call_count, 1)
 
     def test_extract_stream_chunk(self):
         # With choices and delta content
