@@ -62,7 +62,13 @@ def _format_sse_event(data: str) -> str:
 
 async def _sse_wrap(stream: Any) -> AsyncGenerator[str, None]:
     async for chunk in stream:
-        yield _format_sse_event(str(chunk))
+        if isinstance(chunk, str):
+            data = chunk
+        elif isinstance(chunk, bytes):
+            data = chunk.decode("utf-8", errors="replace")
+        else:
+            data = json.dumps(jsonable_encoder(chunk))
+        yield _format_sse_event(data)
 
 
 def get_params(body: models.Context) -> models.ContextOut:
@@ -554,7 +560,6 @@ async def _stream_agent_response(
     "/chat/agent_stream",
     summary="Agent Response Stream",
     description="This endpoint streams an agent response to the user's message and ends with the full response payload.",
-    response_model=models.AgentResponse,
     response_class=StreamingResponse,
 )
 @backoff.on_exception(
