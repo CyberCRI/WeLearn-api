@@ -381,7 +381,6 @@ class QnATests(unittest.IsolatedAsyncioTestCase):
                 },
                 headers={"X-API-Key": "test", "origin": "test"},
             )
-            print(response.text)
 
             self.assertEqual(response.status_code, 200)
             self.assertIn(

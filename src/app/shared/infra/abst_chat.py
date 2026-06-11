@@ -263,7 +263,7 @@ class AbstractChat(ABC):
                     yield part
         except Exception as e:
             logger.error("get_agent_chunks api_error=%s", e)
-            raise e
+            raise
 
     def _extract_agent_chunk(self, chunk):
         if isinstance(chunk, dict):
