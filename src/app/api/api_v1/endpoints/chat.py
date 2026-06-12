@@ -418,16 +418,10 @@ def _serialize_agent_stream_chunk(chunk: dict[str, Any]) -> str:
     payload = {
         "content": chunk.get("content"),
         "status": chunk.get("status"),
+        "step": chunk.get("step"),
+        "label": chunk.get("label"),
+        "docs": chunk.get("docs"),
     }
-
-    if chunk.get("step") is not None:
-        payload["step"] = chunk.get("step")
-
-    if chunk.get("label") is not None:
-        payload["label"] = chunk.get("label")
-
-    if chunk.get("docs") is not None:
-        payload["docs"] = chunk.get("docs")
 
     return json.dumps(jsonable_encoder(payload))
 
