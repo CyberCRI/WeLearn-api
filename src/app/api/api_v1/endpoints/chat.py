@@ -503,7 +503,7 @@ async def _stream_agent_response(
     thread_id: UUID,
 ) -> AsyncGenerator[str, None]:
     final_content = ""
-    docs = None
+    docs = []
     has_streamed_content = False
 
     stream = _stream_agent_with_memory(
