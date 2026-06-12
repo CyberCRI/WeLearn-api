@@ -11,7 +11,7 @@ from fastapi.responses import StreamingResponse
 from langchain_core.messages import ToolMessage
 from langgraph.checkpoint.postgres.aio import AsyncPostgresSaver
 from openai import RateLimitError
-from psycopg.rows import DictRow, dict_row
+from psycopg.rows import AsyncRowFactory, DictRow, dict_row
 from pydantic import BaseModel
 
 from src.app.models import chat as models
@@ -46,7 +46,7 @@ DB_URI = "postgresql://{user}:{password}@{host}:{port}/{database}".format(
 
 # psycopg exposes dict_row with a BaseCursor annotation, while AsyncConnection.connect
 # expects an async row factory type. Runtime is valid; cast keeps static typing happy.
-ASYNC_DICT_ROW_FACTORY = cast(Any, dict_row)
+ASYNC_DICT_ROW_FACTORY = cast(AsyncRowFactory[DictRow], dict_row)
 
 SSE_HEADERS = {
     "Cache-Control": "no-cache",
