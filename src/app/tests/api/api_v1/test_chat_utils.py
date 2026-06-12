@@ -46,7 +46,7 @@ class TestChatUtils(unittest.TestCase):
         result = chat._serialize_agent_stream_chunk(chunk)
         self.assertEqual(
             result,
-            '{"content": null, "status": "processing", "step": "fetching_resources"}',
+            '{"content": null, "status": "processing", "step": "fetching_resources", "label": null, "docs": null}',
         )
 
     def test_serialize_agent_stream_chunk_with_docs(self):
@@ -58,7 +58,7 @@ class TestChatUtils(unittest.TestCase):
         result = chat._serialize_agent_stream_chunk(chunk)
         self.assertEqual(
             result,
-            '{"content": null, "status": "processing", "step": "analyzing_resources", "docs": [{"id": "doc-1"}]}',
+            '{"content": null, "status": "processing", "step": "analyzing_resources", "label": null, "docs": [{"id": "doc-1"}]}',
         )
 
     def test_format_sse_event(self):

@@ -384,11 +384,7 @@ class QnATests(unittest.IsolatedAsyncioTestCase):
 
             self.assertEqual(response.status_code, 200)
             self.assertIn(
-                'data: {"content": "fake content", "status": "test"}',
-                response.text,
-            )
-            self.assertIn(
-                'data: {"content": "", "status": "stop"',
+                'data: {"content": "fake content", "status": "test", "step": null, "label": null, "docs": null}',
                 response.text,
             )
             self.assertTrue(agent_message_mock.called)
