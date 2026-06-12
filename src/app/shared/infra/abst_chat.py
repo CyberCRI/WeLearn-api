@@ -278,7 +278,7 @@ class AbstractChat(ABC):
                 messages = chunk["model"].get("messages")
                 if not messages:
                     logger.debug("agent_stream chunk_skipped=missing_or_empty_messages")
-                    return
+                    return None
 
                 last_message = messages[-1]
                 response_metadata = (
@@ -301,14 +301,14 @@ class AbstractChat(ABC):
                             "step": "generating_answer",
                             "content": content,
                         }
-            return
+            return None
 
         if not (isinstance(chunk, tuple) and len(chunk) == 2):
             logger.debug(
                 "agent_stream chunk_skipped=invalid_type type=%s",
                 type(chunk).__name__,
             )
-            return
+            return None
 
         message, metadata = chunk
         node_name = (
@@ -324,7 +324,7 @@ class AbstractChat(ABC):
             if docs is not None:
                 payload["docs"] = docs
             yield payload
-            return
+            return None
 
         response_metadata = getattr(message, "response_metadata", None) or {}
         finish_reason = response_metadata.get("finish_reason")
@@ -334,7 +334,7 @@ class AbstractChat(ABC):
                 "status": "processing",
                 "step": "fetching_resources",
             }
-            return
+            return None
 
         content = self._extract_text_from_message_content(
             getattr(message, "content", "")
