@@ -18,12 +18,12 @@ Functions:
 import json
 import uuid
 from abc import ABC
-from typing import AsyncIterable, Dict, List, Optional
+from typing import Any, AsyncIterable, Dict, List, Optional, TypedDict, cast
 
 from fastapi import BackgroundTasks, Depends, Request
 from langchain.agents import create_agent  # type: ignore
-from langchain.agents.middleware import SummarizationMiddleware  # type: ignore
 from langchain.messages import HumanMessage  # type: ignore
+from langchain_core.messages import BaseMessage  # type: ignore
 from langchain_core.runnables import RunnableConfig  # type: ignore
 from langchain_mistralai import ChatMistralAI
 from langgraph.checkpoint.postgres.aio import AsyncPostgresSaver  # type: ignore
@@ -49,6 +49,10 @@ from src.app.utils.logger import logger as utils_logger
 
 logger = utils_logger(__name__)
 # EcoLogits.init(["openai", "mistralai"])
+
+
+class _AgentInputState(TypedDict):
+    messages: list[BaseMessage]
 
 
 class AbstractChat(ABC):
@@ -147,18 +151,27 @@ class AbstractChat(ABC):
         )
 
         if isinstance(detected_lang, str):
-            jsn = extract_json_from_response(detected_lang)
+            parsed = extract_json_from_response(detected_lang)
         elif isinstance(detected_lang, dict):
-            jsn = detected_lang
+            parsed = detected_lang
         else:
             raise ValueError("Invalid response from model")
+
+        if not isinstance(parsed, dict):
+            raise ValueError("Invalid response from model")
+
+        jsn: Dict[str, str] = {}
+        for key, value in parsed.items():
+            if not isinstance(key, str) or not isinstance(value, str):
+                raise ValueError("Invalid response from model")
+            jsn[key] = value
 
         return jsn
 
     @log_time_and_error
     async def _detect_past_message_ref(
         self, query: str, history: List[Dict[str, str]]
-    ) -> dict | None:
+    ) -> dict[str, bool] | None:
         """
         Detects reference to past messages.
 
@@ -178,26 +191,28 @@ class AbstractChat(ABC):
                     "content": prompts.PAST_MESSAGE_REF.format(query=query),
                 },
             ],
-            response_format={
-                "type": "json_object",
-            },
+            response_format={"type": "json_object"},
         )
 
         try:
-            jsn = {}
             if isinstance(completion, str):
-                jsn = extract_json_from_response(completion)
+                raw = extract_json_from_response(completion)
             elif isinstance(completion, dict):
-                jsn = completion
+                raw = completion
             else:
                 raise ValueError("Invalid response from model")
 
-            if "REF_TO_PAST" not in jsn or jsn["REF_TO_PAST"] not in [True, False]:
+            if not isinstance(raw, dict):
                 raise ValueError("Invalid response from model")
 
-            return jsn
+            ref_to_past = raw.get("REF_TO_PAST")
+            if not isinstance(ref_to_past, bool):
+                raise ValueError("Invalid response from model")
+
+            return {"REF_TO_PAST": ref_to_past}
         except json.JSONDecodeError:
             logger.error("api_error=invalid_json, response=%s", completion)
+            return None
 
     async def get_stream_chunks(self, stream) -> AsyncIterable[str]:
         """
@@ -207,7 +222,7 @@ class AbstractChat(ABC):
             stream (Generator[dict]): The streamed chat response.
 
         Yields:
-            str: The openai stream content.
+            str: The stream content.
         """
         try:
             async for chunk in stream:
@@ -220,7 +235,7 @@ class AbstractChat(ABC):
                         yield part
             except Exception as e:
                 logger.error("get_stream_chunks api_error=%s", e)
-                raise e
+                raise
 
     def _extract_stream_chunk(self, chunk):
         choices = getattr(chunk, "choices", None)
@@ -231,6 +246,122 @@ class AbstractChat(ABC):
             finish_reason = getattr(choices[0], "finish_reason", None)
             if finish_reason:
                 log_environmental_impacts(chunk, logger)
+
+    async def get_agent_chunks(self, stream) -> AsyncIterable[dict[str, Any]]:
+        """
+        Gets content from streamed response of an agent.
+
+        Args:
+            stream (Generator[dict]): The streamed agent response.
+
+        Yields:
+            dict[str, Any]: Normalized agent stream payload chunks.
+        """
+        try:
+            async for chunk in stream:
+                for part in self._extract_agent_chunk(chunk):
+                    yield part
+        except Exception as e:
+            logger.error("get_agent_chunks api_error=%s", e)
+            raise
+
+    def _extract_agent_chunk(self, chunk):
+        if isinstance(chunk, dict):
+            if chunk.get("tools"):
+                yield {
+                    "status": "processing",
+                    "step": "analyzing_resources",
+                    "docs": chunk["tools"]["messages"][0].artifact,
+                }
+
+            elif chunk.get("model"):
+                messages = chunk["model"].get("messages")
+                if not messages:
+                    logger.debug("agent_stream chunk_skipped=missing_or_empty_messages")
+                    return None
+
+                last_message = messages[-1]
+                response_metadata = (
+                    getattr(last_message, "response_metadata", None) or {}
+                )
+                finish_reason = response_metadata.get("finish_reason")
+
+                if finish_reason == "tool_calls":
+                    yield {
+                        "status": "processing",
+                        "step": "fetching_resources",
+                    }
+                else:
+                    content = self._extract_text_from_message_content(
+                        getattr(last_message, "content", "")
+                    )
+                    if content:
+                        yield {
+                            "status": "streaming",
+                            "step": "generating_answer",
+                            "content": content,
+                        }
+            return None
+
+        if not (isinstance(chunk, tuple) and len(chunk) == 2):
+            logger.debug(
+                "agent_stream chunk_skipped=invalid_type type=%s",
+                type(chunk).__name__,
+            )
+            return None
+
+        message, metadata = chunk
+        node_name = (
+            metadata.get("langgraph_node") if isinstance(metadata, dict) else None
+        )
+
+        if node_name == "tools":
+            docs = getattr(message, "artifact", None)
+            payload: dict[str, Any] = {
+                "status": "processing",
+                "step": "analyzing_resources",
+            }
+            if docs is not None:
+                payload["docs"] = docs
+            yield payload
+            return None
+
+        response_metadata = getattr(message, "response_metadata", None) or {}
+        finish_reason = response_metadata.get("finish_reason")
+
+        if finish_reason == "tool_calls":
+            yield {
+                "status": "processing",
+                "step": "fetching_resources",
+            }
+            return None
+
+        content = self._extract_text_from_message_content(
+            getattr(message, "content", "")
+        )
+        if content:
+            yield {
+                "status": "streaming",
+                "step": "generating_answer",
+                "content": content,
+            }
+
+    def _extract_text_from_message_content(self, content: Any) -> str:
+        if isinstance(content, str):
+            return content
+
+        if isinstance(content, list):
+            text_parts: list[str] = []
+            for item in content:
+                if isinstance(item, str):
+                    text_parts.append(item)
+                elif isinstance(item, dict):
+                    text = item.get("text")
+                    if isinstance(text, str):
+                        text_parts.append(text)
+            return "".join(text_parts)
+
+        return ""
 
     @log_time_and_error
     async def reformulate_user_query(self, query: str, history: List[Dict[str, str]]):
@@ -245,7 +376,7 @@ class AbstractChat(ABC):
             dict: The reformulated query or None.
         """
 
-        ref_to_past: dict | None = await self._detect_past_message_ref(query, history)
+        ref_to_past = await self._detect_past_message_ref(query, history)
         if ref_to_past and ref_to_past["REF_TO_PAST"]:
             return ReformulatedQueryResponse(
                 STANDALONE_QUESTION=None,
@@ -414,12 +545,6 @@ class AbstractChat(ABC):
             ],
             checkpointer=memory,
             system_prompt=prompts.AGENT_SYSTEM_PROMPT,
-            middleware=[
-                SummarizationMiddleware(
-                    model=agent_model,
-                    trigger=("tokens", 32000),
-                )
-            ],
         )
         return self.agent_executor
 
@@ -432,6 +557,7 @@ class AbstractChat(ABC):
         sdg_filter: Optional[List[int]] = None,
         sp: SearchService | None = None,
         background_tasks: BackgroundTasks | None = None,
+        streamed_ans: bool = False,
     ):
         """
         Sends a chat message handled by an agent.
@@ -442,14 +568,15 @@ class AbstractChat(ABC):
             thread_id (uuid.UUID): The thread ID.
             corpora (tuple[str, ...] | None): The corpora to search resources.
             sdg_filter (list[int] | None): The SDG filters to apply to the search.
+            sp (SearchService | None): The search service to use for retrieving resources.
+            background_tasks (BackgroundTasks | None): The background tasks to use for the search.
+            streamed_ans (bool): Whether to stream the answer.
 
         Returns:
             str: The chat message content.
         """
 
-        agent_executor = await self._create_agent(
-            memory=memory,
-        )
+        agent_executor = await self._create_agent(memory=memory)
 
         config = RunnableConfig(
             configurable={
@@ -461,14 +588,16 @@ class AbstractChat(ABC):
             }
         )
 
-        state = {"messages": [HumanMessage(content=query)]}
+        messages: list[BaseMessage] = [HumanMessage(content=query)]
+        state: _AgentInputState = {"messages": messages}
 
-        res = await agent_executor.ainvoke(
-            input=state,
-            config=config,
-            background_tasks=background_tasks,
-        )
+        if streamed_ans:
+            res = agent_executor.astream(
+                input=cast(Any, state), config=config, stream_mode="messages"
+            )
+            return self.get_agent_chunks(res)
 
+        res = await agent_executor.ainvoke(input=cast(Any, state), config=config)
         return res
 
     async def agent_get_history(

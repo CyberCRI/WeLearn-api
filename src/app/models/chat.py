@@ -69,6 +69,8 @@ class AgentContext(SDGFilter):
 
 class AgentResponse(BaseModel):
     content: str | None = None
+    status: str | None = None
+    step: str | None = None
     docs: list[ScoredPoint] | None = None
     thread_id: uuid.UUID | None = None
 

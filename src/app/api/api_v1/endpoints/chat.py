@@ -9,9 +9,14 @@ from fastapi.responses import StreamingResponse
 from langchain_core.messages import ToolMessage
 from langgraph.checkpoint.postgres.aio import AsyncPostgresSaver
 from openai import RateLimitError
-from psycopg.rows import dict_row
+from psycopg.rows import AsyncRowFactory, DictRow, dict_row
 from pydantic import BaseModel
 
+from src.app.api.api_v1.endpoints.chat_utils import (
+    _resolve_thread_id,
+    _sse_wrap,
+    _stream_agent_response,
+)
 from src.app.models import chat as models
 from src.app.search.services.search import SearchService, get_search_service
 from src.app.services.data_collection import get_data_collection_service
@@ -42,6 +47,16 @@ DB_URI = "postgresql://{user}:{password}@{host}:{port}/{database}".format(
     database=settings.PG_DATABASE,
 )
 
+# psycopg exposes dict_row with a BaseCursor annotation, while AsyncConnection.connect
+# expects an async row factory type. Runtime is valid; cast keeps static typing happy.
+ASYNC_DICT_ROW_FACTORY = cast(AsyncRowFactory[DictRow], dict_row)
+
+SSE_HEADERS = {
+    "Cache-Control": "no-cache",
+    "Connection": "keep-alive",
+    "X-Accel-Buffering": "no",
+}
+
 
 def get_params(body: models.Context) -> models.ContextOut:
     body.sources = body.sources[:7]
@@ -55,6 +70,7 @@ def get_params(body: models.Context) -> models.ContextOut:
         history=body.history or [],
         query=body.query,
         subject=body.subject,
+        conversation_id=None,
     )
 
 
@@ -221,8 +237,9 @@ async def q_and_a_rephrase_stream(
         )
 
     return StreamingResponse(
-        content=content,
+        content=_sse_wrap(content),
         media_type="text/event-stream",
+        headers=SSE_HEADERS,
     )
 
 
@@ -316,8 +333,9 @@ async def q_and_a_stream(
         )
 
         return StreamingResponse(
-            content=content,
+            content=_sse_wrap(content),
             media_type="text/event-stream",
+            headers=SSE_HEADERS,
         )
     except LanguageNotSupportedError as e:
         bad_request(message=e.message, msg_code=e.msg_code)
@@ -338,8 +356,11 @@ async def get_chat_history(
     chatfactory=Depends(get_chat_service),
 ) -> list[Dict[str, str | list[Dict[str, str]] | None]]:
     if thread_id:
-        async with await psycopg.AsyncConnection.connect(
-            DB_URI, autocommit=True, prepare_threshold=0, row_factory=dict_row
+        async with await psycopg.AsyncConnection[DictRow].connect(
+            DB_URI,
+            autocommit=True,
+            prepare_threshold=0,
+            row_factory=ASYNC_DICT_ROW_FACTORY,
         ) as conn:
             await conn.execute("SET SEARCH_PATH to agent_related")
             await conn.commit()
@@ -349,6 +370,56 @@ async def get_chat_history(
                 thread_id=thread_id, memory=memory
             )
             return res
+
+
+@router.post(
+    "/chat/agent_stream",
+    summary="Agent Response Stream",
+    description="This endpoint streams an agent response to the user's message and ends with the full response payload.",
+    response_class=StreamingResponse,
+)
+@backoff.on_exception(
+    wait_gen=backoff.expo,
+    exception=RateLimitError,
+    logger=logger,
+    max_tries=5,
+    max_time=180,
+    jitter=backoff.random_jitter,
+    factor=2,
+)
+async def agent_stream_response(
+    request: Request,
+    background_tasks: BackgroundTasks,
+    body: models.AgentContext = Depends(get_agent_params),
+    chatfactory=Depends(get_chat_service),
+    sp: SearchService = Depends(get_search_service),
+    data_collection=Depends(get_data_collection_service),
+) -> StreamingResponse:
+    try:
+        session_id = extract_session_cookie(request)
+        thread_id = _resolve_thread_id(body.thread_id)
+
+        if body.query is None:
+            raise EmptyQueryError()
+
+        return StreamingResponse(
+            content=_stream_agent_response(
+                db_uri=DB_URI,
+                async_dict_row_factory=ASYNC_DICT_ROW_FACTORY,
+                body=body,
+                chatfactory=chatfactory,
+                sp=sp,
+                background_tasks=background_tasks,
+                data_collection=data_collection,
+                session_id=session_id,
+                thread_id=thread_id,
+            ),
+            media_type="text/event-stream",
+            headers=SSE_HEADERS,
+        )
+    except LanguageNotSupportedError as e:
+        bad_request(message=e.message, msg_code=e.msg_code)
+        raise
 
 
 @router.post(
@@ -388,8 +459,11 @@ async def agent_response(
             raise EmptyQueryError()
 
         if thread_id:
-            async with await psycopg.AsyncConnection.connect(
-                DB_URI, autocommit=True, prepare_threshold=0, row_factory=dict_row
+            async with await psycopg.AsyncConnection[DictRow].connect(
+                DB_URI,
+                autocommit=True,
+                prepare_threshold=0,
+                row_factory=ASYNC_DICT_ROW_FACTORY,
             ) as conn:
                 await conn.execute("SET SEARCH_PATH to agent_related")
                 await conn.commit()
@@ -425,7 +499,7 @@ async def agent_response(
         }
 
         try:
-            conversation_id, message_id = await data_collection.register_chat_data(
+            _, message_id = await data_collection.register_chat_data(
                 session_id=session_id,
                 user_query=body.query,
                 conversation_id=thread_id,

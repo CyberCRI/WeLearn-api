@@ -357,3 +357,35 @@ class QnATests(unittest.IsolatedAsyncioTestCase):
             self.assertEqual(response.status_code, 200)
             self.assertIn("content", response.json())
             self.assertIn("docs", response.json())
+
+    @mock.patch("psycopg.AsyncConnection.connect", new_callable=mock.AsyncMock)
+    @mock.patch(
+        "src.app.shared.infra.security.check_api_key_sync",
+        new=mock.MagicMock(return_value=True),
+    )
+    @mock.patch("src.app.shared.infra.abst_chat.AbstractChat.agent_message")
+    def test_chat_agent_stream(self, agent_message_mock, *mocks):
+        async def _fake_stream():
+            yield {"status": "test", "content": "fake content"}
+
+        agent_message_mock.return_value = _fake_stream()
+
+        with TestClient(app) as client:
+            response = client.post(
+                f"{settings.API_V1_STR}/qna/chat/agent_stream",
+                json={
+                    "query": "What are the SDGs?",
+                    "thread_id": str(uuid.uuid4()),
+                    "corpora": [],
+                    "sdg_filter": [],
+                },
+                headers={"X-API-Key": "test", "origin": "test"},
+            )
+
+            self.assertEqual(response.status_code, 200)
+            self.assertIn(
+                'data: {"content": "fake content", "status": "test", "step": null, "label": null, "docs": null}',
+                response.text,
+            )
+            self.assertTrue(agent_message_mock.called)
+            self.assertTrue(agent_message_mock.call_args.kwargs["streamed_ans"])

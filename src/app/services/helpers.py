@@ -1,5 +1,5 @@
 from functools import cache
-from typing import Any, List
+from typing import Any, List, cast
 
 import json_repair
 import numpy
@@ -73,18 +73,27 @@ def detect_language_from_entry(entry: str) -> str:
 def normalize_payload(payload: Any) -> dict:
     # Normalize payload to a dict
     if payload is None:
-        payload = {}
-    elif hasattr(payload, "dict") and callable(getattr(payload, "dict")):
+        return {}
+
+    if isinstance(payload, dict):
+        return payload
+
+    for method_name in ("model_dump", "dict"):
+        method = getattr(payload, method_name, None)
+        if not callable(method):
+            continue
         try:
-            payload = payload.dict()
+            data = method()
+            if isinstance(data, dict):
+                return data
+            return dict(cast(Any, data))
         except Exception:
-            payload = dict(payload)
-    elif not isinstance(payload, dict):
-        try:
-            payload = dict(payload)
-        except Exception:
-            payload = {}
-    return payload
+            continue
+
+    try:
+        return dict(payload)
+    except Exception:
+        return {}
 
 
 def stringify_docs_content(docs: List[Any]) -> str:
