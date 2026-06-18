@@ -47,6 +47,7 @@ class Settings(BaseSettings):
     AZURE_API_VERSION: str
 
     LLM_MODEL_NAME: str
+    LLM_TEMPERATURE: float
     ENV: str
 
     # PG

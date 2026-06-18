@@ -536,6 +536,7 @@ class AbstractChat(ABC):
         settings = get_settings()
         agent_model = ChatMistralAI(
             model_name=settings.MISTRAL_LLM_MODEL_NAME,
+            temperature=settings.LLM_TEMPERATURE,
         )
 
         self.agent_executor = create_agent(
