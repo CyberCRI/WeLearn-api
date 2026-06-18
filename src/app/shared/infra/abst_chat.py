@@ -265,51 +265,46 @@ class AbstractChat(ABC):
             logger.error("get_agent_chunks api_error=%s", e)
             raise
 
-    def _extract_agent_chunk(self, chunk):
-        if isinstance(chunk, dict):
-            if chunk.get("tools"):
-                yield {
-                    "status": "processing",
-                    "step": "analyzing_resources",
-                    "docs": chunk["tools"]["messages"][0].artifact,
-                }
-
-            elif chunk.get("model"):
-                messages = chunk["model"].get("messages")
-                if not messages:
-                    logger.debug("agent_stream chunk_skipped=missing_or_empty_messages")
-                    return None
-
-                last_message = messages[-1]
-                response_metadata = (
-                    getattr(last_message, "response_metadata", None) or {}
-                )
-                finish_reason = response_metadata.get("finish_reason")
-
-                if finish_reason == "tool_calls":
-                    yield {
-                        "status": "processing",
-                        "step": "fetching_resources",
-                    }
-                else:
-                    content = self._extract_text_from_message_content(
-                        getattr(last_message, "content", "")
-                    )
-                    if content:
-                        yield {
-                            "status": "streaming",
-                            "step": "generating_answer",
-                            "content": content,
-                        }
+    def _extract_agent_chunk_from_dict(self, chunk: dict[str, Any]):
+        if chunk.get("tools"):
+            yield {
+                "status": "processing",
+                "step": "analyzing_resources",
+                "docs": chunk["tools"]["messages"][0].artifact,
+            }
             return None
 
-        if not (isinstance(chunk, tuple) and len(chunk) == 2):
-            logger.debug(
-                "agent_stream chunk_skipped=invalid_type type=%s",
-                type(chunk).__name__,
-            )
+        if not chunk.get("model"):
             return None
 
+        messages = chunk["model"].get("messages")
+        if not messages:
+            logger.debug("agent_stream chunk_skipped=missing_or_empty_messages")
+            return None
+
+        last_message = messages[-1]
+        response_metadata = getattr(last_message, "response_metadata", None) or {}
+        finish_reason = response_metadata.get("finish_reason")
+
+        if finish_reason == "tool_calls":
+            yield {
+                "status": "processing",
+                "step": "fetching_resources",
+            }
+            return None
+
+        content = self._extract_text_from_message_content(
+            getattr(last_message, "content", "")
+        )
+        if content:
+            yield {
+                "status": "streaming",
+                "step": "generating_answer",
+                "content": content,
+            }
+        return None
+
+    def _extract_agent_chunk_from_tuple(self, chunk: tuple[Any, Any]):
         message, metadata = chunk
         node_name = (
             metadata.get("langgraph_node") if isinstance(metadata, dict) else None
@@ -336,6 +331,21 @@ class AbstractChat(ABC):
             }
             return None
 
+        if node_name != "model":
+            return None
+
+        message_content = getattr(message, "content", None)
+        if isinstance(message_content, list) and len(message_content) > 0:
+            if (
+                isinstance(message_content[-1], dict)
+                and "thinking" in message_content[-1]
+            ):
+                yield {
+                    "status": "processing",
+                    "step": "thinking",
+                }
+            return None
+
         content = self._extract_text_from_message_content(
             getattr(message, "content", "")
         )
@@ -345,6 +355,21 @@ class AbstractChat(ABC):
                 "step": "generating_answer",
                 "content": content,
             }
+        return None
+
+    def _extract_agent_chunk(self, chunk):
+        if isinstance(chunk, dict):
+            yield from self._extract_agent_chunk_from_dict(chunk)
+            return None
+
+        if not (isinstance(chunk, tuple) and len(chunk) == 2):
+            logger.debug(
+                "agent_stream chunk_skipped=invalid_type type=%s",
+                type(chunk).__name__,
+            )
+            return None
+
+        yield from self._extract_agent_chunk_from_tuple(chunk)
 
     def _extract_text_from_message_content(self, content: Any) -> str:
         if isinstance(content, str):
@@ -537,6 +562,7 @@ class AbstractChat(ABC):
         agent_model = ChatMistralAI(
             model_name=settings.MISTRAL_LLM_MODEL_NAME,
             temperature=settings.LLM_TEMPERATURE,
+            model_kwargs={"reasoning_effort": "high"},
         )
 
         self.agent_executor = create_agent(
