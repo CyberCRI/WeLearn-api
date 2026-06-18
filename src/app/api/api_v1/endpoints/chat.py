@@ -56,7 +56,7 @@ SSE_HEADERS = {
 
 
 def _format_sse_event(data: str) -> str:
-    lines = data.splitlines() or [""]
+    lines = data.splitlines()
     return "".join(f"data: {line}\n" for line in lines) + "\n"
 
 
