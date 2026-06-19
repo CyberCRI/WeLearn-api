@@ -384,21 +384,14 @@ class AbstractChat(ABC):
                 QUERY_STATUS="REF_TO_PAST" if len(history) >= 1 else "INVALID",
             )
 
-        ref_query = ReformulatedQueryResponse(
-            STANDALONE_QUESTION=query,
-            USER_LANGUAGE="",
-            QUERY_STATUS="VALID",
+        return await self.run_llm_with_json_parsing(
+            messages=[
+                self.system_prompts["reformulate"],
+                *history[-4:],
+                {"role": "user", "content": prompts.STANDALONE_QUESTION + query},
+            ],
+            model_class=ReformulatedQueryResponse,
         )
-
-        if not isinstance(ref_query, ReformulatedQueryResponse):
-            raise ValueError(
-                {
-                    "message": "Invalid response from model",
-                    "response": ref_query,
-                }
-            )
-
-        return ref_query
 
     @log_time_and_error
     async def get_new_questions(
@@ -414,14 +407,15 @@ class AbstractChat(ABC):
         Returns:
             dict: The new questions.
         """
-        await self._detect_language(query)
+        lang = await self._detect_language(query)
+        iso_code = lang.get("ISO_CODE", "en")
 
         res = await self.chat_client.completion(
             messages=[
-                *history[::-2][:2],
+                *history[-2:],
                 {
                     "role": "user",
-                    "content": prompts.GENERATE_NEW_QUESTIONS + query,
+                    "content": prompts.GENERATE_NEW_QUESTIONS.format(language=iso_code) + query,
                 },
             ],
         )
