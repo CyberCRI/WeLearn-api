@@ -84,6 +84,7 @@ def get_agent_params(body: models.AgentContext) -> models.AgentContext:
         thread_id=body.thread_id,
         corpora=body.corpora,
         sdg_filter=body.sdg_filter,
+        reasoning=body.reasoning,
     )
 
 
@@ -476,6 +477,7 @@ async def agent_response(
                     thread_id=thread_id,
                     corpora=body.corpora,
                     sdg_filter=body.sdg_filter,
+                    reasoning=body.reasoning,
                     sp=sp,
                     background_tasks=background_tasks,
                 )
@@ -484,6 +486,7 @@ async def agent_response(
                 query=body.query,
                 corpora=body.corpora,
                 sdg_filter=body.sdg_filter,
+                reasoning=body.reasoning,
                 sp=sp,
             )
 

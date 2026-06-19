@@ -554,15 +554,21 @@ class AbstractChat(ABC):
     async def _create_agent(
         self,
         memory: AsyncPostgresSaver | None = None,
+        reasoning: bool = False,
     ):
         if self.agent_executor:
             return self.agent_executor
+
+        if reasoning:
+            reasoning_effort = "high"
+        else:
+            reasoning_effort = None
 
         settings = get_settings()
         agent_model = ChatMistralAI(
             model_name=settings.MISTRAL_LLM_MODEL_NAME,
             temperature=settings.LLM_TEMPERATURE,
-            model_kwargs={"reasoning_effort": "high"},
+            model_kwargs={"reasoning_effort": reasoning_effort},
         )
 
         self.agent_executor = create_agent(
@@ -582,6 +588,7 @@ class AbstractChat(ABC):
         thread_id: Optional[uuid.UUID] = None,
         corpora: Optional[tuple[str, ...]] = None,
         sdg_filter: Optional[List[int]] = None,
+        reasoning: bool = False,
         sp: SearchService | None = None,
         background_tasks: BackgroundTasks | None = None,
         streamed_ans: bool = False,
@@ -595,6 +602,7 @@ class AbstractChat(ABC):
             thread_id (uuid.UUID): The thread ID.
             corpora (tuple[str, ...] | None): The corpora to search resources.
             sdg_filter (list[int] | None): The SDG filters to apply to the search.
+            reasoning (bool): Whether to enable reasoning for the agent.
             sp (SearchService | None): The search service to use for retrieving resources.
             background_tasks (BackgroundTasks | None): The background tasks to use for the search.
             streamed_ans (bool): Whether to stream the answer.
@@ -603,7 +611,7 @@ class AbstractChat(ABC):
             str: The chat message content.
         """
 
-        agent_executor = await self._create_agent(memory=memory)
+        agent_executor = await self._create_agent(memory=memory, reasoning=reasoning)
 
         config = RunnableConfig(
             configurable={
@@ -631,9 +639,10 @@ class AbstractChat(ABC):
         self,
         thread_id: uuid.UUID,
         memory: AsyncPostgresSaver,
+        reasoning: bool = False,
     ) -> list[dict[str, str]]:
 
-        agent = await self._create_agent(memory=memory)
+        agent = await self._create_agent(memory=memory, reasoning=reasoning)
         config = RunnableConfig(configurable={"thread_id": thread_id})
 
         state = await agent.aget_state(config)

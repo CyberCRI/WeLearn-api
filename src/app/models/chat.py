@@ -65,6 +65,7 @@ class AgentContext(SDGFilter):
     query: str | None = None
     thread_id: uuid.UUID | None = None
     corpora: tuple[str, ...] | None = None
+    reasoning: bool | None = False
 
 
 class AgentResponse(BaseModel):

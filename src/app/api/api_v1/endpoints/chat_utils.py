@@ -99,6 +99,7 @@ async def _stream_agent_with_memory(
             thread_id=thread_id,
             corpora=body.corpora,
             sdg_filter=body.sdg_filter,
+            reasoning=body.reasoning,
             sp=sp,
             background_tasks=background_tasks,
             streamed_ans=True,
