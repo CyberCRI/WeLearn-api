@@ -395,7 +395,7 @@ class AbstractChat(ABC):
 
     @log_time_and_error
     async def get_new_questions(
-        self, query: str, history: List[Dict[str, str]]
+        self, query: str, history: List[Dict[str, str]], lang: Optional[str] = None
     ) -> Dict[str, List[str]]:
         """
         Gets new questions from chat model based on history.
@@ -403,19 +403,28 @@ class AbstractChat(ABC):
         Args:
             query (str): The user query.
             history (list): The chat history.
+            lang (str | None): UI language ISO code (used for empty-chat case).
 
         Returns:
             dict: The new questions.
         """
-        lang = await self._detect_language(query)
-        iso_code = lang.get("ISO_CODE", "en")
+        if not history and lang:
+            iso_code = lang
+        elif history:
+            combined = " ".join(m["content"] for m in history[-4:] if m.get("content"))
+            detected = await self._detect_language(combined[:500])
+            iso_code = detected.get("ISO_CODE", "en")
+        else:
+            detected = await self._detect_language(query)
+            iso_code = detected.get("ISO_CODE", "en")
 
         res = await self.chat_client.completion(
             messages=[
                 *history[-2:],
                 {
                     "role": "user",
-                    "content": prompts.GENERATE_NEW_QUESTIONS.format(language=iso_code) + query,
+                    "content": prompts.GENERATE_NEW_QUESTIONS.format(language=iso_code)
+                    + query,
                 },
             ],
         )
@@ -574,13 +583,14 @@ class AbstractChat(ABC):
         agent_executor = await self._create_agent(memory=memory)
 
         config = RunnableConfig(
+            recursion_limit=5,
             configurable={
                 "thread_id": thread_id,
                 "corpora": corpora,
                 "sdg_filter": sdg_filter,
                 "sp": sp,
                 "background_tasks": background_tasks,
-            }
+            },
         )
 
         messages: list[BaseMessage] = [HumanMessage(content=query)]
@@ -600,7 +610,6 @@ class AbstractChat(ABC):
         thread_id: uuid.UUID,
         memory: AsyncPostgresSaver,
     ) -> list[dict[str, str]]:
-
         agent = await self._create_agent(memory=memory)
         config = RunnableConfig(configurable={"thread_id": thread_id})
 

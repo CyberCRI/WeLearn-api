@@ -71,6 +71,7 @@ def get_params(body: models.Context) -> models.ContextOut:
         query=body.query,
         subject=body.subject,
         conversation_id=None,
+        lang=body.lang,
     )
 
 
@@ -154,7 +155,7 @@ async def q_and_a_new_questions(
 ):
     try:
         new_questions = await chatfactory.get_new_questions(
-            query=body.query, history=body.history
+            query=body.query, history=body.history, lang=body.lang
         )
 
         return new_questions
@@ -487,10 +488,11 @@ async def agent_response(
                 sp=sp,
             )
 
-        if isinstance(res["messages"][-2], ToolMessage):
-            docs = res["messages"][-2].artifact
-        else:
-            docs = None
+        all_docs = []
+        for msg in res["messages"]:
+            if isinstance(msg, ToolMessage) and getattr(msg, "artifact", None):
+                all_docs.extend(msg.artifact)
+        docs = all_docs if all_docs else None
 
         agent_ans = {
             "content": cast(str, res["messages"][-1].content),
