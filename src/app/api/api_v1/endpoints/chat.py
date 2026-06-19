@@ -405,9 +405,6 @@ async def agent_response(
             if isinstance(msg, ToolMessage) and getattr(msg, "artifact", None):
                 all_docs.extend(msg.artifact)
         docs = all_docs if all_docs else None
-        content = linkify_missing_citations(
-            cast(str, res["messages"][-1].content), docs or []
-        )
 
         agent_ans = {
             "content": content,

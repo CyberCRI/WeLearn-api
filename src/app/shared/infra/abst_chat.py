@@ -344,15 +344,23 @@ class AbstractChat(ABC):
         Returns:
             dict: The new questions.
         """
-        lang = await self._detect_language(query)
-        iso_code = lang.get("ISO_CODE", "en")
+        if not history and lang:
+            iso_code = lang
+        elif history:
+            combined = " ".join(m["content"] for m in history[-4:] if m.get("content"))
+            detected = await self._detect_language(combined[:500])
+            iso_code = detected.get("ISO_CODE", "en")
+        else:
+            detected = await self._detect_language(query)
+            iso_code = detected.get("ISO_CODE", "en")
 
         res = await self.chat_client.completion(
             messages=[
                 *history[-2:],
                 {
                     "role": "user",
-                    "content": prompts.GENERATE_NEW_QUESTIONS.format(language=iso_code) + query,
+                    "content": prompts.GENERATE_NEW_QUESTIONS.format(language=iso_code)
+                    + query,
                 },
             ],
         )
