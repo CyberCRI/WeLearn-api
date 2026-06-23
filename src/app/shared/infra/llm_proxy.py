@@ -68,7 +68,6 @@ class LLMProxy(ABC):
         messages: list,
         response_format: Optional[Union[dict, Type[BaseModel]]] = None,
     ) -> dict | str:
-
         logger.info("starting completion with model_name=%s", self.model)
 
         if self.is_azure_model:

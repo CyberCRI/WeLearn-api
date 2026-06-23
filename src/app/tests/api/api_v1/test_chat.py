@@ -149,7 +149,6 @@ class QnATests(unittest.IsolatedAsyncioTestCase):
             "src.app.shared.infra.abst_chat.AbstractChat.rephrase_message",
             return_value="ok",
         ) as mock_rephrase:
-
             with TestClient(app) as client:
                 client.post(
                     f"{settings.API_V1_STR}/qna/chat/rephrase",
@@ -192,7 +191,6 @@ class QnATests(unittest.IsolatedAsyncioTestCase):
                 )
 
     def test_new_questions_empty_query(self, *mocks):
-
         with TestClient(app) as client:
             response = client.post(
                 f"{settings.API_V1_STR}/qna/reformulate/questions",
@@ -233,7 +231,6 @@ class QnATests(unittest.IsolatedAsyncioTestCase):
                 self.assertEqual(new_questions_mock.call_count, 1)
 
     def test_reformulate_empty_query(self, *mocks):
-
         with TestClient(app) as client:
             response = client.post(
                 f"{settings.API_V1_STR}/qna/reformulate/query",
@@ -288,7 +285,6 @@ class QnATests(unittest.IsolatedAsyncioTestCase):
         with mock.patch(
             "src.app.shared.infra.abst_chat.AbstractChat.chat_message",
         ) as stream_mock:
-
             with TestClient(app) as client:
                 response = client.post(
                     f"{settings.API_V1_STR}/qna/stream",

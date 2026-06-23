@@ -310,7 +310,6 @@ class SearchTestsSlices(IsolatedAsyncioTestCase):
     new=mock.MagicMock(return_value=True),
 )
 class SearchTestsAll(IsolatedAsyncioTestCase):
-
     @patch(
         f"{search_pipeline_path}.get_collection_by_language",
         new=mock.AsyncMock(
@@ -419,7 +418,6 @@ class SearchTestsMultiInput(IsolatedAsyncioTestCase):
 )
 class DocumentsByIdsTests(IsolatedAsyncioTestCase):
     async def test_documents_by_ids_empty(self, session_maker_mock, *mocks):
-
         session = session_maker_mock.return_value.__enter__.return_value
         exec_docs = mock.MagicMock()
         exec_docs.all.return_value = []

@@ -49,7 +49,6 @@ class TestDataCollectionCampaignState(unittest.TestCase):
 
 
 class TestRegisterChatData(unittest.IsolatedAsyncioTestCase):
-
     def setUp(self):
         _cache["is_campaign_active"] = True
         _cache["expires"] = None
@@ -135,7 +134,6 @@ class TestRegisterChatData(unittest.IsolatedAsyncioTestCase):
 
 
 class TestRegisterDocumentClick(unittest.IsolatedAsyncioTestCase):
-
     @patch(
         "src.app.services.data_collection.run_in_threadpool",
         side_effect=fake_run_in_threadpool,
@@ -156,7 +154,6 @@ class TestRegisterDocumentClick(unittest.IsolatedAsyncioTestCase):
 
 
 class TestRegisterDownloadSyllabus(unittest.IsolatedAsyncioTestCase):
-
     @patch(
         "src.app.services.data_collection.run_in_threadpool",
         side_effect=fake_run_in_threadpool,
@@ -189,7 +186,6 @@ class TestRegisterDownloadSyllabus(unittest.IsolatedAsyncioTestCase):
 
 
 class TestRegisterSyllabus(unittest.IsolatedAsyncioTestCase):
-
     @patch(
         "src.app.services.data_collection.run_in_threadpool",
         side_effect=fake_run_in_threadpool,

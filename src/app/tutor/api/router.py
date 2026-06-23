@@ -114,7 +114,6 @@ async def tutor_search_extract(
     sp: SearchService = Depends(get_search_service),
     nb_results: int = 15,
 ):
-
     try:
         qp = EnhancedSearchQuery(
             query=summaries.summaries,

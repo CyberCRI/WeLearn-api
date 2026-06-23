@@ -148,7 +148,6 @@ async def search_all_slices_by_lang(
     sp: SearchService = Depends(get_search_service),
 ):
     try:
-
         res = await sp.search_handler(
             qp=qp, method=SearchMethods.BY_SLICES, background_tasks=background_tasks
         )

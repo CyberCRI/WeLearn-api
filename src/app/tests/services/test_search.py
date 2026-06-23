@@ -84,7 +84,6 @@ class SearchServiceTests(IsolatedAsyncioTestCase):
             self.assertEqual(collection, exp_collection)
 
     def test_concatenate_same_doc_id_slices(self):
-
         qdrant_docs: List[ScoredPoint] = [
             ScoredPoint(
                 id=1,

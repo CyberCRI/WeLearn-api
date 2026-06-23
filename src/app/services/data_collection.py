@@ -72,7 +72,6 @@ class DataCollection:
         corpora: list[str] | None = None,
         feature: str | None = "search",
     ) -> uuid.UUID | None:
-
         if not self.should_collect:
             logger.info("data_collection is not enabled.")
             return None
@@ -119,7 +118,6 @@ class DataCollection:
         agent_answer: str,
         feature: Literal["syllabus_creation", "syllabus_feedback"],
     ) -> uuid.UUID | None:
-
         if not self.should_collect:
             logger.info("data_collection is not enabled.")
             return None
@@ -246,7 +244,6 @@ class DataCollection:
         sources: list[Document],
         feature: str | None = "chat",
     ) -> tuple[uuid.UUID | None, uuid.UUID | None]:
-
         if not self.should_collect:
             logger.info("data_collection is not enabled.")
             return None, None
