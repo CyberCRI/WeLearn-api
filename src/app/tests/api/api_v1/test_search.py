@@ -310,7 +310,6 @@ class SearchTestsSlices(IsolatedAsyncioTestCase):
     new=mock.MagicMock(return_value=True),
 )
 class SearchTestsAll(IsolatedAsyncioTestCase):
-
     @patch(
         f"{search_pipeline_path}.get_collection_by_language",
         new=mock.AsyncMock(

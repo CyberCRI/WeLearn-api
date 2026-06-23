@@ -144,7 +144,6 @@ class QnATests(unittest.IsolatedAsyncioTestCase):
             self.assertEqual(response.status_code, 400)
 
     def test_new_questions_empty_query(self, *mocks):
-
         with TestClient(app) as client:
             response = client.post(
                 f"{settings.API_V1_STR}/qna/reformulate/questions",
@@ -188,7 +187,6 @@ class QnATests(unittest.IsolatedAsyncioTestCase):
         with mock.patch(
             "src.app.shared.infra.abst_chat.AbstractChat.chat_message",
         ) as stream_mock:
-
             with TestClient(app) as client:
                 response = client.post(
                     f"{settings.API_V1_STR}/qna/stream",
