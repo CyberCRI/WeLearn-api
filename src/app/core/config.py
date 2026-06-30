@@ -50,6 +50,12 @@ class Settings(BaseSettings):
     LLM_TEMPERATURE: float
     ENV: str
 
+    # LANGSMITH / LANGCHAIN TRACING
+    LANGSMITH_TRACING_ENABLED: bool = False
+    LANGSMITH_PROJECT: Optional[str] = None
+    LANGSMITH_ENDPOINT: Optional[str] = None
+    LANGSMITH_API_KEY: Optional[str] = None
+
     # PG
     PG_USER: Optional[str] = None
     PG_PASSWORD: Optional[str] = None

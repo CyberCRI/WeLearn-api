@@ -58,6 +58,26 @@ SSE_HEADERS = {
 }
 
 
+def _build_agent_trace_context(
+    *,
+    endpoint: str,
+    session_id: UUID | None,
+    thread_id: UUID,
+    body: models.AgentContext,
+) -> dict[str, str | int | list[int] | list[str] | None]:
+    env = settings.ENV
+    return {
+        "endpoint": endpoint,
+        "feature": "chat_agent",
+        "environment": env,
+        "session_id": str(session_id) if session_id else None,
+        "thread_id": str(thread_id),
+        "query_length": len(body.query or ""),
+        "sdg_filter": body.sdg_filter,
+        "corpora": list(body.corpora) if body.corpora else None,
+    }
+
+
 def get_params(body: models.Context) -> models.ContextOut:
     body.sources = body.sources[:7]
 
@@ -398,6 +418,12 @@ async def agent_stream_response(
     try:
         session_id = extract_session_cookie(request)
         thread_id = _resolve_thread_id(body.thread_id)
+        trace_context = _build_agent_trace_context(
+            endpoint="/api/v1/qna/chat/agent_stream",
+            session_id=session_id,
+            thread_id=thread_id,
+            body=body,
+        )
 
         if body.query is None:
             raise EmptyQueryError()
@@ -413,6 +439,7 @@ async def agent_stream_response(
                 data_collection=data_collection,
                 session_id=session_id,
                 thread_id=thread_id,
+                trace_context=trace_context,
             ),
             media_type="text/event-stream",
             headers=SSE_HEADERS,
@@ -455,6 +482,13 @@ async def agent_response(
             logger.info("No thread_id provided. Generating new thread_id.")
             thread_id = uuid.uuid4()
 
+        trace_context = _build_agent_trace_context(
+            endpoint="/api/v1/qna/chat/agent",
+            session_id=session_id,
+            thread_id=thread_id,
+            body=body,
+        )
+
         if body.query is None:
             raise EmptyQueryError()
 
@@ -478,6 +512,7 @@ async def agent_response(
                     sdg_filter=body.sdg_filter,
                     sp=sp,
                     background_tasks=background_tasks,
+                    trace_context=trace_context,
                 )
         else:
             res = await chatfactory.agent_message(
@@ -485,6 +520,7 @@ async def agent_response(
                 corpora=body.corpora,
                 sdg_filter=body.sdg_filter,
                 sp=sp,
+                trace_context=trace_context,
             )
 
         if isinstance(res["messages"][-2], ToolMessage):

@@ -1,10 +1,12 @@
 import json
 import time
 from pathlib import Path
+from typing import Any
 
 from langchain_core.language_models import BaseChatModel
 from langchain_core.output_parsers import StrOutputParser
 from langchain_core.prompts import ChatPromptTemplate
+from langchain_core.runnables import RunnableConfig
 
 from src.app.shared.utils.utils import build_system_message
 from src.app.tutor.service.models import MessageWithResources, SyllabusResponseAgent
@@ -38,8 +40,17 @@ TEMPLATES = {"template0": Path("src/app/tutor/domain/template.md").read_text()}
 class TutorChatAgent:
     """Thin wrapper around a LangChain chat model with a fixed system prompt."""
 
-    def __init__(self, name: str, model: BaseChatModel, system_prompt: str) -> None:
+    def __init__(
+        self,
+        name: str,
+        model: BaseChatModel,
+        system_prompt: str,
+        trace_tags: list[str] | None = None,
+        trace_metadata: dict[str, Any] | None = None,
+    ) -> None:
         self.name = name
+        self.trace_tags = trace_tags or []
+        self.trace_metadata = trace_metadata or {}
         prompt = ChatPromptTemplate.from_messages(
             [("system", system_prompt), ("human", "{user_prompt}")]
         )
@@ -48,7 +59,12 @@ class TutorChatAgent:
 
     async def run(self, user_prompt: str) -> str:
         start_time = time.time()
-        response = await self.chain.ainvoke({"user_prompt": user_prompt})
+        config = RunnableConfig(
+            tags=self.trace_tags,
+            metadata=self.trace_metadata,
+            run_name=f"tutor.{self.name}",
+        )
+        response = await self.chain.ainvoke({"user_prompt": user_prompt}, config=config)
         logger.debug(
             "agent_type=%s response_time=%s", self.name, time.time() - start_time
         )
@@ -58,7 +74,13 @@ class TutorChatAgent:
 class UniversityTeacherAgent(TutorChatAgent):
     """First-pass syllabus creation based on user documents and metadata."""
 
-    def __init__(self, model: BaseChatModel, lang) -> None:
+    def __init__(
+        self,
+        model: BaseChatModel,
+        lang,
+        trace_tags: list[str] | None = None,
+        trace_metadata: dict[str, Any] | None = None,
+    ) -> None:
         system_prompt = build_system_message(
             role="the University Professor Agent, responsible for drafting the initial syllabus based on the course materials provided by the user. Your role is to structure the course content, ensuring it aligns with academic standards and effectively conveys the subject matter.",
             backstory="You are a highly experienced university professor with expertise in structuring academic courses. You understand the nuances of designing a syllabus that is comprehensive yet adaptable, providing a strong foundation for course delivery. Your experience spans multiple disciplines, and you excel at organizing complex information into a structured curriculum.",
@@ -76,7 +98,13 @@ class UniversityTeacherAgent(TutorChatAgent):
             ),
             expected_output=f"You must follow this template :\n {TEMPLATES['template0']} and translate it into the target language: {lang}.",
         )
-        super().__init__("UniversityTeacherAgent", model, system_prompt)
+        super().__init__(
+            "UniversityTeacherAgent",
+            model,
+            system_prompt,
+            trace_tags=trace_tags,
+            trace_metadata=trace_metadata,
+        )
 
     async def generate(self, message: MessageWithResources) -> SyllabusResponseAgent:
         DISCIPLINARY_SKILLS = get_disciplinary_skills()
@@ -98,7 +126,12 @@ class SDGExpertAgent(TutorChatAgent):
     """Injects sustainability and SDG alignment using WeLearn resources."""
 
     def __init__(
-        self, model: BaseChatModel, greencomp_competencies: str, lang: str
+        self,
+        model: BaseChatModel,
+        greencomp_competencies: str,
+        lang: str,
+        trace_tags: list[str] | None = None,
+        trace_metadata: dict[str, Any] | None = None,
     ) -> None:
         system_prompt = build_system_message(
             role="the Sustainability Expert Agent, responsible for integrating sustainability concepts into the syllabus. Your role is to ensure that the syllabus aligns with relevant sustainability principles and frameworks in a way that is appropriate for the course discipline.",
@@ -117,7 +150,13 @@ class SDGExpertAgent(TutorChatAgent):
                 f"1. The revised syllabus, ready for the pedagogical engineer's review. You must follow this template :\n {TEMPLATES['template0']} and translate it into the target language: {lang}.."
             ),
         )
-        super().__init__("SDGExpertAgent", model, system_prompt)
+        super().__init__(
+            "SDGExpertAgent",
+            model,
+            system_prompt,
+            trace_tags=trace_tags,
+            trace_metadata=trace_metadata,
+        )
         self.greencomp_competencies = greencomp_competencies
 
     async def enhance(
@@ -142,7 +181,14 @@ class SDGExpertAgent(TutorChatAgent):
 class PedagogicalEngineerAgent(TutorChatAgent):
     """Final polish focusing on pedagogy and GreenComp alignment."""
 
-    def __init__(self, model: BaseChatModel, greencomp_competencies: str, lang) -> None:
+    def __init__(
+        self,
+        model: BaseChatModel,
+        greencomp_competencies: str,
+        lang,
+        trace_tags: list[str] | None = None,
+        trace_metadata: dict[str, Any] | None = None,
+    ) -> None:
         system_prompt = build_system_message(
             role="the Pedagogical Engineer Agent, responsible for ensuring that the syllabus adheres to best practices in pedagogy. Your role is to refine learning objectives, align assessments with learning outcomes, and include competencies from the EU GreenComp Framework. You optimize the syllabus for student engagement and effectiveness.",
             backstory="You are an experienced pedagogical engineer specializing in higher education course design. You are deeply familiar with competency-based learning and the EU GreenComp Framework, active learning strategies, and assessment alignment. Your expertise ensures that syllabi are not only well-structured but also effective for learning.",
@@ -161,7 +207,13 @@ class PedagogicalEngineerAgent(TutorChatAgent):
                 f"1. Final Syllabus: The polished syllabus, ready for user review. You must follow this template :\n {TEMPLATES['template0']} and translate it into the target language: {lang}."
             ),
         )
-        super().__init__("PedagogicalEngineerAgent", model, system_prompt)
+        super().__init__(
+            "PedagogicalEngineerAgent",
+            model,
+            system_prompt,
+            trace_tags=trace_tags,
+            trace_metadata=trace_metadata,
+        )
         self.greencomp_competencies = greencomp_competencies
 
     async def refine(self, syllabus: SyllabusResponseAgent) -> SyllabusResponseAgent:

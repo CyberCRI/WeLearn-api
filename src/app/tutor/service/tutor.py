@@ -63,7 +63,10 @@ async def close_chat_model() -> None:
 
 
 async def tutor_manager(
-    content: TutorSyllabusRequest, lang: str, settings: Settings
+    content: TutorSyllabusRequest,
+    lang: str,
+    settings: Settings,
+    trace_context: dict | None = None,
 ) -> list[SyllabusResponseAgent]:
     formatted_content = MessageWithResources(
         lang=lang,
@@ -83,10 +86,39 @@ async def tutor_manager(
             "Chat model not initialized. Call init_chat_model() at startup."
         )
 
-    teacher_agent = UniversityTeacherAgent(chat_model, lang)
-    sdg_agent = SDGExpertAgent(chat_model, GREENCOMP_COMPETENCIES, lang)
+    base_tags = ["welearn", "tutor", "syllabus"]
+    base_metadata = {
+        "component": "tutor_syllabus",
+        "environment": settings.ENV,
+        "language": lang,
+        "course_title": content.course_title,
+    }
+
+    if trace_context:
+        base_metadata.update(trace_context)
+        endpoint = trace_context.get("endpoint")
+        if endpoint:
+            base_tags.append(f"endpoint:{endpoint}")
+
+    teacher_agent = UniversityTeacherAgent(
+        chat_model,
+        lang,
+        trace_tags=[*base_tags, "agent:university_teacher"],
+        trace_metadata={**base_metadata, "agent": "UniversityTeacherAgent"},
+    )
+    sdg_agent = SDGExpertAgent(
+        chat_model,
+        GREENCOMP_COMPETENCIES,
+        lang,
+        trace_tags=[*base_tags, "agent:sdg_expert"],
+        trace_metadata={**base_metadata, "agent": "SDGExpertAgent"},
+    )
     pedagogical_agent = PedagogicalEngineerAgent(
-        chat_model, GREENCOMP_COMPETENCIES, lang
+        chat_model,
+        GREENCOMP_COMPETENCIES,
+        lang,
+        trace_tags=[*base_tags, "agent:pedagogical_engineer"],
+        trace_metadata={**base_metadata, "agent": "PedagogicalEngineerAgent"},
     )
 
     teacher_response = await teacher_agent.generate(formatted_content)

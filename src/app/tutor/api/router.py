@@ -163,7 +163,14 @@ async def create_syllabus(
     settings: Settings = Depends(get_settings),
 ) -> SyllabusResponse:
     session_id = extract_session_cookie(request)
-    results = await tutor_manager(body, lang, settings)
+    trace_context = {
+        "endpoint": request.url.path,
+        "feature": "syllabus_creation",
+        "session_id": str(session_id) if session_id else None,
+        "query_extracts_count": len(body.extracts),
+        "documents_count": len(body.documents),
+    }
+    results = await tutor_manager(body, lang, settings, trace_context=trace_context)
 
     # TODO: handle errors
 

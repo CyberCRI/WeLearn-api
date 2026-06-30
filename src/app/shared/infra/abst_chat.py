@@ -559,6 +559,7 @@ class AbstractChat(ABC):
         sp: SearchService | None = None,
         background_tasks: BackgroundTasks | None = None,
         streamed_ans: bool = False,
+        trace_context: Optional[dict[str, Any]] = None,
     ):
         """
         Sends a chat message handled by an agent.
@@ -579,7 +580,27 @@ class AbstractChat(ABC):
 
         agent_executor = await self._create_agent(memory=memory)
 
+        settings = get_settings()
+
+        metadata: dict[str, Any] = {
+            "component": "chat_agent",
+            "environment": settings.ENV,
+            "thread_id": str(thread_id) if thread_id else None,
+            "corpora": list(corpora) if corpora else None,
+            "sdg_filter": sdg_filter,
+        }
+
+        if trace_context:
+            metadata.update(trace_context)
+
+        tags = ["welearn", "chat", "agent"]
+        endpoint = metadata.get("endpoint")
+        if endpoint:
+            tags.append(f"endpoint:{endpoint}")
+
         config = RunnableConfig(
+            tags=tags,
+            metadata=metadata,
             configurable={
                 "thread_id": thread_id,
                 "corpora": corpora,
