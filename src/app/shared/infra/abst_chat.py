@@ -675,7 +675,10 @@ class AbstractChat(ABC):
                 "sdg_filter": sdg_filter,
                 "sp": sp,
                 "background_tasks": background_tasks,
+<<<<<<< HEAD
                 "tool_called": [False],
+=======
+>>>>>>> 54801dc (Fix linter issues)
             },
         )
 
