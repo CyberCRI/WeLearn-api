@@ -85,6 +85,21 @@ class AbstractChat(ABC):
             },
         }
 
+    def _build_non_agent_trace_context(
+        self,
+        operation: str,
+        **extra: Any,
+    ) -> dict[str, Any]:
+        settings = get_settings()
+        trace_context: dict[str, Any] = {
+            "component": "chat_non_agent",
+            "operation": operation,
+            "environment": settings.ENV,
+            "model": getattr(self.chat_client, "model", None),
+        }
+        trace_context.update(extra)
+        return trace_context
+
     @log_time_and_error
     async def json_formatter_agent(self, unformatted_input, expected_output):
         output = await self.chat_client.completion(
@@ -101,6 +116,10 @@ class AbstractChat(ABC):
             response_format={
                 "type": "json_object",
             },
+            trace_context=self._build_non_agent_trace_context(
+                "json_formatter_agent",
+                has_expected_output=bool(expected_output),
+            ),
         )
 
         json = extract_json_from_response(output)
@@ -148,6 +167,10 @@ class AbstractChat(ABC):
             response_format={
                 "type": "json_object",
             },
+            trace_context=self._build_non_agent_trace_context(
+                "detect_language_with_llm",
+                query_length=len(query),
+            ),
         )
 
         if isinstance(detected_lang, str):
@@ -192,6 +215,11 @@ class AbstractChat(ABC):
                 },
             ],
             response_format={"type": "json_object"},
+            trace_context=self._build_non_agent_trace_context(
+                "detect_past_message_ref",
+                query_length=len(query),
+                history_length=len(history),
+            ),
         )
 
         try:
@@ -424,6 +452,11 @@ class AbstractChat(ABC):
                     "content": prompts.GENERATE_NEW_QUESTIONS + query,
                 },
             ],
+            trace_context=self._build_non_agent_trace_context(
+                "get_new_questions",
+                query_length=len(query),
+                history_length=len(history),
+            ),
         )
 
         assert isinstance(res, str)
@@ -469,11 +502,27 @@ class AbstractChat(ABC):
         ]
 
         if streamed_ans:
-            res = self.chat_client.completion_stream(messages)
+            res = self.chat_client.completion_stream(
+                messages,
+                trace_context=self._build_non_agent_trace_context(
+                    "rephrase_message_stream",
+                    query_length=len(message),
+                    history_length=len(history),
+                    docs_count=len(docs),
+                    subject=subject,
+                ),
+            )
             return self.get_stream_chunks(res)
 
         res = await self.chat_client.completion(
             messages=messages,
+            trace_context=self._build_non_agent_trace_context(
+                "rephrase_message",
+                query_length=len(message),
+                history_length=len(history),
+                docs_count=len(docs),
+                subject=subject,
+            ),
         )
         return res
 
@@ -518,11 +567,27 @@ class AbstractChat(ABC):
             },
         ]
         if streamed_ans:
-            res = await self.chat_client.completion_stream(messages)
+            res = await self.chat_client.completion_stream(
+                messages,
+                trace_context=self._build_non_agent_trace_context(
+                    "chat_message_stream",
+                    query_length=len(query),
+                    history_length=len(history),
+                    docs_count=len(docs),
+                    subject=subject,
+                ),
+            )
             return self.get_stream_chunks(res)
 
         res = await self.chat_client.completion(
             messages=messages,
+            trace_context=self._build_non_agent_trace_context(
+                "chat_message",
+                query_length=len(query),
+                history_length=len(history),
+                docs_count=len(docs),
+                subject=subject,
+            ),
         )
         return res
 
@@ -646,7 +711,13 @@ class AbstractChat(ABC):
         model_class,
         fallback_formatter: str | None = None,
     ):
-        raw = await self.chat_client.completion(messages=messages)
+        raw = await self.chat_client.completion(
+            messages=messages,
+            trace_context=self._build_non_agent_trace_context(
+                "run_llm_with_json_parsing",
+                has_fallback_formatter=bool(fallback_formatter),
+            ),
+        )
 
         if not isinstance(raw, str):
             raise ValueError("LLM response must be string")
