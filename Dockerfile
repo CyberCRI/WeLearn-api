@@ -19,10 +19,9 @@ RUN apt update && apt install -y --no-install-recommends make
 COPY --from=requirements-stage ./tmp/requirements.txt ./requirements.txt
 
 RUN pip install --no-cache-dir --upgrade -r requirements.txt
-RUN baml-cli generate --from ./src/app/baml_src --no-tests
-
 
 COPY . .
+RUN baml-cli generate --from /app/src/app/ --no-tests
 
 COPY devops-toolbox/scripts/secrets-entrypoint.sh /app/secrets-entrypoint.sh
 
