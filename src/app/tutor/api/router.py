@@ -11,6 +11,7 @@ from fastapi import (
     UploadFile,
 )
 
+from src.app.baml_client.async_client import b, types
 from src.app.core.config import Settings
 from src.app.search.helpers.search_helpers import search_multi_inputs
 from src.app.search.models.search import EnhancedSearchQuery
@@ -21,17 +22,27 @@ from src.app.shared.infra.abst_chat import get_chat_service
 from src.app.shared.utils.dependencies import get_settings
 from src.app.shared.utils.requests import extract_session_cookie
 from src.app.shared.utils.utils import get_files_content
+
+# from src.app.tutor.service.agents import TEMPLATES
 from src.app.tutor.service.agents import TEMPLATES
 from src.app.tutor.service.models import (
+    CompetencyMappingRequest,
+    CourseDescriptionRequest,
     ExtractorOutputList,
+    IntegrateSustainabilityRequest,
+    LearningObjectivesRequest,
+    LearningOutcomesRequest,
     SummariesList,
     SyllabusFeedback,
+    SyllabusGenerationRequest,
     SyllabusResponse,
     SyllabusResponseAgent,
     SyllabusUserUpdate,
     TutorSearchResponse,
     TutorSyllabusRequest,
+    UserInput,
 )
+from src.app.tutor.service.orchestrator import SyllabusOrchestrator
 from src.app.tutor.service.prompts import (
     extractor_system_prompt,
     extractor_user_prompt,
@@ -291,3 +302,212 @@ async def register_syllabus_user_update(
     )
 
     return {"message": "user update registered"}
+
+
+@router.post("/syllabus/description")
+async def baml_test(body: CourseDescriptionRequest) -> types.CourseDescription:
+    b_response = await b.GenerateCourseDescription(
+        mode=body.mode,
+        metadata=types.CourseMetadata(
+            discipline=body.course_metadata.discipline,
+            topic=body.course_metadata.topic,
+            level=body.course_metadata.level,
+            num_sessions=body.course_metadata.num_sessions,
+            session_duration=body.course_metadata.session_duration,
+            session_type=body.course_metadata.session_type,
+            session_mode=body.course_metadata.session_mode,  # type: ignore
+            class_size=body.course_metadata.class_size,
+            output_language=body.course_metadata.output_language,
+            user_description=body.course_metadata.user_description,
+        ),
+        context_text=body.context_text,
+        output_language=body.course_metadata.output_language,
+    )
+    return b_response
+
+
+@with_backoff()
+@router.post("/syllabus/learning_objectives")
+async def baml_learning_objectives(
+    body: LearningObjectivesRequest,
+) -> types.LearningObjectives:
+    b_response = await b.GenerateLearningObjectives(
+        description=body.description,
+        mode=body.mode,
+        metadata=types.CourseMetadata(
+            discipline=body.course_metadata.discipline,
+            topic=body.course_metadata.topic,
+            level=body.course_metadata.level,
+            num_sessions=body.course_metadata.num_sessions,
+            session_duration=body.course_metadata.session_duration,
+            session_type=body.course_metadata.session_type,
+            session_mode=body.course_metadata.session_mode,  # type: ignore
+            class_size=body.course_metadata.class_size,
+            output_language=body.course_metadata.output_language,
+        ),
+        context_text=body.context_text,
+        output_language=body.course_metadata.output_language,
+    )
+
+    return b_response
+
+
+@with_backoff()
+@router.post("/syllabus/sustainability_integration")
+async def integrate_sustainability(
+    body: IntegrateSustainabilityRequest,
+) -> types.SustainabilityIntegration:
+    print(body.course_metadata)
+    # session_id = request.headers.get("X-Session-ID")
+
+    metadata = types.CourseMetadata(
+        discipline=body.course_metadata.discipline,
+        topic=body.course_metadata.topic,
+        level=body.course_metadata.level,
+        num_sessions=body.course_metadata.num_sessions,
+        session_duration=body.course_metadata.session_duration,
+        session_type=body.course_metadata.session_type,
+        session_mode=body.course_metadata.session_mode,  # type: ignore
+        class_size=body.course_metadata.class_size,
+        output_language=body.course_metadata.output_language,
+    )
+
+    b_response = await b.IntegrateSustainability(
+        description=body.description,
+        objectives=types.LearningObjectives(
+            objectives=[
+                types.LearningObjective(
+                    number=obj.number,
+                    text=obj.text,
+                    bloom_level=obj.bloom_level,
+                )
+                for obj in body.objectives.objectives
+            ]
+        ),
+        metadata=metadata,
+        sdg_resources=[
+            types.Document(
+                text=res.text,
+                metadata=res.metadata,
+                relevance_score=res.relevance_score if res.relevance_score else None,
+            )
+            for res in body.sdg_resources
+        ],
+        mode=body.mode,
+        output_language=body.course_metadata.output_language,
+    )
+
+    return b_response
+
+
+@with_backoff()
+@router.post("/syllabus/learning_outcomes")
+async def baml_learning_outcomes(
+    body: LearningOutcomesRequest,
+) -> types.LearningOutcomes:
+    b_response = await b.GenerateLearningOutcomes(
+        metadata=types.CourseMetadata(
+            discipline=body.course_metadata.discipline,
+            topic=body.course_metadata.topic,
+            level=body.course_metadata.level,
+            num_sessions=body.course_metadata.num_sessions,
+            session_duration=body.course_metadata.session_duration,
+            session_type=body.course_metadata.session_type,
+            session_mode=body.course_metadata.session_mode,  # type: ignore
+            class_size=body.course_metadata.class_size,
+            output_language=body.course_metadata.output_language,
+        ),
+        output_language=body.course_metadata.output_language,
+        sustainability_map=body.sustainability_map,
+        objectives=types.LearningObjectives(
+            objectives=[
+                types.LearningObjective(
+                    number=obj.number,
+                    text=obj.text,
+                    bloom_level=obj.bloom_level,
+                )
+                for obj in body.objectives.objectives
+            ]
+        ),
+    )
+
+    return b_response
+
+
+@with_backoff()
+@router.post("/syllabus/competency_map")
+async def generate_competency_map(
+    body: CompetencyMappingRequest,
+) -> types.CompetencyMappings:
+    # session_id = request.headers.get("X-Session-ID")
+
+    competencies = await b.MapCompetencies(
+        outcomes=types.LearningOutcomes(
+            outcomes=[
+                types.LearningOutcome(
+                    number=outcome.number,
+                    text=outcome.text,
+                    related_objectives=[],  # This field is not used in the BAML function, so we can leave it empty
+                    assessment_method="",  # This field is not used in the BAML function, so we can leave it empty
+                )
+                for outcome in body.outcomes
+            ]
+        ),
+        output_language=body.output_language,
+        greencomp_framework=body.framework,
+    )
+
+    return competencies
+
+
+@router.post("/api/generate")
+async def generate_syllabus(body: SyllabusGenerationRequest):
+
+    try:
+        metadata = types.CourseMetadata(
+            discipline=body.course_metadata.discipline,
+            topic=body.course_metadata.topic,
+            level=body.course_metadata.level,
+            num_sessions=body.course_metadata.num_sessions,
+            session_duration=body.course_metadata.session_duration,
+            session_type=body.course_metadata.session_type,
+            session_mode=body.course_metadata.session_mode,
+            class_size=body.course_metadata.class_size,
+            output_language=body.course_metadata.output_language,
+        )
+
+        user_input = UserInput(
+            metadata=metadata,
+            mode=body.mode,
+            rag_resources=body.rag_resources,
+            provided_description=(
+                body.course_metadata.user_description
+                if body.course_metadata.user_description
+                else None
+            ),
+        )
+        orchestrator = SyllabusOrchestrator()
+        output = await orchestrator.run(user_input)
+
+        return {
+            "status": "success",
+            "validation": {
+                "passed": True,
+                "major_issues": [],
+                "minor_issues": [],
+                "suggestions": [],
+            },  # Placeholder for validation results
+            **output,
+        }
+    except Exception as e:
+        logger.error(f"Error generating syllabus: {e}")
+        return {
+            "status": "error",
+            "message": str(e),
+            "validation": {
+                "passed": False,
+                "major_issues": [str(e)],
+                "minor_issues": [],
+                "suggestions": [],
+            },
+        }
