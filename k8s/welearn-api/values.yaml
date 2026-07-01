@@ -38,6 +38,8 @@ config:
     AZURE_API_BASE: "https://welearn-openai.openai.azure.com/openai/"
     AZURE_API_VERSION: "2024-08-01-preview"
     LLM_MODEL_NAME: gpt-oss-120b
+    AZURE_BAML_LLM_FRANCE_BASE_URL: https://welearn-mistral.services.ai.azure.com/openai/v1/
+    AZURE_BAML_LLM_SWEDEN_BASE_URL: https://welearn-mistral-sweden.services.ai.azure.com/openai/v1/
     QDRANT_HOST: "http://qdrant.qdrant"
     QDRANT_PORT: "6333"
     MODELS_FOLDER_ROOTS: "/models"
