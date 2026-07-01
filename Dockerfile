@@ -24,6 +24,7 @@ RUN pip install --upgrade pip
 RUN pip install --no-cache-dir --upgrade -r requirements.txt
 
 COPY . .
+RUN baml-cli generate --from /app/src/app/ --no-tests
 
 COPY devops-toolbox/scripts/secrets-entrypoint.sh /app/secrets-entrypoint.sh
 
