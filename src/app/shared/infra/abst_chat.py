@@ -583,13 +583,13 @@ class AbstractChat(ABC):
         agent_executor = await self._create_agent(memory=memory)
 
         config = RunnableConfig(
+            recursion_limit=5,
             configurable={
                 "thread_id": thread_id,
                 "corpora": corpora,
                 "sdg_filter": sdg_filter,
                 "sp": sp,
                 "background_tasks": background_tasks,
-                "tool_called": [False],
             },
         )
 
