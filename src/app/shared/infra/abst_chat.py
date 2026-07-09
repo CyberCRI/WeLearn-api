@@ -508,7 +508,6 @@ class AbstractChat(ABC):
                 "sdg_filter": sdg_filter,
                 "sp": sp,
                 "background_tasks": background_tasks,
-                "tool_called": [False],
             },
         )
 
