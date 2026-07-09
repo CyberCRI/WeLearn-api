@@ -154,7 +154,7 @@ async def _stream_agent_response(
     thread_id: UUID,
 ) -> AsyncGenerator[str, None]:
     final_content = ""
-    docs = []
+    docs = None
     has_streamed_content = False
 
     stream = _stream_agent_with_memory(

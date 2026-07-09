@@ -20,6 +20,14 @@ async def _get_resources_about_sustainability(
 ) -> Tuple[str, List[Document]]:
     """Core logic for getting relevant resources about sustainability from WeLearn database."""
 
+    tool_called: list = config["configurable"].get("tool_called", [False])
+    if tool_called[0]:
+        return (
+            "Search has already been performed. Use the documents already retrieved to answer the question.",
+            [],
+        )
+    tool_called[0] = True
+
     qp = EnhancedSearchQuery(
         query=rag_query,
         sdg_filter=config["configurable"].get("sdg_filter"),
