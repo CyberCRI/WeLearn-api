@@ -384,25 +384,18 @@ class AbstractChat(ABC):
                 QUERY_STATUS="REF_TO_PAST" if len(history) >= 1 else "INVALID",
             )
 
-        ref_query = ReformulatedQueryResponse(
-            STANDALONE_QUESTION=query,
-            USER_LANGUAGE="",
-            QUERY_STATUS="VALID",
+        return await self.run_llm_with_json_parsing(
+            messages=[
+                self.system_prompts["reformulate"],
+                *history[-4:],
+                {"role": "user", "content": prompts.STANDALONE_QUESTION + query},
+            ],
+            model_class=ReformulatedQueryResponse,
         )
-
-        if not isinstance(ref_query, ReformulatedQueryResponse):
-            raise ValueError(
-                {
-                    "message": "Invalid response from model",
-                    "response": ref_query,
-                }
-            )
-
-        return ref_query
 
     @log_time_and_error
     async def get_new_questions(
-        self, query: str, history: List[Dict[str, str]]
+        self, query: str, history: List[Dict[str, str]], lang: Optional[str] = None
     ) -> Dict[str, List[str]]:
         """
         Gets new questions from chat model based on history.
@@ -410,18 +403,28 @@ class AbstractChat(ABC):
         Args:
             query (str): The user query.
             history (list): The chat history.
+            lang (str | None): UI language ISO code (used for empty-chat case).
 
         Returns:
             dict: The new questions.
         """
-        await self._detect_language(query)
+        if not history and lang:
+            iso_code = lang
+        elif history:
+            combined = " ".join(m["content"] for m in history[-4:] if m.get("content"))
+            detected = await self._detect_language(combined[:500])
+            iso_code = detected.get("ISO_CODE", "en")
+        else:
+            detected = await self._detect_language(query)
+            iso_code = detected.get("ISO_CODE", "en")
 
         res = await self.chat_client.completion(
             messages=[
-                *history[::-2][:2],
+                *history[-2:],
                 {
                     "role": "user",
-                    "content": prompts.GENERATE_NEW_QUESTIONS + query,
+                    "content": prompts.GENERATE_NEW_QUESTIONS.format(language=iso_code)
+                    + query,
                 },
             ],
         )
@@ -586,7 +589,8 @@ class AbstractChat(ABC):
                 "sdg_filter": sdg_filter,
                 "sp": sp,
                 "background_tasks": background_tasks,
-            }
+                "tool_called": [False],
+            },
         )
 
         messages: list[BaseMessage] = [HumanMessage(content=query)]
@@ -606,7 +610,6 @@ class AbstractChat(ABC):
         thread_id: uuid.UUID,
         memory: AsyncPostgresSaver,
     ) -> list[dict[str, str]]:
-
         agent = await self._create_agent(memory=memory)
         config = RunnableConfig(configurable={"thread_id": thread_id})
 

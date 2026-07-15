@@ -11,6 +11,7 @@ from psycopg.rows import AsyncRowFactory, DictRow
 
 from src.app.models import chat as models
 from src.app.search.services.search import SearchService
+from src.app.services.helpers import linkify_missing_citations
 from src.app.utils.logger import logger as utils_logger
 
 logger = utils_logger(__name__)
@@ -154,7 +155,7 @@ async def _stream_agent_response(
     thread_id: UUID,
 ) -> AsyncGenerator[str, None]:
     final_content = ""
-    docs = []
+    docs = None
     has_streamed_content = False
 
     stream = _stream_agent_with_memory(
@@ -177,6 +178,8 @@ async def _stream_agent_response(
             yield _format_sse_event(_serialize_agent_stream_chunk(chunk))
         except Exception as e:
             logger.error("Error while yielding chunk: %s", e)
+
+    final_content = linkify_missing_citations(final_content, docs)
 
     final_payload = _build_final_stream_payload(
         final_content=final_content,
