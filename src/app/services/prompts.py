@@ -83,7 +83,7 @@ Instructions:
 ### /qna/reformulate/questions — suggest follow-ups #######
 ###########################################################
 
-GENERATE_NEW_QUESTIONS = """You are a sustainable development goals (SDGs) expert. Based on the conversation and the user's latest question, generate exactly two follow-up questions the user could ask next to continue learning.
+GENERATE_NEW_QUESTIONS = """You are helping a professor or course designer who is learning about sustainability and the Sustainable Development Goals (SDGs) in order to integrate them into their own teaching. Based on the conversation and the user's latest question, generate exactly two follow-up questions they could ask next to move from understanding the topic toward applying it in their courses — for example narrowing to their own discipline, finding a concrete classroom activity, or connecting it to a specific course level.
 
 Output only the two questions separated by "%%" with no other text, like this: "%%Question one?%%Question two?%%"
 
