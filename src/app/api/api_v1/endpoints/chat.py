@@ -20,6 +20,7 @@ from src.app.api.api_v1.endpoints.chat_utils import (
 from src.app.models import chat as models
 from src.app.search.services.search import SearchService, get_search_service
 from src.app.services.data_collection import get_data_collection_service
+from src.app.services.helpers import linkify_missing_citations
 from src.app.shared.domain.constants import subjects as subjectsDict
 from src.app.shared.domain.exceptions import (
     EmptyQueryError,
@@ -493,9 +494,12 @@ async def agent_response(
             if isinstance(msg, ToolMessage) and getattr(msg, "artifact", None):
                 all_docs.extend(msg.artifact)
         docs = all_docs if all_docs else None
+        content = linkify_missing_citations(
+            cast(str, res["messages"][-1].content), docs or []
+        )
 
         agent_ans = {
-            "content": cast(str, res["messages"][-1].content),
+            "content": content,
             "docs": docs,
             "thread_id": thread_id,
         }
@@ -505,7 +509,7 @@ async def agent_response(
                 session_id=session_id,
                 user_query=body.query,
                 conversation_id=thread_id,
-                answer_content=res["messages"][-1].content,
+                answer_content=content,
                 sources=docs,
             )
 

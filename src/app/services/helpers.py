@@ -1,5 +1,6 @@
+import re
 from functools import cache
-from typing import Any, List, cast
+from typing import Any, List, Optional, cast
 
 import json_repair
 import numpy
@@ -137,6 +138,43 @@ def stringify_docs_content(docs: List[Any]) -> str:
         return ""
 
     return documents.strip()
+
+
+_CITATION_RE = re.compile(r'(?<!target="_blank">)\[Doc\s*(\d+)\]')
+
+
+def linkify_missing_citations(text: str, docs: List[Any]) -> str:
+    """
+    Wraps any bare `[Doc N]` marker in `text` with the `<a href=... target="_blank">`
+    tag for document N, using the URL from `docs[N-1]`. Markers already wrapped in an
+    <a> tag are left untouched. Safety net for when the LLM forgets to format a
+    citation as a link itself.
+
+    Args:
+        text: The assembled answer text.
+        docs: The full list of retrieved documents, 1-indexed by citation number.
+
+    Returns:
+        str: `text` with any missed citations auto-linked. Unresolvable markers
+        (out-of-range N, or no docs) are left as-is.
+    """
+    if not text or not docs:
+        return text
+
+    def _url_for(n: int) -> Optional[str]:
+        if not (1 <= n <= len(docs)):
+            return None
+        payload = normalize_payload(getattr(docs[n - 1], "payload", docs[n - 1]))
+        return str(payload.get("document_url", "")).strip() or None
+
+    def _replace(match: "re.Match[str]") -> str:
+        n = int(match.group(1))
+        url = _url_for(n)
+        if not url:
+            return match.group(0)
+        return f'<a href="{url}" target="_blank">[Doc {n}]</a>'
+
+    return _CITATION_RE.sub(_replace, text)
 
 
 def extract_json_from_response(
