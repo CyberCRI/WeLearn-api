@@ -20,6 +20,7 @@ from src.app.api.api_v1.endpoints.chat_utils import (
 from src.app.models import chat as models
 from src.app.search.services.search import SearchService, get_search_service
 from src.app.services.data_collection import get_data_collection_service
+from src.app.services.helpers import linkify_missing_citations
 from src.app.shared.domain.constants import subjects as subjectsDict
 from src.app.shared.domain.exceptions import (
     EmptyQueryError,
@@ -71,6 +72,7 @@ def get_params(body: models.Context) -> models.ContextOut:
         query=body.query,
         subject=body.subject,
         conversation_id=None,
+        lang=body.lang,
     )
 
 
@@ -154,7 +156,7 @@ async def q_and_a_new_questions(
 ):
     try:
         new_questions = await chatfactory.get_new_questions(
-            query=body.query, history=body.history
+            query=body.query, history=body.history, lang=body.lang
         )
 
         return new_questions
@@ -487,13 +489,17 @@ async def agent_response(
                 sp=sp,
             )
 
-        if isinstance(res["messages"][-2], ToolMessage):
-            docs = res["messages"][-2].artifact
-        else:
-            docs = None
+        all_docs = []
+        for msg in res["messages"]:
+            if isinstance(msg, ToolMessage) and getattr(msg, "artifact", None):
+                all_docs.extend(msg.artifact)
+        docs = all_docs if all_docs else None
+        content = linkify_missing_citations(
+            cast(str, res["messages"][-1].content), docs or []
+        )
 
         agent_ans = {
-            "content": cast(str, res["messages"][-1].content),
+            "content": content,
             "docs": docs,
             "thread_id": thread_id,
         }
@@ -503,7 +509,7 @@ async def agent_response(
                 session_id=session_id,
                 user_query=body.query,
                 conversation_id=thread_id,
-                answer_content=res["messages"][-1].content,
+                answer_content=content,
                 sources=docs,
             )
 
