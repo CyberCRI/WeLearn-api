@@ -80,6 +80,7 @@ class UniversityTeacherAgent(TutorChatAgent):
 
     async def generate(self, message: MessageWithResources) -> SyllabusResponseAgent:
         DISCIPLINARY_SKILLS = get_disciplinary_skills()
+        disciplinary_skills_sentences = f"\n\nThe syllabus should also contribute to build the following disciplinary skills:\n-"
         contents = "summary :".join(message.summary)
         themes = ",".join([theme["theme"] for theme in message.themes])
         prompt = (
@@ -88,7 +89,7 @@ class UniversityTeacherAgent(TutorChatAgent):
             f"The syllabus should be written in lang: {message.lang} the section names must also be written in {message.lang}, this is important \n\nTEXT CONTENTS:\n{contents}\n\n"
             f"THEMES:\n{themes} \n\nTake into account the users input courses title, level, duration and "
             f"description: {message.course_title}, {message.level}, {message.duration}, {message.description}."
-            f"{('\n\nThe syllabus should also contribute to build the following disciplinary skills:'+'\n- '.join(DISCIPLINARY_SKILLS[message.discipline])) if message.discipline in DISCIPLINARY_SKILLS.keys() else ''}"
+            f"{(disciplinary_skills_sentences.join(DISCIPLINARY_SKILLS[message.discipline])) if message.discipline in DISCIPLINARY_SKILLS.keys() else ''}"
         )
         response = await self.run(prompt)
         return SyllabusResponseAgent(content=response, source=self.name)
