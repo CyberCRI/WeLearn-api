@@ -22,7 +22,7 @@ from src.app.models import chat as models
 from src.app.search.services.search import SearchService, get_search_service
 from src.app.services.data_collection import get_data_collection_service
 from src.app.services.helpers import linkify_missing_citations
-from src.app.services.prompts import AGENT_SYSTEM_PROMPT
+from src.app.services.prompts import AGENT_SYSTEM_PROMPT, REMINDER
 from src.app.shared.domain.constants import subjects as subjectsDict
 from src.app.shared.domain.exceptions import (
     EmptyQueryError,
@@ -412,7 +412,7 @@ async def agent_stream_response(
 
         if count_msg[thread_id] % 5 == 0:
             logger.info("Reminder included")
-            body.query = f"----------\nBE CONCISE IN ALL YOUR ANSWERS\n----------\n{AGENT_SYSTEM_PROMPT}\n----------\n{body.query}"
+            body.query = f"----------\nBE CONCISE IN ALL YOUR ANSWERS\n----------\n{REMINDER}\n----------\n{body.query}"
 
         return StreamingResponse(
             content=_stream_agent_response(
