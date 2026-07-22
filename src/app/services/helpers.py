@@ -1,6 +1,7 @@
 import re
 from functools import cache
 from typing import Any, List, Optional, cast
+from urllib.parse import urlparse
 
 import json_repair
 import numpy

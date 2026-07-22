@@ -1,4 +1,5 @@
 import uuid
+from collections import defaultdict
 from typing import Dict, Optional, cast
 from uuid import UUID
 
@@ -21,6 +22,7 @@ from src.app.models import chat as models
 from src.app.search.services.search import SearchService, get_search_service
 from src.app.services.data_collection import get_data_collection_service
 from src.app.services.helpers import linkify_missing_citations
+from src.app.services.prompts import AGENT_SYSTEM_PROMPT
 from src.app.shared.domain.constants import subjects as subjectsDict
 from src.app.shared.domain.exceptions import (
     EmptyQueryError,
@@ -374,6 +376,9 @@ async def get_chat_history(
             return res
 
 
+count_msg = defaultdict(int)
+
+
 @router.post(
     "/chat/agent_stream",
     summary="Agent Response Stream",
@@ -400,9 +405,14 @@ async def agent_stream_response(
     try:
         session_id = extract_session_cookie(request)
         thread_id = _resolve_thread_id(body.thread_id)
+        count_msg[thread_id] += 1
 
         if body.query is None:
             raise EmptyQueryError()
+
+        if count_msg[thread_id] % 5 == 0:
+            logger.info("Reminder included")
+            body.query = f"----------\nBE CONCISE IN ALL YOUR ANSWERS\n----------\n{AGENT_SYSTEM_PROMPT}\n----------\n{body.query}"
 
         return StreamingResponse(
             content=_stream_agent_response(
