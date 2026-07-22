@@ -80,7 +80,7 @@ class UniversityTeacherAgent(TutorChatAgent):
 
     async def generate(self, message: MessageWithResources) -> SyllabusResponseAgent:
         DISCIPLINARY_SKILLS = get_disciplinary_skills()
-        disciplinary_skills_sentences = f"\n\nThe syllabus should also contribute to build the following disciplinary skills:\n-"
+        disciplinary_skills_sentences = "\n\nThe syllabus should also contribute to build the following disciplinary skills:\n-"
         contents = "summary :".join(message.summary)
         themes = ",".join([theme["theme"] for theme in message.themes])
         prompt = (
