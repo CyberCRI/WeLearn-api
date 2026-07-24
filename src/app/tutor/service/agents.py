@@ -62,7 +62,7 @@ class TutorChatAgent:
         config = RunnableConfig(
             tags=self.trace_tags,
             metadata=self.trace_metadata,
-            run_name=f"tutor.{self.name}",
+            run_name=f"Tutor ({self.name})",
         )
         response = await self.chain.ainvoke({"user_prompt": user_prompt}, config=config)
         logger.debug(
