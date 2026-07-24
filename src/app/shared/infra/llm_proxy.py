@@ -65,7 +65,7 @@ class LLMProxy(ABC):
             await self.client.close()
 
     @log_time_and_error
-    @traceable(run_type="llm", name="non_agent_llm.completion")
+    @traceable(run_type="llm", name="Completion (non-agent)")
     async def completion(
         self,
         messages: list,
@@ -86,7 +86,7 @@ class LLMProxy(ABC):
             # We assume that if it's not an Azure model, it's a Mistral model for now. This can be extended in the future to support other types of models.
             return await self.mistral_completion(messages, trace_context=trace_context)
 
-    @traceable(run_type="llm", name="non_agent_llm.azure_completion")
+    @traceable(run_type="llm", name="Azure completion (non-agent)")
     async def az_completion(
         self,
         messages: list,
@@ -105,7 +105,7 @@ class LLMProxy(ABC):
 
         return response.choices[0].message.content
 
-    @traceable(run_type="llm", name="non_agent_llm.azure_completion_stream")
+    @traceable(run_type="llm", name="Azure completion stream (non-agent)")
     async def az_completion_stream(
         self,
         messages: list,
@@ -120,7 +120,7 @@ class LLMProxy(ABC):
 
         return response
 
-    @traceable(run_type="llm", name="non_agent_llm.completion_stream")
+    @traceable(run_type="llm", name="Completion stream (non-agent)")
     async def completion_stream(
         self,
         messages: list,
