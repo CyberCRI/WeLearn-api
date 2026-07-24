@@ -135,7 +135,7 @@ def stringify_docs_content(docs: List[Any]) -> str:
 
         documents = "\n\n".join(articles)
     except Exception as e:
-        logger.error("Error in stringify_docs_content: %s", e)
+        logger.exception("Error in stringify_docs_content: %s", e)
         return ""
 
     return documents.strip()
