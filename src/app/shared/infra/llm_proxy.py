@@ -143,7 +143,7 @@ class LLMProxy(ABC):
             trace_context=trace_context,
         )
 
-    @traceable(run_type="llm", name="non_agent_llm.mistral_completion")
+    @traceable(run_type="llm", name="Mistral completion (non-agent)")
     async def mistral_completion(
         self,
         messages: list,
@@ -162,7 +162,7 @@ class LLMProxy(ABC):
 
         return response.choices[0].message.content
 
-    @traceable(run_type="llm", name="non_agent_llm.mistral_completion_stream")
+    @traceable(run_type="llm", name="Mistral completion stream (non-agent)")
     async def mistral_completion_stream(
         self,
         messages: list,
