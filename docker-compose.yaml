@@ -1,7 +1,10 @@
 services:
   web:
     container_name: welearn-api
-    build: .
+    build:
+      context: .
+      args:
+        PYTHON_VERSION: ${PYTHON_VERSION:-3.14}
     command: uvicorn src.main:app --host 0.0.0.0
     network_mode: host
     volumes:
