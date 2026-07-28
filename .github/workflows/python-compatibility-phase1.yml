@@ -1,0 +1,60 @@
+name: Python Compatibility (Phase 1)
+
+on:
+  workflow_dispatch:
+  pull_request:
+    branches:
+      - "**"
+  push:
+    branches:
+      - "upgrade-python-version"
+
+concurrency:
+  group: phase1-python-compat-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  compatibility:
+    name: py${{ matrix.python-version }}
+    runs-on: ubuntu-latest
+    continue-on-error: ${{ matrix.allow-failure }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - python-version: "3.12"
+            allow-failure: false
+          - python-version: "3.13"
+            allow-failure: true
+          - python-version: "3.14"
+            allow-failure: true
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+          cache: pip
+
+      - name: Install Poetry
+        run: pip install poetry==1.8.2
+
+      - name: Configure Poetry environment
+        run: |
+          poetry config virtualenvs.in-project true
+          poetry env use python
+
+      - name: Install dependencies
+        run: poetry install --no-interaction --with dev --without metrics
+
+      - name: Lint checks
+        run: |
+          poetry run flake8 src
+          poetry run isort --check-only src
+          poetry run black --check src
+
+      - name: Unit tests with coverage
+        run: poetry run pytest -q --cov=src --cov-report=term-missing --cov-fail-under=82 --cov-report=xml
