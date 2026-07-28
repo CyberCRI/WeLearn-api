@@ -65,7 +65,7 @@ def _build_agent_trace_context(
     session_id: UUID | None,
     thread_id: UUID,
     body: models.AgentContext,
-) -> dict[str, str | int | list[int] | list[str] | None]:
+) -> models.TraceContext:
     env = settings.ENV
     return {
         "endpoint": endpoint,

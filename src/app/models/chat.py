@@ -69,6 +69,17 @@ class AgentContext(SDGFilter):
     corpora: tuple[str, ...] | None = None
 
 
+class TraceContext(TypedDict):
+    endpoint: str
+    feature: str
+    environment: str
+    session_id: str | None
+    thread_id: str
+    query_length: int
+    sdg_filter: list[int] | None
+    corpora: list[str] | None
+
+
 class AgentResponse(BaseModel):
     content: str | None = None
     status: str | None = None
