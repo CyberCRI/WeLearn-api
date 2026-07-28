@@ -133,6 +133,7 @@ class TestAbstractChat(unittest.IsolatedAsyncioTestCase):
         with mock.patch.object(
             self.chat, "_detect_language", new_callable=mock.AsyncMock
         ) as mock_detect_lang:
+            mock_detect_lang.return_value = {"ISO_CODE": "en"}
             self.chat.chat_client.completion = mock.AsyncMock(
                 return_value="%%Question 1?%% Question 2?%%",
             )
@@ -145,7 +146,7 @@ class TestAbstractChat(unittest.IsolatedAsyncioTestCase):
 
     async def test_rephrase_message_stream_false(self):
         self.chat.chat_client.completion = mock.AsyncMock()
-        self.chat.chat_client.completion_stream = mock.AsyncMock()
+        self.chat.chat_client.completion_stream = mock.Mock()
         await self.chat.rephrase_message(
             message="this is the user query", history=[], docs=[], subject="default"
         )
@@ -154,7 +155,7 @@ class TestAbstractChat(unittest.IsolatedAsyncioTestCase):
 
     async def test_rephrase_message_stream_true(self):
         self.chat.chat_client.completion = mock.AsyncMock()
-        self.chat.chat_client.completion_stream = mock.AsyncMock()
+        self.chat.chat_client.completion_stream = mock.Mock(return_value=iter(()))
         await self.chat.rephrase_message(
             message="this is the user query",
             history=[],
