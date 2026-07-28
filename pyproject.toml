@@ -25,8 +25,8 @@ requests = "^2.32.4"
 scikit-learn = "^1.5.1"
 sqlalchemy = "^2.0.35"
 transformers="^4.50.0"
-torch = {version = "^2.9.0+cpu", source = "pytorch_cpu"}
-torchvision = {version = "^0.24.0+cpu", source = "pytorch_cpu"}
+torch = {version = "2.9.1+cpu", source = "pytorch_cpu"}
+torchvision = {version = "0.24.1+cpu", source = "pytorch_cpu"}
 uvicorn = {extras = ["standard"], version = "^0.29.0"}
 autogen-core = "^0.5.7"
 autogen-ext = "^0.5.7"
