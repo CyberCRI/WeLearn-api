@@ -51,6 +51,7 @@ class Settings(BaseSettings):
     ENV: str
 
     # LANGSMITH / LANGCHAIN TRACING
+    # TBD: migrate Optional/Union annotations to PEP 604 shorthand (X | Y, X | None) in a dedicated refactor.
     LANGSMITH_TRACING_ENABLED: bool = False
     LANGSMITH_PROJECT: Optional[str] = None
     LANGSMITH_ENDPOINT: Optional[str] = None

@@ -103,22 +103,22 @@ async def tutor_manager(
     teacher_agent = UniversityTeacherAgent(
         chat_model,
         lang,
-        trace_tags=[*base_tags, "agent:university_teacher"],
-        trace_metadata={**base_metadata, "agent": "UniversityTeacherAgent"},
+        trace_tags=base_tags,
+        trace_metadata=base_metadata,
     )
     sdg_agent = SDGExpertAgent(
         chat_model,
         GREENCOMP_COMPETENCIES,
         lang,
-        trace_tags=[*base_tags, "agent:sdg_expert"],
-        trace_metadata={**base_metadata, "agent": "SDGExpertAgent"},
+        trace_tags=base_tags,
+        trace_metadata=base_metadata,
     )
     pedagogical_agent = PedagogicalEngineerAgent(
         chat_model,
         GREENCOMP_COMPETENCIES,
         lang,
-        trace_tags=[*base_tags, "agent:pedagogical_engineer"],
-        trace_metadata={**base_metadata, "agent": "PedagogicalEngineerAgent"},
+        trace_tags=base_tags,
+        trace_metadata=base_metadata,
     )
 
     teacher_response = await teacher_agent.generate(formatted_content)

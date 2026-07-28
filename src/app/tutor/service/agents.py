@@ -40,17 +40,23 @@ TEMPLATES = {"template0": Path("src/app/tutor/domain/template.md").read_text()}
 class TutorChatAgent:
     """Thin wrapper around a LangChain chat model with a fixed system prompt."""
 
+    agent_name: str | None = None
+    agent_tag: str | None = None
+
     def __init__(
         self,
-        name: str,
         model: BaseChatModel,
         system_prompt: str,
         trace_tags: list[str] | None = None,
         trace_metadata: dict[str, Any] | None = None,
     ) -> None:
-        self.name = name
-        self.trace_tags = trace_tags or []
-        self.trace_metadata = trace_metadata or {}
+        self.name = self.agent_name or self.__class__.__name__
+        self.trace_tags = list(trace_tags or [])
+        if self.agent_tag:
+            self.trace_tags.append(f"agent:{self.agent_tag}")
+
+        self.trace_metadata = dict(trace_metadata or {})
+        self.trace_metadata["agent"] = self.name
         prompt = ChatPromptTemplate.from_messages(
             [("system", system_prompt), ("human", "{user_prompt}")]
         )
@@ -73,6 +79,9 @@ class TutorChatAgent:
 
 class UniversityTeacherAgent(TutorChatAgent):
     """First-pass syllabus creation based on user documents and metadata."""
+
+    agent_name = "UniversityTeacherAgent"
+    agent_tag = "university_teacher"
 
     def __init__(
         self,
@@ -99,7 +108,6 @@ class UniversityTeacherAgent(TutorChatAgent):
             expected_output=f"You must follow this template :\n {TEMPLATES['template0']} and translate it into the target language: {lang}.",
         )
         super().__init__(
-            "UniversityTeacherAgent",
             model,
             system_prompt,
             trace_tags=trace_tags,
@@ -124,6 +132,9 @@ class UniversityTeacherAgent(TutorChatAgent):
 
 class SDGExpertAgent(TutorChatAgent):
     """Injects sustainability and SDG alignment using WeLearn resources."""
+
+    agent_name = "SDGExpertAgent"
+    agent_tag = "sdg_expert"
 
     def __init__(
         self,
@@ -151,7 +162,6 @@ class SDGExpertAgent(TutorChatAgent):
             ),
         )
         super().__init__(
-            "SDGExpertAgent",
             model,
             system_prompt,
             trace_tags=trace_tags,
@@ -181,6 +191,9 @@ class SDGExpertAgent(TutorChatAgent):
 class PedagogicalEngineerAgent(TutorChatAgent):
     """Final polish focusing on pedagogy and GreenComp alignment."""
 
+    agent_name = "PedagogicalEngineerAgent"
+    agent_tag = "pedagogical_engineer"
+
     def __init__(
         self,
         model: BaseChatModel,
@@ -208,7 +221,6 @@ class PedagogicalEngineerAgent(TutorChatAgent):
             ),
         )
         super().__init__(
-            "PedagogicalEngineerAgent",
             model,
             system_prompt,
             trace_tags=trace_tags,

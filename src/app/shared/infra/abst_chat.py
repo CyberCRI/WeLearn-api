@@ -39,6 +39,7 @@ from src.app.services.helpers import (
     stringify_docs_content,
 )
 from src.app.shared.domain.exceptions import LanguageNotSupportedError
+from src.app.shared.infra.tracing import TraceComponent
 from src.app.shared.utils.dependencies import get_settings
 from src.app.utils.decorators import log_time_and_error
 from src.app.utils.logger import log_environmental_impacts
@@ -92,7 +93,7 @@ class AbstractChat(ABC):
     ) -> dict[str, Any]:
         settings = get_settings()
         trace_context: dict[str, Any] = {
-            "component": "chat_non_agent",
+            "component": TraceComponent.CHAT_NON_AGENT.value,
             "operation": operation,
             "environment": settings.ENV,
             "model": getattr(self.chat_client, "model", None),
@@ -650,8 +651,8 @@ class AbstractChat(ABC):
 
         settings = get_settings()
 
-        metadata: dict[str, Any] = {
-            "component": "chat_agent",
+        metadata: dict[str, str | list | None] = {
+            "component": TraceComponent.CHAT_AGENT.value,
             "environment": settings.ENV,
             "thread_id": str(thread_id) if thread_id else None,
             "corpora": list(corpora) if corpora else None,
@@ -718,7 +719,7 @@ class AbstractChat(ABC):
             messages=messages,
             trace_context=self._build_non_agent_trace_context(
                 "run_llm_with_json_parsing",
-                has_fallback_formatter=bool(fallback_formatter),
+                has_fallback_formatter=fallback_formatter is not None,
             ),
         )
 

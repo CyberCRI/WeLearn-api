@@ -1,4 +1,3 @@
-import inspect
 from abc import ABC
 from typing import Any, Optional, Type, Union
 
@@ -9,6 +8,7 @@ from langsmith import traceable
 from mistralai.client import Mistral
 from pydantic import BaseModel
 
+from src.app.shared.infra.tracing import TRACE_RUN_TYPE_LLM, TraceName
 from src.app.utils.decorators import log_time_and_error
 from src.app.utils.logger import logger as utils_logger
 
@@ -65,7 +65,10 @@ class LLMProxy(ABC):
             await self.client.close()
 
     @log_time_and_error
-    @traceable(run_type="llm", name="Completion (non-agent)")
+    @traceable(
+        run_type=TRACE_RUN_TYPE_LLM,
+        name=TraceName.COMPLETION_NON_AGENT.value,
+    )
     async def completion(
         self,
         messages: list,
@@ -86,7 +89,10 @@ class LLMProxy(ABC):
             # We assume that if it's not an Azure model, it's a Mistral model for now. This can be extended in the future to support other types of models.
             return await self.mistral_completion(messages, trace_context=trace_context)
 
-    @traceable(run_type="llm", name="Azure completion (non-agent)")
+    @traceable(
+        run_type=TRACE_RUN_TYPE_LLM,
+        name=TraceName.AZURE_COMPLETION_NON_AGENT.value,
+    )
     async def az_completion(
         self,
         messages: list,
@@ -105,7 +111,10 @@ class LLMProxy(ABC):
 
         return response.choices[0].message.content
 
-    @traceable(run_type="llm", name="Azure completion stream (non-agent)")
+    @traceable(
+        run_type=TRACE_RUN_TYPE_LLM,
+        name=TraceName.AZURE_COMPLETION_STREAM_NON_AGENT.value,
+    )
     async def az_completion_stream(
         self,
         messages: list,
@@ -120,7 +129,10 @@ class LLMProxy(ABC):
 
         return response
 
-    @traceable(run_type="llm", name="Completion stream (non-agent)")
+    @traceable(
+        run_type=TRACE_RUN_TYPE_LLM,
+        name=TraceName.COMPLETION_STREAM_NON_AGENT.value,
+    )
     async def completion_stream(
         self,
         messages: list,
@@ -143,7 +155,10 @@ class LLMProxy(ABC):
             trace_context=trace_context,
         )
 
-    @traceable(run_type="llm", name="Mistral completion (non-agent)")
+    @traceable(
+        run_type=TRACE_RUN_TYPE_LLM,
+        name=TraceName.MISTRAL_COMPLETION_NON_AGENT.value,
+    )
     async def mistral_completion(
         self,
         messages: list,
@@ -162,7 +177,10 @@ class LLMProxy(ABC):
 
         return response.choices[0].message.content
 
-    @traceable(run_type="llm", name="Mistral completion stream (non-agent)")
+    @traceable(
+        run_type=TRACE_RUN_TYPE_LLM,
+        name=TraceName.MISTRAL_COMPLETION_STREAM_NON_AGENT.value,
+    )
     async def mistral_completion_stream(
         self,
         messages: list,
@@ -171,15 +189,11 @@ class LLMProxy(ABC):
         if self.client is None:
             raise ValueError("Mistral client is not initialized.")
 
-        response = self.client.chat.stream_async(
+        response = await self.client.chat.stream_async(
             messages=messages,
             max_tokens=2048,
             temperature=0.8,
             top_p=0.1,
             model=self.model,
         )
-
-        if inspect.isawaitable(response):
-            return await response
-
         return response
