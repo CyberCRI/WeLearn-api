@@ -155,7 +155,7 @@ class TestAbstractChat(unittest.IsolatedAsyncioTestCase):
 
     async def test_rephrase_message_stream_true(self):
         self.chat.chat_client.completion = mock.AsyncMock()
-        self.chat.chat_client.completion_stream = mock.Mock(return_value=iter(()))
+        self.chat.chat_client.completion_stream = mock.AsyncMock(return_value=iter(()))
         await self.chat.rephrase_message(
             message="this is the user query",
             history=[],
