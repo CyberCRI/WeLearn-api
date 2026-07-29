@@ -290,10 +290,12 @@ def compute_publication_date_for_ris(pub_date: str | int | float) -> str:
         return ""
 
 
-def compute_authors_for_ris(authors: dict) -> list[str]:
-    ret = []
+def compute_authors_for_ris(authors: list[dict[str, Any]]) -> list[str]:
+    ret: list[str] = []
     for author in authors:
-        ret.append(ris_line("AU", author.get("name")))
+        line = ris_line("AU", author.get("name"))
+        if line:
+            ret.append(line)
     return ret
 
 
@@ -328,4 +330,4 @@ def welearn_document_to_ris(doc: WeLearnDocument) -> str:
     if license_url:
         lines.append(ris_line("C1", license_url))
     lines.append("ER  - ")
-    return "\n".join(lines)
+    return "\n".join([line for line in lines if line])
