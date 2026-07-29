@@ -7,6 +7,7 @@ from src.app.services.sql_db.queries import get_documents_by_ids
 
 router = APIRouter()
 
+
 @router.post("/export_bibliography", response_class=PlainTextResponse)
 async def export_bibliography(body: DocumentIDs) -> str:
     documents_ids = [str(u) for u in body.documents_ids]
