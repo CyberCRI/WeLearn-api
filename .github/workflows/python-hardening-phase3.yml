@@ -39,6 +39,9 @@ jobs:
       - name: Install dependencies
         run: poetry install --no-interaction --with dev --without metrics
 
+      - name: Seed test environment variables
+        run: cp .env.example .env
+
       - name: Import smoke checks
         run: |
           poetry run python - <<'PY'
@@ -51,7 +54,7 @@ jobs:
           modules = [
               "src.main",
               "src.app.api.api_v1.endpoints.chat",
-              "src.app.api.api_v1.endpoints.search",
+              "src.app.api.api_v1.endpoints.metric",
               "src.app.shared.infra.abst_chat",
               "src.app.search.services.search",
               "src.app.tutor.api.router",
