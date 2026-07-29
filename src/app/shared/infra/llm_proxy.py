@@ -1,12 +1,14 @@
 from abc import ABC
-from typing import Optional, Type, Union
+from typing import Any, Optional, Type, Union
 
 import litellm
 from azure.ai.inference.aio import ChatCompletionsClient
 from azure.core.credentials import AzureKeyCredential
+from langsmith import traceable
 from mistralai.client import Mistral
 from pydantic import BaseModel
 
+from src.app.shared.infra.tracing import TRACE_RUN_TYPE_LLM, TraceName
 from src.app.utils.decorators import log_time_and_error
 from src.app.utils.logger import logger as utils_logger
 
@@ -63,24 +65,54 @@ class LLMProxy(ABC):
             await self.client.close()
 
     @log_time_and_error
+    @traceable(
+        run_type=TRACE_RUN_TYPE_LLM,
+        name=TraceName.COMPLETION_NON_AGENT.value,
+    )
     async def completion(
         self,
         messages: list,
         response_format: Optional[Union[dict, Type[BaseModel]]] = None,
+        trace_context: Optional[dict[str, Any]] = None,
     ) -> dict | str:
 
-        logger.info("starting completion with model_name=%s", self.model)
+        logger.info(
+            "starting completion with model_name=%s trace_context=%s",
+            self.model,
+            trace_context,
+        )
 
         if self.is_azure_model:
-            return await self.az_completion(messages)
+            return await self.az_completion(
+                messages,
+                response_format=response_format,
+                trace_context=trace_context,
+            )
 
         else:
             # We assume that if it's not an Azure model, it's a Mistral model for now. This can be extended in the future to support other types of models.
-            return await self.mistral_completion(messages)
+            return await self.mistral_completion(
+                messages,
+                response_format=response_format,
+                trace_context=trace_context,
+            )
 
-    async def az_completion(self, messages: list):
+    @traceable(
+        run_type=TRACE_RUN_TYPE_LLM,
+        name=TraceName.AZURE_COMPLETION_NON_AGENT.value,
+    )
+    async def az_completion(
+        self,
+        messages: list,
+        response_format: Optional[Union[dict, Type[BaseModel]]] = None,
+        trace_context: Optional[dict[str, Any]] = None,
+    ):
         if self.client is None:
             raise ValueError("Azure client is not initialized.")
+
+        completion_kwargs = {}
+        if response_format is not None:
+            completion_kwargs["response_format"] = response_format
 
         response = await self.client.complete(
             messages=messages,
@@ -88,11 +120,20 @@ class LLMProxy(ABC):
             temperature=0.8,
             top_p=0.1,
             model=self.model,
+            **completion_kwargs,
         )
 
         return response.choices[0].message.content
 
-    async def az_completion_stream(self, messages: list):
+    @traceable(
+        run_type=TRACE_RUN_TYPE_LLM,
+        name=TraceName.AZURE_COMPLETION_STREAM_NON_AGENT.value,
+    )
+    async def az_completion_stream(
+        self,
+        messages: list,
+        trace_context: Optional[dict[str, Any]] = None,
+    ):
         if self.client is None:
             raise ValueError("Azure client is not initialized.")
 
@@ -102,9 +143,48 @@ class LLMProxy(ABC):
 
         return response
 
-    async def mistral_completion(self, messages: list):
+    @traceable(
+        run_type=TRACE_RUN_TYPE_LLM,
+        name=TraceName.COMPLETION_STREAM_NON_AGENT.value,
+    )
+    async def completion_stream(
+        self,
+        messages: list,
+        trace_context: Optional[dict[str, Any]] = None,
+    ):
+        logger.info(
+            "starting completion_stream with model_name=%s trace_context=%s",
+            self.model,
+            trace_context,
+        )
+
+        if self.is_azure_model:
+            return await self.az_completion_stream(
+                messages,
+                trace_context=trace_context,
+            )
+
+        return await self.mistral_completion_stream(
+            messages,
+            trace_context=trace_context,
+        )
+
+    @traceable(
+        run_type=TRACE_RUN_TYPE_LLM,
+        name=TraceName.MISTRAL_COMPLETION_NON_AGENT.value,
+    )
+    async def mistral_completion(
+        self,
+        messages: list,
+        response_format: Optional[Union[dict, Type[BaseModel]]] = None,
+        trace_context: Optional[dict[str, Any]] = None,
+    ):
         if self.client is None:
             raise ValueError("Mistral client is not initialized.")
+
+        completion_kwargs = {}
+        if response_format is not None:
+            completion_kwargs["response_format"] = response_format
 
         response = await self.client.chat.complete_async(
             messages=messages,
@@ -112,6 +192,28 @@ class LLMProxy(ABC):
             temperature=0.8,
             top_p=0.1,
             model=self.model,
+            **completion_kwargs,
         )
 
         return response.choices[0].message.content
+
+    @traceable(
+        run_type=TRACE_RUN_TYPE_LLM,
+        name=TraceName.MISTRAL_COMPLETION_STREAM_NON_AGENT.value,
+    )
+    async def mistral_completion_stream(
+        self,
+        messages: list,
+        trace_context: Optional[dict[str, Any]] = None,
+    ):
+        if self.client is None:
+            raise ValueError("Mistral client is not initialized.")
+
+        response = await self.client.chat.stream_async(
+            messages=messages,
+            max_tokens=2048,
+            temperature=0.8,
+            top_p=0.1,
+            model=self.model,
+        )
+        return response

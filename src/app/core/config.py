@@ -50,6 +50,13 @@ class Settings(BaseSettings):
     LLM_TEMPERATURE: float
     ENV: str
 
+    # LANGSMITH / LANGCHAIN TRACING
+    # TBD: migrate Optional/Union annotations to PEP 604 shorthand (X | Y, X | None) in a dedicated refactor.
+    LANGSMITH_TRACING_ENABLED: bool = False
+    LANGSMITH_PROJECT: Optional[str] = None
+    LANGSMITH_ENDPOINT: Optional[str] = None
+    LANGSMITH_API_KEY: Optional[str] = None
+
     # PG
     PG_USER: Optional[str] = None
     PG_PASSWORD: Optional[str] = None

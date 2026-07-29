@@ -51,6 +51,7 @@ langchain-mistralai = "^1.1.2"
 langchain-azure-ai = "^1.2.3"
 langgraph = "^1.1.10"
 mistralai = "^2.4.3"
+langsmith = "^0.9.3"
 
 [tool.poetry.group.dev.dependencies]
 pytest = "^7.4.0"

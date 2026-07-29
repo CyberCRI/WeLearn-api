@@ -162,7 +162,14 @@ async def create_syllabus(
     settings: Settings = Depends(get_settings),
 ) -> SyllabusResponse:
     session_id = extract_session_cookie(request)
-    results = await tutor_manager(body, lang, settings)
+    trace_context = {
+        "endpoint": request.url.path,
+        "feature": "syllabus_creation",
+        "session_id": str(session_id) if session_id else None,
+        "query_extracts_count": len(body.extracts),
+        "documents_count": len(body.documents),
+    }
+    results = await tutor_manager(body, lang, settings, trace_context=trace_context)
 
     # TODO: handle errors
 
@@ -253,7 +260,19 @@ async def handle_syllabus_feedback(
     ]
 
     try:
-        syllabus = await chatfactory.chat_client.completion(messages=messages)
+        syllabus = await chatfactory.chat_client.completion(
+            messages=messages,
+            trace_context={
+                "component": "tutor_syllabus_feedback",
+                "operation": "syllabus_feedback",
+                "environment": get_settings().ENV,
+                "endpoint": request.url.path,
+                "session_id": str(session_id) if session_id else None,
+                "feedback_length": len(body.feedback),
+                "documents_count": len(body.documents),
+                "extracts_count": len(body.extracts),
+            },
+        )
 
         if not isinstance(syllabus, str):
             raise ValueError("Syllabus feedback response is not a string")
