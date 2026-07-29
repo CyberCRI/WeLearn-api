@@ -284,7 +284,8 @@ def compute_publication_date_for_ris(pub_date: str | int | float) -> str:
         return tmp_ret.replace("-", "/")
     except Exception as e:
         logger.warning(
-            "Exception occurs during publication formatting, field returned empty", e
+            "Exception occurs during publication formatting, field returned empty: %s",
+            e,
         )
         return ""
 
