@@ -651,7 +651,7 @@ class AbstractChat(ABC):
 
         settings = get_settings()
 
-        metadata: dict[str, str | list | None] = {
+        metadata: dict[str, Any] = {
             "component": TraceComponent.CHAT_AGENT.value,
             "environment": settings.ENV,
             "thread_id": str(thread_id) if thread_id else None,
