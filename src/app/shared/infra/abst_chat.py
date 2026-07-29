@@ -506,7 +506,7 @@ class AbstractChat(ABC):
         ]
 
         if streamed_ans:
-            res = self.chat_client.completion_stream(
+            res = await self.chat_client.completion_stream(
                 messages,
                 trace_context=self._build_non_agent_trace_context(
                     "rephrase_message_stream",
