@@ -31,3 +31,36 @@ class TestLLMProxy(unittest.IsolatedAsyncioTestCase):
             )
         self.assertIsInstance(response, str)
         self.assertEqual(response, '{"key": "value"}')
+
+    async def test_completion_forwards_response_format_to_mistral(self):
+        response_format = {"type": "json_object"}
+        with mock.patch.object(
+            self.proxy, "mistral_completion", new=AsyncMock(return_value="text")
+        ) as mistral_completion:
+            await self.proxy.completion(
+                messages=[{"role": "user", "content": "Hello"}],
+                response_format=response_format,
+            )
+
+        mistral_completion.assert_awaited_once_with(
+            [{"role": "user", "content": "Hello"}],
+            response_format=response_format,
+            trace_context=None,
+        )
+
+    async def test_completion_forwards_response_format_to_azure(self):
+        self.proxy.is_azure_model = True
+        response_format = {"type": "json_object"}
+        with mock.patch.object(
+            self.proxy, "az_completion", new=AsyncMock(return_value="text")
+        ) as az_completion:
+            await self.proxy.completion(
+                messages=[{"role": "user", "content": "Hello"}],
+                response_format=response_format,
+            )
+
+        az_completion.assert_awaited_once_with(
+            [{"role": "user", "content": "Hello"}],
+            response_format=response_format,
+            trace_context=None,
+        )

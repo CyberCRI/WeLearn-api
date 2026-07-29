@@ -83,11 +83,19 @@ class LLMProxy(ABC):
         )
 
         if self.is_azure_model:
-            return await self.az_completion(messages, trace_context=trace_context)
+            return await self.az_completion(
+                messages,
+                response_format=response_format,
+                trace_context=trace_context,
+            )
 
         else:
             # We assume that if it's not an Azure model, it's a Mistral model for now. This can be extended in the future to support other types of models.
-            return await self.mistral_completion(messages, trace_context=trace_context)
+            return await self.mistral_completion(
+                messages,
+                response_format=response_format,
+                trace_context=trace_context,
+            )
 
     @traceable(
         run_type=TRACE_RUN_TYPE_LLM,
@@ -96,10 +104,15 @@ class LLMProxy(ABC):
     async def az_completion(
         self,
         messages: list,
+        response_format: Optional[Union[dict, Type[BaseModel]]] = None,
         trace_context: Optional[dict[str, Any]] = None,
     ):
         if self.client is None:
             raise ValueError("Azure client is not initialized.")
+
+        completion_kwargs = {}
+        if response_format is not None:
+            completion_kwargs["response_format"] = response_format
 
         response = await self.client.complete(
             messages=messages,
@@ -107,6 +120,7 @@ class LLMProxy(ABC):
             temperature=0.8,
             top_p=0.1,
             model=self.model,
+            **completion_kwargs,
         )
 
         return response.choices[0].message.content
@@ -162,10 +176,15 @@ class LLMProxy(ABC):
     async def mistral_completion(
         self,
         messages: list,
+        response_format: Optional[Union[dict, Type[BaseModel]]] = None,
         trace_context: Optional[dict[str, Any]] = None,
     ):
         if self.client is None:
             raise ValueError("Mistral client is not initialized.")
+
+        completion_kwargs = {}
+        if response_format is not None:
+            completion_kwargs["response_format"] = response_format
 
         response = await self.client.chat.complete_async(
             messages=messages,
@@ -173,6 +192,7 @@ class LLMProxy(ABC):
             temperature=0.8,
             top_p=0.1,
             model=self.model,
+            **completion_kwargs,
         )
 
         return response.choices[0].message.content
