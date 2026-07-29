@@ -1,6 +1,5 @@
 from enum import Enum
 
-
 TRACE_RUN_TYPE_LLM = "llm"
 
 
