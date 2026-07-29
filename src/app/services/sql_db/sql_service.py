@@ -33,5 +33,6 @@ class WL_SQL:
         return Session
 
 
-wl_sql = WL_SQL()
-session_maker = wl_sql.session_maker
+def session_maker():
+    # Defer DB engine creation until a session is actually needed.
+    return WL_SQL().session_maker()
