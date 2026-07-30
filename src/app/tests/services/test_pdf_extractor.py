@@ -32,7 +32,7 @@ class TestPDFExtractorAsync(unittest.IsolatedAsyncioTestCase):
     async def test_send_pdf_to_tika(self, mock_get_client):
         # Mock du client HTTPX asynchrone
         mock_client = AsyncMock()
-        mock_response = AsyncMock()
+        mock_response = Mock()
         mock_response.json = Mock(
             return_value={"X-TIKA:content": "<html>Mock Content</html>"}
         )

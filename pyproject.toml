@@ -7,7 +7,7 @@ readme = "README.md"
 package-mode = false
 
 [tool.poetry.dependencies]
-python = ">=3.10,<3.13"
+python = ">=3.12,<3.15"
 azure-core = "^1.38.0"
 backoff = "^2.2.1"
 ecologits = "^0.5.2"
@@ -25,14 +25,14 @@ requests = "^2.32.4"
 scikit-learn = "^1.5.1"
 sqlalchemy = "^2.0.35"
 transformers="^4.50.0"
-torch = {version = "^2.2.2+cpu", source = "pytorch_cpu"}
-torchvision = {version = "^0.17.2+cpu", source = "pytorch_cpu"}
+torch = {version = "2.9.1+cpu", source = "pytorch_cpu"}
+torchvision = {version = "0.24.1+cpu", source = "pytorch_cpu"}
 uvicorn = {extras = ["standard"], version = "^0.29.0"}
 autogen-core = "^0.5.7"
 autogen-ext = "^0.5.7"
 autogen-agentchat = "^0.5.7"
 pypdf = "^6.6.0"
-numpy = "^1.26.4"
+numpy = "^2.1.0"
 python-docx = "^1.1.2"
 langchain-core = "^1.3.2"
 langgraph-checkpoint-postgres = "^2.0.23"
@@ -51,7 +51,7 @@ langchain-mistralai = "^1.1.2"
 langchain-azure-ai = "^1.2.3"
 langgraph = "^1.1.10"
 mistralai = "^2.4.3"
-langsmith = "^0.9.3"
+langsmith = "^0.10.11"
 
 [tool.poetry.group.dev.dependencies]
 pytest = "^7.4.0"
