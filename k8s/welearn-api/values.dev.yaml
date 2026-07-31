@@ -7,7 +7,7 @@ config:
     TIKA_URL_BASE: https://tika.k8s.lp-i.dev/
     DATA_COLLECTION_ORIGIN_PREFIX: welearn
     SESSION_COOKIE_DOMAIN: .lp-i.dev
-    LANGSMITH_TRACING_ENABLED: True
+    LANGSMITH_TRACING_ENABLED: "true"
     LANGSMITH_PROJECT: WeLearn_Dev
     LANGSMITH_ENDPOINT: https://eu.api.smith.langchain.com
     ENV: development
