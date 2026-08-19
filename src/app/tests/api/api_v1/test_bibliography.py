@@ -14,8 +14,8 @@ client = TestClient(app)
     new=mock.MagicMock(return_value=True),
 )
 class BibliographyApiTests(unittest.IsolatedAsyncioTestCase):
-    @mock.patch("src.app.api.api_v1.endpoints.bibliography.welearn_document_to_ris")
-    @mock.patch("src.app.api.api_v1.endpoints.bibliography.get_documents_by_ids")
+    @mock.patch("src.app.bibliography.api.bibliography.welearn_document_to_ris")
+    @mock.patch("src.app.bibliography.api.bibliography.get_documents_by_ids")
     async def test_export_bibliography_success(
         self, get_documents_by_ids_mock, welearn_document_to_ris_mock, *mocks
     ):
@@ -46,8 +46,8 @@ class BibliographyApiTests(unittest.IsolatedAsyncioTestCase):
             [mock.call(doc1), mock.call(doc2)]
         )
 
-    @mock.patch("src.app.api.api_v1.endpoints.bibliography.welearn_document_to_ris")
-    @mock.patch("src.app.api.api_v1.endpoints.bibliography.get_documents_by_ids")
+    @mock.patch("src.app.bibliography.api.bibliography.welearn_document_to_ris")
+    @mock.patch("src.app.bibliography.api.bibliography.get_documents_by_ids")
     async def test_export_bibliography_empty_documents(
         self, get_documents_by_ids_mock, welearn_document_to_ris_mock, *mocks
     ):
