@@ -127,6 +127,7 @@ mcp = FastApiMCP(
     include_operations=[
         "get_corpus_list",
         "search_by_document",
+        "chat_agent_response",
     ],
     headers=["authorization", "x-api-key"],
 )
