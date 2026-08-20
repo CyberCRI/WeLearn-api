@@ -54,6 +54,7 @@ mistralai = "^2.4.3"
 langsmith = "^0.10.11"
 pandas = { version = "^3.0.3", markers = "python_version >= '3.11'" }
 baml-py = "^0.226.1"
+fastapi-mcp = "^0.4.0"
 
 [tool.poetry.group.dev.dependencies]
 pytest = "^7.4.0"
