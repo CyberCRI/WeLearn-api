@@ -5,7 +5,11 @@ from unittest.mock import MagicMock, patch
 from fastapi import HTTPException
 from starlette.requests import Request
 
-from src.app.services.data_collection import DataCollection, _cache, get_data_collection_service
+from src.app.services.data_collection import (
+    DataCollection,
+    _cache,
+    get_data_collection_service,
+)
 from src.app.tutor.service.models import ExtractorOutput, TutorSyllabusRequest
 
 

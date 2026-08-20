@@ -38,7 +38,10 @@ class SearchQuery(SDGFilter):
     query: str | list[str] | None = Field(
         ...,
         description="User query text.",
-        examples=["How can schools reduce water waste?", "Compare carbon pricing and cap-and-trade: how do they work, and what are their pros and cons?"],
+        examples=[
+            "How can schools reduce water waste?",
+            "Compare carbon pricing and cap-and-trade: how do they work, and what are their pros and cons?",
+        ],
     )
     corpora: list[str] | None = Field(
         default=None,
