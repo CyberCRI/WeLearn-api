@@ -3,3 +3,4 @@
 omit =
     src/app/services/tutor/agents.py
     src/app/services/tutor/tutor.py
+    src/app/baml_client/*

@@ -3,6 +3,7 @@
 from fastapi import APIRouter
 
 from src.app.api.api_v1.endpoints import chat, metric, micro_learning
+from src.app.bibliography.api import bibliography as biblio_router
 from src.app.search.api import router as search_router
 from src.app.tutor.api import router as tutor_router
 from src.app.user.api import router as user_router
@@ -16,6 +17,9 @@ api_router.include_router(
     micro_learning.router, prefix="/micro_learning", tags=["micro_learning"]
 )
 api_router.include_router(user_router.router, prefix="/user", tags=["user"])
+api_router.include_router(
+    biblio_router.router, prefix="/bibliography", tags=["bibliography"]
+)
 
 
 api_tags_metadata = [
@@ -42,5 +46,9 @@ api_tags_metadata = [
     {
         "name": "metric",
         "description": "Metric information",
+    },
+    {
+        "name": "bibliography",
+        "description": "Bibliography exporters for documents collected by welearn",
     },
 ]

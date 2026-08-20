@@ -6,6 +6,7 @@ from uuid import UUID
 
 from qdrant_client.http.models import ScoredPoint
 from sqlalchemy import func, select
+from sqlalchemy.orm import joinedload
 from welearn_database.data.enumeration import Step
 from welearn_database.data.models import (
     Category,
@@ -82,18 +83,23 @@ def get_document_qty_table_info_sync() -> (
         )  # type: ignore
 
 
+def get_documents_by_ids(documents_ids: list[str]) -> list[WeLearnDocument]:
+    with session_maker() as s:
+        documents = (
+            s.query(WeLearnDocument)
+            .where(WeLearnDocument.id.in_(documents_ids))
+            .options(joinedload(WeLearnDocument.corpus))
+            .all()
+        )
+
+    ret = list(documents)
+
+    return ret
+
+
 def get_documents_payload_by_ids_sync(documents_ids: list[str]) -> list[Document]:
     with session_maker() as s:
-        documents = s.execute(
-            select(
-                WeLearnDocument.title,
-                WeLearnDocument.url,
-                WeLearnDocument.corpus_id,
-                WeLearnDocument.id,
-                WeLearnDocument.description,
-                WeLearnDocument.details,
-            ).where(WeLearnDocument.id.in_(documents_ids))
-        ).all()
+        documents = get_documents_by_ids(documents_ids=documents_ids)
 
         # Batch fetch corpora
         corpus_ids = list({doc.corpus_id for doc in documents})
