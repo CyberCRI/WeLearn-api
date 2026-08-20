@@ -2,7 +2,7 @@ import uuid
 from enum import Enum
 from typing import Literal, TypedDict
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 from qdrant_client.models import ScoredPoint
 
 from src.app.search.models.search import SDGFilter
@@ -46,9 +46,39 @@ class ReformulatedQuestionsResponse(BaseModel):
 
 
 class AgentContext(SDGFilter):
-    query: str | None = None
-    thread_id: uuid.UUID | None = None
-    corpora: tuple[str, ...] | None = None
+    query: str | None = Field(
+        default=None,
+        description="User message for the agent to answer.",
+        examples=["How can communities improve clean water access?"],
+    )
+    thread_id: uuid.UUID | None = Field(
+        default=None,
+        description="Optional conversation thread id. If omitted, a new thread id is generated.",
+        examples=["6fca8d02-0bc2-48a5-9c95-4942ca57e651"],
+    )
+    corpora: tuple[str, ...] | None = Field(
+        default=None,
+        description="Optional list of corpus names used by retrieval tools during agent execution.",
+        examples=[["conversation"]],
+    )
+
+    model_config = ConfigDict(
+        json_schema_extra={
+            "examples": [
+                {
+                    "query": "How can communities improve clean water access?",
+                    "corpora": ["conversation"],
+                    "sdg_filter": [6],
+                },
+                {
+                    "query": "Give me practical school-level actions for SDG 4 and SDG 6.",
+                    "thread_id": "6fca8d02-0bc2-48a5-9c95-4942ca57e651",
+                    "corpora": ["conversation", "wikipedia"],
+                    "sdg_filter": [4, 6],
+                },
+            ]
+        }
+    )
 
 
 class TraceContext(TypedDict):
