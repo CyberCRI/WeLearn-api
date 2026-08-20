@@ -22,6 +22,7 @@ from typing import Any, AsyncIterable, Dict, List, Optional, TypedDict, cast
 
 from fastapi import BackgroundTasks, Depends, Request
 from langchain.agents import create_agent  # type: ignore
+from langchain.agents.middleware import SummarizationMiddleware  # type: ignore
 from langchain.messages import HumanMessage  # type: ignore
 from langchain_core.messages import BaseMessage  # type: ignore
 from langchain_core.runnables import RunnableConfig  # type: ignore
@@ -612,6 +613,12 @@ class AbstractChat(ABC):
             model=agent_model,
             tools=[
                 get_resources_about_sustainability,
+            ],
+            middleware=[
+                SummarizationMiddleware(
+                    model=agent_model,
+                    trigger=("tokens", 64000),
+                )
             ],
             checkpointer=memory,
             system_prompt=prompts.AGENT_SYSTEM_PROMPT,
