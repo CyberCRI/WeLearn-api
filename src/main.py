@@ -118,20 +118,22 @@ app.include_router(
     dependencies=[Depends(get_user)],
 )
 
-mcp = FastApiMCP(
-    app,
-    name="WeLearn API",
-    description="MCP interface for WeLearn API",
-    describe_all_responses=False,
-    describe_full_response_schema=True,
-    include_operations=[
-        "get_corpus_list",
-        "search_by_document",
-        "chat_agent_response",
-    ],
-    headers=["authorization", "x-api-key"],
-)
+if settings.MCP_ENABLED:
+    mcp = FastApiMCP(
+        app,
+        name="WeLearn API",
+        description="MCP interface for WeLearn API",
+        describe_all_responses=False,
+        describe_full_response_schema=True,
+        include_operations=[
+            "get_corpus_list",
+            "search_by_document",
+            "chat_agent_response",
+        ],
+        headers=["authorization", "x-api-key"],
+    )
 
-
-mcp.mount_http(app, mount_path="/mcp")
-mcp.setup_server()
+    mcp.mount_http(app, mount_path="/mcp")
+    mcp.setup_server()
+else:
+    logger.info("MCP interface disabled (MCP_ENABLED=false)")

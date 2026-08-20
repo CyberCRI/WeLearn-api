@@ -49,6 +49,7 @@ class Settings(BaseSettings):
     LLM_MODEL_NAME: str
     LLM_TEMPERATURE: float
     ENV: str
+    MCP_ENABLED: bool = True
 
     # LANGSMITH / LANGCHAIN TRACING
     # TBD: migrate Optional/Union annotations to PEP 604 shorthand (X | Y, X | None) in a dedicated refactor.

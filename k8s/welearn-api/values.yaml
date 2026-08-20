@@ -39,6 +39,7 @@ config:
     AZURE_API_VERSION: "2024-08-01-preview"
     LLM_MODEL_NAME: gpt-oss-120b
     LLM_TEMPERATURE: 0.2
+    MCP_ENABLED: "true"
     MISTRAL_LLM_MODEL_NAME: mistral-small-latest
     AZURE_BAML_LLM_FRANCE_BASE_URL: https://welearn-mistral.services.ai.azure.com/openai/v1/
     AZURE_BAML_LLM_SWEDEN_BASE_URL: https://welearn-mistral-sweden.services.ai.azure.com/openai/v1/
