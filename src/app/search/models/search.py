@@ -2,7 +2,7 @@ import uuid
 from enum import StrEnum, auto
 from typing import Optional
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 from qdrant_client.http.models import Range, ScoredPoint
 from qdrant_client.models import FieldCondition, Filter, MatchAny
 
@@ -14,8 +14,14 @@ logger = logger_utils(__name__)
 
 
 class SearchOutput(BaseModel):
-    search_message_id: Optional[uuid.UUID] = None
-    docs: list[Document] | list[ScoredPoint] | None = None
+    search_message_id: Optional[uuid.UUID] = Field(
+        default=None,
+        description="Identifier of the stored search event for analytics/tracking.",
+    )
+    docs: list[Document] | list[ScoredPoint] | None = Field(
+        default=None,
+        description="Search results returned by the endpoint.",
+    )
 
 
 class SDGFilter(BaseModel):
@@ -29,21 +35,80 @@ class SDGFilter(BaseModel):
 
 
 class SearchQuery(SDGFilter):
-    query: str | list[str] | None
-    corpora: list[str] | None = None
-    lang: list[str] | None = None
+    query: str | list[str] | None = Field(
+        ...,
+        description="User query text.",
+        examples=["How can schools reduce water waste?", "Compare carbon pricing and cap-and-trade: how do they work, and what are their pros and cons?"],
+    )
+    corpora: list[str] | None = Field(
+        default=None,
+        description="Optional list of corpus names to restrict search scope.",
+        examples=[["conversation", "wikipedia"]],
+    )
+    lang: list[str] | None = Field(
+        default=None,
+        description="Optional language filters to apply to results.",
+        examples=[["en", "fr"]],
+    )
+
+    model_config = ConfigDict(
+        json_schema_extra={
+            "examples": [
+                {
+                    "query": "How can schools reduce water waste?",
+                    "corpora": ["conversation"],
+                    "lang": ["en"],
+                    "sdg_filter": [6],
+                },
+                {
+                    "query": "Compare carbon pricing and cap-and-trade: how do they work, and what are their pros and cons?",
+                    "corpora": ["conversation", "wikipedia"],
+                    "lang": ["en", "fr"],
+                    "sdg_filter": [3, 6],
+                },
+            ]
+        }
+    )
 
 
 class EnhancedSearchQuery(SDGFilter):
-    query: str | list[str]
-    corpora: tuple[str, ...] | None = None
-    lang: list[str] | None = None
-    nb_results: int = 30
-    subject: str | None = None
-    influence_factor: float = 2
-    relevance_factor: float = 1
-    concatenate: bool = True
-    readability: Range | float | None = None
+    query: str | list[str] = Field(
+        ...,
+        description="Search query payload.",
+    )
+    corpora: tuple[str, ...] | None = Field(
+        default=None,
+        description="Optional corpus tuple used to scope the search.",
+    )
+    lang: list[str] | None = Field(
+        default=None,
+        description="Optional language filters applied by the search backend.",
+    )
+    nb_results: int = Field(
+        default=30,
+        ge=1,
+        description="Maximum number of results to return.",
+    )
+    subject: str | None = Field(
+        default=None,
+        description="Optional subject used to flavor/re-rank semantic search.",
+    )
+    influence_factor: float = Field(
+        default=2,
+        description="Subject influence factor for embedding flavoring.",
+    )
+    relevance_factor: float = Field(
+        default=1,
+        description="Relevance scaling factor used in ranking.",
+    )
+    concatenate: bool = Field(
+        default=True,
+        description="Whether to concatenate intermediate query strings before embedding.",
+    )
+    readability: Range | float | None = Field(
+        default=None,
+        description="Optional readability filter (range or score) applied during search.",
+    )
 
 
 class ContextType(StrEnum):
