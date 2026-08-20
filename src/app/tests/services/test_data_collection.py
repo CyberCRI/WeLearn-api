@@ -3,8 +3,9 @@ import uuid
 from unittest.mock import MagicMock, patch
 
 from fastapi import HTTPException
+from starlette.requests import Request
 
-from src.app.services.data_collection import DataCollection, _cache
+from src.app.services.data_collection import DataCollection, _cache, get_data_collection_service
 from src.app.tutor.service.models import ExtractorOutput, TutorSyllabusRequest
 
 
@@ -46,6 +47,34 @@ class TestDataCollectionCampaignState(unittest.TestCase):
         dc = DataCollection(origin="example.com")
 
         self.assertFalse(dc.should_collect)
+
+
+class TestGetDataCollectionService(unittest.TestCase):
+    @patch("src.app.services.data_collection.DataCollection")
+    def test_origin_is_optional(self, mock_data_collection):
+        request = Request(
+            {
+                "type": "http",
+                "headers": [],
+            }
+        )
+
+        get_data_collection_service(request)
+
+        mock_data_collection.assert_called_once_with(origin="")
+
+    @patch("src.app.services.data_collection.DataCollection")
+    def test_origin_is_normalized(self, mock_data_collection):
+        request = Request(
+            {
+                "type": "http",
+                "headers": [(b"origin", b"https://www.example.com")],
+            }
+        )
+
+        get_data_collection_service(request)
+
+        mock_data_collection.assert_called_once_with(origin="example.com")
 
 
 class TestRegisterChatData(unittest.IsolatedAsyncioTestCase):
