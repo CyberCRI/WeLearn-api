@@ -48,6 +48,7 @@ class ReformulatedQuestionsResponse(BaseModel):
 class AgentContext(SDGFilter):
     query: str | None = Field(
         default=None,
+        max_length=4096,
         description="User message for the agent to answer.",
         examples=["How can communities improve clean water access?"],
     )
