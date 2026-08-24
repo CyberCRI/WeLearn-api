@@ -156,6 +156,9 @@ class SyllabusOrchestrator:
         - Mode 2B-Transform: provided_objectives present, objective_processing="transform"
         - Mode 3: Only metadata (default)
         """
+        if user_input.mode:
+            return user_input.mode
+
         if user_input.documents:
             if user_input.provided_description:
                 return "mode_2a"  # Existing syllabus → generate new
@@ -175,7 +178,7 @@ class SyllabusOrchestrator:
     # ========================================
 
     async def phase_1_generate_description(
-        self, context_text: types.FileSummary
+        self, context_text: str
     ) -> CourseDescription:
         """
         Phase 1.1: Generate course description
@@ -202,7 +205,7 @@ class SyllabusOrchestrator:
         return description
 
     async def phase_1_generate_objectives(
-        self, context_text: str = ""
+        self, context_text: str
     ) -> LearningObjectives:
         """
         Phase 1.2: Generate learning objectives
@@ -405,7 +408,7 @@ class SyllabusOrchestrator:
                 logger.info(f"Recommendation: {suggestion}")
             return True
 
-    async def run_phase_1(self, context_text: types.FileSummary) -> bool:
+    async def run_phase_1(self, context_text: str) -> bool:
         """
         Run complete Phase 1: Pedagogical Framing
 
@@ -417,6 +420,7 @@ class SyllabusOrchestrator:
         """
         logger.info("========== PHASE 1: PEDAGOGICAL FRAMING ==========")
 
+        print(self.state)
         # try:
         await self.phase_1_generate_description(context_text)
 
@@ -465,7 +469,7 @@ class SyllabusOrchestrator:
     async def run(
         self,
         user_input: UserInput,
-        context_text: types.FileSummary,
+        context_text: Optional[types.FileSummary | str] = None,
         document_filenames: Optional[List[str]] = None,
     ):
         # -> SyllabusOutput:
@@ -489,6 +493,8 @@ class SyllabusOrchestrator:
         # Use context_text from state if not provided explicitly
         if context_text is None:
             context_text = getattr(self, "_context_text", "")
+        if isinstance(context_text, types.FileSummary):
+            context_text = f"description: {context_text.description}, summary: {context_text.summary}"
 
         # Phase 1
         if not await self.run_phase_1(context_text):

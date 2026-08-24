@@ -17,7 +17,7 @@ function GenerateLearningObjectives(
     <task>
     Generate learning objectives for this course. The number and complexity should match the course level and duration.
 
-    For Mode 2B: Parse the provided objectives and structure them (do NOT generate new ones).
+    For Mode 2: Parse the provided objectives and structure them (do NOT generate new ones). Make new outcomes visible by making them bold
     For all other modes: Generate new objectives.
     </task>
 

@@ -1,9 +1,11 @@
 .PHONY: run-dev
 
 run-poetry:
+	poetry run baml-cli generate --from ./src/app/baml_src
 	poetry run uvicorn src.main:app --reload
 
 run-dev:
+	baml-cli generate --from ./src/app/baml_src
 	uvicorn src.main:app --reload
 
 lint:

@@ -346,4 +346,4 @@ class SyllabusGenerationRequest(BaseModel):
     rag_resources: Optional[List[types.Document]] = None
     provided_objectives: Optional[List[str]] = None
     provided_description: Optional[str] = None
-    context: Optional[types.FileSummary] = None
+    context: Optional[types.FileSummary | str] = None

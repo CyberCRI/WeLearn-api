@@ -4,7 +4,7 @@
 function GenerateCourseDescription(
   mode: string,
   metadata: CourseMetadata,
-  context_text: FileSummary,
+  context_text: string,
   output_language: string
 ) -> CourseDescription {
   client CustomFast

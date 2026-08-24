@@ -122,12 +122,12 @@ async def extract_files_content_baml(
     files: Annotated[list[UploadFile], File()],
     response: Response,
     lang: str = "en",
-    mode: str = "one",
+    mode: str = "mode_1",
 ) -> types.FileSummary | None:
     files_content = await get_files_content(files)
     files_content_str = ("__DOCUMENT_SEPARATOR__").join(files_content)
 
-    mode_map = {"one": None, "two": "article", "three": "syllabus"}
+    mode_map = {"mode_1": "article", "mode_2": "syllabus", "mode_3": None}
 
     try:
         result = await b.FileSummaryExtractor(

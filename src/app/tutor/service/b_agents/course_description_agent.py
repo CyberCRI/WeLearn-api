@@ -15,7 +15,7 @@ class CourseDescriptionAgent(BaseAgent):
         self,
         mode: str,
         metadata: types.CourseMetadata,
-        context_text: types.FileSummary,
+        context_text: str,
         output_language: str = "Français",
     ) -> types.CourseDescription:
         """
