@@ -1,7 +1,6 @@
 import re
 from functools import cache
 from typing import Any, List, Optional, cast
-from urllib.parse import urlparse
 
 import json_repair
 import numpy
@@ -17,6 +16,9 @@ from src.app.services.sql_db.queries import get_embeddings_model_id_according_na
 from src.app.shared.domain.exceptions import LanguageNotSupportedError
 from src.app.utils.decorators import log_time_and_error_sync
 from src.app.utils.logger import logger as utils_logger
+
+# from urllib.parse import urlparse  # unused, kept for reference
+
 
 logger = utils_logger(__name__)
 

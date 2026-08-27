@@ -22,7 +22,9 @@ from src.app.models import chat as models
 from src.app.search.services.search import SearchService, get_search_service
 from src.app.services.data_collection import get_data_collection_service
 from src.app.services.helpers import linkify_missing_citations
-from src.app.services.prompts import AGENT_SYSTEM_PROMPT, REMINDER
+from src.app.services.prompts import (
+    REMINDER,  # AGENT_SYSTEM_PROMPT unused, kept for reference
+)
 from src.app.shared.domain.constants import subjects as subjectsDict
 from src.app.shared.domain.exceptions import (
     EmptyQueryError,
