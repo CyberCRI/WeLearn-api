@@ -1,7 +1,6 @@
 import datetime
 from typing import Any, Optional
 
-
 from welearn_database.data.models import WeLearnDocument
 
 from src.app.utils.decorators import log_time_and_error_sync

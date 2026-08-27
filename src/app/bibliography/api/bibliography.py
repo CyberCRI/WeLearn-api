@@ -1,8 +1,8 @@
 from fastapi import APIRouter
 from starlette.responses import PlainTextResponse
 
-from src.app.bibliography.models.bibliography import DocumentIDs
 from src.app.bibliography.helpers.helpers import welearn_document_to_ris
+from src.app.bibliography.models.bibliography import DocumentIDs
 from src.app.services.sql_db.queries import get_documents_by_ids
 
 router = APIRouter()
