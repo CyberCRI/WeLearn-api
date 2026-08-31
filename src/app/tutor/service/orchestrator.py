@@ -7,8 +7,8 @@ import logging
 from enum import Enum
 from typing import List, Optional
 
-from src.app.tutor.tools import distribute_objectives
 from src.app.baml_client import types
+from src.app.tutor.tools import distribute_objectives
 
 from .b_agents import (
     ActivityGuideGeneratorAgent,

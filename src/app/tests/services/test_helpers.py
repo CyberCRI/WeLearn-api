@@ -5,6 +5,13 @@ from unittest import TestCase, mock
 import numpy
 from langdetect.language import Language
 
+from src.app.bibliography.helpers.helpers import (
+    compute_authors_for_ris,
+    compute_publication_date_for_ris,
+    compute_ris_doctype,
+    ris_line,
+    welearn_document_to_ris,
+)
 from src.app.models.documents import Document, DocumentPayloadModel
 from src.app.services.helpers import (
     convert_embedding_bytes,
@@ -12,13 +19,6 @@ from src.app.services.helpers import (
     extract_json_from_response,
     linkify_missing_citations,
     stringify_docs_content,
-)
-from src.app.bibliography.helpers.helpers import (
-    compute_authors_for_ris,
-    compute_publication_date_for_ris,
-    compute_ris_doctype,
-    ris_line,
-    welearn_document_to_ris,
 )
 from src.app.shared.domain.exceptions import LanguageNotSupportedError
 
