@@ -260,7 +260,7 @@ async def handle_syllabus_feedback(
     ]
 
     try:
-        syllabus = await chatfactory.chat_client.completion(
+        syllabus = await chatfactory.syllabus_feedback_completion(
             messages=messages,
             trace_context={
                 "component": "tutor_syllabus_feedback",
@@ -273,9 +273,6 @@ async def handle_syllabus_feedback(
                 "extracts_count": len(body.extracts),
             },
         )
-
-        if not isinstance(syllabus, str):
-            raise ValueError("Syllabus feedback response is not a string")
 
         await data_collection.register_syllabus_data(
             session_id=session_id,

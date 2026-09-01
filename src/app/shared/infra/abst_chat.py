@@ -28,6 +28,7 @@ from langchain_core.messages import BaseMessage  # type: ignore
 from langchain_core.runnables import RunnableConfig  # type: ignore
 from langchain_mistralai import ChatMistralAI
 from langgraph.checkpoint.postgres.aio import AsyncPostgresSaver  # type: ignore
+from langsmith import traceable
 
 from src.app.models.chat import ReformulatedQueryResponse
 from src.app.models.documents import Document
@@ -40,7 +41,7 @@ from src.app.services.helpers import (
     stringify_docs_content,
 )
 from src.app.shared.domain.exceptions import LanguageNotSupportedError
-from src.app.shared.infra.tracing import TraceComponent
+from src.app.shared.infra.tracing import TRACE_RUN_TYPE_LLM, TraceComponent, TraceName
 from src.app.shared.utils.dependencies import get_settings
 from src.app.utils.decorators import log_time_and_error
 from src.app.utils.logger import log_environmental_impacts
@@ -103,6 +104,10 @@ class AbstractChat(ABC):
         return trace_context
 
     @log_time_and_error
+    @traceable(
+        run_type=TRACE_RUN_TYPE_LLM,
+        name=TraceName.JSON_FORMATTER_AGENT.value,
+    )
     async def json_formatter_agent(self, unformatted_input, expected_output):
         output = await self.chat_client.completion(
             messages=[
@@ -149,6 +154,10 @@ class AbstractChat(ABC):
             return lang
 
     @log_time_and_error
+    @traceable(
+        run_type=TRACE_RUN_TYPE_LLM,
+        name=TraceName.DETECT_LANG_WITH_LLM.value,
+    )
     async def _detect_lang_with_llm(self, query: str) -> Dict[str, str]:
         """
         Detects language using LLM.
@@ -194,6 +203,10 @@ class AbstractChat(ABC):
         return jsn
 
     @log_time_and_error
+    @traceable(
+        run_type=TRACE_RUN_TYPE_LLM,
+        name=TraceName.DETECT_PAST_MESSAGE_REF.value,
+    )
     async def _detect_past_message_ref(
         self, query: str, history: List[Dict[str, str]]
     ) -> dict[str, bool] | None:
@@ -394,6 +407,10 @@ class AbstractChat(ABC):
         return ""
 
     @log_time_and_error
+    @traceable(
+        run_type=TRACE_RUN_TYPE_LLM,
+        name=TraceName.REFORMULATE_USER_QUERY.value,
+    )
     async def reformulate_user_query(self, query: str, history: List[Dict[str, str]]):
         """
         Reformulates user query if it's about a new subject.
@@ -424,6 +441,10 @@ class AbstractChat(ABC):
         )
 
     @log_time_and_error
+    @traceable(
+        run_type=TRACE_RUN_TYPE_LLM,
+        name=TraceName.GET_NEW_QUESTIONS.value,
+    )
     async def get_new_questions(
         self, query: str, history: List[Dict[str, str]], lang: Optional[str] = None
     ) -> Dict[str, List[str]]:
@@ -470,6 +491,10 @@ class AbstractChat(ABC):
         return {"NEW_QUESTIONS": res_list}
 
     @log_time_and_error
+    @traceable(
+        run_type=TRACE_RUN_TYPE_LLM,
+        name=TraceName.REPHRASE_MESSAGE.value,
+    )
     async def rephrase_message(
         self,
         docs: List[Document],
@@ -532,6 +557,10 @@ class AbstractChat(ABC):
         return res
 
     @log_time_and_error
+    @traceable(
+        run_type=TRACE_RUN_TYPE_LLM,
+        name=TraceName.CHAT_MESSAGE.value,
+    )
     async def chat_message(
         self,
         query: str,
@@ -716,6 +745,10 @@ class AbstractChat(ABC):
             if m.type in ("human", "ai")
         ]
 
+    @traceable(
+        run_type=TRACE_RUN_TYPE_LLM,
+        name=TraceName.RUN_LLM_WITH_JSON_PARSING.value,
+    )
     async def run_llm_with_json_parsing(
         self,
         messages: list[dict],
@@ -742,6 +775,20 @@ class AbstractChat(ABC):
             if fallback_formatter:
                 return await self.json_formatter_agent(raw, fallback_formatter)
             raise
+
+    @traceable(
+        run_type=TRACE_RUN_TYPE_LLM,
+        name=TraceName.SYLLABUS_FEEDBACK.value,
+    )
+    async def syllabus_feedback_completion(
+        self,
+        messages: list[dict],
+        trace_context: dict[str, Any] | None = None,
+    ) -> str:
+        result = await self.chat_client.completion(messages=messages)
+        if not isinstance(result, str):
+            raise ValueError("Syllabus feedback response is not a string")
+        return result
 
 
 async def get_llm_client(request: Request):
