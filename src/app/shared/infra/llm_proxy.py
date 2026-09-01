@@ -130,20 +130,11 @@ class LLMProxy(ABC):
         self,
         messages: list,
         response_format: Optional[Union[dict, Type[BaseModel]]] = None,
-        trace_context: Optional[dict[str, Any]] = None,
     ) -> dict | str:
-
-        logger.info(
-            "starting completion with model_name=%s trace_context=%s",
-            self.model,
-            trace_context,
-        )
-
         if self.is_azure_model:
             return await self.az_completion(
                 messages,
                 response_format=response_format,
-                trace_context=trace_context,
             )
 
         else:
@@ -151,14 +142,12 @@ class LLMProxy(ABC):
             return await self.mistral_completion(
                 messages,
                 response_format=response_format,
-                trace_context=trace_context,
             )
 
     async def az_completion(
         self,
         messages: list,
         response_format: Optional[Union[dict, Type[BaseModel]]] = None,
-        trace_context: Optional[dict[str, Any]] = None,
     ):
         if self.client is None:
             raise ValueError("Azure client is not initialized.")
@@ -183,7 +172,6 @@ class LLMProxy(ABC):
     async def az_completion_stream(
         self,
         messages: list,
-        trace_context: Optional[dict[str, Any]] = None,
     ):
         if self.client is None:
             raise ValueError("Azure client is not initialized.")
@@ -197,30 +185,16 @@ class LLMProxy(ABC):
     async def completion_stream(
         self,
         messages: list,
-        trace_context: Optional[dict[str, Any]] = None,
     ):
-        logger.info(
-            "starting completion_stream with model_name=%s trace_context=%s",
-            self.model,
-            trace_context,
-        )
-
         if self.is_azure_model:
-            return await self.az_completion_stream(
-                messages,
-                trace_context=trace_context,
-            )
+            return await self.az_completion_stream(messages)
 
-        return await self.mistral_completion_stream(
-            messages,
-            trace_context=trace_context,
-        )
+        return await self.mistral_completion_stream(messages)
 
     async def mistral_completion(
         self,
         messages: list,
         response_format: Optional[Union[dict, Type[BaseModel]]] = None,
-        trace_context: Optional[dict[str, Any]] = None,
     ):
         if self.client is None:
             raise ValueError("Mistral client is not initialized.")
@@ -245,7 +219,6 @@ class LLMProxy(ABC):
     async def mistral_completion_stream(
         self,
         messages: list,
-        trace_context: Optional[dict[str, Any]] = None,
     ):
         if self.client is None:
             raise ValueError("Mistral client is not initialized.")
