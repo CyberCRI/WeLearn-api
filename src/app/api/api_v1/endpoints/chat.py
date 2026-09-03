@@ -175,9 +175,12 @@ async def q_and_a_new_questions(
     body: models.ContextOut = Depends(get_params), chatfactory=Depends(get_chat_service)
 ):
     try:
-        new_questions = await chatfactory.get_new_questions(
-            query=body.query, history=body.history, lang=body.lang
+        new_questions = models.ReformulatedQueryResponse(
+            NEW_QUESTIONS=["fake question 1", "fake question 2"]
         )
+        # new_questions = await chatfactory.get_new_questions(
+        #     query=body.query, history=body.history, lang=body.lang
+        # )
 
         return new_questions
     except LanguageNotSupportedError as e:
