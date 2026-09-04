@@ -1,7 +1,6 @@
 import unittest
 from unittest import mock
 
-from src.app.models.chat import ReformulatedQueryResponse
 from src.app.shared.domain.exceptions import LanguageNotSupportedError
 from src.app.shared.infra.abst_chat import AbstractChat
 
@@ -53,81 +52,6 @@ class TestAbstractChat(unittest.IsolatedAsyncioTestCase):
         mocked_chat = {"ISO_CODE": "fr"}
         self.chat.chat_client.completion = mock.AsyncMock(return_value=mocked_chat)
         assert await self.chat._detect_language("fake message") == {"ISO_CODE": "fr"}
-
-    async def test_detect_past_message_true(self):
-        mocked_chat = {"REF_TO_PAST": True}
-        self.chat.chat_client.completion = mock.AsyncMock(return_value=mocked_chat)
-        assert await self.chat._detect_past_message_ref("fake message", []) == {
-            "REF_TO_PAST": True
-        }
-
-    async def test_detect_past_message_false(self):
-        mocked_chat = {"REF_TO_PAST": False}
-        self.chat.chat_client.completion = mock.AsyncMock(return_value=mocked_chat)
-        assert await self.chat._detect_past_message_ref("fake message", []) == {
-            "REF_TO_PAST": False
-        }
-
-        mocked_chat = {"REF_TO_TOTO": False}
-        self.chat.chat_client.completion = mock.AsyncMock(return_value=mocked_chat)
-        with self.assertRaises(ValueError):
-            await self.chat._detect_past_message_ref("fake message", [])
-
-    async def test_detect_past_message_invalid_format(self):
-        mocked_chat = "this is not a true/false answer"
-        self.chat.chat_client.completion = mock.AsyncMock(return_value=mocked_chat)
-        with self.assertRaises(ValueError):
-            await self.chat._detect_past_message_ref("fake message", [])
-
-    async def test_reformulate_user_query_invalid_ref_to_pas(self):
-        self.chat._detect_past_message_ref = mock.AsyncMock(
-            return_value={"REF_TO_PAST": True}
-        )
-
-        self.chat.chat_client.completion = mock.AsyncMock()
-        resp = await self.chat.reformulate_user_query("this is the user query", [])
-        assert resp.QUERY_STATUS == "INVALID"
-        self.chat.chat_client.completion.assert_not_called()
-
-    async def test_reformulate_user_query_valid_ref_to_pas(self):
-        self.chat._detect_past_message_ref = mock.AsyncMock(
-            return_value={"REF_TO_PAST": True}
-        )
-
-        self.chat.chat_client.completion = mock.AsyncMock()
-        resp = await self.chat.reformulate_user_query(
-            "this is the user query",
-            [
-                {"message": "this is the past message"},
-                {"message": "this is the second past message"},
-            ],
-        )
-        assert resp.QUERY_STATUS == "REF_TO_PAST"
-        self.chat.chat_client.completion.assert_not_called()
-
-    async def test_reformulate_user_chat_not_called_if_ref_to_past(self):
-        self.chat._detect_past_message_ref = mock.AsyncMock(
-            return_value={"REF_TO_PAST": True}
-        )
-        self.chat._detect_language = mock.AsyncMock()
-        self.chat.chat_client.completion = mock.AsyncMock()
-        reformulated = await self.chat.reformulate_user_query(
-            "this is the user query",
-            [
-                {"message": "this is the past message"},
-                {"message": "this is the second past message"},
-            ],
-        )
-
-        self.chat._detect_past_message_ref.assert_called_with(
-            "this is the user query",
-            [
-                {"message": "this is the past message"},
-                {"message": "this is the second past message"},
-            ],
-        )
-        self.chat.chat_client.completion.assert_not_called()
-        assert reformulated == ReformulatedQueryResponse(QUERY_STATUS="REF_TO_PAST")
 
     async def test_get_new_questions(self):
         with mock.patch.object(

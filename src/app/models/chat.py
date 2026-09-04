@@ -41,24 +41,6 @@ class Message(TypedDict):
     content: str
 
 
-class ReformulatedQueryResponse(BaseModel):
-    """
-    The schema for reformulated queries.
-
-    Attributes:
-        STANDALONE_QUESTION_EN (str): The standalone question in english.
-        STANDALONE_QUESTION_FR (str): The standalone question in french.
-        USER_LANGUAGE (str): The user language.
-        REF_TO_PAST (bool): A reference to past messages.
-    """
-
-    STANDALONE_QUESTION: str | None = None
-    USER_LANGUAGE: str | None = None
-    QUERY_STATUS: (
-        Literal["INVALID"] | Literal["VALID"] | Literal["REF_TO_PAST"] | None
-    ) = None
-
-
 class ReformulatedQuestionsResponse(BaseModel):
     NEW_QUESTIONS: list[str]
 

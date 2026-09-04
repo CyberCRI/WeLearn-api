@@ -1,8 +1,6 @@
-import json
 import random
-import time
 
-from locust import HttpUser, between, constant_pacing, task
+from locust import HttpUser, constant_pacing, task
 
 french_paragraphs = [
     "L'objectif de Développement Durable numéro 1 est d'éliminer la pauvreté sous toutes ses formes et partout dans le monde. Cela comprend la réduction de la pauvreté extrême, la promotion de l'emploi décent et la mise en place de systèmes de protection sociale pour les plus vulnérables.",
@@ -61,69 +59,6 @@ paragraphs = {"en": english_paragraphs, "fr": french_paragraphs}
 corpus = ["ted", "conversation", "wikipedia", "hal"]
 
 
-french_questions = [
-    "Quel est le pourcentage de la population mondiale vivant en dessous du seuil de pauvreté ?",
-    "Quelles sont les mesures mises en place pour réduire la pauvreté dans les pays en développement ?",
-    "Comment les Objectifs de Développement Durable contribuent-ils à l'éradication de la pauvreté ?",
-    "Combien de personnes dans le monde sont touchées par la faim ?",
-    "Quels sont les principaux facteurs de l'insécurité alimentaire dans les pays en développement ?",
-    "Comment l'agriculture durable peut-elle contribuer à la sécurité alimentaire et à l'éradication de la faim ?",
-    "Quels sont les principaux défis en matière de santé dans les pays en développement ?",
-    "Quels sont les facteurs qui contribuent aux maladies non transmissibles dans le monde ?",
-    "Comment la promotion d'un mode de vie sain peut-elle contribuer au bien-être global de la population ?"
-    "Comment l'Objectif de Développement Durable n°5 (Égalité des sexes) vise-t-il à éliminer les discriminations et les violences à l'égard des femmes et des filles ?",
-    "Quels sont les moyens mis en œuvre pour assurer une éducation de qualité et inclusive ?",
-    "Comment l'Objectif de Développement Durable n°6 (Eau propre et assainissement) vise-t-il à garantir l'accès à une eau potable et à des installations sanitaires pour tous ?",
-    "Quels sont les objectifs principaux de l'Objectif de Développement Durable n°7 (Énergie propre et d'un coût abordable) ?",
-    "Comment l'Objectif de Développement Durable n°9 (Industrie, innovation et infrastructure) favorise-t-il le développement durable et inclusif ?",
-    "Quelles sont les mesures prises pour réduire les inégalités économiques et sociales au sein des pays (Objectif de Développement Durable n°10) ?",
-    "Comment l'Objectif de Développement Durable n°11 (Villes et communautés durables) vise-t-il à rendre les villes plus inclusives, sûres et résilientes ?",
-    "Quels sont les moyens déployés pour préserver et restaurer les écosystèmes terrestres (Objectif de Développement Durable n°15) ?",
-    "Comment l'Objectif de Développement Durable n°16 (Paix, justice et institutions efficaces) contribue-t-il à la construction de sociétés pacifiques et inclusives ?",
-    "Quelles sont les mesures prises pour promouvoir des modes de consommation et de production durables (Objectif de Développement Durable n°12) ?",
-    "Comment l'Objectif de Développement Durable n°13 (Mesures relatives à la lutte contre les changements climatiques) vise-t-il à atténuer les effets du changement climatique et à favoriser la résilience face à ces changements ?",
-    "Quels sont les moyens mis en œuvre pour promouvoir l'égalité des chances en matière d'emploi (Objectif de Développement Durable n°8)",
-    "Comment l'Objectif de Développement Durable n°14 (Vie aquatique) vise-t-il à préserver et à utiliser de manière durable les océans, les mers et les ressources marines ?",
-    "Quelles sont les mesures prises pour garantir l'accès à la justice pour tous (Objectif de Développement Durable n°16) ?",
-    "Comment l'Objectif de Développement Durable n°17 (Partenariats pour la réalisation des objectifs) encourage-t-il la coopération internationale pour atteindre les Objectifs de Développement Durable ?",
-]
-
-english_questions = [
-    "What are the key strategies being implemented to eradicate extreme poverty globally?",
-    "How is the international community working towards reducing income inequalities within and among countries?",
-    "What initiatives have been taken to ensure access to basic services and social protection for the poor and vulnerable populations?",
-    "What are the main efforts being made to ensure food security and promote sustainable agriculture?",
-    "How are governments addressing undernutrition and malnutrition among children and vulnerable populations?",
-    "What are the key actions being taken to increase investment in rural infrastructure to enhance agricultural productivity and income?",
-    "What measures are being taken to reduce maternal mortality and improve access to quality healthcare services for all?",
-    "How is the international community addressing the growing prevalence of non-communicable diseases and mental health issues?",
-    "What initiatives have been implemented to ensure universal access to sexual and reproductive health services and information?",
-    "What steps are being taken to improve access to quality education for all, especially in marginalized communities?",
-    "How are governments working to enhance the professional development and welfare of teachers worldwide?",
-    "What initiatives have been implemented to promote inclusive and equitable education systems at all levels?",
-    "What strategies are being implemented to eliminate gender-based discrimination and violence against women and girls?",
-    "How are governments promoting women's economic empowerment and equal participation in decision-making processes?",
-    "What initiatives have been taken to ensure universal access to sexual and reproductive health and rights?",
-    "What steps are being taken to ensure access to safe and affordable drinking water for all?",
-    "How is the international community working towards improving sanitation and hygiene practices globally?",
-    "What initiatives have been implemented to protect and restore water-related ecosystems and promote sustainable water use?",
-    "What measures are being taken to increase the share of renewable energy in the global energy mix?",
-    "How are governments working to ensure universal access to modern, reliable, and sustainable energy services?",
-    "What initiatives have been implemented to enhance energy efficiency and promote energy research and development?",
-    "What steps are being taken to promote sustained, inclusive, and sustainable economic growth, full and productive employment, and decent work for all?",
-    "How is the international community working towards eradicating forced labor, child labor, and modern slavery?",
-    "What initiatives have been implemented to promote entrepreneurship, job creation, and sustainable tourism?",
-    "What measures are being taken to promote inclusive and sustainable industrialization and foster innovation?",
-    "How are governments working to enhance infrastructure development, particularly in less developed countries?",
-    "What initiatives have been implemented to increase access to affordable, reliable, and sustainable energy for all?",
-    "What strategies are being implemented to reduce inequalities within and among countries, particularly in terms of income, social protection, and opportunities?",
-    "How is the international community working to empower and promote the social, economic, and political inclusion of all, irrespective of age, sex, disability, race, ethnicity, origin, religion, or economic or other status?",
-    "What initiatives have been taken to ensure equal opportunity and reduce inequalities in access to education, healthcare, and other basic services?",
-]
-
-questions = {"en": english_questions, "fr": french_questions}
-
-
 class QuickstartUser(HttpUser):
     # wait_time = between(10, 10)
     wait_time = constant_pacing(10)
@@ -153,29 +88,4 @@ class QuickstartUser(HttpUser):
                 "concatenate": True,
             },
             name=f"/search/by_slices/{lang}",
-        )
-
-    @task(2)
-    def chat(self):
-        lang = random.choice(["en", "fr"])
-        with self.client.post(
-            "/api/v1/qna/reformulate",
-            params={"query": random.choice(questions[lang])},
-            name=f"/qna/reformulate/{lang}",
-        ) as resp1:
-            try:
-                reformulated_query = json.loads(resp1.text)["STANDALONE_QUESTION"]
-            except json.decoder.JSONDecodeError:
-                raise Exception("Question could not be reformulated")
-        with self.client.post(
-            "/api/v1/search/by_slices",
-            params={"query": reformulated_query, "nb_results": 10, "concatenate": True},
-            name=f"/search/by_slices/{lang}",
-        ) as resp2:
-            sources = json.loads(resp2.text)
-        self.client.post(
-            "/api/v1/qna/chat/answer",
-            json={"sources": sources},
-            params={"query": reformulated_query},
-            name=f"/qna/chat/answer/{lang}",
         )

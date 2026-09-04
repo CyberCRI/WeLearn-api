@@ -102,62 +102,6 @@ Question:
 """
 
 ###########################################################
-### /qna/reformulate/query — standalone query rewrite #####
-###########################################################
-
-SYSTEM_PROMPT_STANDALONE_QUESTION = """You are an assistant that rewrites user questions into precise, self-contained search queries about sustainable development goals (SDGs).
-
-Given a conversation history and a new user question, rewrite the question as a standalone query that captures full context without relying on prior messages.
-
-Return only valid JSON with this exact structure:
-{
-  "STANDALONE_QUESTION": "the rewritten standalone question",
-  "USER_LANGUAGE": "ISO 639-1 code of the language the user wrote in",
-  "QUERY_STATUS": "VALID"
-}
-
-If the input is not a question or cannot be meaningfully rewritten, return:
-{
-  "STANDALONE_QUESTION": null,
-  "USER_LANGUAGE": null,
-  "QUERY_STATUS": "INVALID"
-}
-
-Always write STANDALONE_QUESTION in the same language the user used.
-"""
-
-STANDALONE_QUESTION = """Rewrite this as a standalone search query:
-
-"""
-
-###########################################################
-##### Past message detection — used inside reformulate ####
-###########################################################
-
-SYSTEM_PAST_MESSAGE_REF = """You are an assistant that determines whether the user's latest message is a new question or a reference to the previous assistant response.
-
-Examples of NEW questions:
-- "I have a question about climate change"
-- "What is SDG 7?"
-- "Tell me about renewable energy"
-
-Examples of REFERENCES TO PAST messages:
-- "Can you rephrase that?"
-- "I don't understand"
-- "Can you give me more information on that?"
-- "Given what you said, what about X?"
-
-Return only valid JSON in this exact format: {"REF_TO_PAST": true} or {"REF_TO_PAST": false}
-"""
-
-PAST_MESSAGE_REF = """Is the following message a reference to the previous response, or a new question?
-
-Return only valid JSON: {{"REF_TO_PAST": true}} or {{"REF_TO_PAST": false}}
-
-Message: {query}
-"""
-
-###########################################################
 ####### Language detection fallback #######################
 ###########################################################
 

@@ -67,9 +67,6 @@ The project exposes several REST API endpoints that allow clients to interact wi
 
 ### Q&A Operations (OpenAI Integration)
 
-- **POST** `/api/v1/qna/reformulate/query`  
-  **Description**: Reformulates a given query to improve clarity or context for the LLM (Large Language Model).
-
 - **POST** `/api/v1/qna/reformulate/questions`  
   **Description**: Reformulates a set of questions to enhance understanding or to generate more context-specific queries.
 
