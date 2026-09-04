@@ -70,12 +70,6 @@ The project exposes several REST API endpoints that allow clients to interact wi
 - **POST** `/api/v1/qna/reformulate/questions`  
   **Description**: Reformulates a set of questions to enhance understanding or to generate more context-specific queries.
 
-- **POST** `/api/v1/qna/chat/rephrase`  
-  **Description**: Rephrases a chat message to improve its quality or alter its expression while maintaining the original meaning.
-
-- **POST** `/api/v1/qna/chat/rephrase_stream`  
-  **Description**: Provides a streaming response of rephrased content during a chat, allowing for dynamic rephrasing.
-
 - **POST** `/api/v1/qna/chat/answer`  
   **Description**: Provides an answer to a question from the chat interface, utilizing the LLM and relevant data.
 

@@ -143,53 +143,6 @@ class QnATests(unittest.IsolatedAsyncioTestCase):
             )
             self.assertEqual(response.status_code, 400)
 
-    async def test_chat_rephrase(self, *mocks):
-        with mock.patch(
-            "src.app.shared.infra.abst_chat.AbstractChat.rephrase_message",
-            return_value="ok",
-        ) as mock_rephrase:
-
-            with TestClient(app) as client:
-                client.post(
-                    f"{settings.API_V1_STR}/qna/chat/rephrase",
-                    json=JSON,
-                    headers={"X-API-Key": "test"},
-                )
-
-                mock_rephrase.assert_called_with(
-                    docs=[
-                        DocumentModel(
-                            score=0.636549,
-                            payload=DocumentPayloadModel(
-                                document_corpus="testCorpus",
-                                document_desc="testDesc",
-                                document_details={
-                                    "author": "testAuthor",
-                                    "duration": 276,
-                                    "readability": 42.61,
-                                    "source": "au",
-                                },
-                                document_id="12345678-1234-5678-1234-567812345678",
-                                document_lang="en",
-                                document_sdg=[11, 12, 13, 15, 2, 8],
-                                document_title="testTitle",
-                                document_url="testUrl",
-                                slice_content="testContent",
-                                slice_sdg=15,
-                            ),
-                        )
-                    ],
-                    message="here is my answer",
-                    history=[
-                        {
-                            "role": "user",
-                            "content": "How to promote sustainable agriculture?",
-                        },
-                        {"role": "assistant", "content": "here is my answer"},
-                    ],
-                    subject=None,
-                )
-
     def test_new_questions_empty_query(self, *mocks):
 
         with TestClient(app) as client:

@@ -75,6 +75,4 @@ class UserQueryMetadata(BaseModel):
     message_id: uuid.UUID
 
 
-PROMPTS = Literal["STANDALONE", "NEW_QUESTIONS", "REPHRASE"]
-
 RESPONSE_TYPE = Literal["json_object", "text"]

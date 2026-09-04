@@ -1,5 +1,5 @@
 import uuid
-from typing import Dict, Optional, cast
+from typing import Dict, cast
 from uuid import UUID
 
 import backoff
@@ -138,87 +138,6 @@ async def q_and_a_new_questions(
         return new_questions
     except LanguageNotSupportedError as e:
         bad_request(message=e.message, msg_code=e.msg_code)
-
-
-@router.post(
-    "/chat/rephrase",
-    summary="Rephrases input query",
-    description="this endpoint is used to rephrase based on the provided context and history. It is meant to be used for rephrasing the last chat answer",
-    response_model=str,
-)
-@backoff.on_exception(
-    wait_gen=backoff.expo,
-    exception=RateLimitError,
-    logger=logger,
-    max_tries=5,
-    max_time=180,
-    jitter=backoff.random_jitter,
-    factor=2,
-)
-async def q_and_a_rephrase(
-    body: models.ContextOut = Depends(get_params), chatfactory=Depends(get_chat_service)
-) -> Optional[str]:
-    try:
-        content = await chatfactory.rephrase_message(
-            docs=body.sources,
-            message=body.query,
-            history=body.history,
-            subject=subjectsDict.get(body.subject, None),
-        )
-
-        return cast(str, content)
-    except Exception as e:
-        logger.error("Error while rephrasing the query: %s", e)
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail={
-                "message": "Something went wrong while rephrasing the query",
-                "code": "REPHRASE_ERROR",
-            },
-        )
-
-
-@router.post(
-    "/chat/rephrase_stream",
-    summary="Rephrases input query",
-    description="this endpoint is used to rephrase based on the provided context and history. It is meant to be used for rephrasing the last chat answer. Streamed version",
-    response_model=str,
-)
-@backoff.on_exception(
-    wait_gen=backoff.expo,
-    exception=RateLimitError,
-    logger=logger,
-    max_tries=5,
-    max_time=180,
-    jitter=backoff.random_jitter,
-    factor=2,
-)
-async def q_and_a_rephrase_stream(
-    body: models.ContextOut = Depends(get_params), chatfactory=Depends(get_chat_service)
-) -> StreamingResponse:
-    try:
-        content = await chatfactory.rephrase_message(
-            docs=body.sources,
-            message=body.query,
-            history=body.history,
-            subject=subjectsDict.get(body.subject, None),
-            streamed_ans=True,
-        )
-    except Exception as e:
-        logger.error("Error while rephrasing the query: %s", e)
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail={
-                "message": "Something went wrong while rephrasing the query",
-                "code": "REPHRASE_ERROR",
-            },
-        )
-
-    return StreamingResponse(
-        content=_sse_wrap(content),
-        media_type="text/event-stream",
-        headers=SSE_HEADERS,
-    )
 
 
 @router.post(

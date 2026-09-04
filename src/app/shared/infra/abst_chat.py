@@ -375,68 +375,6 @@ class AbstractChat(ABC):
         return {"NEW_QUESTIONS": res_list}
 
     @log_time_and_error
-    async def rephrase_message(
-        self,
-        docs: List[Document],
-        message: str,
-        history: List[Dict[str, str]],
-        subject: str | None = None,
-        streamed_ans: bool = False,
-    ):
-        """
-        Rephrases last assistant's response based on subject and history.
-
-        Args:
-            docs (list): List of documents.
-            message (str): Last assistant response.
-            history (list): Chat history.
-            subject (str): Subject.
-            streamed_ans (bool): Whether to stream the answer.
-
-        Returns:
-            str: The rephrased message content.
-        """
-        stringified_docs = stringify_docs_content(docs)
-        messages = [
-            {
-                "role": "system",
-                "content": prompts.SYSTEM_PROMPT.format(cursus=subject or "General"),
-            },
-            *history[-5:-1],
-            {
-                "role": "user",
-                "content": prompts.REPHRASE.format(
-                    prompt=message, documents=stringified_docs
-                ),
-            },
-        ]
-
-        if streamed_ans:
-            res = await self.chat_client.completion_stream(
-                messages,
-                trace_context=self._build_non_agent_trace_context(
-                    "rephrase_message_stream",
-                    query_length=len(message),
-                    history_length=len(history),
-                    docs_count=len(docs),
-                    subject=subject,
-                ),
-            )
-            return self.get_stream_chunks(res)
-
-        res = await self.chat_client.completion(
-            messages=messages,
-            trace_context=self._build_non_agent_trace_context(
-                "rephrase_message",
-                query_length=len(message),
-                history_length=len(history),
-                docs_count=len(docs),
-                subject=subject,
-            ),
-        )
-        return res
-
-    @log_time_and_error
     async def chat_message(
         self,
         query: str,
