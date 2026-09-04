@@ -708,7 +708,6 @@ class AbstractChat(ABC):
     async def syllabus_feedback_completion(
         self,
         messages: list[dict],
-        trace_context: dict[str, Any] | None = None,
     ) -> str:
         result = await self.chat_client.completion(messages=messages)
         if not isinstance(result, str):

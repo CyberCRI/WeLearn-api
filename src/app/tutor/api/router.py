@@ -262,16 +262,6 @@ async def handle_syllabus_feedback(
     try:
         syllabus = await chatfactory.syllabus_feedback_completion(
             messages=messages,
-            trace_context={
-                "component": "tutor_syllabus_feedback",
-                "operation": "syllabus_feedback",
-                "environment": get_settings().ENV,
-                "endpoint": request.url.path,
-                "session_id": str(session_id) if session_id else None,
-                "feedback_length": len(body.feedback),
-                "documents_count": len(body.documents),
-                "extracts_count": len(body.extracts),
-            },
         )
 
         await data_collection.register_syllabus_data(

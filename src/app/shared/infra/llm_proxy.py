@@ -111,7 +111,6 @@ class LLMProxy(ABC):
         if run_tree is None:
             return
 
-        metadata = dict(getattr(run_tree, "metadata", {}) or {})
         usage_metadata = self._extract_usage_metadata(response)
         if usage_metadata is not None:
             run_tree.set(usage_metadata=usage_metadata)
