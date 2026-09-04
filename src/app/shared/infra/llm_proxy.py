@@ -74,6 +74,7 @@ class LLMProxy(ABC):
         messages: list,
         response_format: Optional[Union[dict, Type[BaseModel]]] = None,
         trace_context: Optional[dict[str, Any]] = None,
+        max_tokens: Optional[int] = 2048,
     ) -> dict | str:
 
         logger.info(
@@ -87,12 +88,14 @@ class LLMProxy(ABC):
                 messages,
                 response_format=response_format,
                 trace_context=trace_context,
+                max_tokens=max_tokens,
             )
 
         else:
             # We assume that if it's not an Azure model, it's a Mistral model for now. This can be extended in the future to support other types of models.
             return await self.mistral_completion(
                 messages,
+                max_tokens=max_tokens,
                 response_format=response_format,
                 trace_context=trace_context,
             )
@@ -176,6 +179,7 @@ class LLMProxy(ABC):
     async def mistral_completion(
         self,
         messages: list,
+        max_tokens: Optional[int] = 2048,
         response_format: Optional[Union[dict, Type[BaseModel]]] = None,
         trace_context: Optional[dict[str, Any]] = None,
     ):
@@ -188,7 +192,7 @@ class LLMProxy(ABC):
 
         response = await self.client.chat.complete_async(
             messages=messages,
-            max_tokens=2048,
+            max_tokens=max_tokens,
             temperature=0.8,
             top_p=0.1,
             model=self.model,
@@ -205,13 +209,14 @@ class LLMProxy(ABC):
         self,
         messages: list,
         trace_context: Optional[dict[str, Any]] = None,
+        max_tokens: Optional[int] = 2048,
     ):
         if self.client is None:
             raise ValueError("Mistral client is not initialized.")
 
         response = await self.client.chat.stream_async(
             messages=messages,
-            max_tokens=2048,
+            max_tokens=max_tokens,
             temperature=0.8,
             top_p=0.1,
             model=self.model,

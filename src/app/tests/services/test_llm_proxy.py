@@ -45,6 +45,7 @@ class TestLLMProxy(unittest.IsolatedAsyncioTestCase):
         mistral_completion.assert_awaited_once_with(
             [{"role": "user", "content": "Hello"}],
             response_format=response_format,
+            max_tokens=2048,
             trace_context=None,
         )
 
@@ -62,6 +63,7 @@ class TestLLMProxy(unittest.IsolatedAsyncioTestCase):
         az_completion.assert_awaited_once_with(
             [{"role": "user", "content": "Hello"}],
             response_format=response_format,
+            max_tokens=2048,
             trace_context=None,
         )
 
