@@ -166,6 +166,12 @@ async def tutor_search_extract(
             background_tasks=background_tasks,
             callback_function=sp.search_handler,
         )
+
+        if search_results:
+            search_results = [
+                point.model_copy(update={"vector": None}) for point in search_results
+            ]
+
     except NoResultsError as e:
         response.status_code = 404
         logger.error(f"No results found: {e}")
@@ -300,6 +306,7 @@ async def handle_syllabus_feedback(
 
     try:
         syllabus = await chatfactory.chat_client.completion(
+            max_tokens=20000,
             messages=messages,
             trace_context={
                 "component": "tutor_syllabus_feedback",
