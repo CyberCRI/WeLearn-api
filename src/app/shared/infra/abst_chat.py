@@ -27,6 +27,7 @@ from langchain_core.messages import BaseMessage  # type: ignore
 from langchain_core.runnables import RunnableConfig  # type: ignore
 from langchain_mistralai import ChatMistralAI
 from langgraph.checkpoint.postgres.aio import AsyncPostgresSaver  # type: ignore
+from langsmith import traceable
 
 from src.app.models.documents import Document
 from src.app.search.services.search import SearchService
@@ -38,7 +39,7 @@ from src.app.services.helpers import (
     stringify_docs_content,
 )
 from src.app.shared.domain.exceptions import LanguageNotSupportedError
-from src.app.shared.infra.tracing import TraceComponent
+from src.app.shared.infra.tracing import TRACE_RUN_TYPE_LLM, TraceComponent, TraceName
 from src.app.shared.utils.dependencies import get_settings
 from src.app.utils.decorators import log_time_and_error
 from src.app.utils.logger import log_environmental_impacts
@@ -89,6 +90,10 @@ class AbstractChat(ABC):
         return trace_context
 
     @log_time_and_error
+    @traceable(
+        run_type=TRACE_RUN_TYPE_LLM,
+        name=TraceName.JSON_FORMATTER_AGENT.value,
+    )
     async def json_formatter_agent(self, unformatted_input, expected_output):
         output = await self.chat_client.completion(
             messages=[
@@ -104,10 +109,6 @@ class AbstractChat(ABC):
             response_format={
                 "type": "json_object",
             },
-            trace_context=self._build_non_agent_trace_context(
-                "json_formatter_agent",
-                has_expected_output=bool(expected_output),
-            ),
         )
 
         json = extract_json_from_response(output)
@@ -135,6 +136,10 @@ class AbstractChat(ABC):
             return lang
 
     @log_time_and_error
+    @traceable(
+        run_type=TRACE_RUN_TYPE_LLM,
+        name=TraceName.DETECT_LANG_WITH_LLM.value,
+    )
     async def _detect_lang_with_llm(self, query: str) -> Dict[str, str]:
         """
         Detects language using LLM.
@@ -155,10 +160,6 @@ class AbstractChat(ABC):
             response_format={
                 "type": "json_object",
             },
-            trace_context=self._build_non_agent_trace_context(
-                "detect_language_with_llm",
-                query_length=len(query),
-            ),
         )
 
         if isinstance(detected_lang, str):
@@ -362,11 +363,6 @@ class AbstractChat(ABC):
                     + query,
                 },
             ],
-            trace_context=self._build_non_agent_trace_context(
-                "get_new_questions",
-                query_length=len(query),
-                history_length=len(history),
-            ),
         )
 
         assert isinstance(res, str)
@@ -375,6 +371,10 @@ class AbstractChat(ABC):
         return {"NEW_QUESTIONS": res_list}
 
     @log_time_and_error
+    @traceable(
+        run_type=TRACE_RUN_TYPE_LLM,
+        name=TraceName.REPHRASE_MESSAGE.value,
+    )
     async def rephrase_message(
         self,
         docs: List[Document],
@@ -412,31 +412,17 @@ class AbstractChat(ABC):
         ]
 
         if streamed_ans:
-            res = await self.chat_client.completion_stream(
-                messages,
-                trace_context=self._build_non_agent_trace_context(
-                    "rephrase_message_stream",
-                    query_length=len(message),
-                    history_length=len(history),
-                    docs_count=len(docs),
-                    subject=subject,
-                ),
-            )
+            res = await self.chat_client.completion_stream(messages)
             return self.get_stream_chunks(res)
 
-        res = await self.chat_client.completion(
-            messages=messages,
-            trace_context=self._build_non_agent_trace_context(
-                "rephrase_message",
-                query_length=len(message),
-                history_length=len(history),
-                docs_count=len(docs),
-                subject=subject,
-            ),
-        )
+        res = await self.chat_client.completion(messages=messages)
         return res
 
     @log_time_and_error
+    @traceable(
+        run_type=TRACE_RUN_TYPE_LLM,
+        name=TraceName.CHAT_MESSAGE.value,
+    )
     async def chat_message(
         self,
         query: str,
@@ -477,28 +463,10 @@ class AbstractChat(ABC):
             },
         ]
         if streamed_ans:
-            res = await self.chat_client.completion_stream(
-                messages,
-                trace_context=self._build_non_agent_trace_context(
-                    "chat_message_stream",
-                    query_length=len(query),
-                    history_length=len(history),
-                    docs_count=len(docs),
-                    subject=subject,
-                ),
-            )
+            res = await self.chat_client.completion_stream(messages)
             return self.get_stream_chunks(res)
 
-        res = await self.chat_client.completion(
-            messages=messages,
-            trace_context=self._build_non_agent_trace_context(
-                "chat_message",
-                query_length=len(query),
-                history_length=len(history),
-                docs_count=len(docs),
-                subject=subject,
-            ),
-        )
+        res = await self.chat_client.completion(messages=messages)
         return res
 
     async def _create_agent(
@@ -621,19 +589,17 @@ class AbstractChat(ABC):
             if m.type in ("human", "ai")
         ]
 
+    @traceable(
+        run_type=TRACE_RUN_TYPE_LLM,
+        name=TraceName.RUN_LLM_WITH_JSON_PARSING.value,
+    )
     async def run_llm_with_json_parsing(
         self,
         messages: list[dict],
         model_class,
         fallback_formatter: str | None = None,
     ):
-        raw = await self.chat_client.completion(
-            messages=messages,
-            trace_context=self._build_non_agent_trace_context(
-                "run_llm_with_json_parsing",
-                has_fallback_formatter=fallback_formatter is not None,
-            ),
-        )
+        raw = await self.chat_client.completion(messages=messages)
 
         if not isinstance(raw, str):
             raise ValueError("LLM response must be string")
@@ -647,6 +613,20 @@ class AbstractChat(ABC):
             if fallback_formatter:
                 return await self.json_formatter_agent(raw, fallback_formatter)
             raise
+
+    @traceable(
+        run_type=TRACE_RUN_TYPE_LLM,
+        name=TraceName.SYLLABUS_FEEDBACK.value,
+    )
+    async def syllabus_feedback_completion(
+        self,
+        messages: list[dict],
+        max_tokens: int,
+    ) -> str:
+        result = await self.chat_client.completion(messages=messages, max_tokens=max_tokens)
+        if not isinstance(result, str):
+            raise ValueError("Syllabus feedback response is not a string")
+        return result
 
 
 async def get_llm_client(request: Request):

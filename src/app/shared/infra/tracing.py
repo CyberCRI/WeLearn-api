@@ -9,9 +9,12 @@ class TraceComponent(str, Enum):
 
 
 class TraceName(str, Enum):
-    COMPLETION_NON_AGENT = "Completion (non-agent)"
-    AZURE_COMPLETION_NON_AGENT = "Azure completion (non-agent)"
-    AZURE_COMPLETION_STREAM_NON_AGENT = "Azure completion stream (non-agent)"
-    COMPLETION_STREAM_NON_AGENT = "Completion stream (non-agent)"
-    MISTRAL_COMPLETION_NON_AGENT = "Mistral completion (non-agent)"
-    MISTRAL_COMPLETION_STREAM_NON_AGENT = "Mistral completion stream (non-agent)"
+    GET_NEW_QUESTIONS = "Get new questions"
+    REPHRASE_MESSAGE = "Rephrase message"
+    REFORMULATE_USER_QUERY = "Reformulate user query"
+    CHAT_MESSAGE = "Chat message"
+    JSON_FORMATTER_AGENT = "JSON formatter agent"
+    RUN_LLM_WITH_JSON_PARSING = "Run LLM with JSON parsing"
+    DETECT_LANG_WITH_LLM = "Detect language with LLM"
+    DETECT_PAST_MESSAGE_REF = "Detect past message reference"
+    SYLLABUS_FEEDBACK = "Syllabus feedback"
