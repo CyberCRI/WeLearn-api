@@ -8,6 +8,9 @@ config:
     DATA_COLLECTION_ORIGIN_PREFIX: workshop
     ENV: production
     SESSION_COOKIE_DOMAIN: learningplanetinstitute.org
+    LANGSMITH_TRACING_ENABLED: "true"
+    LANGSMITH_PROJECT: WeLearn_Prod
+    LANGSMITH_ENDPOINT: https://eu.api.smith.langchain.com
 allowedHostsRegexes:
   alphaUrls: |-
     https://[a-zA-Z0-9-]*\.alpha-welearn\.lp-i\.org
