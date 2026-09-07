@@ -47,7 +47,6 @@ class TestLLMProxy(unittest.IsolatedAsyncioTestCase):
             [{"role": "user", "content": "Hello"}],
             response_format=response_format,
             max_tokens=2048,
-            trace_context=None,
         )
 
     async def test_completion_forwards_response_format_to_azure(self):
