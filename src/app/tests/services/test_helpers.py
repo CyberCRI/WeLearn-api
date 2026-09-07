@@ -3,6 +3,7 @@ from typing import Any, cast
 from unittest import TestCase, mock
 
 import numpy
+from langchain_core.messages import AIMessage, HumanMessage, ToolMessage
 from langdetect.language import Language
 
 from src.app.bibliography.helpers.helpers import (
@@ -17,6 +18,7 @@ from src.app.services.helpers import (
     convert_embedding_bytes,
     detect_language_from_entry,
     extract_json_from_response,
+    latest_tool_docs,
     linkify_missing_citations,
     stringify_docs_content,
 )
@@ -156,6 +158,40 @@ class HelpersTests(TestCase):
             'See <a href="https://example.org/1" target="_blank">[Doc 1]</a> for more.'
         )
         self.assertEqual(linkify_missing_citations(text, docs), expected)
+
+    def test_latest_tool_docs_returns_most_recent_call_only(self):
+        earlier_docs = [self._make_doc("https://example.org/earlier")]
+        latest_docs = [self._make_doc("https://example.org/latest")]
+        messages = [
+            HumanMessage(content="first question"),
+            AIMessage(content=""),
+            ToolMessage(content="...", tool_call_id="1", artifact=earlier_docs),
+            AIMessage(content="answer using earlier docs"),
+            HumanMessage(content="follow-up question"),
+            AIMessage(content=""),
+            ToolMessage(content="...", tool_call_id="2", artifact=latest_docs),
+            AIMessage(content="answer using latest docs"),
+        ]
+        self.assertEqual(latest_tool_docs(messages), latest_docs)
+
+    def test_latest_tool_docs_no_new_call_falls_back_to_last_one(self):
+        docs = [self._make_doc("https://example.org/only")]
+        messages = [
+            HumanMessage(content="first question"),
+            AIMessage(content=""),
+            ToolMessage(content="...", tool_call_id="1", artifact=docs),
+            AIMessage(content="answer"),
+            HumanMessage(content="follow-up that needs no new search"),
+            AIMessage(content="answer reusing the same docs"),
+        ]
+        self.assertEqual(latest_tool_docs(messages), docs)
+
+    def test_latest_tool_docs_no_tool_calls_returns_none(self):
+        messages = [
+            HumanMessage(content="hello"),
+            AIMessage(content="hi there"),
+        ]
+        self.assertIsNone(latest_tool_docs(messages))
 
     def test_convert_embedding_bytes(self):
         x = numpy.random.rand(

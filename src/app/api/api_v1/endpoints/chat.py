@@ -6,7 +6,6 @@ import backoff
 import psycopg
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Request, status
 from fastapi.responses import StreamingResponse
-from langchain_core.messages import ToolMessage
 from langgraph.checkpoint.postgres.aio import AsyncPostgresSaver
 from openai import RateLimitError
 from psycopg.rows import AsyncRowFactory, DictRow, dict_row
@@ -20,7 +19,7 @@ from src.app.api.api_v1.endpoints.chat_utils import (
 from src.app.models import chat as models
 from src.app.search.services.search import SearchService, get_search_service
 from src.app.services.data_collection import get_data_collection_service
-from src.app.services.helpers import linkify_missing_citations
+from src.app.services.helpers import latest_tool_docs, linkify_missing_citations
 from src.app.shared.domain.constants import subjects as subjectsDict
 from src.app.shared.domain.exceptions import (
     EmptyQueryError,
@@ -351,7 +350,6 @@ async def agent_response(
 ):
     try:
         session_id = extract_session_cookie(request)
-        docs = []
 
         thread_id = body.thread_id if body.thread_id else None
 
@@ -400,11 +398,7 @@ async def agent_response(
                 trace_context=trace_context,
             )
 
-        all_docs = []
-        for msg in res["messages"]:
-            if isinstance(msg, ToolMessage) and getattr(msg, "artifact", None):
-                all_docs.extend(msg.artifact)
-        docs = all_docs if all_docs else None
+        docs = latest_tool_docs(res["messages"])
         content = linkify_missing_citations(
             cast(str, res["messages"][-1].content), docs or []
         )

@@ -6,6 +6,7 @@ import json_repair
 import numpy
 from fastapi import HTTPException
 from json_repair import JSONReturnType
+from langchain_core.messages import BaseMessage, ToolMessage
 from langdetect import detect_langs
 from qdrant_client.http.models import models
 from welearn_database.data.models import EmbeddingModel
@@ -175,6 +176,27 @@ def linkify_missing_citations(text: str, docs: List[Any]) -> str:
         return f'<a href="{url}" target="_blank">[Doc {n}]</a>'
 
     return _CITATION_RE.sub(_replace, text)
+
+
+def latest_tool_docs(messages: List[BaseMessage]) -> Optional[List[Any]]:
+    """
+    Finds the most recent tool call's retrieved documents in a message list.
+
+    Walks `messages` from the end, so a turn that made no new tool call still
+    resolves to the last tool call's results instead of nothing, and a turn
+    that did call the tool never picks up a stale, older call's results.
+
+    Args:
+        messages: The full conversation message list (may span many turns).
+
+    Returns:
+        The `artifact` of the most recent `ToolMessage` that has one, or
+        None if no tool call with results is found.
+    """
+    for msg in reversed(messages):
+        if isinstance(msg, ToolMessage) and getattr(msg, "artifact", None):
+            return msg.artifact
+    return None
 
 
 def extract_json_from_response(
