@@ -4,11 +4,10 @@ from typing import Any, Optional, Type, Union
 import litellm
 from azure.ai.inference.aio import ChatCompletionsClient
 from azure.core.credentials import AzureKeyCredential
-from langsmith import traceable
+from langsmith.run_helpers import get_current_run_tree
 from mistralai.client import Mistral
 from pydantic import BaseModel
 
-from src.app.shared.infra.tracing import TRACE_RUN_TYPE_LLM, TraceName
 from src.app.utils.decorators import log_time_and_error
 from src.app.utils.logger import logger as utils_logger
 
@@ -64,11 +63,68 @@ class LLMProxy(ABC):
         if self.client and self.is_azure_model:
             await self.client.close()
 
+    def _get_langsmith_provider(self) -> str:
+        return "azure" if self.is_azure_model else "mistral"
+
+    def _extract_usage_metadata(self, response: Any) -> dict[str, int] | None:
+        usage = getattr(response, "usage", None)
+        if usage is None and isinstance(response, dict):
+            usage = response.get("usage") or response.get("usage_metadata")
+
+        if usage is None:
+            return None
+
+        prompt_tokens = getattr(usage, "prompt_tokens", None)
+        if prompt_tokens is None and isinstance(usage, dict):
+            prompt_tokens = usage.get("prompt_tokens") or usage.get("input_tokens")
+
+        completion_tokens = getattr(usage, "completion_tokens", None)
+        if completion_tokens is None and isinstance(usage, dict):
+            completion_tokens = usage.get("completion_tokens") or usage.get(
+                "output_tokens"
+            )
+
+        total_tokens = getattr(usage, "total_tokens", None)
+        if total_tokens is None and isinstance(usage, dict):
+            total_tokens = usage.get("total_tokens")
+
+        usage_metadata: dict[str, int] = {}
+        if prompt_tokens is not None:
+            usage_metadata["input_tokens"] = int(prompt_tokens)
+        if completion_tokens is not None:
+            usage_metadata["output_tokens"] = int(completion_tokens)
+        if total_tokens is not None:
+            usage_metadata["total_tokens"] = int(total_tokens)
+
+        if not usage_metadata:
+            return None
+
+        if "total_tokens" not in usage_metadata:
+            usage_metadata["total_tokens"] = usage_metadata.get(
+                "input_tokens", 0
+            ) + usage_metadata.get("output_tokens", 0)
+
+        return usage_metadata
+
+    def _record_langsmith_usage(self, response: Any) -> None:
+        run_tree = get_current_run_tree()
+        if run_tree is None:
+            return
+
+        usage_metadata = self._extract_usage_metadata(response)
+        if usage_metadata is not None:
+            run_tree.set(usage_metadata=usage_metadata)
+
+        metadata = dict(getattr(run_tree, "metadata", {}) or {})
+        metadata_to_add: dict[str, Any] = {}
+        if "ls_provider" not in metadata:
+            metadata_to_add["ls_provider"] = self._get_langsmith_provider()
+        if "ls_model_name" not in metadata:
+            metadata_to_add["ls_model_name"] = self.model
+        if metadata_to_add:
+            run_tree.add_metadata(metadata_to_add)
+
     @log_time_and_error
-    @traceable(
-        run_type=TRACE_RUN_TYPE_LLM,
-        name=TraceName.COMPLETION_NON_AGENT.value,
-    )
     async def completion(
         self,
         messages: list,
@@ -76,13 +132,6 @@ class LLMProxy(ABC):
         trace_context: Optional[dict[str, Any]] = None,
         max_tokens: Optional[int] = 2048,
     ) -> dict | str:
-
-        logger.info(
-            "starting completion with model_name=%s trace_context=%s",
-            self.model,
-            trace_context,
-        )
-
         if self.is_azure_model:
             return await self.az_completion(
                 messages,
@@ -97,18 +146,12 @@ class LLMProxy(ABC):
                 messages,
                 max_tokens=max_tokens,
                 response_format=response_format,
-                trace_context=trace_context,
             )
 
-    @traceable(
-        run_type=TRACE_RUN_TYPE_LLM,
-        name=TraceName.AZURE_COMPLETION_NON_AGENT.value,
-    )
     async def az_completion(
         self,
         messages: list,
         response_format: Optional[Union[dict, Type[BaseModel]]] = None,
-        trace_context: Optional[dict[str, Any]] = None,
     ):
         if self.client is None:
             raise ValueError("Azure client is not initialized.")
@@ -126,16 +169,13 @@ class LLMProxy(ABC):
             **completion_kwargs,
         )
 
+        self._record_langsmith_usage(response)
+
         return response.choices[0].message.content
 
-    @traceable(
-        run_type=TRACE_RUN_TYPE_LLM,
-        name=TraceName.AZURE_COMPLETION_STREAM_NON_AGENT.value,
-    )
     async def az_completion_stream(
         self,
         messages: list,
-        trace_context: Optional[dict[str, Any]] = None,
     ):
         if self.client is None:
             raise ValueError("Azure client is not initialized.")
@@ -146,42 +186,20 @@ class LLMProxy(ABC):
 
         return response
 
-    @traceable(
-        run_type=TRACE_RUN_TYPE_LLM,
-        name=TraceName.COMPLETION_STREAM_NON_AGENT.value,
-    )
     async def completion_stream(
         self,
         messages: list,
-        trace_context: Optional[dict[str, Any]] = None,
     ):
-        logger.info(
-            "starting completion_stream with model_name=%s trace_context=%s",
-            self.model,
-            trace_context,
-        )
-
         if self.is_azure_model:
-            return await self.az_completion_stream(
-                messages,
-                trace_context=trace_context,
-            )
+            return await self.az_completion_stream(messages)
 
-        return await self.mistral_completion_stream(
-            messages,
-            trace_context=trace_context,
-        )
+        return await self.mistral_completion_stream(messages)
 
-    @traceable(
-        run_type=TRACE_RUN_TYPE_LLM,
-        name=TraceName.MISTRAL_COMPLETION_NON_AGENT.value,
-    )
     async def mistral_completion(
         self,
         messages: list,
         max_tokens: Optional[int] = 2048,
         response_format: Optional[Union[dict, Type[BaseModel]]] = None,
-        trace_context: Optional[dict[str, Any]] = None,
     ):
         if self.client is None:
             raise ValueError("Mistral client is not initialized.")
@@ -199,12 +217,10 @@ class LLMProxy(ABC):
             **completion_kwargs,
         )
 
+        self._record_langsmith_usage(response)
+
         return response.choices[0].message.content
 
-    @traceable(
-        run_type=TRACE_RUN_TYPE_LLM,
-        name=TraceName.MISTRAL_COMPLETION_STREAM_NON_AGENT.value,
-    )
     async def mistral_completion_stream(
         self,
         messages: list,
