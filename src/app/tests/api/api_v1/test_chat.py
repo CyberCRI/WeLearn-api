@@ -7,7 +7,6 @@ import backoff
 from fastapi.testclient import TestClient
 
 from src.app.core.config import settings
-from src.app.models.chat import ReformulatedQueryResponse
 from src.app.models.documents import Document as DocumentModel
 from src.app.models.documents import DocumentPayloadModel
 from src.app.shared.domain.exceptions import LanguageNotSupportedError
@@ -231,58 +230,6 @@ class QnATests(unittest.IsolatedAsyncioTestCase):
                 )
                 self.assertEqual(response.status_code, 200)
                 self.assertEqual(new_questions_mock.call_count, 1)
-
-    def test_reformulate_empty_query(self, *mocks):
-
-        with TestClient(app) as client:
-            response = client.post(
-                f"{settings.API_V1_STR}/qna/reformulate/query",
-                json={"history": [], "sources": [], "query": ""},
-                headers={"X-API-Key": "test"},
-            )
-            self.assertEqual(response.status_code, 400)
-            self.assertEqual(
-                response.json(),
-                {
-                    "detail": {
-                        "message": "Empty query",
-                        "code": "EMPTY_QUERY",
-                    }
-                },
-            )
-
-    async def test_reformulate_ok(
-        self, mock_db_session, mock_chat_completion, mock__detect_language
-    ):
-        with mock.patch(
-            "src.app.shared.infra.abst_chat.AbstractChat._detect_past_message_ref",
-            return_value={"REF_TO_PAST": "false", "CONFIDENCE": "0.9"},
-        ), mock.patch(
-            "src.app.shared.infra.abst_chat.AbstractChat.reformulate_user_query",
-            return_value=ReformulatedQueryResponse(
-                STANDALONE_QUESTION_EN="Your reformulated question",
-                STANDALONE_QUESTION_FR="Votre question reformulée",
-                USER_LANGUAGE="en",
-                QUERY_STATUS="VALID",
-            ),
-        ) as standalone_mock:
-            mock__detect_language.return_value = {"ISO_CODE": "en"}
-
-            with TestClient(app) as client:
-                response = client.post(
-                    f"{settings.API_V1_STR}/qna/reformulate/query",  # noqa: E501
-                    json={
-                        "history": [],
-                        "sources": [],
-                        "query": "bonjour une recherche en français",
-                    },
-                    headers={"X-API-Key": "test"},
-                )
-
-                standalone_mock.assert_called_once_with(
-                    query="bonjour une recherche en français", history=[]
-                )
-                self.assertEqual(response.status_code, 200)
 
     async def test_stream(self, *mocks):
         with mock.patch(

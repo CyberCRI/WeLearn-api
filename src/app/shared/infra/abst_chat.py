@@ -15,7 +15,6 @@ Functions:
     create_chat: Creates an instance of a chat service based on the specified type and model.
 """
 
-import json
 import uuid
 from abc import ABC
 from typing import Any, AsyncIterable, Dict, List, Optional, TypedDict, cast
@@ -30,7 +29,6 @@ from langchain_mistralai import ChatMistralAI
 from langgraph.checkpoint.postgres.aio import AsyncPostgresSaver  # type: ignore
 from langsmith import traceable
 
-from src.app.models.chat import ReformulatedQueryResponse
 from src.app.models.documents import Document
 from src.app.search.services.search import SearchService
 from src.app.services import prompts
@@ -67,7 +65,6 @@ class AbstractChat(ABC):
         API_KEY (str): The API key for the chat service.
         API_BASE (str): The API base URL for the chat service.
         API_VERSION (str): The API version for the chat service.
-        system_prompts (dict): A dictionary of system prompts for the chat service.
     """
 
     def __init__(
@@ -77,16 +74,20 @@ class AbstractChat(ABC):
         self.agent_executor = None
         self.chat_client = client
 
-        self.system_prompts = {
-            "reformulate": {
-                "role": "system",
-                "content": prompts.SYSTEM_PROMPT_STANDALONE_QUESTION,
-            },
-            "past_message": {
-                "role": "system",
-                "content": prompts.SYSTEM_PAST_MESSAGE_REF,
-            },
+    def _build_non_agent_trace_context(
+        self,
+        operation: str,
+        **extra: Any,
+    ) -> dict[str, Any]:
+        settings = get_settings()
+        trace_context: dict[str, Any] = {
+            "component": TraceComponent.CHAT_NON_AGENT.value,
+            "operation": operation,
+            "environment": settings.ENV,
+            "model": getattr(self.chat_client, "model", None),
         }
+        trace_context.update(extra)
+        return trace_context
 
     @log_time_and_error
     @traceable(
@@ -178,56 +179,6 @@ class AbstractChat(ABC):
             jsn[key] = value
 
         return jsn
-
-    @log_time_and_error
-    @traceable(
-        run_type=TRACE_RUN_TYPE_LLM,
-        name=TraceName.DETECT_PAST_MESSAGE_REF.value,
-    )
-    async def _detect_past_message_ref(
-        self, query: str, history: List[Dict[str, str]]
-    ) -> dict[str, bool] | None:
-        """
-        Detects reference to past messages.
-
-        Args:
-            query (str): The user query.
-            history (list): The chat history.
-
-        Returns:
-            The detected reference to past messages.
-        """
-        completion = await self.chat_client.completion(
-            messages=[
-                self.system_prompts["past_message"],
-                *history[:-2],
-                {
-                    "role": "user",
-                    "content": prompts.PAST_MESSAGE_REF.format(query=query),
-                },
-            ],
-            response_format={"type": "json_object"},
-        )
-
-        try:
-            if isinstance(completion, str):
-                raw = extract_json_from_response(completion)
-            elif isinstance(completion, dict):
-                raw = completion
-            else:
-                raise ValueError("Invalid response from model")
-
-            if not isinstance(raw, dict):
-                raise ValueError("Invalid response from model")
-
-            ref_to_past = raw.get("REF_TO_PAST")
-            if not isinstance(ref_to_past, bool):
-                raise ValueError("Invalid response from model")
-
-            return {"REF_TO_PAST": ref_to_past}
-        except json.JSONDecodeError:
-            logger.error("api_error=invalid_json, response=%s", completion)
-            return None
 
     async def get_stream_chunks(self, stream) -> AsyncIterable[str]:
         """
@@ -379,44 +330,6 @@ class AbstractChat(ABC):
         return ""
 
     @log_time_and_error
-    @traceable(
-        run_type=TRACE_RUN_TYPE_LLM,
-        name=TraceName.REFORMULATE_USER_QUERY.value,
-    )
-    async def reformulate_user_query(self, query: str, history: List[Dict[str, str]]):
-        """
-        Reformulates user query if it's about a new subject.
-
-        Args:
-            query (str): The user query.
-            history (list): The chat history.
-
-        Returns:
-            dict: The reformulated query or None.
-        """
-
-        ref_to_past = await self._detect_past_message_ref(query, history)
-        if ref_to_past and ref_to_past["REF_TO_PAST"]:
-            return ReformulatedQueryResponse(
-                STANDALONE_QUESTION=None,
-                USER_LANGUAGE=None,
-                QUERY_STATUS="REF_TO_PAST" if len(history) >= 1 else "INVALID",
-            )
-
-        return await self.run_llm_with_json_parsing(
-            messages=[
-                self.system_prompts["reformulate"],
-                *history[-4:],
-                {"role": "user", "content": prompts.STANDALONE_QUESTION + query},
-            ],
-            model_class=ReformulatedQueryResponse,
-        )
-
-    @log_time_and_error
-    @traceable(
-        run_type=TRACE_RUN_TYPE_LLM,
-        name=TraceName.GET_NEW_QUESTIONS.value,
-    )
     async def get_new_questions(
         self, query: str, history: List[Dict[str, str]], lang: Optional[str] = None
     ) -> Dict[str, List[str]]:
@@ -708,8 +621,9 @@ class AbstractChat(ABC):
     async def syllabus_feedback_completion(
         self,
         messages: list[dict],
+        max_tokens: int,
     ) -> str:
-        result = await self.chat_client.completion(messages=messages)
+        result = await self.chat_client.completion(messages=messages, max_tokens=max_tokens)
         if not isinstance(result, str):
             raise ValueError("Syllabus feedback response is not a string")
         return result

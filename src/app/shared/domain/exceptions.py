@@ -90,20 +90,6 @@ class LanguageNotSupportedError(BaseException):
         super().__init__(self.message, self.msg_code)
 
 
-class InvalidQuestionError(BaseException):
-    """Raised when an invalid question is used"""
-
-    def __init__(
-        self,
-        message="Please provide a valid question",
-        msg_code="INVALID_QUESTION",
-    ):
-        self.message = message
-        self.msg_code = msg_code
-        logger.error("InvalidQuestionError: %s, Code: %s", self.message, self.msg_code)
-        super().__init__(self.message, self.msg_code)
-
-
 class NoResultsError(BaseException):
     """Raised when no results are found"""
 

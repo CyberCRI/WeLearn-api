@@ -524,6 +524,24 @@ files = [
 ]
 
 [[package]]
+name = "baml-py"
+version = "0.226.1"
+description = "BAML v0 — Python runtime for baml_client"
+optional = false
+python-versions = ">=3.10"
+groups = ["main"]
+files = [
+    {file = "baml_py-0.226.1-cp38-abi3-macosx_10_12_x86_64.whl", hash = "sha256:f1a89eee0d9e320ca48265ddbaae7d84677a83e26c3209f4ca358c6e630a335e"},
+    {file = "baml_py-0.226.1-cp38-abi3-macosx_11_0_arm64.whl", hash = "sha256:6b45a25eca7b3a0473525dfe7b9df304760104241cc06e824c883a18ced076fc"},
+    {file = "baml_py-0.226.1-cp38-abi3-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:6a46363b0d5eec11094f394bd610798819333334e250599331795383882f37f8"},
+    {file = "baml_py-0.226.1-cp38-abi3-manylinux_2_24_aarch64.whl", hash = "sha256:92b3f9f019c56ef388833a5ddaffd44d0b813814879c7c3d439cb6ad3ae72edb"},
+    {file = "baml_py-0.226.1-cp38-abi3-musllinux_1_1_aarch64.whl", hash = "sha256:302f3e31f6c2dec922b44a3db67a017b01d9f3a908ea0c364072961addcaa794"},
+    {file = "baml_py-0.226.1-cp38-abi3-musllinux_1_1_x86_64.whl", hash = "sha256:5655e6503ca43e05e91b48c1b846c5516d8d429cedda6e556238c003337adc93"},
+    {file = "baml_py-0.226.1-cp38-abi3-win_amd64.whl", hash = "sha256:9a43673a9ecef9098c399676c4c791714e006e5f8fcba650d3ef53660060e39c"},
+    {file = "baml_py-0.226.1-cp38-abi3-win_arm64.whl", hash = "sha256:609b1d3255eac905d40ad66c024c62f09055dd79275968bd51d7ef345828250f"},
+]
+
+[[package]]
 name = "beautifulsoup4"
 version = "4.15.0"
 description = "Screen-scraping library"
@@ -4230,7 +4248,7 @@ version = "3.0.5"
 description = "Powerful data structures for data analysis, time series, and statistics"
 optional = false
 python-versions = ">=3.11"
-groups = ["metrics"]
+groups = ["main", "metrics"]
 files = [
     {file = "pandas-3.0.5-cp311-cp311-macosx_10_9_x86_64.whl", hash = "sha256:2946e77e4a53cd248cbde631a12f0e51c8324ce354c3eba4d20147c1ad6f4282"},
     {file = "pandas-3.0.5-cp311-cp311-macosx_11_0_arm64.whl", hash = "sha256:71ecc8fb7ed1a7aa4392316b5309a6347e8e7f832f38fd897846b3a1457a9298"},
@@ -6852,11 +6870,11 @@ description = "Provider of IANA time zone data"
 optional = false
 python-versions = ">=2"
 groups = ["main", "metrics"]
+markers = "sys_platform == \"win32\" or sys_platform == \"emscripten\""
 files = [
     {file = "tzdata-2026.3-py2.py3-none-any.whl", hash = "sha256:dc096730c87af6cab1b171c9d532be840741ff5d459015e7f6947bd7d7e54931"},
     {file = "tzdata-2026.3.tar.gz", hash = "sha256:4a1518b8993086a7982523e071643f3c0e5f213e75b21318e78bcabfff9d1415"},
 ]
-markers = {main = "sys_platform == \"win32\"", metrics = "sys_platform == \"win32\" or sys_platform == \"emscripten\""}
 
 [[package]]
 name = "urllib3"
@@ -8004,4 +8022,4 @@ cffi = ["cffi (>=1.17,<2.0) ; platform_python_implementation != \"PyPy\" and pyt
 [metadata]
 lock-version = "2.1"
 python-versions = ">=3.12,<3.15"
-content-hash = "e3c07e977040c67c7adddf42c4c96bcb4f8849e7f11ee8b89ee54ff7ba3b73e2"
+content-hash = "394d843a7cca544fa7980430d70c065f3322b4ae177ad0eaab6ef8b8e536047e"

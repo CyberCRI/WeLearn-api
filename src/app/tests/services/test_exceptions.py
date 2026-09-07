@@ -5,7 +5,6 @@ from fastapi import HTTPException
 from src.app.shared.domain.exceptions import (
     CollectionNotFoundError,
     EmptyQueryError,
-    InvalidQuestionError,
     LanguageNotSupportedError,
     ModelNotFoundError,
     NoResultsError,
@@ -48,11 +47,6 @@ class ExceptionsTests(unittest.TestCase):
         error = LanguageNotSupportedError()
         self.assertEqual(error.message, "Language not supported")
         self.assertEqual(error.msg_code, "LANG_NOT_SUPPORTED")
-
-    def test_invalid_question_error(self):
-        error = InvalidQuestionError()
-        self.assertEqual(error.message, "Please provide a valid question")
-        self.assertEqual(error.msg_code, "INVALID_QUESTION")
 
     def test_no_results_error(self):
         error = NoResultsError()

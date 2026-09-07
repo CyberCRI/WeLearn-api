@@ -24,7 +24,6 @@ from src.app.services.helpers import linkify_missing_citations
 from src.app.shared.domain.constants import subjects as subjectsDict
 from src.app.shared.domain.exceptions import (
     EmptyQueryError,
-    InvalidQuestionError,
     LanguageNotSupportedError,
     bad_request,
 )
@@ -111,49 +110,6 @@ def get_agent_params(body: models.AgentContext) -> models.AgentContext:
 
 class Response(BaseModel):
     greeting: str
-
-
-@router.post(
-    "/reformulate/query",
-    summary="Reformulate User Query",
-    description="This endpoint reformulates the user's query in english and french based on the provided context and history.",
-    response_model=models.ReformulatedQueryResponse,
-)
-@backoff.on_exception(
-    wait_gen=backoff.expo,
-    exception=RateLimitError,
-    logger=logger,
-    max_tries=5,
-    max_time=180,
-    jitter=backoff.random_jitter,
-    factor=2,
-)
-async def q_and_a_reformulate(
-    body: models.ContextOut = Depends(get_params), chatfactory=Depends(get_chat_service)
-):
-    try:
-        reformulated_query: models.ReformulatedQueryResponse = (
-            await chatfactory.reformulate_user_query(
-                query=body.query, history=body.history
-            )
-        )
-
-        if reformulated_query.QUERY_STATUS == "INVALID":
-            raise InvalidQuestionError()
-
-        return reformulated_query
-
-    except (LanguageNotSupportedError, InvalidQuestionError) as e:
-        bad_request(message=e.message, msg_code=e.msg_code)
-    except ValueError as e:
-        logger.error("Error while reformulating the query: %s", e)
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail={
-                "message": "Something went wrong while reformulating the query",
-                "code": "REFORMULATE_ERROR",
-            },
-        )
 
 
 @router.post(
