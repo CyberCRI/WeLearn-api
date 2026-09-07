@@ -373,54 +373,6 @@ class AbstractChat(ABC):
     @log_time_and_error
     @traceable(
         run_type=TRACE_RUN_TYPE_LLM,
-        name=TraceName.REPHRASE_MESSAGE.value,
-    )
-    async def rephrase_message(
-        self,
-        docs: List[Document],
-        message: str,
-        history: List[Dict[str, str]],
-        subject: str | None = None,
-        streamed_ans: bool = False,
-    ):
-        """
-        Rephrases last assistant's response based on subject and history.
-
-        Args:
-            docs (list): List of documents.
-            message (str): Last assistant response.
-            history (list): Chat history.
-            subject (str): Subject.
-            streamed_ans (bool): Whether to stream the answer.
-
-        Returns:
-            str: The rephrased message content.
-        """
-        stringified_docs = stringify_docs_content(docs)
-        messages = [
-            {
-                "role": "system",
-                "content": prompts.SYSTEM_PROMPT.format(cursus=subject or "General"),
-            },
-            *history[-5:-1],
-            {
-                "role": "user",
-                "content": prompts.REPHRASE.format(
-                    prompt=message, documents=stringified_docs
-                ),
-            },
-        ]
-
-        if streamed_ans:
-            res = await self.chat_client.completion_stream(messages)
-            return self.get_stream_chunks(res)
-
-        res = await self.chat_client.completion(messages=messages)
-        return res
-
-    @log_time_and_error
-    @traceable(
-        run_type=TRACE_RUN_TYPE_LLM,
         name=TraceName.CHAT_MESSAGE.value,
     )
     async def chat_message(

@@ -68,28 +68,6 @@ class TestAbstractChat(unittest.IsolatedAsyncioTestCase):
             mock_detect_lang.assert_called_with("this is the user query")
             assert new_questions == {"NEW_QUESTIONS": ["Question 1?", "Question 2?"]}
 
-    async def test_rephrase_message_stream_false(self):
-        self.chat.chat_client.completion = mock.AsyncMock()
-        self.chat.chat_client.completion_stream = mock.Mock()
-        await self.chat.rephrase_message(
-            message="this is the user query", history=[], docs=[], subject="default"
-        )
-        self.chat.chat_client.completion.assert_called_once()
-        self.chat.chat_client.completion_stream.assert_not_called()
-
-    async def test_rephrase_message_stream_true(self):
-        self.chat.chat_client.completion = mock.AsyncMock()
-        self.chat.chat_client.completion_stream = mock.AsyncMock(return_value=iter(()))
-        await self.chat.rephrase_message(
-            message="this is the user query",
-            history=[],
-            docs=[],
-            subject="default",
-            streamed_ans=True,
-        )
-        self.chat.chat_client.completion_stream.assert_called_once()
-        self.chat.chat_client.completion.assert_not_called()
-
     async def test_chat_message(self):
         with mock.patch.object(
             self.chat, "_detect_language", new_callable=mock.AsyncMock

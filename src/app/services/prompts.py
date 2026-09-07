@@ -72,23 +72,6 @@ Instructions:
 """
 
 ###########################################################
-### /qna/chat/rephrase — restate last assistant answer ####
-###########################################################
-
-REPHRASE = """Below is a response I gave earlier in this conversation. Restate it in a different way — simpler language, a different structure, or from a different angle — while preserving all the facts and all citations exactly as they are.
-
-Do not add new information. Do not change or omit any <a> tags or URLs.
-
-Articles used in the original response:
-{documents}
-
-Original response to restate:
-{prompt}
-
-Restated response:
-"""
-
-###########################################################
 ### /qna/reformulate/questions — suggest follow-ups #######
 ###########################################################
 
