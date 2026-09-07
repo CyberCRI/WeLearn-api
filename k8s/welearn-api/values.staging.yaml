@@ -12,8 +12,8 @@ config:
     DATA_COLLECTION_ORIGIN_PREFIX: welearn
     SESSION_COOKIE_DOMAIN: .lp-i.xyz
     ENV: staging
-    LANGSMITH_TRACING_ENABLED: "false"
-    LANGSMITH_PROJECT: WeLearn_Dev
+    LANGSMITH_TRACING_ENABLED: "true"
+    LANGSMITH_PROJECT: WeLearn_Staging
     LANGSMITH_ENDPOINT: https://eu.api.smith.langchain.com
 allowedHostsRegexes:
   mainUrl: |-
