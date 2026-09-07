@@ -371,6 +371,10 @@ class AbstractChat(ABC):
         return {"NEW_QUESTIONS": res_list}
 
     @log_time_and_error
+    @traceable(
+        run_type=TRACE_RUN_TYPE_LLM,
+        name=TraceName.CHAT_MESSAGE.value,
+    )
     async def chat_message(
         self,
         query: str,
