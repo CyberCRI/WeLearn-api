@@ -151,6 +151,7 @@ def get_documents_payload_by_ids_sync(documents_ids: list[str]) -> list[Document
                         document_title=doc.title,
                         document_url=doc.url,
                         document_desc=doc.description,
+                        document_external_id=doc.external_id,
                         document_sdg=[sdg[0] for sdg in short_sdg_list],
                         document_details=doc.details,
                         slice_content="",

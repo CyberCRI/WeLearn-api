@@ -57,6 +57,7 @@ class SearchService:
             "document_corpus",
             "document_desc",
             "document_sdg",
+            "document_external_id",
             "slice_content",
             "slice_sdg",
             "document_scrape_date",
