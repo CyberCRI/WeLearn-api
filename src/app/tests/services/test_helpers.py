@@ -115,8 +115,15 @@ class HelpersTests(TestCase):
     def test_linkify_missing_citations_wraps_bare_marker(self):
         docs = [self._make_doc("https://example.org/1")]
         text = "Sustainability matters [Doc 1]."
-        expected = "Sustainability matters [Doc 1](https://example.org/1)."
+        expected = "Sustainability matters [[Doc 1]](https://example.org/1)."
         self.assertEqual(linkify_missing_citations(text, docs), expected)
+
+    def test_linkify_missing_citations_leaves_existing_double_bracket_link_untouched(
+        self,
+    ):
+        docs = [self._make_doc("https://example.org/1")]
+        text = "Already linked [[Doc 1]](https://example.org/1)."
+        self.assertEqual(linkify_missing_citations(text, docs), text)
 
     def test_linkify_missing_citations_leaves_existing_markdown_link_untouched(self):
         docs = [self._make_doc("https://example.org/1")]
@@ -133,10 +140,10 @@ class HelpersTests(TestCase):
             self._make_doc("https://example.org/1"),
             self._make_doc("https://example.org/2"),
         ]
-        text = "See [Doc 1](https://example.org/1) and also [Doc 2]."
+        text = "See [[Doc 1]](https://example.org/1) and also [Doc 2]."
         expected = (
-            "See [Doc 1](https://example.org/1) "
-            "and also [Doc 2](https://example.org/2)."
+            "See [[Doc 1]](https://example.org/1) "
+            "and also [[Doc 2]](https://example.org/2)."
         )
         self.assertEqual(linkify_missing_citations(text, docs), expected)
 
@@ -162,7 +169,7 @@ class HelpersTests(TestCase):
     def test_linkify_missing_citations_dict_payload_fallback(self):
         docs = [{"document_url": "https://example.org/1"}]
         text = "See [Doc 1] for more."
-        expected = "See [Doc 1](https://example.org/1) for more."
+        expected = "See [[Doc 1]](https://example.org/1) for more."
         self.assertEqual(linkify_missing_citations(text, docs), expected)
 
     def test_latest_tool_docs_returns_most_recent_call_only(self):

@@ -141,15 +141,22 @@ def stringify_docs_content(docs: List[Any]) -> str:
     return documents.strip()
 
 
-_CITATION_RE = re.compile(r'(?<!target="_blank">)\[Doc\s*(\d+)\](?!\()', re.IGNORECASE)
+_CITATION_RE = re.compile(
+    r'(?<!\[)(?<!target="_blank">)\[Doc\s*(\d+)\](?!\()', re.IGNORECASE
+)
 
 
 def linkify_missing_citations(text: str, docs: List[Any]) -> str:
     """
-    Wraps any bare `[Doc N]` marker in `text` into a Markdown link `[Doc N](URL)`
-    for document N, using the URL from `docs[N-1]`. Markers already followed by a
-    parenthesized URL, or already wrapped in an HTML `<a>` tag, are left untouched.
-    Safety net for when the LLM forgets to format a citation as a link itself.
+    Wraps any bare `[Doc N]` marker in `text` into a double-bracket Markdown link
+    `[[Doc N]](URL)` for document N, using the URL from `docs[N-1]`. The double
+    bracket is intentional: a plain Markdown link `[Doc N](URL)` renders with its
+    brackets stripped (shows just "Doc N"), so the visible label must itself
+    contain a literal "[Doc N]" for the brackets to survive rendering.
+
+    Markers already wrapped this way, already a single-bracket Markdown link, or
+    already wrapped in an HTML `<a>` tag, are left untouched. Safety net for when
+    the LLM forgets to format a citation as a link itself.
 
     Only matches a single document number per marker — a combined citation like
     "[Docs 3 et 5]" is intentionally left as-is, since there's no single URL a
@@ -177,7 +184,7 @@ def linkify_missing_citations(text: str, docs: List[Any]) -> str:
         url = _url_for(n)
         if not url:
             return match.group(0)
-        return f"[Doc {n}]({url})"
+        return f"[[Doc {n}]]({url})"
 
     return _CITATION_RE.sub(_replace, text)
 
