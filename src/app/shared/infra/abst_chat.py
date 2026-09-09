@@ -204,14 +204,17 @@ class AbstractChat(ABC):
                 raise
 
     def _extract_stream_chunk(self, chunk):
-        choices = getattr(chunk, "choices", None)
-        if choices:
-            delta_content = getattr(choices[0].delta, "content", None)
-            if delta_content:
-                yield delta_content
-            finish_reason = getattr(choices[0], "finish_reason", None)
-            if finish_reason:
-                log_environmental_impacts(chunk, logger)
+        content = self._extract_text_from_message_content(
+            getattr(chunk, "content", "")
+        )
+        if content:
+            yield content
+
+        finish_reason = (getattr(chunk, "response_metadata", None) or {}).get(
+            "finish_reason"
+        )
+        if finish_reason:
+            log_environmental_impacts(chunk, logger)
 
     async def get_agent_chunks(self, stream) -> AsyncIterable[dict[str, Any]]:
         """

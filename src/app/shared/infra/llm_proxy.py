@@ -1,4 +1,3 @@
-from types import SimpleNamespace
 from typing import Any, AsyncIterable, Optional, Type, Union, cast
 
 from langchain_azure_ai.chat_models import AzureAIOpenAIApiChatModel  # type: ignore
@@ -126,18 +125,5 @@ class LLMProxy:
         return self._stringify_content(message.content)
 
     async def completion_stream(self, messages: list) -> AsyncIterable[Any]:
-        """Streams a completion, yielding litellm-shaped chunks for compatibility
-        with AbstractChat.get_stream_chunks / _extract_stream_chunk."""
-
-        async def _adapt() -> AsyncIterable[Any]:
-            async for chunk in self.client.astream(messages):
-                content = self._stringify_content(chunk.content)
-                finish_reason = (getattr(chunk, "response_metadata", None) or {}).get(
-                    "finish_reason"
-                )
-                delta = SimpleNamespace(content=content or None)
-                yield SimpleNamespace(
-                    choices=[SimpleNamespace(delta=delta, finish_reason=finish_reason)]
-                )
-
-        return _adapt()
+        """Streams a completion, yielding LangChain AIMessageChunk objects."""
+        return self.client.astream(messages)

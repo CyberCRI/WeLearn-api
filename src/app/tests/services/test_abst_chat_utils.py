@@ -21,19 +21,13 @@ class TestAbstChatUtils(unittest.IsolatedAsyncioTestCase):
             self.assertEqual(result, {"key": "value"})
 
     async def test_get_stream_chunks_async_and_sync(self):
-        # Create a mock chunk object with .choices attribute
-        class MockDelta:
-            def __init__(self, content):
-                self.content = content
-
-        class MockChoice:
-            def __init__(self, delta, finish_reason=None):
-                self.delta = delta
-                self.finish_reason = finish_reason
-
+        # Mimics a LangChain AIMessageChunk
         class MockChunk:
-            def __init__(self, content):
-                self.choices = [MockChoice(MockDelta(content))]
+            def __init__(self, content, finish_reason=None):
+                self.content = content
+                self.response_metadata = (
+                    {"finish_reason": finish_reason} if finish_reason else {}
+                )
 
         # Async generator
         async def async_stream():
@@ -60,25 +54,15 @@ class TestAbstChatUtils(unittest.IsolatedAsyncioTestCase):
             self.assertGreaterEqual(extract_mock.call_count, 1)
 
     def test_extract_stream_chunk(self):
-        # With choices and delta content
-        chunk = types.SimpleNamespace(
-            choices=[
-                types.SimpleNamespace(
-                    delta=types.SimpleNamespace(content="abc"), finish_reason=None
-                )
-            ]
-        )
+        # With content, no finish_reason
+        chunk = types.SimpleNamespace(content="abc", response_metadata={})
         result = list(self.chat._extract_stream_chunk(chunk))
         self.assertIn("abc", result)
-        # With finish_reason
+        # With finish_reason and no content
         chunk = types.SimpleNamespace(
-            choices=[
-                types.SimpleNamespace(
-                    delta=types.SimpleNamespace(content=None), finish_reason="stop"
-                )
-            ]
+            content="", response_metadata={"finish_reason": "stop"}
         )
-        # Should not yield, just log
+        # Should not yield content, just log
         result = list(self.chat._extract_stream_chunk(chunk))
         self.assertEqual(result, [])
 

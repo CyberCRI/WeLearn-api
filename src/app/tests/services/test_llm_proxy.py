@@ -49,7 +49,7 @@ class TestLLMProxy(unittest.IsolatedAsyncioTestCase):
             response_format=response_format,
         )
 
-    async def test_completion_stream_yields_litellm_shaped_chunks(self):
+    async def test_completion_stream_returns_native_langchain_astream(self):
         async def fake_astream(messages):
             yield mock.Mock(content="ab", response_metadata={})
             yield mock.Mock(content="", response_metadata={"finish_reason": "stop"})
@@ -62,10 +62,8 @@ class TestLLMProxy(unittest.IsolatedAsyncioTestCase):
 
         chunks = [chunk async for chunk in stream]
 
-        self.assertEqual(chunks[0].choices[0].delta.content, "ab")
-        self.assertIsNone(chunks[0].choices[0].finish_reason)
-        self.assertIsNone(chunks[1].choices[0].delta.content)
-        self.assertEqual(chunks[1].choices[0].finish_reason, "stop")
+        self.assertEqual(chunks[0].content, "ab")
+        self.assertEqual(chunks[1].response_metadata["finish_reason"], "stop")
 
     async def test_completion_records_langsmith_usage_on_current_run(self):
         run_tree = mock.Mock()
