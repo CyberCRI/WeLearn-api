@@ -204,9 +204,7 @@ class AbstractChat(ABC):
                 raise
 
     def _extract_stream_chunk(self, chunk):
-        content = self._extract_text_from_message_content(
-            getattr(chunk, "content", "")
-        )
+        content = self._extract_text_from_message_content(getattr(chunk, "content", ""))
         if content:
             yield content
 

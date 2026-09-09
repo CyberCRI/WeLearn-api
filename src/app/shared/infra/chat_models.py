@@ -55,7 +55,9 @@ def build_chat_model(
             raise ValueError(
                 "For Azure models, api_key, api_base, and api_version must be provided."
             )
-        return build_azure_chat_model(model, api_key, api_base, api_version, **overrides)
+        return build_azure_chat_model(
+            model, api_key, api_base, api_version, **overrides
+        )
 
     if api_key is None:
         raise ValueError("For Mistral models, api_key must be provided.")
