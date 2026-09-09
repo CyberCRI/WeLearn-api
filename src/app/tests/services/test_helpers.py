@@ -115,13 +115,15 @@ class HelpersTests(TestCase):
     def test_linkify_missing_citations_wraps_bare_marker(self):
         docs = [self._make_doc("https://example.org/1")]
         text = "Sustainability matters [Doc 1]."
-        expected = (
-            'Sustainability matters <a href="https://example.org/1" '
-            'target="_blank">[Doc 1]</a>.'
-        )
+        expected = "Sustainability matters [Doc 1](https://example.org/1)."
         self.assertEqual(linkify_missing_citations(text, docs), expected)
 
-    def test_linkify_missing_citations_leaves_existing_link_untouched(self):
+    def test_linkify_missing_citations_leaves_existing_markdown_link_untouched(self):
+        docs = [self._make_doc("https://example.org/1")]
+        text = "Already linked [Doc 1](https://example.org/1)."
+        self.assertEqual(linkify_missing_citations(text, docs), text)
+
+    def test_linkify_missing_citations_leaves_existing_html_link_untouched(self):
         docs = [self._make_doc("https://example.org/1")]
         text = 'Already linked <a href="https://example.org/1" target="_blank">[Doc 1]</a>.'
         self.assertEqual(linkify_missing_citations(text, docs), text)
@@ -131,19 +133,25 @@ class HelpersTests(TestCase):
             self._make_doc("https://example.org/1"),
             self._make_doc("https://example.org/2"),
         ]
-        text = (
-            'See <a href="https://example.org/1" target="_blank">[Doc 1]</a> '
-            "and also [Doc 2]."
-        )
+        text = "See [Doc 1](https://example.org/1) and also [Doc 2]."
         expected = (
-            'See <a href="https://example.org/1" target="_blank">[Doc 1]</a> '
-            'and also <a href="https://example.org/2" target="_blank">[Doc 2]</a>.'
+            "See [Doc 1](https://example.org/1) "
+            "and also [Doc 2](https://example.org/2)."
         )
         self.assertEqual(linkify_missing_citations(text, docs), expected)
 
     def test_linkify_missing_citations_out_of_range_untouched(self):
         docs = [self._make_doc("https://example.org/1")]
         text = "See [Doc 9] for more."
+        self.assertEqual(linkify_missing_citations(text, docs), text)
+
+    def test_linkify_missing_citations_combined_marker_untouched(self):
+        docs = [
+            self._make_doc("https://example.org/1"),
+            self._make_doc("https://example.org/2"),
+            self._make_doc("https://example.org/3"),
+        ]
+        text = "See [Docs 3 et 5] for more."
         self.assertEqual(linkify_missing_citations(text, docs), text)
 
     def test_linkify_missing_citations_empty_docs_or_text(self):
@@ -154,9 +162,7 @@ class HelpersTests(TestCase):
     def test_linkify_missing_citations_dict_payload_fallback(self):
         docs = [{"document_url": "https://example.org/1"}]
         text = "See [Doc 1] for more."
-        expected = (
-            'See <a href="https://example.org/1" target="_blank">[Doc 1]</a> for more.'
-        )
+        expected = "See [Doc 1](https://example.org/1) for more."
         self.assertEqual(linkify_missing_citations(text, docs), expected)
 
     def test_latest_tool_docs_returns_most_recent_call_only(self):
