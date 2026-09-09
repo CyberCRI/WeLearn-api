@@ -1,129 +1,93 @@
 import unittest
 from unittest import mock
 from unittest.mock import AsyncMock
-from types import SimpleNamespace
 
 from src.app.shared.infra.llm_proxy import LLMProxy
 
 
 class TestLLMProxy(unittest.IsolatedAsyncioTestCase):
     def setUp(self):
-        with mock.patch("src.app.shared.infra.llm_proxy.Mistral"):
+        with mock.patch("src.app.shared.infra.llm_proxy.ChatMistralAI"):
             self.proxy = LLMProxy(model="fake_model", api_key="fake_key")
 
-    async def test_response_as_text(self):
-        with mock.patch.object(
-            self.proxy, "mistral_completion", new=AsyncMock(return_value="text")
-        ):
-            response = await self.proxy.completion(
-                messages=[{"role": "user", "content": "Hello"}],
-            )
+    async def test_completion_returns_text_content(self):
+        self.proxy.client.ainvoke = AsyncMock(
+            return_value=mock.Mock(content="text", usage_metadata=None)
+        )
+        response = await self.proxy.completion(
+            messages=[{"role": "user", "content": "Hello"}],
+        )
         self.assertEqual(response, "text")
         self.assertIsInstance(response, str)
 
-    async def test_response_as_json_string(self):
-        with mock.patch.object(
-            self.proxy,
-            "mistral_completion",
-            new=AsyncMock(return_value='{"key": "value"}'),
-        ):
-            response = await self.proxy.completion(
-                messages=[{"role": "user", "content": "Hello"}],
+    async def test_completion_stringifies_list_content(self):
+        self.proxy.client.ainvoke = AsyncMock(
+            return_value=mock.Mock(
+                content=[{"text": "hello "}, {"text": "world"}], usage_metadata=None
             )
-        self.assertIsInstance(response, str)
-        self.assertEqual(response, '{"key": "value"}')
+        )
+        response = await self.proxy.completion(
+            messages=[{"role": "user", "content": "Hello"}],
+        )
+        self.assertEqual(response, "hello world")
 
-    async def test_completion_forwards_response_format_to_mistral(self):
+    async def test_completion_forwards_response_format_and_max_tokens(self):
         response_format = {"type": "json_object"}
-        with mock.patch.object(
-            self.proxy, "mistral_completion", new=AsyncMock(return_value="text")
-        ) as mistral_completion:
-            await self.proxy.completion(
-                messages=[{"role": "user", "content": "Hello"}],
-                response_format=response_format,
-            )
-
-        mistral_completion.assert_awaited_once_with(
-            [{"role": "user", "content": "Hello"}],
-            response_format=response_format,
-            max_tokens=2048,
+        self.proxy.client.ainvoke = AsyncMock(
+            return_value=mock.Mock(content="text", usage_metadata=None)
         )
 
-    async def test_completion_forwards_response_format_to_azure(self):
-        self.proxy.is_azure_model = True
-        response_format = {"type": "json_object"}
-        with mock.patch.object(
-            self.proxy, "az_completion", new=AsyncMock(return_value="text")
-        ) as az_completion:
-            await self.proxy.completion(
-                messages=[{"role": "user", "content": "Hello"}],
-                response_format=response_format,
-            )
-
-        az_completion.assert_awaited_once_with(
-            [{"role": "user", "content": "Hello"}],
+        await self.proxy.completion(
+            messages=[{"role": "user", "content": "Hello"}],
             response_format=response_format,
-            max_tokens=2048,
-            trace_context=None,
+            max_tokens=123,
         )
 
-    async def test_completion_stream_routes_to_mistral(self):
-        messages = [{"role": "user", "content": "Hello"}]
+        self.proxy.client.ainvoke.assert_awaited_once_with(
+            [{"role": "user", "content": "Hello"}],
+            max_tokens=123,
+            response_format=response_format,
+        )
 
-        with mock.patch.object(
-            self.proxy,
-            "mistral_completion_stream",
-            new=AsyncMock(return_value="mistral_stream"),
-        ) as mistral_completion_stream, mock.patch.object(
-            self.proxy,
-            "az_completion_stream",
-            new=AsyncMock(return_value="azure_stream"),
-        ) as az_completion_stream:
-            response = await self.proxy.completion_stream(messages=messages)
+    async def test_completion_stream_yields_litellm_shaped_chunks(self):
+        async def fake_astream(messages):
+            yield mock.Mock(content="ab", response_metadata={})
+            yield mock.Mock(content="", response_metadata={"finish_reason": "stop"})
 
-        self.assertEqual(response, "mistral_stream")
-        mistral_completion_stream.assert_awaited_once_with(messages)
-        az_completion_stream.assert_not_awaited()
+        self.proxy.client.astream = fake_astream
 
-    async def test_completion_stream_routes_to_azure(self):
-        self.proxy.is_azure_model = True
-        messages = [{"role": "user", "content": "Hello"}]
+        stream = await self.proxy.completion_stream(
+            messages=[{"role": "user", "content": "Hello"}]
+        )
 
-        with mock.patch.object(
-            self.proxy,
-            "az_completion_stream",
-            new=AsyncMock(return_value="azure_stream"),
-        ) as az_completion_stream, mock.patch.object(
-            self.proxy,
-            "mistral_completion_stream",
-            new=AsyncMock(return_value="mistral_stream"),
-        ) as mistral_completion_stream:
-            response = await self.proxy.completion_stream(messages=messages)
+        chunks = [chunk async for chunk in stream]
 
-        self.assertEqual(response, "azure_stream")
-        az_completion_stream.assert_awaited_once_with(messages)
-        mistral_completion_stream.assert_not_awaited()
+        self.assertEqual(chunks[0].choices[0].delta.content, "ab")
+        self.assertIsNone(chunks[0].choices[0].finish_reason)
+        self.assertIsNone(chunks[1].choices[0].delta.content)
+        self.assertEqual(chunks[1].choices[0].finish_reason, "stop")
 
-    async def test_mistral_completion_records_langsmith_usage_on_current_run(self):
-        messages = [{"role": "user", "content": "Hello"}]
+    async def test_completion_records_langsmith_usage_on_current_run(self):
         run_tree = mock.Mock()
         run_tree.metadata = {}
-        response = SimpleNamespace(
-            usage=SimpleNamespace(
-                prompt_tokens=11,
-                completion_tokens=7,
-                total_tokens=18,
-            ),
-            choices=[SimpleNamespace(message=SimpleNamespace(content="text"))],
+        self.proxy.client.ainvoke = AsyncMock(
+            return_value=mock.Mock(
+                content="text",
+                usage_metadata={
+                    "input_tokens": 11,
+                    "output_tokens": 7,
+                    "total_tokens": 18,
+                },
+            )
         )
-
-        self.proxy.client.chat.complete_async = AsyncMock(return_value=response)
 
         with mock.patch(
             "src.app.shared.infra.llm_proxy.get_current_run_tree",
             return_value=run_tree,
         ):
-            result = await self.proxy.mistral_completion(messages)
+            result = await self.proxy.completion(
+                messages=[{"role": "user", "content": "Hello"}]
+            )
 
         self.assertEqual(result, "text")
         run_tree.set.assert_called_once_with(
@@ -133,32 +97,9 @@ class TestLLMProxy(unittest.IsolatedAsyncioTestCase):
             {"ls_provider": "mistral", "ls_model_name": "fake_model"}
         )
 
-    async def test_azure_completion_records_langsmith_usage_on_current_run(self):
-        self.proxy.is_azure_model = True
-        messages = [{"role": "user", "content": "Hello"}]
-        run_tree = mock.Mock()
-        run_tree.metadata = {}
-        response = SimpleNamespace(
-            usage={"prompt_tokens": 13, "completion_tokens": 5},
-            choices=[SimpleNamespace(message=SimpleNamespace(content="azure text"))],
-        )
-        self.proxy.client = SimpleNamespace(complete=AsyncMock(return_value=response))
-
-        with mock.patch(
-            "src.app.shared.infra.llm_proxy.get_current_run_tree",
-            return_value=run_tree,
-        ):
-            result = await self.proxy.az_completion(messages)
-
-        self.assertEqual(result, "azure text")
-        run_tree.set.assert_called_once_with(
-            usage_metadata={"input_tokens": 13, "output_tokens": 5, "total_tokens": 18}
-        )
-        run_tree.add_metadata.assert_called_once_with(
-            {"ls_provider": "azure", "ls_model_name": "fake_model"}
-        )
-
-    async def test_record_langsmith_usage_does_not_overwrite_existing_provider_metadata(self):
+    async def test_record_langsmith_usage_does_not_overwrite_existing_provider_metadata(
+        self,
+    ):
         run_tree = mock.Mock()
         run_tree.metadata = {"ls_provider": "existing", "ls_model_name": "preset"}
 
@@ -167,8 +108,12 @@ class TestLLMProxy(unittest.IsolatedAsyncioTestCase):
             return_value=run_tree,
         ):
             self.proxy._record_langsmith_usage(
-                SimpleNamespace(
-                    usage=SimpleNamespace(prompt_tokens=1, completion_tokens=2),
+                mock.Mock(
+                    usage_metadata={
+                        "input_tokens": 1,
+                        "output_tokens": 2,
+                        "total_tokens": 3,
+                    }
                 )
             )
 
@@ -176,3 +121,18 @@ class TestLLMProxy(unittest.IsolatedAsyncioTestCase):
             usage_metadata={"input_tokens": 1, "output_tokens": 2, "total_tokens": 3}
         )
         run_tree.add_metadata.assert_not_called()
+
+    async def test_azure_model_uses_azure_chat_client(self):
+        with mock.patch(
+            "src.app.shared.infra.llm_proxy.AzureAIOpenAIApiChatModel"
+        ) as mock_azure_model:
+            proxy = LLMProxy(
+                model="fake_model",
+                api_key="fake_key",
+                api_base="https://fake.endpoint",
+                api_version="2024-01-01",
+                is_azure_model=True,
+            )
+        mock_azure_model.assert_called_once()
+        self.assertIs(proxy.client, mock_azure_model.return_value)
+        self.assertEqual(proxy._get_langsmith_provider(), "azure")
