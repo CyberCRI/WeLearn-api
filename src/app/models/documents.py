@@ -22,7 +22,7 @@ class DocumentPayloadModel(BaseModel):
     document_sdg: list[int]
     document_title: str
     document_url: str
-    document_external_id: str | None
+    document_external_id: str | None = None
     slice_content: str
     slice_sdg: int | None
 
