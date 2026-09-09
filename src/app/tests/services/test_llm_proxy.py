@@ -7,7 +7,7 @@ from src.app.shared.infra.llm_proxy import LLMProxy
 
 class TestLLMProxy(unittest.IsolatedAsyncioTestCase):
     def setUp(self):
-        with mock.patch("src.app.shared.infra.llm_proxy.ChatMistralAI"):
+        with mock.patch("src.app.shared.infra.llm_proxy.build_chat_model"):
             self.proxy = LLMProxy(model="fake_model", api_key="fake_key")
 
     async def test_completion_returns_text_content(self):
@@ -122,8 +122,8 @@ class TestLLMProxy(unittest.IsolatedAsyncioTestCase):
 
     async def test_azure_model_uses_azure_chat_client(self):
         with mock.patch(
-            "src.app.shared.infra.llm_proxy.AzureAIOpenAIApiChatModel"
-        ) as mock_azure_model:
+            "src.app.shared.infra.llm_proxy.build_chat_model"
+        ) as mock_build_chat_model:
             proxy = LLMProxy(
                 model="fake_model",
                 api_key="fake_key",
@@ -131,6 +131,15 @@ class TestLLMProxy(unittest.IsolatedAsyncioTestCase):
                 api_version="2024-01-01",
                 is_azure_model=True,
             )
-        mock_azure_model.assert_called_once()
-        self.assertIs(proxy.client, mock_azure_model.return_value)
+        mock_build_chat_model.assert_called_once_with(
+            model="fake_model",
+            api_key="fake_key",
+            api_base="https://fake.endpoint",
+            api_version="2024-01-01",
+            is_azure_model=True,
+            temperature=0.8,
+            top_p=0.1,
+            max_tokens=2048,
+        )
+        self.assertIs(proxy.client, mock_build_chat_model.return_value)
         self.assertEqual(proxy._get_langsmith_provider(), "azure")

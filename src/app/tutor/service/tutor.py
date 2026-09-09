@@ -1,6 +1,7 @@
-from langchain_mistralai import ChatMistralAI  # type: ignore
+from langchain_core.language_models import BaseChatModel
 
 from src.app.core.config import Settings
+from src.app.shared.infra.chat_models import build_chat_model
 from src.app.shared.utils.utils import extract_doc_info
 from src.app.tutor.service.agents import (
     PedagogicalEngineerAgent,
@@ -43,14 +44,15 @@ GREENCOMP_COMPETENCIES = (
 )
 
 
-chat_model: ChatMistralAI | None = None
+chat_model: BaseChatModel | None = None
 
 
 async def init_chat_model(settings) -> None:
     global chat_model
     if chat_model is None:
-        chat_model = ChatMistralAI(
-            model_name=settings.MISTRAL_LLM_MODEL_NAME,
+        chat_model = build_chat_model(
+            model=settings.MISTRAL_LLM_MODEL_NAME,
+            api_key=settings.MISTRAL_API_KEY,
             temperature=settings.LLM_TEMPERATURE,
         )
 

@@ -25,7 +25,6 @@ from langchain.agents.middleware import SummarizationMiddleware  # type: ignore
 from langchain.messages import HumanMessage  # type: ignore
 from langchain_core.messages import BaseMessage  # type: ignore
 from langchain_core.runnables import RunnableConfig  # type: ignore
-from langchain_mistralai import ChatMistralAI
 from langgraph.checkpoint.postgres.aio import AsyncPostgresSaver  # type: ignore
 from langsmith import traceable
 
@@ -39,6 +38,7 @@ from src.app.services.helpers import (
     stringify_docs_content,
 )
 from src.app.shared.domain.exceptions import LanguageNotSupportedError
+from src.app.shared.infra.chat_models import build_chat_model
 from src.app.shared.infra.tracing import TRACE_RUN_TYPE_LLM, TraceComponent, TraceName
 from src.app.shared.utils.dependencies import get_settings
 from src.app.utils.decorators import log_time_and_error
@@ -432,8 +432,9 @@ class AbstractChat(ABC):
             return self.agent_executor
 
         settings = get_settings()
-        agent_model = ChatMistralAI(
-            model_name=settings.MISTRAL_LLM_MODEL_NAME,
+        agent_model = build_chat_model(
+            model=settings.MISTRAL_LLM_MODEL_NAME,
+            api_key=settings.MISTRAL_API_KEY,
             temperature=settings.LLM_TEMPERATURE,
         )
 

@@ -88,13 +88,13 @@ class TestAbstractChat(unittest.IsolatedAsyncioTestCase):
             self.chat.chat_client.completion_stream.assert_called_once()
 
     @mock.patch("src.app.shared.infra.abst_chat.create_agent")
-    @mock.patch("src.app.shared.infra.abst_chat.ChatMistralAI")
+    @mock.patch("src.app.shared.infra.abst_chat.build_chat_model")
     async def test_create_agent_adds_summarization_middleware(
-        self, mock_chat_mistral, mock_create_agent
+        self, mock_build_chat_model, mock_create_agent
     ):
         mocked_model = mock.Mock()
         mocked_model._llm_type = "mistral-chat"  # noqa: SLF001
-        mock_chat_mistral.return_value = mocked_model
+        mock_build_chat_model.return_value = mocked_model
         mock_create_agent.return_value = object()
 
         await self.chat._create_agent(memory=None)
