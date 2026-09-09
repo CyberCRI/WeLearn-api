@@ -575,7 +575,9 @@ class AbstractChat(ABC):
         messages: list[dict],
         max_tokens: int,
     ) -> str:
-        result = await self.chat_client.completion(messages=messages, max_tokens=max_tokens)
+        result = await self.chat_client.completion(
+            messages=messages, max_tokens=max_tokens
+        )
         if not isinstance(result, str):
             raise ValueError("Syllabus feedback response is not a string")
         return result
