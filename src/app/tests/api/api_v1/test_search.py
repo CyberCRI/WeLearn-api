@@ -454,6 +454,7 @@ class DocumentsByIdsTests(IsolatedAsyncioTestCase):
             id=doc_id,
             description="Desc",
             details={"k": "v"},
+            external_id="external-id-123",
         )
 
         session.query.return_value.where.return_value.options.return_value.all.return_value = [
@@ -514,6 +515,7 @@ class DocumentsByIdsTests(IsolatedAsyncioTestCase):
             id=doc_id,
             description="Desc",
             details={},
+            external_id=None,
         )
 
         session.query.return_value.where.return_value.options.return_value.all.return_value = [
