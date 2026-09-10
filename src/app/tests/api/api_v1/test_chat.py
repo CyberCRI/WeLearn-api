@@ -2,9 +2,10 @@ import unittest
 import uuid
 from unittest import mock
 from unittest.mock import MagicMock
-
+from langgraph.checkpoint.memory import InMemorySaver
 import backoff
 from fastapi.testclient import TestClient
+from langchain_core.messages import AIMessage, HumanMessage, ToolMessage
 
 from src.app.core.config import settings
 from src.app.models.documents import Document as DocumentModel
@@ -144,7 +145,6 @@ class QnATests(unittest.IsolatedAsyncioTestCase):
             self.assertEqual(response.status_code, 400)
 
     def test_new_questions_empty_query(self, *mocks):
-
         with TestClient(app) as client:
             response = client.post(
                 f"{settings.API_V1_STR}/qna/reformulate/questions",
@@ -188,7 +188,6 @@ class QnATests(unittest.IsolatedAsyncioTestCase):
         with mock.patch(
             "src.app.shared.infra.abst_chat.AbstractChat.chat_message",
         ) as stream_mock:
-
             with TestClient(app) as client:
                 response = client.post(
                     f"{settings.API_V1_STR}/qna/stream",
@@ -264,7 +263,92 @@ class QnATests(unittest.IsolatedAsyncioTestCase):
         new=mock.MagicMock(return_value=True),
     )
     @mock.patch("src.app.shared.infra.abst_chat.AbstractChat.agent_message")
-    def test_chat_agent_stream(self, agent_message_mock, *mocks):
+    def test_chat_agent_returns_only_latest_tool_call_docs(
+        self, agent_message_mock, *mocks
+    ):
+        earlier_docs = [{**source_example[0], "id": "earlierDoc"}]
+        latest_docs = [{**source_example[0], "id": "latestDoc"}]
+        agent_message_mock.return_value = {
+            "messages": [
+                HumanMessage(content="first question"),
+                AIMessage(content=""),
+                ToolMessage(content="...", tool_call_id="1", artifact=earlier_docs),
+                AIMessage(content="answer using earlier docs"),
+                HumanMessage(content="second, unrelated question"),
+                AIMessage(content=""),
+                ToolMessage(content="...", tool_call_id="2", artifact=latest_docs),
+                AIMessage(content="answer using latest docs"),
+            ]
+        }
+
+        with TestClient(app) as client:
+            response = client.post(
+                f"{settings.API_V1_STR}/qna/chat/agent",
+                json={
+                    "query": "a second, unrelated question",
+                    "thread_id": str(uuid.uuid4()),
+                    "corpora": ["corpus1"],
+                    "sdg_filter": [1, 2, 3],
+                },
+                headers={"X-API-Key": "test", "origin": "test"},
+            )
+            self.assertEqual(response.status_code, 200)
+            returned_ids = [doc["id"] for doc in response.json()["docs"]]
+            self.assertEqual(returned_ids, ["latestDoc"])
+
+    @mock.patch("psycopg.AsyncConnection.connect", new_callable=mock.AsyncMock)
+    @mock.patch(
+        "src.app.shared.infra.security.check_api_key_sync",
+        new=mock.MagicMock(return_value=True),
+    )
+    @mock.patch("src.app.shared.infra.abst_chat.AbstractChat.agent_message")
+    def test_chat_agent_reuses_docs_when_no_new_search(
+        self, agent_message_mock, *mocks
+    ):
+        docs = [{**source_example[0], "id": "reusedDoc"}]
+        agent_message_mock.return_value = {
+            "messages": [
+                HumanMessage(content="first question"),
+                AIMessage(content=""),
+                ToolMessage(content="...", tool_call_id="1", artifact=docs),
+                AIMessage(content="answer"),
+                HumanMessage(content="follow-up needing no new search"),
+                AIMessage(content="answer reusing the same docs"),
+            ]
+        }
+
+        with TestClient(app) as client:
+            response = client.post(
+                f"{settings.API_V1_STR}/qna/chat/agent",
+                json={
+                    "query": "follow-up needing no new search",
+                    "thread_id": str(uuid.uuid4()),
+                    "corpora": ["corpus1"],
+                    "sdg_filter": [1, 2, 3],
+                },
+                headers={"X-API-Key": "test", "origin": "test"},
+            )
+            self.assertEqual(response.status_code, 200)
+            returned_ids = [doc["id"] for doc in response.json()["docs"]]
+            self.assertEqual(returned_ids, ["reusedDoc"])
+
+    @mock.patch(
+        "src.app.shared.infra.security.check_api_key_sync",
+        new=mock.MagicMock(return_value=True),
+    )
+    @mock.patch(
+        "src.app.api.api_v1.endpoints.chat_utils.AsyncPostgresSaver",
+        return_value=InMemorySaver(),
+    )
+    @mock.patch(
+        "src.app.api.api_v1.endpoints.chat_utils.psycopg.AsyncConnection.connect"
+    )
+    @mock.patch("src.app.shared.infra.abst_chat.AbstractChat.agent_message")
+    def test_chat_agent_stream(self, agent_message_mock, connect_mock, *mocks):
+        fake_conn = mock.AsyncMock()
+        # async with await AsyncConnection.connect(...) as conn:
+        connect_mock.return_value.__aenter__.return_value = fake_conn
+
         async def _fake_stream():
             yield {"status": "test", "content": "fake content"}
 

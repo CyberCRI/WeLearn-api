@@ -107,8 +107,17 @@ async def _stream_agent_with_memory(
             trace_context=trace_context,
         )
 
+        docs_found = False
         async for chunk in stream:
+            if chunk.get("status") == "processing" and chunk.get("docs"):
+                docs_found = True
             yield chunk
+
+        if not docs_found:
+            # No tool call this turn — fall back to the last known results
+            # instead of leaving the client with no docs at all.
+            docs = await chatfactory.agent_get_latest_docs(thread_id, memory)
+            yield {"status": "docs_final", "docs": docs}
 
 
 def _build_final_stream_payload(
@@ -173,6 +182,9 @@ async def _stream_agent_response(
     )
 
     async for chunk in stream:
+        if chunk.get("status") == "docs_final":
+            docs = chunk.get("docs")
+            continue
         final_content, docs = _update_agent_stream_state(chunk, final_content, docs)
         if chunk.get("status") == "streaming" and chunk.get("content"):
             has_streamed_content = True

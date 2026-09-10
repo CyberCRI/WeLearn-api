@@ -18,7 +18,6 @@ client = TestClient(app)
     new=mock.MagicMock(return_value=True),
 )
 class UserApiTests(unittest.IsolatedAsyncioTestCase):
-
     @mock.patch("src.app.services.sql_db.queries_user.session_maker")
     async def test_create_user_when_not_exists(self, session_maker_mock, *mocks):
         """Si user_id non fourni, crée un nouvel utilisateur"""

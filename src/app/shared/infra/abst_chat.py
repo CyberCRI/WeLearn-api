@@ -21,12 +21,18 @@ from typing import Any, AsyncIterable, Dict, List, Optional, TypedDict, cast
 
 from fastapi import BackgroundTasks, Depends, Request
 from langchain.agents import create_agent  # type: ignore
-from langchain.agents.middleware import SummarizationMiddleware  # type: ignore
+from langchain.agents.middleware import (  # type: ignore
+    ClearToolUsesEdit,
+    SummarizationMiddleware,
+)
+from langchain.agents.middleware.types import AgentMiddleware  # type: ignore
 from langchain.messages import HumanMessage  # type: ignore
-from langchain_core.messages import BaseMessage  # type: ignore
+from langchain_core.messages import BaseMessage, RemoveMessage  # type: ignore
+from langchain_core.messages.utils import count_tokens_approximately  # type: ignore
 from langchain_core.runnables import RunnableConfig  # type: ignore
 from langchain_mistralai import ChatMistralAI
 from langgraph.checkpoint.postgres.aio import AsyncPostgresSaver  # type: ignore
+from langgraph.graph.message import REMOVE_ALL_MESSAGES  # type: ignore
 from langsmith import traceable
 
 from src.app.models.documents import Document
@@ -36,6 +42,7 @@ from src.app.services.agent import get_resources_about_sustainability
 from src.app.services.helpers import (
     detect_language_from_entry,
     extract_json_from_response,
+    latest_tool_docs,
     stringify_docs_content,
 )
 from src.app.shared.domain.exceptions import LanguageNotSupportedError
@@ -50,6 +57,58 @@ from src.app.utils.logger import logger as utils_logger
 
 logger = utils_logger(__name__)
 # EcoLogits.init(["openai", "mistralai"])
+
+
+class _PersistClearedToolUses(AgentMiddleware):
+    """Applies a `ClearToolUsesEdit` permanently to the checkpointed state.
+
+    `ContextEditingMiddleware` (the built-in `wrap_model_call` equivalent) only
+    edits a deepcopy for one model call, so old tool results stay in persisted
+    state forever and `SummarizationMiddleware` still has to wade through them.
+    Running this as a `before_model` hook instead persists the clearing, and
+    lets it run before summarization (both are `before_model`, so list order
+    is honored) instead of being architecturally stuck after it.
+    """
+
+    def __init__(self, edit: ClearToolUsesEdit) -> None:
+        super().__init__()
+        self._edit = edit
+
+    def before_model(self, state, runtime):  # noqa: ANN001, ARG002
+        messages = [m.model_copy() for m in state["messages"]]
+        self._edit.apply(messages, count_tokens=count_tokens_approximately)
+        return {"messages": [RemoveMessage(id=REMOVE_ALL_MESSAGES), *messages]}
+
+    async def abefore_model(self, state, runtime):  # noqa: ANN001, ARG002
+        return self.before_model(state, runtime)
+
+
+class _ReinforceHardConstraints(AgentMiddleware):
+    """Re-states the full system prompt (condensed) on the latest turn, every
+    model call — long conversations dilute the system prompt's influence;
+    recency counters that by keeping the rules close to generation time.
+    """
+
+    def wrap_model_call(self, request, handler):  # noqa: ANN001
+        return handler(request.override(messages=self._with_reminder(request.messages)))
+
+    async def awrap_model_call(self, request, handler):  # noqa: ANN001
+        return await handler(
+            request.override(messages=self._with_reminder(request.messages))
+        )
+
+    @staticmethod
+    def _with_reminder(messages):  # noqa: ANN001
+        messages = list(messages)
+        if messages and isinstance(messages[-1], HumanMessage):
+            messages[-1] = messages[-1].model_copy(
+                update={
+                    "content": messages[-1].content
+                    + "\n\n"
+                    + prompts.AGENT_REMINDER_PROMPT
+                }
+            )
+        return messages
 
 
 class _AgentInputState(TypedDict):
@@ -440,10 +499,23 @@ class AbstractChat(ABC):
                 get_resources_about_sustainability,
             ],
             middleware=[
+                _PersistClearedToolUses(
+                    ClearToolUsesEdit(
+                        trigger=0,  # no threshold: always enforce `keep`, not a token-overflow safety net
+                        clear_at_least=0,  # no minimum reclaim — clear every candidate outside `keep`
+                        keep=1,  # only the most recent tool call's results stay visible to the model
+                        placeholder=(
+                            "[Earlier search results cleared. Call "
+                            "get_resources_about_sustainability again if you need "
+                            "to cite something from them.]"
+                        ),
+                    )
+                ),
                 SummarizationMiddleware(
                     model=agent_model,
-                    trigger=("tokens", 64000),
-                )
+                    trigger=("tokens", 32000),
+                ),
+                _ReinforceHardConstraints(),
             ],
             checkpointer=memory,
             system_prompt=prompts.AGENT_SYSTEM_PROMPT,
@@ -541,6 +613,23 @@ class AbstractChat(ABC):
             if m.type in ("human", "ai")
         ]
 
+    async def agent_get_latest_docs(
+        self,
+        thread_id: uuid.UUID,
+        memory: AsyncPostgresSaver,
+    ) -> Optional[List[Any]]:
+        """
+        Falls back to the persisted checkpoint to find the most recent tool
+        call's results for a thread — needed when the current turn made no
+        new tool call, since nothing streamed during it would otherwise carry
+        those docs to the caller.
+        """
+        agent = await self._create_agent(memory=memory)
+        config = RunnableConfig(configurable={"thread_id": thread_id})
+
+        state = await agent.aget_state(config)
+        return latest_tool_docs(state.values.get("messages", []))
+
     @traceable(
         run_type=TRACE_RUN_TYPE_LLM,
         name=TraceName.RUN_LLM_WITH_JSON_PARSING.value,
@@ -575,7 +664,9 @@ class AbstractChat(ABC):
         messages: list[dict],
         max_tokens: int,
     ) -> str:
-        result = await self.chat_client.completion(messages=messages, max_tokens=max_tokens)
+        result = await self.chat_client.completion(
+            messages=messages, max_tokens=max_tokens
+        )
         if not isinstance(result, str):
             raise ValueError("Syllabus feedback response is not a string")
         return result
