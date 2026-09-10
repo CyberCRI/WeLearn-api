@@ -18,3 +18,4 @@ class TraceName(str, Enum):
     DETECT_LANG_WITH_LLM = "Detect language with LLM"
     DETECT_PAST_MESSAGE_REF = "Detect past message reference"
     SYLLABUS_FEEDBACK = "Syllabus feedback"
+    JUDGE_SOURCE_GROUNDING = "Judge source grounding"

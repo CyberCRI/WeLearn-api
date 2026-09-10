@@ -41,6 +41,30 @@ def _resolve_thread_id(thread_id: UUID | None) -> UUID:
     return uuid.uuid4()
 
 
+async def judge_agent_answer(
+    *,
+    chatfactory: Any,
+    content: str,
+    docs: Any,
+    thread_id: UUID,
+    log_prefix: str,
+) -> Any:
+    """Runs the LLM-as-judge source-grounding check, never raising on failure."""
+    try:
+        judge = await chatfactory.judge_source_grounding(content, docs)
+        if not judge.compliant:
+            logger.warning(
+                "%s source_grounding_violation thread_id=%s unsupported_citations=%s",
+                log_prefix,
+                thread_id,
+                judge.unsupported_citations,
+            )
+        return judge
+    except Exception as e:
+        logger.error("Error while judging source grounding: %s", e)
+        return None
+
+
 def _update_agent_stream_state(
     chunk: dict[str, Any],
     current_final_content: str,
@@ -116,12 +140,14 @@ def _build_final_stream_payload(
     final_content: str,
     docs: Any,
     thread_id: UUID,
+    judge: Any = None,
 ) -> dict[str, Any]:
     return {
         "content": final_content,
         "status": "stop",
         "docs": docs,
         "thread_id": thread_id,
+        "judge": judge,
     }
 
 
@@ -185,10 +211,19 @@ async def _stream_agent_response(
 
     final_content = linkify_missing_citations(final_content, docs)
 
+    judge = await judge_agent_answer(
+        chatfactory=chatfactory,
+        content=final_content,
+        docs=docs,
+        thread_id=thread_id,
+        log_prefix="stream_agent_response",
+    )
+
     final_payload = _build_final_stream_payload(
         final_content=final_content,
         docs=docs,
         thread_id=thread_id,
+        judge=judge,
     )
 
     if has_streamed_content:

@@ -43,6 +43,26 @@ AGENT_SYSTEM_PROMPT = """You are WeLearn's AI assistant, specialising in sustain
 """
 
 ###########################################################
+### /qna/chat/agent — LLM-as-judge source grounding check #
+###########################################################
+
+JUDGE_SOURCE_GROUNDING_PROMPT = """You are a strict compliance auditor for WeLearn's AI assistant.
+
+Your only job: verify that every source cited in the ANSWER below (as `[Doc N]` markers, `<a href="URL">` tags, or any bare URL) corresponds exactly to one of the RETRIEVED DOCUMENTS. The assistant is never allowed to cite, link, or reference a source that was not returned by its retrieval tool in this conversation turn.
+
+RETRIEVED DOCUMENTS (the only sources allowed to be cited):
+{documents}
+
+ANSWER TO AUDIT:
+{answer}
+
+Instructions:
+- List every citation/URL found in the answer that does NOT match a retrieved document's number or URL under "unsupported_citations".
+- If the answer contains no citations at all, or every citation matches a retrieved document, it is compliant.
+- Be strict: a URL that is close to but not identical to a retrieved document's URL is unsupported.
+"""
+
+###########################################################
 ### /qna/chat/answer and /qna/stream — legacy chat ########
 ###########################################################
 

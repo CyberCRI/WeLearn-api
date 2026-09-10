@@ -1,5 +1,6 @@
 import unittest
 import uuid
+from unittest import mock
 
 from src.app.api.api_v1.endpoints import chat_utils
 
@@ -70,6 +71,40 @@ class TestChatUtils(unittest.TestCase):
     def test_format_sse_event(self):
         result = chat_utils._format_sse_event('{"content": "abc"}')
         self.assertEqual(result, 'data: {"content": "abc"}\n\n')
+
+
+class TestJudgeAgentAnswer(unittest.IsolatedAsyncioTestCase):
+    async def test_returns_verdict_and_logs_on_violation(self):
+        thread_id = uuid.uuid4()
+        verdict = mock.Mock(compliant=False, unsupported_citations=["[Doc 9]"])
+        chatfactory = mock.Mock()
+        chatfactory.judge_source_grounding = mock.AsyncMock(return_value=verdict)
+
+        with mock.patch.object(chat_utils.logger, "warning") as mock_warning:
+            result = await chat_utils.judge_agent_answer(
+                chatfactory=chatfactory,
+                content="some answer",
+                docs=None,
+                thread_id=thread_id,
+                log_prefix="test_prefix",
+            )
+
+        self.assertIs(result, verdict)
+        mock_warning.assert_called_once()
+
+    async def test_returns_none_on_judge_failure(self):
+        chatfactory = mock.Mock()
+        chatfactory.judge_source_grounding = mock.AsyncMock(side_effect=Exception())
+
+        result = await chat_utils.judge_agent_answer(
+            chatfactory=chatfactory,
+            content="some answer",
+            docs=None,
+            thread_id=uuid.uuid4(),
+            log_prefix="test_prefix",
+        )
+
+        self.assertIsNone(result)
 
 
 if __name__ == "__main__":

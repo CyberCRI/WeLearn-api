@@ -16,6 +16,7 @@ from src.app.api.api_v1.endpoints.chat_utils import (
     _resolve_thread_id,
     _sse_wrap,
     _stream_agent_response,
+    judge_agent_answer,
 )
 from src.app.models import chat as models
 from src.app.search.services.search import SearchService, get_search_service
@@ -409,10 +410,19 @@ async def agent_response(
             cast(str, res["messages"][-1].content), docs or []
         )
 
+        judge = await judge_agent_answer(
+            chatfactory=chatfactory,
+            content=content,
+            docs=docs,
+            thread_id=thread_id,
+            log_prefix="agent_response",
+        )
+
         agent_ans = {
             "content": content,
             "docs": docs,
             "thread_id": thread_id,
+            "judge": judge,
         }
 
         try:

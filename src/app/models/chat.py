@@ -68,6 +68,15 @@ class AgentResponse(BaseModel):
     step: str | None = None
     docs: list[ScoredPoint] | None = None
     thread_id: uuid.UUID | None = None
+    judge: "SourceGroundingVerdict | None" = None
+
+
+class SourceGroundingVerdict(BaseModel):
+    """LLM-as-judge verdict on whether an agent answer only cites tool-retrieved sources."""
+
+    compliant: bool
+    unsupported_citations: list[str] = []
+    reasoning: str = ""
 
 
 class UserQueryMetadata(BaseModel):

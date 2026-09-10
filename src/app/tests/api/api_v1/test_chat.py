@@ -257,6 +257,49 @@ class QnATests(unittest.IsolatedAsyncioTestCase):
             self.assertEqual(response.status_code, 200)
             self.assertIn("content", response.json())
             self.assertIn("docs", response.json())
+            self.assertEqual(response.json()["judge"], {
+                "compliant": True,
+                "unsupported_citations": [],
+                "reasoning": "No citations present in the answer.",
+            })
+
+    @mock.patch("psycopg.AsyncConnection.connect", new_callable=mock.AsyncMock)
+    @mock.patch(
+        "src.app.shared.infra.security.check_api_key_sync",
+        new=mock.MagicMock(return_value=True),
+    )
+    @mock.patch("src.app.shared.infra.abst_chat.AbstractChat.judge_source_grounding")
+    @mock.patch("src.app.shared.infra.abst_chat.AbstractChat.agent_message")
+    def test_chat_agent_reports_source_grounding_violation(
+        self, agent_message_mock, judge_mock, *mocks
+    ):
+        from src.app.models.chat import SourceGroundingVerdict
+
+        agent_message_mock.return_value = {
+            "messages": [mock.Mock(content='Cites <a href="x">[Doc 9]</a>.')]
+        }
+        judge_mock.return_value = SourceGroundingVerdict(
+            compliant=False,
+            unsupported_citations=["[Doc 9]"],
+            reasoning="Doc 9 was never retrieved.",
+        )
+
+        with TestClient(app) as client:
+            response = client.post(
+                f"{settings.API_V1_STR}/qna/chat/agent",
+                json={
+                    "query": "What are the SDGs?",
+                    "thread_id": str(uuid.uuid4()),
+                    "corpora": ["corpus1"],
+                    "sdg_filter": [1, 2, 3],
+                },
+                headers={"X-API-Key": "test", "origin": "test"},
+            )
+            self.assertEqual(response.status_code, 200)
+            self.assertFalse(response.json()["judge"]["compliant"])
+            self.assertEqual(
+                response.json()["judge"]["unsupported_citations"], ["[Doc 9]"]
+            )
 
     @mock.patch("psycopg.AsyncConnection.connect", new_callable=mock.AsyncMock)
     @mock.patch(
@@ -289,3 +332,4 @@ class QnATests(unittest.IsolatedAsyncioTestCase):
             )
             self.assertTrue(agent_message_mock.called)
             self.assertTrue(agent_message_mock.call_args.kwargs["streamed_ans"])
+            self.assertIn('"judge": {"compliant": true', response.text)

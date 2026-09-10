@@ -28,6 +28,7 @@ from langchain_core.runnables import RunnableConfig  # type: ignore
 from langgraph.checkpoint.postgres.aio import AsyncPostgresSaver  # type: ignore
 from langsmith import traceable
 
+from src.app.models.chat import SourceGroundingVerdict
 from src.app.models.documents import Document
 from src.app.search.services.search import SearchService
 from src.app.services import prompts
@@ -73,6 +74,7 @@ class AbstractChat(ABC):
     ):
         self.agent_executor = None
         self.chat_client = client
+        self._judge_model = None
 
     def _build_non_agent_trace_context(
         self,
@@ -451,6 +453,51 @@ class AbstractChat(ABC):
             system_prompt=prompts.AGENT_SYSTEM_PROMPT,
         )
         return self.agent_executor
+
+    def _get_judge_model(self):
+        if self._judge_model is None:
+            settings = get_settings()
+            self._judge_model = build_chat_model(
+                model=settings.MISTRAL_LLM_MODEL_NAME,
+                api_key=settings.MISTRAL_API_KEY,
+                temperature=0,
+            )
+        return self._judge_model
+
+    @log_time_and_error
+    @traceable(
+        run_type=TRACE_RUN_TYPE_LLM,
+        name=TraceName.JUDGE_SOURCE_GROUNDING.value,
+    )
+    async def judge_source_grounding(
+        self,
+        answer: str,
+        docs: List[Any] | None,
+    ) -> SourceGroundingVerdict:
+        """LLM-as-judge check: every citation/link in `answer` must come from `docs`
+        (the documents returned by the retrieval tool this turn), never elsewhere.
+
+        Args:
+            answer (str): The final agent answer text.
+            docs (list | None): The documents returned by the retrieval tool this turn.
+
+        Returns:
+            SourceGroundingVerdict: The compliance verdict.
+        """
+        if not answer or "doc" not in answer.lower():
+            return SourceGroundingVerdict(
+                compliant=True, reasoning="No citations present in the answer."
+            )
+
+        judge_model = self._get_judge_model()
+        structured_judge = judge_model.with_structured_output(SourceGroundingVerdict)
+
+        return await structured_judge.ainvoke(
+            prompts.JUDGE_SOURCE_GROUNDING_PROMPT.format(
+                documents=stringify_docs_content(docs or []),
+                answer=answer,
+            )
+        )
 
     async def agent_message(
         self,

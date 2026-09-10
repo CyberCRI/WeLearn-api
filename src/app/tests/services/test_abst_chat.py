@@ -102,3 +102,59 @@ class TestAbstractChat(unittest.IsolatedAsyncioTestCase):
         middleware = mock_create_agent.call_args.kwargs["middleware"]
         assert len(middleware) == 1
         assert middleware[0].__class__.__name__ == "SummarizationMiddleware"
+
+    async def test_judge_source_grounding_skips_llm_when_no_citations(self):
+        verdict = await self.chat.judge_source_grounding("Plain answer, no refs.", [])
+
+        self.assertTrue(verdict.compliant)
+        self.assertEqual(verdict.unsupported_citations, [])
+
+    async def test_judge_source_grounding_skips_llm_when_answer_empty(self):
+        verdict = await self.chat.judge_source_grounding("", None)
+
+        self.assertTrue(verdict.compliant)
+
+    @mock.patch("src.app.shared.infra.abst_chat.build_chat_model")
+    async def test_judge_source_grounding_calls_structured_llm_when_citations_present(
+        self, mock_build_chat_model
+    ):
+        from src.app.models.chat import SourceGroundingVerdict
+
+        expected_verdict = SourceGroundingVerdict(
+            compliant=False,
+            unsupported_citations=["[Doc 3]"],
+            reasoning="Doc 3 was never retrieved.",
+        )
+        structured_model = mock.Mock()
+        structured_model.ainvoke = mock.AsyncMock(return_value=expected_verdict)
+        judge_model = mock.Mock()
+        judge_model.with_structured_output = mock.Mock(return_value=structured_model)
+        mock_build_chat_model.return_value = judge_model
+
+        answer = 'See <a href="https://example.com">[Doc 3]</a> for details.'
+        verdict = await self.chat.judge_source_grounding(answer, [])
+
+        self.assertIs(verdict, expected_verdict)
+        judge_model.with_structured_output.assert_called_once_with(
+            SourceGroundingVerdict
+        )
+        structured_model.ainvoke.assert_awaited_once()
+
+    @mock.patch("src.app.shared.infra.abst_chat.build_chat_model")
+    async def test_judge_source_grounding_reuses_cached_model(
+        self, mock_build_chat_model
+    ):
+        from src.app.models.chat import SourceGroundingVerdict
+
+        structured_model = mock.Mock()
+        structured_model.ainvoke = mock.AsyncMock(
+            return_value=SourceGroundingVerdict(compliant=True)
+        )
+        judge_model = mock.Mock()
+        judge_model.with_structured_output = mock.Mock(return_value=structured_model)
+        mock_build_chat_model.return_value = judge_model
+
+        await self.chat.judge_source_grounding("Cites [Doc 1] here.", [])
+        await self.chat.judge_source_grounding("Cites [Doc 2] here.", [])
+
+        mock_build_chat_model.assert_called_once()
