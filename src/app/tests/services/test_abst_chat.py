@@ -168,7 +168,9 @@ class TestAbstractChat(unittest.IsolatedAsyncioTestCase):
         result = middleware.before_model(state, runtime=mock.Mock())
         new_messages = result["messages"][1:]  # [0] is the RemoveMessage marker
 
-        cleared = next(m for m in new_messages if getattr(m, "tool_call_id", None) == "1")
+        cleared = next(
+            m for m in new_messages if getattr(m, "tool_call_id", None) == "1"
+        )
         kept = next(m for m in new_messages if getattr(m, "tool_call_id", None) == "2")
 
         self.assertEqual(cleared.content, "[cleared]")

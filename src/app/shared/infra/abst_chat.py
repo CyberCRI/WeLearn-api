@@ -93,7 +93,9 @@ class _ReinforceHardConstraints(AgentMiddleware):
         return handler(request.override(messages=self._with_reminder(request.messages)))
 
     async def awrap_model_call(self, request, handler):  # noqa: ANN001
-        return await handler(request.override(messages=self._with_reminder(request.messages)))
+        return await handler(
+            request.override(messages=self._with_reminder(request.messages))
+        )
 
     @staticmethod
     def _with_reminder(messages):  # noqa: ANN001
@@ -662,7 +664,9 @@ class AbstractChat(ABC):
         messages: list[dict],
         max_tokens: int,
     ) -> str:
-        result = await self.chat_client.completion(messages=messages, max_tokens=max_tokens)
+        result = await self.chat_client.completion(
+            messages=messages, max_tokens=max_tokens
+        )
         if not isinstance(result, str):
             raise ValueError("Syllabus feedback response is not a string")
         return result
