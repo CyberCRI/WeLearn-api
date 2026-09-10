@@ -4,7 +4,6 @@ from unittest import mock
 from langchain.agents.middleware import ClearToolUsesEdit, SummarizationMiddleware
 from langchain_core.messages import AIMessage, HumanMessage, ToolMessage
 
-from src.app.models.chat import ReformulatedQueryResponse
 from src.app.services import prompts
 from src.app.shared.domain.exceptions import LanguageNotSupportedError
 from src.app.shared.infra.abst_chat import (

@@ -32,11 +32,8 @@ from langchain_core.messages.utils import count_tokens_approximately  # type: ig
 from langchain_core.runnables import RunnableConfig  # type: ignore
 from langchain_mistralai import ChatMistralAI
 from langgraph.checkpoint.postgres.aio import AsyncPostgresSaver  # type: ignore
-<<<<<<< HEAD
-from langsmith import traceable
-=======
 from langgraph.graph.message import REMOVE_ALL_MESSAGES  # type: ignore
->>>>>>> 008235b (fix(chat): keep only latest tool results, curb citation drift, fight context rot)
+from langsmith import traceable
 
 from src.app.models.documents import Document
 from src.app.search.services.search import SearchService
