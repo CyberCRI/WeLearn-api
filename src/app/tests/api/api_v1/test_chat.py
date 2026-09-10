@@ -257,11 +257,14 @@ class QnATests(unittest.IsolatedAsyncioTestCase):
             self.assertEqual(response.status_code, 200)
             self.assertIn("content", response.json())
             self.assertIn("docs", response.json())
-            self.assertEqual(response.json()["judge"], {
-                "compliant": True,
-                "unsupported_citations": [],
-                "reasoning": "No citations present in the answer.",
-            })
+            self.assertEqual(
+                response.json()["judge"],
+                {
+                    "compliant": True,
+                    "unsupported_citations": [],
+                    "reasoning": "No citations present in the answer.",
+                },
+            )
 
     @mock.patch("psycopg.AsyncConnection.connect", new_callable=mock.AsyncMock)
     @mock.patch(
