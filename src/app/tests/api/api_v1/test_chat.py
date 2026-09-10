@@ -2,7 +2,7 @@ import unittest
 import uuid
 from unittest import mock
 from unittest.mock import MagicMock
-
+from langgraph.checkpoint.memory import InMemorySaver
 import backoff
 from fastapi.testclient import TestClient
 from langchain_core.messages import AIMessage, HumanMessage, ToolMessage
@@ -332,13 +332,23 @@ class QnATests(unittest.IsolatedAsyncioTestCase):
             returned_ids = [doc["id"] for doc in response.json()["docs"]]
             self.assertEqual(returned_ids, ["reusedDoc"])
 
-    @mock.patch("psycopg.AsyncConnection.connect", new_callable=mock.AsyncMock)
     @mock.patch(
         "src.app.shared.infra.security.check_api_key_sync",
         new=mock.MagicMock(return_value=True),
     )
+    @mock.patch(
+        "src.app.api.api_v1.endpoints.chat_utils.AsyncPostgresSaver",
+        return_value=InMemorySaver(),
+    )
+    @mock.patch(
+        "src.app.api.api_v1.endpoints.chat_utils.psycopg.AsyncConnection.connect"
+    )
     @mock.patch("src.app.shared.infra.abst_chat.AbstractChat.agent_message")
-    def test_chat_agent_stream(self, agent_message_mock, *mocks):
+    def test_chat_agent_stream(self, agent_message_mock, connect_mock, *mocks):
+        fake_conn = mock.AsyncMock()
+        # async with await AsyncConnection.connect(...) as conn:
+        connect_mock.return_value.__aenter__.return_value = fake_conn
+
         async def _fake_stream():
             yield {"status": "test", "content": "fake content"}
 
