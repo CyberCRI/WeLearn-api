@@ -164,6 +164,28 @@ def get_documents_payload_by_ids_sync(documents_ids: list[str]) -> list[Document
         return docs
 
 
+def get_external_ids_by_document_ids_sync(document_ids: list[str]) -> dict[str, str]:
+    """
+    Get the external_id of documents by their ids.
+    Args:
+        document_ids: The list of document ids to look up.
+
+    Returns:
+        A mapping of document_id (str) to external_id.
+    """
+    if not document_ids:
+        return {}
+
+    with session_maker() as s:
+        rows = s.execute(
+            select(WeLearnDocument.id, WeLearnDocument.external_id).where(
+                WeLearnDocument.id.in_(document_ids)
+            )
+        ).all()
+
+    return {str(row.id): row.external_id for row in rows if row.external_id}
+
+
 def register_endpoint(endpoint, session_id, http_code):
     with session_maker() as session:
         endpoint_request = EndpointRequest(

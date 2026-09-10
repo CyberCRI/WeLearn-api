@@ -26,6 +26,7 @@ from src.app.services.data_quality import DataQualityChecker
 from src.app.services.helpers import convert_embedding_bytes
 from src.app.services.sql_db.queries import (
     get_embeddings_model_id_according_name,
+    get_external_ids_by_document_ids_sync,
     get_subject,
 )
 from src.app.shared.domain.exceptions import CollectionNotFoundError, ModelNotFoundError
@@ -316,6 +317,8 @@ class SearchService:
                 ex,
             )
 
+        sorted_data = await self._enrich_with_external_ids(sorted_data)
+
         if without_vectors:
             points_without_vectors = [
                 point.model_copy(update={"vector": None}) for point in sorted_data
@@ -323,6 +326,24 @@ class SearchService:
             return points_without_vectors
 
         return sorted_data
+
+    async def _enrich_with_external_ids(
+        self, points: list[http_models.ScoredPoint]
+    ) -> list[http_models.ScoredPoint]:
+        document_ids = [
+            str(point.payload["document_id"])
+            for point in points
+            if point.payload and point.payload.get("document_id")
+        ]
+        external_ids = await run_in_threadpool(
+            get_external_ids_by_document_ids_sync, document_ids
+        )
+        for point in points:
+            if point.payload:
+                point.payload["document_external_id"] = external_ids.get(
+                    str(point.payload.get("document_id"))
+                )
+        return points
 
     @log_time_and_error
     async def search_group_by_document(
