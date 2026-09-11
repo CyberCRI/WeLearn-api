@@ -83,6 +83,26 @@ class HelpersTests(TestCase):
 
         self.assertEqual(stringify_docs_content(docs), "")
 
+    def test_stringify_docs_content_nested_dict_payload(self):
+        docs = [
+            {
+                "score": 0.5,
+                "payload": {
+                    "document_title": "Carbon tax",
+                    "slice_content": "A carbon tax is a tax levied on emissions.",
+                    "document_url": "https://en.wikipedia.org/wiki/Carbon_tax",
+                },
+            }
+        ]
+
+        expected = """<article>
+Doc 1: Carbon tax
+A carbon tax is a tax levied on emissions.
+
+url:https://en.wikipedia.org/wiki/Carbon_tax</article>"""
+
+        self.assertEqual(stringify_docs_content(docs), expected)
+
     def test_extract_json_from_response(self):
         response = 'Here is the JSON: {"key": "value"}'
         expected = {"key": "value"}
@@ -151,6 +171,14 @@ class HelpersTests(TestCase):
 
     def test_linkify_missing_citations_dict_payload_fallback(self):
         docs = [{"document_url": "https://example.org/1"}]
+        text = "See [Doc 1] for more."
+        expected = (
+            'See <a href="https://example.org/1" target="_blank">[Doc 1]</a> for more.'
+        )
+        self.assertEqual(linkify_missing_citations(text, docs), expected)
+
+    def test_linkify_missing_citations_nested_dict_payload(self):
+        docs = [{"payload": {"document_url": "https://example.org/1"}}]
         text = "See [Doc 1] for more."
         expected = (
             'See <a href="https://example.org/1" target="_blank">[Doc 1]</a> for more.'

@@ -97,6 +97,16 @@ def normalize_payload(payload: Any) -> dict:
         return {}
 
 
+def get_document_payload(doc: Any) -> dict:
+    raw_payload = getattr(doc, "payload", None)
+    if raw_payload is None and isinstance(doc, dict):
+        raw_payload = doc.get("payload", doc)
+    elif raw_payload is None:
+        raw_payload = doc
+
+    return normalize_payload(raw_payload)
+
+
 def stringify_docs_content(docs: List[Any]) -> str:
     """
     Creates a string from a list of documents.
@@ -116,9 +126,7 @@ def stringify_docs_content(docs: List[Any]) -> str:
     try:
         articles: list[str] = []
         for i, doc in enumerate(docs):
-            payload = getattr(doc, "payload", {})
-
-            payload = normalize_payload(payload)
+            payload = get_document_payload(doc)
 
             title = str(payload.get("document_title", "")).strip()
             content = str(payload.get("slice_content", "")).strip()
@@ -164,7 +172,7 @@ def linkify_missing_citations(text: str, docs: List[Any]) -> str:
     def _url_for(n: int) -> Optional[str]:
         if not (1 <= n <= len(docs)):
             return None
-        payload = normalize_payload(getattr(docs[n - 1], "payload", docs[n - 1]))
+        payload = get_document_payload(docs[n - 1])
         return str(payload.get("document_url", "")).strip() or None
 
     def _replace(match: "re.Match[str]") -> str:
