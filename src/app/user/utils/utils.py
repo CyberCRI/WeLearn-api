@@ -8,6 +8,7 @@ from src.app.services.sql_db.queries_user import (
     get_or_create_user_sync,
     get_user_from_session_id,
 )
+from src.app.shared.infra.security import TokenData
 from src.app.utils.logger import logger as logger_utils
 
 logger = logger_utils(__name__)

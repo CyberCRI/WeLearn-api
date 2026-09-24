@@ -1,6 +1,6 @@
 import uuid
 
-from fastapi import APIRouter, HTTPException, Request, Response
+from fastapi import APIRouter, Depends, HTTPException, Request, Response
 from fastapi.concurrency import run_in_threadpool
 
 from src.app.services.sql_db.queries_user import (
@@ -14,6 +14,7 @@ from src.app.services.sql_db.queries_user import (
 )
 from src.app.shared.domain.constants import SESSION_COOKIE_NAME, SESSION_TTL_SECONDS
 from src.app.shared.domain.exceptions import UserNotFoundError
+from src.app.shared.infra.security import TokenData, get_user
 from src.app.shared.utils.dependencies import get_settings
 from src.app.shared.utils.requests import (
     extract_origin_from_request,
@@ -32,16 +33,16 @@ settings = get_settings()
     "/user_and_session", summary="Create new user and session", response_model=dict
 )
 async def handle_user_and_session(
-    request: Request, response: Response, referer: str | None = None
+    request: Request,
+    response: Response,
+    referer: str | None = None,
 ):
     host = extract_origin_from_request(request)
     session_uuid = extract_session_cookie(request)
 
     try:
-        _, session_uuid = await resolve_user_and_session(
-            session_uuid=session_uuid,
-            host=host,
-            referer=referer,
+        user_id, session_uuid = await resolve_user_and_session(
+            session_uuid=session_uuid, host=host, referer=referer
         )
     except UserNotFoundError as e:
         raise HTTPException(status_code=404, detail=str(e))

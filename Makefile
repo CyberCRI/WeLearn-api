@@ -4,6 +4,12 @@ run-poetry:
 	poetry run baml-cli generate --from ./src/app/baml_src
 	poetry run uvicorn src.main:app --reload
 
+run-docker:
+	poetry run baml-cli generate --from ./src/app/baml_src
+	docker-compose --profile dev up -d
+	poetry run uvicorn src.main:app --reload
+
+
 run-dev:
 	baml-cli generate --from ./src/app/baml_src
 	uvicorn src.main:app --reload
