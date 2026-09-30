@@ -9,7 +9,12 @@ from langchain_core.prompts import ChatPromptTemplate
 from langchain_core.runnables import RunnableConfig
 
 from src.app.shared.utils.utils import build_system_message
-from src.app.tutor.service.models import MessageWithResources, SyllabusResponseAgent
+from src.app.tutor.service.models import (
+    ExtractorOutput,
+    MessageWithResources,
+    SyllabusResponseAgent,
+)
+from src.app.tutor.service.syllabus import COUNTS_GUIDE, GREENCOMP_NAMES_GUIDE
 from src.app.utils.logger import logger as utils_logger
 
 logger = utils_logger(__name__)
@@ -115,8 +120,13 @@ class UniversityTeacherAgent(TutorChatAgent):
         )
 
     async def generate(self, message: MessageWithResources) -> SyllabusResponseAgent:
-        DISCIPLINARY_SKILLS = get_disciplinary_skills()
-        disciplinary_skills_sentences = "\n\nThe syllabus should also contribute to build the following disciplinary skills:\n-"
+        skills = get_disciplinary_skills().get(message.discipline, [])
+        disciplinary_skills_sentences = (
+            "\n\nThe syllabus should also contribute to build the following disciplinary skills:\n- "
+            + "\n- ".join(skills)
+            if skills
+            else ""
+        )
         contents = "summary :".join(message.summary)
         themes = ",".join([theme["theme"] for theme in message.themes])
         prompt = (
@@ -125,7 +135,7 @@ class UniversityTeacherAgent(TutorChatAgent):
             f"The syllabus should be written in lang: {message.lang} the section names must also be written in {message.lang}, this is important \n\nTEXT CONTENTS:\n{contents}\n\n"
             f"THEMES:\n{themes} \n\nTake into account the users input courses title, level, duration and "
             f"description: {message.course_title}, {message.level}, {message.duration}, {message.description}."
-            f"{(disciplinary_skills_sentences.join(DISCIPLINARY_SKILLS[message.discipline])) if message.discipline in DISCIPLINARY_SKILLS.keys() else ''}"
+            f"{disciplinary_skills_sentences}"
         )
         response = await self.run(prompt)
         return SyllabusResponseAgent(content=response, source=self.name)
@@ -240,3 +250,64 @@ class PedagogicalEngineerAgent(TutorChatAgent):
         )
         response = await self.run(prompt)
         return SyllabusResponseAgent(content=response, source=self.name)
+
+
+class FeedbackAgent(TutorChatAgent):
+    """Applies the teacher's modification request to an existing syllabus."""
+
+    agent_name = "FeedbackAgent"
+    agent_tag = "feedback"
+
+    def __init__(
+        self,
+        model: BaseChatModel,
+        greencomp_competencies: str,
+        trace_tags: list[str] | None = None,
+        trace_metadata: dict[str, Any] | None = None,
+    ) -> None:
+        system_prompt = build_system_message(
+            role="a pedagogical engineer who revises a syllabus according to the feedback of the teacher who will teach the course",
+            backstory="You are an expert in competency-based course design, active learning and the EU GreenComp framework. You make precise, targeted edits and keep everything else intact.",
+            goal="Apply the teacher's feedback to the syllabus and return the full revised syllabus in markdown",
+            instructions=(
+                "1. Apply the teacher's feedback exactly; change only what the feedback requires. "
+                "2. Keep the same structure, the same section headings word for word, the same numbering "
+                "(e.g. LO1/AA1) and the course schedule as a markdown table. "
+                "3. Keep the language of the syllabus. "
+                "4. Keep the number of learning objectives, learning outcomes and competencies unless the feedback "
+                "requires otherwise. If the feedback changes the course duration or number of sessions, rescale the "
+                "course: one schedule row per session, and adjust the objectives and outcomes (renumbering all "
+                f"references to them) to this guide: {COUNTS_GUIDE}. "
+                "5. Keep at least one GreenComp competency. A competency that corresponds to a GreenComp "
+                "competency is written as '**GreenComp <code> – <official name in the syllabus language>** : <how it "
+                "applies in this course> *(<linked outcomes>)*'. Official names (English / French): "
+                f"{GREENCOMP_NAMES_GUIDE}. "
+                "6. Keep class plans student-centred and active (project/problem-based learning, case studies, "
+                "debates, peer instruction, workshops); teacher input stays short. "
+                "7. Never comment on your changes or design choices inside the syllabus. "
+                "8. The references section is handled separately: do not write any references or links. "
+                f"Here is the GreenComp framework for reference: {greencomp_competencies}"
+            ),
+            expected_output="Only the revised syllabus in markdown, starting with its title heading. No backticks, explanations, notes or comments before or after it.",
+        )
+        super().__init__(
+            model,
+            system_prompt,
+            trace_tags=trace_tags,
+            trace_metadata=trace_metadata,
+        )
+
+    async def apply(
+        self, syllabus: str, feedback: str, extracts: list[ExtractorOutput]
+    ) -> str:
+        summaries = "\n".join(extract.summary for extract in extracts)
+        themes = ", ".join(
+            theme["theme"] for extract in extracts for theme in extract.themes
+        )
+        prompt = (
+            f"SYLLABUS:\n{syllabus}\n\n"
+            f"TEACHER'S FEEDBACK:\n{feedback}\n\n"
+            f"Context - summaries of the teacher's documents:\n{summaries}\n\n"
+            f"Context - themes: {themes}"
+        )
+        return await self.run(prompt)

@@ -3,7 +3,7 @@ from dataclasses import dataclass
 from enum import Enum
 from typing import Any, Dict, List, Optional
 
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from qdrant_client.models import ScoredPoint
 
 from src.app.baml_client import types
@@ -55,6 +55,66 @@ class SyllabusFeedback(SyllabusResponse):
 
 class SyllabusUserUpdate(BaseModel):
     syllabus: str
+
+
+class DraftOutcome(BaseModel):
+    text: str = Field(
+        description="Student-centred, measurable outcome starting with an action verb, "
+        "including how it is demonstrated (the class activity or assessment)."
+    )
+    objective_numbers: list[int] = Field(
+        description="1-based numbers of the learning objectives this outcome serves."
+    )
+
+
+class DraftCompetency(BaseModel):
+    text: str = Field(description="Transferable competency developed by the course.")
+    greencomp_code: str | None = Field(
+        default=None,
+        description="Code of the GreenComp competency this corresponds to, like '2.1'; "
+        "null only if it has no GreenComp equivalent.",
+    )
+    outcome_numbers: list[int] = Field(
+        description="1-based numbers of the learning outcomes that develop it."
+    )
+
+
+class DraftAssessment(BaseModel):
+    method: str = Field(description="Assessment method and what students produce.")
+    weight: str = Field(description="Share of the final grade, e.g. '40%'.")
+    outcome_numbers: list[int] = Field(
+        description="1-based numbers of the learning outcomes it evaluates."
+    )
+
+
+class DraftSession(BaseModel):
+    topics: str = Field(description="Topics covered in this session.")
+    outcome_numbers: list[int] = Field(
+        description="1-based numbers of the learning outcomes targeted."
+    )
+    class_plan: str = Field(
+        description="Student-centred plan for the session: the active-learning "
+        "activities students do, with timing; teacher input kept short. Never a "
+        "placeholder or ellipsis."
+    )
+
+
+class SyllabusDraft(BaseModel):
+    """Structured syllabus returned by the LLM; references are added in code."""
+
+    course_title: str
+    description: str = Field(
+        description="Course overview addressed to students: content, relevance to the "
+        "academic program and to sustainability challenges. No comments about how the "
+        "syllabus was designed."
+    )
+    objectives: list[str] = Field(
+        description="Broad, teacher-centred learning objectives."
+    )
+    outcomes: list[DraftOutcome]
+    competencies: list[DraftCompetency]
+    assessment: list[DraftAssessment]
+    schedule: list[DraftSession]
 
 
 class MessageWithAnalysis(BaseModel):

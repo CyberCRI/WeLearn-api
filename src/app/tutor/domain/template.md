@@ -22,4 +22,4 @@ Course title: Small title for the course
    table structure: | week | Topics | Learning Outcomes | Class Plan |
 7. References: In this section should be added all sources used to generate the syllabus, including any source documents or WeLearn documents used to construct the syllabus.
    IMPORTANT: Do not remove any existent references in this section
-   Example of references: Document title <a href="document url" _target=blank>[link]</a>
+   Example of references: Document title <a href="document url" target="_blank">[link]</a>

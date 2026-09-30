@@ -48,6 +48,8 @@ class Settings(BaseSettings):
 
     LLM_MODEL_NAME: str
     LLM_TEMPERATURE: float
+    # old tutor: one structured LLM call instead of the 3-agent chain (False = revert)
+    TUTOR_SINGLE_PASS: bool = True
     ENV: str
 
     # LANGSMITH / LANGCHAIN TRACING
