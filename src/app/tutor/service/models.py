@@ -57,6 +57,16 @@ class SyllabusUserUpdate(BaseModel):
     syllabus: str
 
 
+@dataclass
+class Limits:
+    """Target counts for a syllabus, derived from the course duration."""
+
+    sessions: int | None
+    objectives: int
+    outcomes: int
+    competencies: int
+
+
 class DraftOutcome(BaseModel):
     text: str = Field(
         description="Student-centred, measurable outcome starting with an action verb, "
@@ -99,7 +109,7 @@ class DraftSession(BaseModel):
     )
 
 
-class SyllabusDraft(BaseModel):
+class DraftSyllabus(BaseModel):
     """Structured syllabus returned by the LLM; references are added in code."""
 
     course_title: str

@@ -6,9 +6,11 @@ from fastapi import (
     BackgroundTasks,
     Depends,
     File,
+    HTTPException,
     Request,
     Response,
     UploadFile,
+    status,
 )
 
 from src.app.baml_client.async_client import b, types
@@ -210,14 +212,26 @@ async def create_syllabus(
         "query_extracts_count": len(body.extracts),
         "documents_count": len(body.documents),
     }
-    results = await tutor_manager(body, lang, settings, trace_context=trace_context)
+    try:
+        results = await tutor_manager(body, lang, settings, trace_context=trace_context)
+    except Exception as e:
+        logger.error(f"Syllabus generation failed: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_502_BAD_GATEWAY,
+            detail={
+                "message": "Syllabus generation failed, please retry",
+                "code": "SYLLABUS_GENERATION_FAILED",
+            },
+        )
 
-    # TODO: handle errors
+    # the final syllabus is the last item: the only one in single-pass mode,
+    # the PedagogicalEngineerAgent's in the legacy 3-agent chain
+    final_syllabus = results[-1]
 
     message_id = await data_collection.register_syllabus_data(
         session_id=session_id,
         input_data=body,
-        agent_answer=results[-1].content if results else "",
+        agent_answer=final_syllabus.content,
         feature="syllabus_creation",
     )
 

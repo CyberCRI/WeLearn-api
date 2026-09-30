@@ -1,19 +1,19 @@
 """Single-pass syllabus generation (old tutor).
 
-The LLM fills a SyllabusDraft; headings, limits, GreenComp filtering and the
+The LLM fills a DraftSyllabus; headings, limits, GreenComp filtering and the
 references section are handled here in code, so they can't be hallucinated.
 """
 
 import re
-from dataclasses import dataclass
 from math import ceil
-from typing import Any
 
+from langchain_core.exceptions import OutputParserException
 from langchain_core.language_models import BaseChatModel
 from langchain_core.prompts import ChatPromptTemplate
 from langchain_core.runnables import RunnableConfig
+from pydantic import ValidationError
 
-from src.app.tutor.service.models import SyllabusDraft
+from src.app.tutor.service.models import DraftSyllabus, Limits, MessageWithResources
 from src.app.utils.logger import logger as utils_logger
 
 logger = utils_logger(__name__)
@@ -122,14 +122,6 @@ _REFERENCES_HEADING = re.compile(
 )
 
 
-@dataclass
-class Limits:
-    sessions: int | None
-    objectives: int
-    outcomes: int
-    competencies: int
-
-
 def compute_limits(duration: str | None) -> Limits:
     # ponytail: first number + unit in free text ("12 semaines", "30h"); a structured
     # duration field in the client would remove the guessing.
@@ -183,13 +175,13 @@ def render_references(resources: list[dict], lang: str) -> str:
     h = HEADINGS.get(lang, HEADINGS["en"])
     seen, items = set(), []
     for res in resources:
-        url, title = res.get("url") or "", res.get("title") or res.get("url") or ""
-        key = url or title
-        if not key or key in seen:
+        url, title = res.get("url", ""), res.get("title", "")
+        # WeLearn documents always have both; skip anything that would render a
+        # broken link or a bare URL
+        if not (url and title) or url in seen:
             continue
-        seen.add(key)
-        link = f' <a href="{url}" target="_blank">[{h["link"]}]</a>' if url else ""
-        items.append(f"- {title}{link}")
+        seen.add(url)
+        items.append(f'- {title} <a href="{url}" target="_blank">[{h["link"]}]</a>')
     return f"## {h['references']}\n\n" + ("\n".join(items) or h["no_references"])
 
 
@@ -201,7 +193,7 @@ def _refs(prefix: str, numbers: list[int], max_n: int) -> str:
     return ", ".join(f"{prefix}{n}" for n in numbers if 1 <= n <= max_n)
 
 
-def render_markdown(draft: SyllabusDraft, lang: str, limits: Limits) -> str:
+def render_markdown(draft: DraftSyllabus, lang: str, limits: Limits) -> str:
     h = HEADINGS.get(lang, HEADINGS["en"])
     objectives = draft.objectives[: limits.objectives]
     outcomes = draft.outcomes[: limits.outcomes]
@@ -223,6 +215,8 @@ def render_markdown(draft: SyllabusDraft, lang: str, limits: Limits) -> str:
         logger.warning(
             "Syllabus draft has no GreenComp competency linked to an outcome"
         )
+    # GreenComp has priority: if there are as many GreenComp competencies as the
+    # limit allows, the non-GreenComp ones are dropped
     greencomp = greencomp[: limits.competencies]
     competencies = greencomp + others[: limits.competencies - len(greencomp)]
 
@@ -296,7 +290,7 @@ SYSTEM_PROMPT = (
 
 
 def build_user_prompt(
-    message: Any, limits: Limits, disciplinary_skills: list[str]
+    message: MessageWithResources, limits: Limits, disciplinary_skills: list[str]
 ) -> str:
     lang = LANG_NAMES.get(message.lang, message.lang)
     themes = ", ".join(t["theme"] for t in message.themes)
@@ -337,7 +331,7 @@ def build_user_prompt(
 
 
 async def generate_syllabus(
-    message: Any,
+    message: MessageWithResources,
     model: BaseChatModel,
     disciplinary_skills: list[str],
     config: RunnableConfig,
@@ -346,12 +340,21 @@ async def generate_syllabus(
     prompt = ChatPromptTemplate.from_messages(
         [("system", SYSTEM_PROMPT), ("human", "{user_prompt}")]
     )
-    chain = prompt | model.with_structured_output(SyllabusDraft)
-    result = await chain.ainvoke(
-        {"user_prompt": build_user_prompt(message, limits, disciplinary_skills)},
-        config=config,
-    )
-    draft = SyllabusDraft.model_validate(result, from_attributes=True)
+    chain = prompt | model.with_structured_output(DraftSyllabus)
+    user_prompt = build_user_prompt(message, limits, disciplinary_skills)
+
+    async def invoke() -> DraftSyllabus:
+        result = await chain.ainvoke({"user_prompt": user_prompt}, config=config)
+        # with_structured_output is typed dict | BaseModel: normalise to DraftSyllabus
+        # (also raises ValidationError when the LLM returned no/partial fields)
+        return DraftSyllabus.model_validate(result, from_attributes=True)
+
+    try:
+        draft = await invoke()
+    except (OutputParserException, ValidationError) as e:
+        # ponytail: one retry for a malformed LLM answer; a second failure propagates
+        logger.warning("Invalid syllabus draft from LLM, retrying: %s", e)
+        draft = await invoke()
     if message.course_title:
         draft.course_title = message.course_title
     return (

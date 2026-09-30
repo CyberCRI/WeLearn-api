@@ -3,7 +3,7 @@ from src.app.tutor.service.models import (
     DraftCompetency,
     DraftOutcome,
     DraftSession,
-    SyllabusDraft,
+    DraftSyllabus,
 )
 from src.app.tutor.service.syllabus import (
     compute_limits,
@@ -15,8 +15,8 @@ from src.app.tutor.service.syllabus import (
 )
 
 
-def make_draft() -> SyllabusDraft:
-    return SyllabusDraft(
+def make_draft() -> DraftSyllabus:
+    return DraftSyllabus(
         course_title="Économie circulaire",
         description="Desc",
         objectives=["O1", "O2", "O3", "O4", "O5"],
@@ -84,6 +84,10 @@ def test_references_are_deterministic():
     assert refs.count("https://a.org") == 1
     assert '<a href="https://b.org" target="_blank">[lien]</a>' in refs
     assert "Aucune" in render_references([], "fr")
+    # a resource without title or url is never rendered
+    assert "Aucune" in render_references(
+        [{"title": "", "url": "https://c.org"}, {"title": "Doc C", "url": ""}], "fr"
+    )
 
 
 def test_split_and_trim():
@@ -107,3 +111,29 @@ def test_detect_syllabus_lang():
         == "en"
     )
     assert detect_syllabus_lang("# free text") == "unknown"
+
+
+def test_generate_syllabus_retries_once_then_raises():
+    import asyncio
+
+    import pytest
+    from langchain_core.runnables import RunnableConfig, RunnableLambda
+
+    from src.app.tutor.service.models import MessageWithResources
+    from src.app.tutor.service.syllabus import generate_syllabus
+
+    answers = [None, make_draft()]  # first answer invalid, second valid
+
+    class FakeModel:
+        def with_structured_output(self, schema):
+            return RunnableLambda(lambda _: answers.pop(0))
+
+    msg = MessageWithResources(
+        lang="fr", content=[], themes=[], summary=[], resources=[], duration=None
+    )
+    md = asyncio.run(generate_syllabus(msg, FakeModel(), [], RunnableConfig()))  # type: ignore
+    assert md.startswith("# Économie circulaire") and not answers
+
+    answers[:] = [None, None]
+    with pytest.raises(Exception):
+        asyncio.run(generate_syllabus(msg, FakeModel(), [], RunnableConfig()))  # type: ignore
