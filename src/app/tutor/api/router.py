@@ -6,9 +6,11 @@ from fastapi import (
     BackgroundTasks,
     Depends,
     File,
+    HTTPException,
     Request,
     Response,
     UploadFile,
+    status,
 )
 
 from src.app.baml_client.async_client import b, types
@@ -22,9 +24,6 @@ from src.app.shared.infra.abst_chat import get_chat_service
 from src.app.shared.utils.dependencies import get_settings
 from src.app.shared.utils.requests import extract_session_cookie
 from src.app.shared.utils.utils import get_files_content
-
-# from src.app.tutor.service.agents import TEMPLATES
-from src.app.tutor.service.agents import TEMPLATES
 from src.app.tutor.service.models import (
     CompetencyMappingRequest,
     CourseDescriptionRequest,
@@ -48,7 +47,7 @@ from src.app.tutor.service.prompts import (
     extractor_user_prompt,
     summaries_schema,
 )
-from src.app.tutor.service.tutor import tutor_manager
+from src.app.tutor.service.tutor import apply_feedback, tutor_manager
 from src.app.utils.logger import logger as utils_logger
 
 logger = utils_logger(__name__)
@@ -197,7 +196,6 @@ async def tutor_search_extract(
     return resp
 
 
-@with_backoff()
 @router.post("/syllabus")
 async def create_syllabus(
     request: Request,
@@ -214,14 +212,26 @@ async def create_syllabus(
         "query_extracts_count": len(body.extracts),
         "documents_count": len(body.documents),
     }
-    results = await tutor_manager(body, lang, settings, trace_context=trace_context)
+    try:
+        results = await tutor_manager(body, lang, settings, trace_context=trace_context)
+    except Exception as e:
+        logger.error(f"Syllabus generation failed: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_502_BAD_GATEWAY,
+            detail={
+                "message": "Syllabus generation failed, please retry",
+                "code": "SYLLABUS_GENERATION_FAILED",
+            },
+        )
 
-    # TODO: handle errors
+    # the final syllabus is the last item: the only one in single-pass mode,
+    # the PedagogicalEngineerAgent's in the legacy 3-agent chain
+    final_syllabus = results[-1]
 
     message_id = await data_collection.register_syllabus_data(
         session_id=session_id,
         input_data=body,
-        agent_answer=results[0].content if results else "",
+        agent_answer=final_syllabus.content,
         feature="syllabus_creation",
     )
 
@@ -233,81 +243,24 @@ async def create_syllabus(
     )
 
 
-feedback_prompt = """
-You are a pedagogical engineer and are  given a syllabus and a feedback. by the teacher that will teach the course.
-Your responsibility is to analyze the syllabus and return an improved version of it in a markdown format. Do not add the backticks and the markdown mention.
-It is important to take into account the feedback given by the teacher and to keep the syllabus structure.
-The syllabus structure is:
-    {syllabus_structure}
-
-To be able to do that, the assistant gives you:
-    - the syllabus of the course
-    - the feedback given by the teacher
-    - a list of documents related to the course
-    - a list of extracts from a document of interest
-    - the themes that the course is related to
-
-You will respond with the syllabus. Do not provide explanations or notes
-"""
-
-feedback_assistant_prompt = """
-IMPORTANT: you must follow the syllabus structure given by the system message.
-and the respect the format of the original syllabus.
-Keep the same language as the original syllabus.
-
-here is the original syllabus:
-    {syllabus}
-
-take into account the user feedback:
-    {feedback}
-
-keep the references section with the format <a href="document.url">document.title</a>, references are based on these documents:
-    {documents}
-
-for more context, here are the extracts of the original document the user sent to build the syllabus from. Extracts:
-    {extracts}
-
-and the themes extracted from those documents:
-    {themes}
-"""
-
-
-@with_backoff()
 @router.post("/syllabus/feedback")
 async def handle_syllabus_feedback(
     request: Request,
     body: SyllabusFeedback,
-    chatfactory=Depends(get_chat_service),
     data_collection=Depends(get_data_collection_service),
+    settings: Settings = Depends(get_settings),
 ):
     session_id = extract_session_cookie(request)
 
-    messages = [
-        {
-            "role": "system",
-            "content": feedback_prompt.format(syllabus_structure=TEMPLATES),
-        },
-        {
-            "role": "user",
-            "content": feedback_assistant_prompt.format(
-                syllabus=body.syllabus[0],
-                feedback=body.feedback,
-                documents=body.documents,
-                extracts="\n".join([extract.summary for extract in body.extracts]),
-                themes=(", ").join(
-                    [
-                        (", ").join([theme["theme"] for theme in extract.themes])
-                        for extract in body.extracts
-                    ]
-                ),
-            ),
-        },
-    ]
-
     try:
-        syllabus = await chatfactory.syllabus_feedback_completion(
-            max_tokens=20000,
-            messages=messages,
+        syllabus = await apply_feedback(
+            body,
+            settings,
+            trace_context={
+                "endpoint": request.url.path,
+                "feature": "syllabus_feedback",
+                "session_id": str(session_id) if session_id else None,
+            },
         )
 
         await data_collection.register_syllabus_data(
