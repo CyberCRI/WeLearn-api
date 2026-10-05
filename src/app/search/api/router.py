@@ -15,6 +15,7 @@ from fastapi.concurrency import run_in_threadpool
 from src.app.models.documents import Document
 from src.app.search.helpers.search_helpers import search_multi_inputs
 from src.app.search.models.search import (
+    DocumentSearchQuery,
     EnhancedSearchQuery,
     SDGFilter,
     SearchMethods,
@@ -86,6 +87,27 @@ def get_params(
         bad_request(message=e.message, msg_code=e.msg_code)
 
     return resp
+
+
+def get_document_search_params(
+    body: DocumentSearchQuery = Body(
+        ...,
+        description="Core search payload containing query text and optional corpus/language/SDG filters.",
+    ),
+    nb_results: int = Query(30, ge=1, le=100),
+    subject: str | None = Query(None),
+    influence_factor: float = Query(2),
+    relevance_factor: float = Query(1),
+    concatenate: bool = Query(True),
+) -> EnhancedSearchQuery:
+    return get_params(
+        body=body,
+        nb_results=nb_results,
+        subject=subject,
+        influence_factor=influence_factor,
+        relevance_factor=relevance_factor,
+        concatenate=concatenate,
+    )
 
 
 @router.get("/collections", operation_id="get_corpus_list")
@@ -245,7 +267,7 @@ async def search_all(
     request: Request,
     background_tasks: BackgroundTasks,
     response: Response,
-    qp: EnhancedSearchQuery = Depends(get_params),
+    qp: EnhancedSearchQuery = Depends(get_document_search_params),
     sp: SearchService = Depends(get_search_service),
     data_collection=Depends(get_data_collection_service),
 ):

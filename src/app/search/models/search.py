@@ -74,6 +74,14 @@ class SearchQuery(SDGFilter):
     )
 
 
+class DocumentSearchQuery(SearchQuery):
+    query: str = Field(
+        ...,
+        description="User query text.",
+        examples=["How can schools reduce water waste?"],
+    )
+
+
 class EnhancedSearchQuery(SDGFilter):
     query: str | list[str] = Field(
         ...,
