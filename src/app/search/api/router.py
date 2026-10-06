@@ -275,7 +275,10 @@ async def search_all(
         session_id = extract_session_cookie(request)
 
         res = await sp.search_handler(
-            qp=qp, method=SearchMethods.BY_DOCUMENT, background_tasks=background_tasks
+            qp=qp,
+            method=SearchMethods.BY_DOCUMENT,
+            background_tasks=background_tasks,
+            without_vectors=True,
         )
 
         if not res:
