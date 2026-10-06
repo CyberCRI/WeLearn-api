@@ -128,10 +128,11 @@ if settings.MCP_ENABLED:
         include_operations=[
             "get_corpus_list",
             "search_by_document",
-            "chat_agent_response",
         ],
         headers=["authorization", "x-api-key"],
     )
+
+    # "chat_agent_response" is currently disabled in the MCP interface
 
     mcp.mount_http(app, mount_path="/mcp")
     mcp.setup_server()
