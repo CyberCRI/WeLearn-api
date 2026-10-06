@@ -3,8 +3,10 @@
 from fastapi import (
     APIRouter,
     BackgroundTasks,
+    Body,
     Depends,
     HTTPException,
+    Query,
     Request,
     Response,
 )
@@ -13,6 +15,7 @@ from fastapi.concurrency import run_in_threadpool
 from src.app.models.documents import Document
 from src.app.search.helpers.search_helpers import search_multi_inputs
 from src.app.search.models.search import (
+    DocumentSearchQuery,
     EnhancedSearchQuery,
     SDGFilter,
     SearchMethods,
@@ -40,12 +43,32 @@ logger = logger_utils(__name__)
 
 
 def get_params(
-    body: SearchQuery,
-    nb_results: int = 30,
-    subject: str | None = None,
-    influence_factor: float = 2,
-    relevance_factor: float = 1,
-    concatenate: bool = True,
+    body: SearchQuery = Body(
+        ...,
+        description="Core search payload containing query text and optional corpus/language/SDG filters.",
+    ),
+    nb_results: int = Query(
+        30,
+        ge=1,
+        le=100,
+        description="Maximum number of search results to return.",
+    ),
+    subject: str | None = Query(
+        None,
+        description="Optional subject hint to influence semantic ranking.",
+    ),
+    influence_factor: float = Query(
+        2,
+        description="Weight applied to subject influence during flavored embedding.",
+    ),
+    relevance_factor: float = Query(
+        1,
+        description="Weight applied to base relevance scoring.",
+    ),
+    concatenate: bool = Query(
+        True,
+        description="If true, combines query fragments before embedding.",
+    ),
 ) -> EnhancedSearchQuery:
     resp = EnhancedSearchQuery(
         query=body.query or "",
@@ -66,7 +89,28 @@ def get_params(
     return resp
 
 
-@router.get("/collections")
+def get_document_search_params(
+    body: DocumentSearchQuery = Body(
+        ...,
+        description="Core search payload containing query text and optional corpus/language/SDG filters.",
+    ),
+    nb_results: int = Query(30, ge=1, le=100),
+    subject: str | None = Query(None),
+    influence_factor: float = Query(2),
+    relevance_factor: float = Query(1),
+    concatenate: bool = Query(True),
+) -> EnhancedSearchQuery:
+    return get_params(
+        body=body,
+        nb_results=nb_results,
+        subject=subject,
+        influence_factor=influence_factor,
+        relevance_factor=relevance_factor,
+        concatenate=concatenate,
+    )
+
+
+@router.get("/collections", operation_id="get_corpus_list")
 async def get_corpus():
     collections = await run_in_threadpool(get_collections_info_sync)
 
@@ -195,15 +239,35 @@ async def multi_search_all_slices_by_lang(
 
 @router.post(
     "/by_document",
+    operation_id="search_by_document",
     summary="search all documents",
     description="Search by documents, returns only one result by document id",
     response_model=SearchOutput | None | str,
+    openapi_extra={
+        "requestBody": {
+            "content": {
+                "application/json": {
+                    "examples": {
+                        "single_query": {
+                            "summary": "Single query with one corpus",
+                            "value": {
+                                "query": "How can communities improve clean water access?",
+                                "corpora": ["conversation"],
+                                "lang": ["en"],
+                                "sdg_filter": [6],
+                            },
+                        },
+                    }
+                }
+            }
+        }
+    },
 )
 async def search_all(
     request: Request,
     background_tasks: BackgroundTasks,
     response: Response,
-    qp: EnhancedSearchQuery = Depends(get_params),
+    qp: EnhancedSearchQuery = Depends(get_document_search_params),
     sp: SearchService = Depends(get_search_service),
     data_collection=Depends(get_data_collection_service),
 ):
@@ -211,7 +275,10 @@ async def search_all(
         session_id = extract_session_cookie(request)
 
         res = await sp.search_handler(
-            qp=qp, method=SearchMethods.BY_DOCUMENT, background_tasks=background_tasks
+            qp=qp,
+            method=SearchMethods.BY_DOCUMENT,
+            background_tasks=background_tasks,
+            without_vectors=True,
         )
 
         if not res:
