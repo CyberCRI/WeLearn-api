@@ -31,6 +31,7 @@ from welearn_database.data.models import (
 )
 
 from src.app.models.chat import Role
+from src.app.models.collections import CorpusRelation
 from src.app.models.documents import Document, DocumentPayloadModel, JourneySection
 from src.app.search.models.search import ContextType
 from src.app.services.sql_db.sql_service import session_maker
@@ -102,16 +103,39 @@ def get_documents_by_ids(documents_ids: list[str]) -> list[WeLearnDocument]:
     return ret
 
 
+main_corpus_dict: dict[UUID, Corpus | None] = {}
+
+
+def get_corpus_and_sub_corpus_repartition(db_session, corpus: Corpus) -> CorpusRelation:
+    if corpus not in main_corpus_dict:
+        req_corpus: Corpus | None = (
+            db_session.query(Corpus)
+            .filter(Corpus.id == corpus.parent_corpus_id)
+            .first()
+        )
+        main_corpus_dict[corpus.id] = req_corpus
+    main_corpus = main_corpus_dict[corpus.id]
+
+    if main_corpus:
+        return CorpusRelation(sub_corpus=corpus, corpus=main_corpus)
+
+    return CorpusRelation(
+        corpus=corpus,
+    )
+
+
 def get_documents_payload_by_ids_sync(documents_ids: list[str]) -> list[Document]:
     with session_maker() as s:
-        documents = get_documents_by_ids(documents_ids=documents_ids)
+        documents: list[WeLearnDocument] = get_documents_by_ids(
+            documents_ids=documents_ids
+        )
 
         # Batch fetch corpora
         corpus_ids = list({doc.corpus_id for doc in documents})
         corpora = s.execute(
             select(Corpus.id, Corpus.source_name).where(Corpus.id.in_(corpus_ids))
         ).all()
-        corpus_map = {corpus.id: corpus.source_name for corpus in corpora}
+        corpus_map: dict[UUID, Corpus] = {corpus.id: corpus for corpus in corpora}
 
         # Batch fetch slices
         slices = s.execute(
@@ -137,6 +161,9 @@ def get_documents_payload_by_ids_sync(documents_ids: list[str]) -> list[Document
         docs = []
         for doc in documents:
             corpus = corpus_map.get(doc.corpus_id)
+            parent_corpus = None
+            if corpus:
+                parent_corpus = corpus_map.get(corpus.parent_corpus_id)
             slices_id_for_doc = slices_ids_map.get(doc.id, [])
             sdgs_for_doc = []
             for slice_id in slices_id_for_doc:
@@ -157,6 +184,7 @@ def get_documents_payload_by_ids_sync(documents_ids: list[str]) -> list[Document
                         slice_content="",
                         document_lang="",
                         document_corpus=corpus if corpus else "",
+                        document_sub_corpus=None,
                         slice_sdg=None,
                     ),
                 )
