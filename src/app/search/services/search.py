@@ -55,6 +55,7 @@ class SearchService:
             "document_url",
             "document_lang",
             "document_corpus",
+            "document_sub_corpus",
             "document_desc",
             "document_sdg",
             "slice_content",
