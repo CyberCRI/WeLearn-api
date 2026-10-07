@@ -5,7 +5,7 @@ from threading import Lock
 from uuid import UUID
 
 from qdrant_client.http.models import ScoredPoint
-from sqlalchemy import func, select
+from sqlalchemy import and_, func, select
 from sqlalchemy.orm import joinedload
 from welearn_database.data.enumeration import Step
 from welearn_database.data.models import (
@@ -50,12 +50,13 @@ def get_collections_sync():
 
 
 def get_collections_info_sync():
+    # Get active parent corpus
     stmt = (
         select(
             Corpus.source_name, Corpus.is_active, Category.title.label("category_name")
         )
         .outerjoin(Category, Corpus.category_id == Category.id)
-        .where(Corpus.is_active)
+        .where(and_(Corpus.is_active, Corpus.parent_corpus_id is None))
     )
 
     with session_maker() as session:
