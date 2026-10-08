@@ -2,11 +2,12 @@
 import uuid
 from collections import Counter
 from threading import Lock
+from typing import Any
 from uuid import UUID
 
 from qdrant_client.http.models import ScoredPoint
 from sqlalchemy import and_, func, select
-from sqlalchemy.orm import joinedload
+from sqlalchemy.orm import Session, joinedload
 from welearn_database.data.enumeration import Step
 from welearn_database.data.models import (
     Category,
@@ -130,32 +131,11 @@ def get_documents_payload_by_ids_sync(documents_ids: list[str]) -> list[Document
             documents_ids=documents_ids
         )
 
-        # Batch fetch corpora
-        # corpus_ids = list({doc.corpus_id for doc in documents})
-        # corpora = s.execute(
-        #     select(Corpus.id, Corpus.source_name).where(Corpus.id.in_(corpus_ids))
-        # ).all()
-        # corpus_map: dict[UUID, Corpus] = {corpus.id: corpus for corpus in corpora}
-
         # Batch fetch slices
-        slices = s.execute(
-            select(DocumentSlice.id, DocumentSlice.document_id).where(
-                DocumentSlice.document_id.in_(documents_ids)
-            )
-        ).all()
-        slices_ids_map = {}
-        slice_ids = []
-        for slice_ in slices:
-            slices_ids_map.setdefault(slice_.document_id, []).append(slice_.id)
-            slice_ids.append(slice_.id)
+        slice_ids, slices_ids_map = batch_fetch_slices(documents_ids, s)
 
         # Batch fetch SDGs
-        sdgs = s.execute(
-            select(Sdg.sdg_number, Sdg.slice_id).where(Sdg.slice_id.in_(slice_ids))
-        ).all()
-        sdg_map = {}
-        for sdg in sdgs:
-            sdg_map.setdefault(sdg.slice_id, []).append(sdg)
+        sdg_map = batch_fetch_sdgs(s, slice_ids)
 
         # Compose documents
         docs = []
@@ -193,6 +173,39 @@ def get_documents_payload_by_ids_sync(documents_ids: list[str]) -> list[Document
                 )
             )
         return docs
+
+
+def batch_fetch_sdgs(s: Session, slice_ids: list[UUID]) -> dict[Any, Any]:
+    sdgs = s.execute(
+        select(Sdg.sdg_number, Sdg.slice_id).where(Sdg.slice_id.in_(slice_ids))
+    ).all()
+    sdg_map = {}
+    for sdg in sdgs:
+        sdg_map.setdefault(sdg.slice_id, []).append(sdg)
+    return sdg_map
+
+
+def batch_fetch_slices(
+    documents_ids: list[str], s: Session
+) -> tuple[list[UUID], dict[UUID, list[UUID]]]:
+    """
+    This method create a dict with the form <document_id: slice id list> and a list of slice ids
+    :param documents_ids: list of document ids
+    :param s: SQLAlchemy db session
+    :return: tuple[list[UUID], dict[UUID, list[UUID]]]
+    """
+    slices = s.execute(
+        select(DocumentSlice.id, DocumentSlice.document_id).where(
+            DocumentSlice.document_id.in_(documents_ids)
+        )
+    ).all()
+
+    slices_ids_map: dict[UUID, list[UUID]] = {}
+    slice_ids: list[UUID] = []
+    for slice_ in slices:
+        slices_ids_map.setdefault(slice_.document_id, []).append(slice_.id)
+        slice_ids.append(slice_.id)
+    return slice_ids, slices_ids_map
 
 
 def register_endpoint(endpoint, session_id, http_code):
