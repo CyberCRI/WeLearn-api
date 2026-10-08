@@ -20,4 +20,4 @@ class Collection(NamedTuple):
 class CorpusRelation:
     def __init__(self, corpus: Corpus, sub_corpus: Corpus | None = None):
         self.corpus = corpus
-        self.sub_corpus = sub_corpus
+        self.sub_corpus: Corpus | None = sub_corpus

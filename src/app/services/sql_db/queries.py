@@ -131,11 +131,11 @@ def get_documents_payload_by_ids_sync(documents_ids: list[str]) -> list[Document
         )
 
         # Batch fetch corpora
-        corpus_ids = list({doc.corpus_id for doc in documents})
-        corpora = s.execute(
-            select(Corpus.id, Corpus.source_name).where(Corpus.id.in_(corpus_ids))
-        ).all()
-        corpus_map: dict[UUID, Corpus] = {corpus.id: corpus for corpus in corpora}
+        # corpus_ids = list({doc.corpus_id for doc in documents})
+        # corpora = s.execute(
+        #     select(Corpus.id, Corpus.source_name).where(Corpus.id.in_(corpus_ids))
+        # ).all()
+        # corpus_map: dict[UUID, Corpus] = {corpus.id: corpus for corpus in corpora}
 
         # Batch fetch slices
         slices = s.execute(
@@ -160,10 +160,9 @@ def get_documents_payload_by_ids_sync(documents_ids: list[str]) -> list[Document
         # Compose documents
         docs = []
         for doc in documents:
-            corpus = corpus_map.get(doc.corpus_id)
-            parent_corpus = None
-            if corpus:
-                parent_corpus = corpus_map.get(corpus.parent_corpus_id)
+            corpus_relation = get_corpus_and_sub_corpus_repartition(
+                db_session=s, corpus=doc.corpus
+            )
             slices_id_for_doc = slices_ids_map.get(doc.id, [])
             sdgs_for_doc = []
             for slice_id in slices_id_for_doc:
@@ -183,8 +182,12 @@ def get_documents_payload_by_ids_sync(documents_ids: list[str]) -> list[Document
                         document_details=doc.details,
                         slice_content="",
                         document_lang="",
-                        document_corpus=corpus if corpus else "",
-                        document_sub_corpus=None,
+                        document_corpus=corpus_relation.corpus.source_name,
+                        document_sub_corpus=(
+                            corpus_relation.sub_corpus.source_name
+                            if corpus_relation.sub_corpus
+                            else None
+                        ),
                         slice_sdg=None,
                     ),
                 )
