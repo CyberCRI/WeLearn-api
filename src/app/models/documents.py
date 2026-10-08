@@ -23,7 +23,7 @@ class DocumentPayloadModel(BaseModel):
     document_sdg: list[int]
     document_title: str
     document_url: str
-    slice_content: str
+    slice_content: str | None
     slice_sdg: int | None
 
 

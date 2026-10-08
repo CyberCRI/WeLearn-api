@@ -2,10 +2,11 @@ import unittest
 import uuid
 from unittest import mock
 from unittest.mock import MagicMock
-from langgraph.checkpoint.memory import InMemorySaver
+
 import backoff
 from fastapi.testclient import TestClient
 from langchain_core.messages import AIMessage, HumanMessage, ToolMessage
+from langgraph.checkpoint.memory import InMemorySaver
 
 from src.app.core.config import settings
 from src.app.models.documents import Document as DocumentModel
@@ -108,6 +109,7 @@ class QnATests(unittest.IsolatedAsyncioTestCase):
                         score=0.636549,
                         payload=DocumentPayloadModel(
                             document_corpus="testCorpus",
+                            document_sub_corpus="testsubCorpus",
                             document_desc="testDesc",
                             document_details={
                                 "author": "testAuthor",
@@ -204,6 +206,7 @@ class QnATests(unittest.IsolatedAsyncioTestCase):
                             score=0.636549,
                             payload=DocumentPayloadModel(
                                 document_corpus="testCorpus",
+                                document_sub_corpus="testsubCorpus",
                                 document_desc="testDesc",
                                 document_details={
                                     "author": "testAuthor",

@@ -160,8 +160,7 @@ def get_documents_payload_by_ids_sync(documents_ids: list[str]) -> list[Document
                         document_desc=doc.description,
                         document_sdg=[sdg[0] for sdg in short_sdg_list],
                         document_details=doc.details,
-                        slice_content="",
-                        document_lang="",
+                        document_lang=doc.lang,
                         document_corpus=corpus_relation.corpus.source_name,
                         document_sub_corpus=(
                             corpus_relation.sub_corpus.source_name
@@ -169,6 +168,7 @@ def get_documents_payload_by_ids_sync(documents_ids: list[str]) -> list[Document
                             else None
                         ),
                         slice_sdg=None,
+                        slice_content=None,
                     ),
                 )
             )

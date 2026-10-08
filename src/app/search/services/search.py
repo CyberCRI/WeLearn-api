@@ -1,6 +1,7 @@
 # src/app/services/search.py
 
 import time
+from itertools import groupby
 from typing import Tuple, cast
 
 import numpy as np
@@ -16,6 +17,7 @@ from sklearn.metrics.pairwise import cosine_similarity
 from transformers import AutoModel, AutoTokenizer
 
 from src.app.models.collections import Collection
+from src.app.models.documents import Document, DocumentPayloadModel
 from src.app.search.models.search import (
     EnhancedSearchQuery,
     FilterDefinition,
@@ -25,6 +27,7 @@ from src.app.search.models.search import (
 from src.app.services.data_quality import DataQualityChecker
 from src.app.services.helpers import convert_embedding_bytes
 from src.app.services.sql_db.queries import (
+    get_documents_payload_by_ids_sync,
     get_embeddings_model_id_according_name,
     get_subject,
 )
@@ -248,6 +251,35 @@ class SearchService:
         return result
 
     @log_time_and_error
+    async def enhance_qdrant_with_db_data(
+        self, qdrant_results: list[http_models.ScoredPoint]
+    ) -> list[Document]:
+
+        ret: list[Document] = []
+        documents_ids = {i.payload.get("document_id") for i in qdrant_results}
+
+        docs: list[Document] = await run_in_threadpool(
+            get_documents_payload_by_ids_sync, list(documents_ids)
+        )
+
+        maps_ids_docs = {d.payload.document_id: d for d in docs}
+        for k, g in groupby(qdrant_results, lambda x: x.payload.get("document_id")):
+            group = list(g)
+            related_document = maps_ids_docs.get(k)
+            for result in group:
+                payload = related_document.payload
+                payload.slice_content = result.payload.get("slice_content", None)
+                payload.slice_sdg = result.payload.get("slice_sdg", None)
+                ret.append(
+                    Document(
+                        score=result.score,
+                        payload=payload,
+                    )
+                )
+
+        return ret
+
+    @log_time_and_error
     async def search_handler(
         self,
         background_tasks: BackgroundTasks,
@@ -282,7 +314,7 @@ class SearchService:
 
         filters = SearchFilters(filters=filter_content).build_filters()
 
-        data = []
+        data: list[http_models.ScoredPoint]
         if method == "by_slices":
             data = await self.search(
                 collection_info=collection.name,
@@ -299,8 +331,8 @@ class SearchService:
             )
         else:
             raise ValueError(f"Unknown search method: {method}")
-
-        sorted_data = sort_slices_using_mmr(data, theta=qp.relevance_factor)
+        enhance_data = await self.enhance_qdrant_with_db_data(data)
+        sorted_data = sort_slices_using_mmr(enhance_data, theta=qp.relevance_factor)
 
         if qp.concatenate:
             sorted_data = concatenate_same_doc_id_slices(sorted_data)
@@ -383,9 +415,9 @@ class SearchService:
 
 @log_time_and_error_sync
 def sort_slices_using_mmr(
-    qdrant_results: list[http_models.ScoredPoint],
+    qdrant_results: list[http_models.ScoredPoint] | list[Document],
     theta: float = 1.0,
-) -> list[http_models.ScoredPoint]:
+) -> list[http_models.ScoredPoint] | list[Document]:
     if not qdrant_results:
         return []
 
