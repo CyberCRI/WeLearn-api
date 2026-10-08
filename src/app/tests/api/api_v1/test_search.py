@@ -518,6 +518,10 @@ class DocumentsByIdsTests(IsolatedAsyncioTestCase):
             id=doc_id,
             description="Desc",
             details={},
+            corpus=SimpleNamespace(
+                source_name="Corpus",
+                id=uuid.uuid4(),
+            ),
         )
 
         session.query.return_value.where.return_value.options.return_value.all.return_value = [
