@@ -8,6 +8,7 @@ from src.app.services.sql_db.queries import get_document_qty_table_info_sync
 from src.app.shared.utils.dependencies import get_settings
 from src.app.shared.utils.requests import extract_session_cookie
 from src.app.utils.logger import logger as utils_logger
+from welearn_database.data.models import QuestionType
 
 logger = utils_logger(__name__)
 
@@ -59,3 +60,23 @@ async def register_syllabus_download(
     session_id = extract_session_cookie(request)
     await data_collection.register_syllabus_download(session_id)
     return "registered"
+
+
+@router.post("/form_data")
+async def register_form_data(
+    request: Request,
+    form_name: str,
+    question: str,
+    answer: str,
+    answer_type: QuestionType,
+    data_collection=Depends(get_data_collection_service),
+):
+    session_id = extract_session_cookie(request)
+
+    await data_collection.register_form_answer(
+        form_name=form_name,
+        question=question,
+        answer=answer,
+        answer_type=answer_type,
+        session_id=session_id,
+    )

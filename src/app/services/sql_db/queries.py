@@ -28,6 +28,8 @@ from welearn_database.data.models import (
     ReturnedDocument,
     Sdg,
     WeLearnDocument,
+    AnalyticForm,
+    QuestionType,
 )
 
 from src.app.models.chat import Role
@@ -37,6 +39,25 @@ from src.app.services.sql_db.sql_service import session_maker
 from src.app.shared.domain.constants import APP_NAME
 
 model_id_lock = Lock()
+
+
+def register_form_answers_sync(
+    form_name: str,
+    question: str,
+    answer: str,
+    answer_type: QuestionType,
+    session_id: UUID,
+):
+    with session_maker() as session:
+        form_ans = AnalyticForm(
+            form_name=form_name,
+            question=question,
+            answer=answer,
+            aswer_type=answer_type,
+            session_id=session_id,
+        )
+        session.add(form_ans)
+        session.commit()
 
 
 def get_collections_sync():
