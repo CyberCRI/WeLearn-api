@@ -459,15 +459,27 @@ class DocumentsByIdsTests(IsolatedAsyncioTestCase):
             id=doc_id,
             description="Desc",
             details={"k": "v"},
+            lang="fr",
+            corpus=Corpus(
+                id=corpus_id,
+                source_name="Corpus",
+            ),
         )
 
-        session.query.return_value.where.return_value.options.return_value.all.return_value = [
-            docs_row
-        ]
-        # 1) corpora .all()
-        exec_corpora = mock.MagicMock()
-        exec_corpora.all.return_value = [Corpus(id=corpus_id, source_name="Corpus")]
-        # 2) slices .all()
+        query_docs = mock.MagicMock()
+        query_docs.where.return_value.options.return_value.all.return_value = [docs_row]
+
+        query_corpus = mock.MagicMock()
+        query_corpus.filter.return_value.first.return_value = Corpus(
+            id=corpus_id,
+            source_name="Corpus",
+        )
+
+        session.query.side_effect = lambda model: (
+            query_docs if model is WeLearnDocument else query_corpus
+        )
+
+        # 1) slices .all()
         slice1 = "11111111-1111-1111-1111-111111111111"
         slice2 = "22222222-2222-2222-2222-222222222222"
         exec_slices = mock.MagicMock()
@@ -475,7 +487,7 @@ class DocumentsByIdsTests(IsolatedAsyncioTestCase):
             SimpleNamespace(id=slice1, document_id=doc_id),
             SimpleNamespace(id=slice2, document_id=doc_id),
         ]
-        # 3) sdgs .all()
+        # 2) sdgs .all()
         exec_sdgs = mock.MagicMock()
         exec_sdgs.all.return_value = [
             SimpleNamespace(sdg_number=1, slice_id=slice1),
@@ -483,7 +495,7 @@ class DocumentsByIdsTests(IsolatedAsyncioTestCase):
             SimpleNamespace(sdg_number=1, slice_id=slice2),
         ]
 
-        session.execute.side_effect = [exec_corpora, exec_slices, exec_sdgs]
+        session.execute.side_effect = [exec_slices, exec_sdgs]
 
         response = client.post(
             f"{settings.API_V1_STR}/search/documents/by_ids",
@@ -502,7 +514,7 @@ class DocumentsByIdsTests(IsolatedAsyncioTestCase):
         self.assertEqual(payload["document_details"], {"k": "v"})
         self.assertEqual(payload["document_corpus"], "Corpus")
         self.assertEqual(payload["document_sdg"], [1, 3])
-        self.assertEqual(payload["slice_content"], "")
+        self.assertIsNone(payload["slice_content"])
         self.assertIsNone(payload["slice_sdg"])
 
     def test_documents_by_ids_corpus_missing(self, session_maker_mock, *mocks):
@@ -517,15 +529,24 @@ class DocumentsByIdsTests(IsolatedAsyncioTestCase):
             id=doc_id,
             description="Desc",
             details={},
-            corpus=SimpleNamespace(
-                source_name="Corpus",
-                id=uuid.uuid4(),
+            lang="fr",
+            corpus=Corpus(
+                id=corpus_id,
+                source_name="",
+                parent_corpus_id=None,
             ),
         )
 
-        session.query.return_value.where.return_value.options.return_value.all.return_value = [
-            docs_row
-        ]
+        query_docs = mock.MagicMock()
+        query_docs.where.return_value.options.return_value.all.return_value = [docs_row]
+
+        query_corpus = mock.MagicMock()
+        query_corpus.filter.return_value.first.return_value = None
+
+        session.query.side_effect = lambda model: (
+            query_docs if model is WeLearnDocument else query_corpus
+        )
+
         exec_corpora = mock.MagicMock()
         exec_corpora.all.return_value = []
         exec_slices = mock.MagicMock()
