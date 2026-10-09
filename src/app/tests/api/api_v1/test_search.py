@@ -5,6 +5,7 @@ from unittest.mock import patch
 
 from fastapi.testclient import TestClient
 from qdrant_client.http import models
+from welearn_database.data.models import Corpus, WeLearnDocument
 
 from src.app.core.config import settings
 from src.app.models import collections
@@ -451,7 +452,7 @@ class DocumentsByIdsTests(IsolatedAsyncioTestCase):
 
         doc_id = "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa"
         corpus_id = "bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb"
-        docs_row = SimpleNamespace(
+        docs_row = WeLearnDocument(
             title="Title",
             url="https://example.com",
             corpus_id=corpus_id,
@@ -465,9 +466,7 @@ class DocumentsByIdsTests(IsolatedAsyncioTestCase):
         ]
         # 1) corpora .all()
         exec_corpora = mock.MagicMock()
-        exec_corpora.all.return_value = [
-            SimpleNamespace(id=corpus_id, source_name="Corpus")
-        ]
+        exec_corpora.all.return_value = [Corpus(id=corpus_id, source_name="Corpus")]
         # 2) slices .all()
         slice1 = "11111111-1111-1111-1111-111111111111"
         slice2 = "22222222-2222-2222-2222-222222222222"
@@ -511,7 +510,7 @@ class DocumentsByIdsTests(IsolatedAsyncioTestCase):
 
         doc_id = "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa"
         corpus_id = "bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb"
-        docs_row = SimpleNamespace(
+        docs_row = WeLearnDocument(
             title="Title",
             url="https://example.com",
             corpus_id=corpus_id,
