@@ -371,6 +371,21 @@ class SearchTestsAll(IsolatedAsyncioTestCase):
                 "Empty query",
             )
 
+    def test_search_by_document_schema_requires_string_query(self, *mocks):
+        schema = app.openapi()
+        request_schema = schema["paths"]["/api/v1/search/by_document"]["post"][
+            "requestBody"
+        ]["content"]["application/json"]["schema"]
+        self.assertEqual(
+            request_schema["$ref"], "#/components/schemas/DocumentSearchQuery"
+        )
+
+        query_schema = schema["components"]["schemas"]["DocumentSearchQuery"][
+            "properties"
+        ]["query"]
+
+        self.assertEqual(query_schema["type"], "string")
+
 
 class TestSortSlicesUsingMMR(IsolatedAsyncioTestCase):
     def test_sort_slices_using_mmr_default_theta(self, *mocks):
