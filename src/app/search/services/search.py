@@ -304,6 +304,19 @@ class SearchService:
             )
         else:
             raise ValueError(f"Unknown search method: {method}")
+
+        try:
+            dqc = DataQualityChecker(log_background_task=background_tasks)
+            data = dqc.remove_duplicates(
+                points_to_check=data,
+                keys_to_check=["document_desc", "document_title"],
+            )
+        except Exception as ex:
+            logger.exception(
+                "Error during duplicate removal: %s, ignore it for letting the user see results",
+                ex,
+            )
+
         db_ret = get_documents_according_slice_ids(slice_ids=[d.id for d in data])
         wl_slices = []
         for s in db_ret.values():
