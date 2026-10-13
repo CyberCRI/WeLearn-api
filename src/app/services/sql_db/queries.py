@@ -53,7 +53,7 @@ def register_form_answers_sync(
             form_name=form_name,
             question=question,
             answer=answer,
-            aswer_type=answer_type,
+            answer_type=answer_type,
             session_id=session_id,
         )
         session.add(form_ans)
