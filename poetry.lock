@@ -7864,14 +7864,14 @@ files = [
 
 [[package]]
 name = "welearn-database"
-version = "1.5.1"
+version = "1.5.2"
 description = "All stuff related to relationnal database from the WeLearn project"
 optional = false
 python-versions = ">=3.10"
 groups = ["main"]
 files = [
-    {file = "welearn_database-1.5.1-py3-none-any.whl", hash = "sha256:33952c7af224f7d826b8d9bd747d0936be1692648befccd182e4f382aab3b1d4"},
-    {file = "welearn_database-1.5.1.tar.gz", hash = "sha256:33e1215ffe6ebe26d43fdda94d2ab108e226e5d772340424987603c14a7aa113"},
+    {file = "welearn_database-1.5.2-py3-none-any.whl", hash = "sha256:c07623d0e48f0898e8988d362b0f31b32745c7ba93fa9f7731ff6b8445f4f01d"},
+    {file = "welearn_database-1.5.2.tar.gz", hash = "sha256:d9f9d548a371d32cd57cb62b0f9ff1ef1efe5fb653e0c23e86f9d1682dbe4227"},
 ]
 
 [package.dependencies]
