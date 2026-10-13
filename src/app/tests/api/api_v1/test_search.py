@@ -11,7 +11,7 @@ from src.app.core.config import settings
 from src.app.models import collections
 from src.app.models.documents import Document, DocumentPayloadModel
 from src.app.search.models.search import EnhancedSearchQuery
-from src.app.search.services.search import SearchService, sort_slices_using_mmr
+from src.app.search.services.search import SearchService, sort_using_mmr
 from src.app.shared.domain.exceptions import CollectionNotFoundError, ModelNotFoundError
 from src.main import app
 
@@ -379,12 +379,12 @@ class SearchTestsAll(IsolatedAsyncioTestCase):
 
 class TestSortSlicesUsingMMR(IsolatedAsyncioTestCase):
     def test_sort_slices_using_mmr_default_theta(self, *mocks):
-        sorted_points = sort_slices_using_mmr(mocked_scored_points)
+        sorted_points = sort_using_mmr(mocked_scored_points)
         self.assertEqual(sorted_points, mocked_scored_points)
 
     def test_sort_slices_using_mmr_custom_theta(self, *mocks):
         theta = 0.5
-        sorted_points = sort_slices_using_mmr(mocked_scored_points, theta)
+        sorted_points = sort_using_mmr(mocked_scored_points, theta)
         self.assertEqual(
             sorted_points,
             [mocked_scored_points[0], mocked_scored_points[2], mocked_scored_points[1]],

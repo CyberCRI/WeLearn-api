@@ -17,7 +17,7 @@ from sklearn.metrics.pairwise import cosine_similarity
 from transformers import AutoModel, AutoTokenizer
 
 from src.app.models.collections import Collection
-from src.app.models.documents import Document, DocumentPayloadModel
+from src.app.models.documents import Document, DocumentPayloadModel, FullContainer
 from src.app.search.models.search import (
     EnhancedSearchQuery,
     FilterDefinition,
@@ -27,6 +27,8 @@ from src.app.search.models.search import (
 from src.app.services.data_quality import DataQualityChecker
 from src.app.services.helpers import convert_embedding_bytes
 from src.app.services.sql_db.queries import (
+    batch_fetch_sdgs,
+    get_documents_according_slice_ids,
     get_documents_payload_by_ids_sync,
     get_embeddings_model_id_according_name,
     get_subject,
@@ -251,35 +253,6 @@ class SearchService:
         return result
 
     @log_time_and_error
-    async def enhance_qdrant_with_db_data(
-        self, qdrant_results: list[http_models.ScoredPoint]
-    ) -> list[Document]:
-
-        ret: list[Document] = []
-        documents_ids = {i.payload.get("document_id") for i in qdrant_results}
-
-        docs: list[Document] = await run_in_threadpool(
-            get_documents_payload_by_ids_sync, list(documents_ids)
-        )
-
-        maps_ids_docs = {d.payload.document_id: d for d in docs}
-        for k, g in groupby(qdrant_results, lambda x: x.payload.get("document_id")):
-            group = list(g)
-            related_document = maps_ids_docs.get(k)
-            for result in group:
-                payload = related_document.payload
-                payload.slice_content = result.payload.get("slice_content", None)
-                payload.slice_sdg = result.payload.get("slice_sdg", None)
-                ret.append(
-                    Document(
-                        score=result.score,
-                        payload=payload,
-                    )
-                )
-
-        return ret
-
-    @log_time_and_error
     async def search_handler(
         self,
         background_tasks: BackgroundTasks,
@@ -331,8 +304,28 @@ class SearchService:
             )
         else:
             raise ValueError(f"Unknown search method: {method}")
-        enhance_data = await self.enhance_qdrant_with_db_data(data)
-        sorted_data = sort_slices_using_mmr(enhance_data, theta=qp.relevance_factor)
+        db_ret = get_documents_according_slice_ids(slice_ids=[d.id for d in data])
+        wl_slices = []
+        for s in db_ret.values():
+            wl_slices.extend(s)
+
+        wl_sdgs = batch_fetch_sdgs(slice_ids=[s.id for s in wl_slices])
+        containers: list[FullContainer] = []
+        for db_document in db_ret:
+            containers.append(
+                FullContainer(
+                    wl_document=db_document,
+                    wl_slices=db_ret[db_document],
+                    sdg_map=wl_sdgs,
+                    scored_points=data,
+                )
+            )
+
+        if not without_vectors:
+            sorted_data = sort_using_mmr(containers, theta=qp.relevance_factor)
+        else:
+            # If qdrant doesn't return vector we must not trying to rescore points
+            sorted_data = sorted(containers, key=lambda x: x.score, reverse=True)
 
         if qp.concatenate:
             sorted_data = concatenate_same_doc_id_slices(sorted_data)
@@ -414,19 +407,19 @@ class SearchService:
 
 
 @log_time_and_error_sync
-def sort_slices_using_mmr(
-    qdrant_results: list[http_models.ScoredPoint] | list[Document],
+def sort_using_mmr(
+    containers: list[FullContainer],
     theta: float = 1.0,
 ) -> list[http_models.ScoredPoint] | list[Document]:
-    if not qdrant_results:
+    if not containers:
         return []
 
     logger.debug("sort_slices_using_mmr=start")
-    reward = [r.score for r in qdrant_results]
-    sim = cosine_similarity(np.array([r.vector for r in qdrant_results]))
+    reward = [r.mean_score for r in containers]
+    sim = cosine_similarity(np.array([r.mean_vector for r in containers]))
 
     id_s = [0]
-    id_r = list(range(1, len(qdrant_results)))
+    id_r = list(range(1, len(containers)))
 
     while id_r:
         marginal_relevance_scores = [
@@ -435,8 +428,11 @@ def sort_slices_using_mmr(
         j = np.argmax(marginal_relevance_scores)
         id_s.append(id_r.pop(j))
 
+    for rank, idx in enumerate(id_s):
+        containers[idx].mmr_rank = rank
+
     logger.debug("sort_slices_using_mmr=end")
-    return [qdrant_results[i] for i in id_s]
+    return containers
 
 
 async def get_search_service(
@@ -447,8 +443,8 @@ async def get_search_service(
 
 @log_time_and_error_sync
 def concatenate_same_doc_id_slices(
-    qdrant_results: list[http_models.ScoredPoint],
-) -> list[http_models.ScoredPoint]:
+    qdrant_results: list[Document],
+) -> list[Document]:
     """
     Concatenate slices on the same document ID and remove duplicates.
 
@@ -465,7 +461,7 @@ def concatenate_same_doc_id_slices(
         if not qresult.payload:
             continue
 
-        curr_doc_id = qresult.payload.get("document_id", "")
+        curr_doc_id = qresult.payload.document_id
         if not curr_doc_id:
             continue
 
@@ -473,9 +469,9 @@ def concatenate_same_doc_id_slices(
             doc_id_to_slices[curr_doc_id] = qresult
         else:
             existing_result = doc_id_to_slices[curr_doc_id]
-            existing_result.payload[
-                "slice_content"
-            ] += f"\n\n{qresult.payload.get('slice_content', '')}"
+            existing_result.payload.slice_content += (
+                f"\n\n{qresult.payload.slice_content or ''}"
+            )
 
     new_results = list(doc_id_to_slices.values())
 

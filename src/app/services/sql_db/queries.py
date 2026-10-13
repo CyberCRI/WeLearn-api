@@ -107,22 +107,40 @@ def get_documents_by_ids(documents_ids: list[str]) -> list[WeLearnDocument]:
 main_corpus_dict: dict[UUID, Corpus | None] = {}
 
 
-def get_corpus_and_sub_corpus_repartition(db_session, corpus: Corpus) -> CorpusRelation:
-    if corpus not in main_corpus_dict:
-        req_corpus: Corpus | None = (
-            db_session.query(Corpus)
-            .filter(Corpus.id == corpus.parent_corpus_id)
-            .first()
+def get_corpus_and_sub_corpus_repartition(corpus: Corpus) -> CorpusRelation:
+    with session_maker() as s:
+
+        if corpus not in main_corpus_dict:
+            req_corpus: Corpus | None = (
+                s.query(Corpus).filter(Corpus.id == corpus.parent_corpus_id).first()
+            )
+            main_corpus_dict[corpus.id] = req_corpus
+        main_corpus = main_corpus_dict[corpus.id]
+
+        if main_corpus:
+            return CorpusRelation(sub_corpus=corpus, corpus=main_corpus)
+
+        return CorpusRelation(
+            corpus=corpus,
         )
-        main_corpus_dict[corpus.id] = req_corpus
-    main_corpus = main_corpus_dict[corpus.id]
 
-    if main_corpus:
-        return CorpusRelation(sub_corpus=corpus, corpus=main_corpus)
 
-    return CorpusRelation(
-        corpus=corpus,
+def get_documents_according_slice_ids(
+    slice_ids: list[str],
+) -> dict[WeLearnDocument, list[DocumentSlice]]:
+    ret: dict[WeLearnDocument, list[DocumentSlice]] = {}
+    stmt = (
+        select(DocumentSlice, WeLearnDocument)
+        .join(WeLearnDocument, WeLearnDocument.id == DocumentSlice.document_id)
+        .where(DocumentSlice.id.in_(slice_ids))
     )
+    with session_maker() as s:
+        db_ret = s.execute(stmt).all()
+        for wl_slice, wl_document in db_ret:
+            if wl_document not in ret:
+                ret[wl_document] = []
+            ret[wl_document].append(wl_slice)
+    return ret
 
 
 def get_documents_payload_by_ids_sync(documents_ids: list[str]) -> list[Document]:
@@ -175,14 +193,13 @@ def get_documents_payload_by_ids_sync(documents_ids: list[str]) -> list[Document
         return docs
 
 
-def batch_fetch_sdgs(s: Session, slice_ids: list[UUID]) -> dict[Any, Any]:
-    sdgs = s.execute(
-        select(Sdg.sdg_number, Sdg.slice_id).where(Sdg.slice_id.in_(slice_ids))
-    ).all()
-    sdg_map = {}
-    for sdg in sdgs:
-        sdg_map.setdefault(sdg.slice_id, []).append(sdg)
-    return sdg_map
+def batch_fetch_sdgs(slice_ids: list[UUID]) -> dict[uuid.UUID, list[Sdg]]:
+    with session_maker() as s:
+        sdgs = s.execute(select(Sdg).where(Sdg.slice_id.in_(slice_ids))).all()
+        sdg_map = {}
+        for sdg in sdgs:
+            sdg_map.setdefault(sdg.slice_id, []).append(sdg)
+        return sdg_map
 
 
 def batch_fetch_slices(
