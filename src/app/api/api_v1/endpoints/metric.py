@@ -2,13 +2,16 @@ from fastapi import APIRouter, Depends, Request, Response, status
 from pydantic import ValidationError
 from starlette.concurrency import run_in_threadpool
 
-from src.app.models.metric import DocumentClickUpdateResponse, RowCorpusQtyDocInfo
+from src.app.models.metric import (
+    DocumentClickUpdateResponse,
+    RegisterFormAnswerBody,
+    RowCorpusQtyDocInfo,
+)
 from src.app.services.data_collection import get_data_collection_service
 from src.app.services.sql_db.queries import get_document_qty_table_info_sync
 from src.app.shared.utils.dependencies import get_settings
 from src.app.shared.utils.requests import extract_session_cookie
 from src.app.utils.logger import logger as utils_logger
-from welearn_database.data.models import QuestionType
 
 logger = utils_logger(__name__)
 
@@ -65,18 +68,28 @@ async def register_syllabus_download(
 @router.post("/form_data")
 async def register_form_data(
     request: Request,
-    form_name: str,
-    question: str,
-    answer: str,
-    answer_type: QuestionType,
+    response: Response,
+    body: RegisterFormAnswerBody,
     data_collection=Depends(get_data_collection_service),
 ):
-    session_id = extract_session_cookie(request)
+    try:
+        session_id = extract_session_cookie(request)
 
-    await data_collection.register_form_answer(
-        form_name=form_name,
-        question=question,
-        answer=answer,
-        answer_type=answer_type,
-        session_id=session_id,
-    )
+        if not session_id:
+            response.status_code = 400
+            return "missing session id"
+
+        await data_collection.register_form_answer(
+            form_name=body.form_name,
+            question=body.question,
+            answer=body.answer,
+            answer_type=body.answer_type,
+            session_id=session_id,
+        )
+        response.status_code = 200
+
+        return "form data registered"
+    except Exception as e:
+        logger.error("error while registering form data", e)
+        response.status_code = 500
+        return "an error occured when registering the form data"
