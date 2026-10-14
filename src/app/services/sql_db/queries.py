@@ -6,7 +6,7 @@ from typing import Any
 from uuid import UUID
 
 from qdrant_client.http.models import ScoredPoint
-from sqlalchemy import and_, func, select
+from sqlalchemy import Row, and_, func, select
 from sqlalchemy.orm import Session, joinedload
 from welearn_database.data.enumeration import Step
 from welearn_database.data.models import (
@@ -133,6 +133,7 @@ def get_documents_according_slice_ids(
         select(DocumentSlice, WeLearnDocument)
         .join(WeLearnDocument, WeLearnDocument.id == DocumentSlice.document_id)
         .where(DocumentSlice.id.in_(slice_ids))
+        .options(joinedload(WeLearnDocument.corpus))
     )
     with session_maker() as s:
         db_ret = s.execute(stmt).all()
@@ -153,14 +154,12 @@ def get_documents_payload_by_ids_sync(documents_ids: list[str]) -> list[Document
         slice_ids, slices_ids_map = batch_fetch_slices(documents_ids, s)
 
         # Batch fetch SDGs
-        sdg_map = batch_fetch_sdgs(s, slice_ids)
+        sdg_map = batch_fetch_sdgs(slice_ids)
 
         # Compose documents
         docs = []
         for doc in documents:
-            corpus_relation = get_corpus_and_sub_corpus_repartition(
-                db_session=s, corpus=doc.corpus
-            )
+            corpus_relation = get_corpus_and_sub_corpus_repartition(corpus=doc.corpus)
             slices_id_for_doc = slices_ids_map.get(doc.id, [])
             sdgs_for_doc = []
             for slice_id in slices_id_for_doc:
@@ -195,7 +194,10 @@ def get_documents_payload_by_ids_sync(documents_ids: list[str]) -> list[Document
 
 def batch_fetch_sdgs(slice_ids: list[UUID]) -> dict[uuid.UUID, list[Sdg]]:
     with session_maker() as s:
-        sdgs = s.execute(select(Sdg).where(Sdg.slice_id.in_(slice_ids))).all()
+        db_ret_sdgs: tuple[Row[Sdg]] = s.execute(
+            select(Sdg).where(Sdg.slice_id.in_(slice_ids))
+        ).all()
+        sdgs = [s[0] for s in db_ret_sdgs]
         sdg_map = {}
         for sdg in sdgs:
             sdg_map.setdefault(sdg.slice_id, []).append(sdg)

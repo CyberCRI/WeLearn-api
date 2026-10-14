@@ -28,6 +28,7 @@ from src.app.services.data_quality import DataQualityChecker
 from src.app.services.helpers import convert_embedding_bytes
 from src.app.services.sql_db.queries import (
     batch_fetch_sdgs,
+    get_corpus_and_sub_corpus_repartition,
     get_documents_according_slice_ids,
     get_documents_payload_by_ids_sync,
     get_embeddings_model_id_according_name,
@@ -331,36 +332,19 @@ class SearchService:
                     wl_slices=db_ret[db_document],
                     sdg_map=wl_sdgs,
                     scored_points=data,
+                    corpus_relation=get_corpus_and_sub_corpus_repartition(
+                        corpus=db_document.corpus
+                    ),
                 )
             )
 
-        if not without_vectors:
-            sorted_data = sort_using_mmr(containers, theta=qp.relevance_factor)
-        else:
-            # If qdrant doesn't return vector we must not trying to rescore points
-            sorted_data = sorted(containers, key=lambda x: x.score, reverse=True)
+        enhance_with_rank_data = sort_using_mmr(containers, theta=qp.relevance_factor)
 
-        if qp.concatenate:
-            sorted_data = concatenate_same_doc_id_slices(sorted_data)
-        try:
-            dqc = DataQualityChecker(log_background_task=background_tasks)
-            sorted_data = dqc.remove_duplicates(
-                points_to_check=sorted_data,
-                keys_to_check=["document_desc", "document_title"],
-            )
-        except Exception as ex:
-            logger.error(
-                "Error during duplicate removal: %s, ignore it for letting the user see results",
-                ex,
-            )
+        ret = []
+        for d in sorted(enhance_with_rank_data, key=lambda d: d.mmr_rank):
+            ret.append(d.to_document())
 
-        if without_vectors:
-            points_without_vectors = [
-                point.model_copy(update={"vector": None}) for point in sorted_data
-            ]
-            return points_without_vectors
-
-        return sorted_data
+        return ret
 
     @log_time_and_error
     async def search_group_by_document(
@@ -423,7 +407,7 @@ class SearchService:
 def sort_using_mmr(
     containers: list[FullContainer],
     theta: float = 1.0,
-) -> list[http_models.ScoredPoint] | list[Document]:
+) -> list[FullContainer]:
     if not containers:
         return []
 

@@ -1,6 +1,5 @@
 import uuid
 from enum import StrEnum, auto
-from itertools import groupby
 from statistics import mean
 from typing import Counter
 
@@ -9,7 +8,6 @@ from qdrant_client.http.models import ScoredPoint
 from welearn_database.data.models import Corpus, DocumentSlice, Sdg, WeLearnDocument
 
 from src.app.models.collections import CorpusRelation
-from src.app.services.sql_db.queries import get_corpus_and_sub_corpus_repartition
 
 
 class Collection_schema(BaseModel):
@@ -38,7 +36,6 @@ class DocumentPayloadModel(BaseModel):
 class Document(BaseModel):
     score: float
     payload: DocumentPayloadModel
-    vector: list[float] | None = None
 
 
 class JourneySectionType(StrEnum):
@@ -76,6 +73,7 @@ class FullContainer:
         wl_slices: list[DocumentSlice],
         scored_points: list[ScoredPoint],
         sdg_map: dict[uuid.UUID, list[Sdg]],
+        corpus_relation: CorpusRelation,
     ):
         self._mmr_rank = None
         self.id = wl_document.id
@@ -83,15 +81,17 @@ class FullContainer:
         self.description = wl_document.description
         self.url = wl_document.url
         self.details = wl_document.details
+        self.lang = wl_document.lang
 
-        self._corpus = wl_document.corpus
-        self._corpus_relation: CorpusRelation | None = None
+        self._corpus_relation: CorpusRelation = corpus_relation
 
         self.contained_slices: list[ContainedSlice] = []
 
-        slice_id_score_points = {s.id: s for s in scored_points}
+        slice_id_score_points = {str(s.id): s for s in scored_points}
         for wl_slice in wl_slices:
-            related_score_point = slice_id_score_points.get(wl_slice.id)
+            related_score_point = slice_id_score_points.get(str(wl_slice.id))
+            if not related_score_point:
+                continue
             related_sdgs = [s.sdg_number for s in sdg_map.get(wl_slice.id, [])]
             self.contained_slices.append(
                 ContainedSlice(
@@ -106,14 +106,10 @@ class FullContainer:
 
     @property
     def corpus(self) -> Corpus:
-        if not self._corpus_relation:
-            self._corpus_relation = get_corpus_and_sub_corpus_repartition(self._corpus)
         return self._corpus_relation.corpus
 
     @property
     def sub_corpus(self) -> Corpus | None:
-        if not self._corpus_relation:
-            self._corpus_relation = get_corpus_and_sub_corpus_repartition(self._corpus)
         return self._corpus_relation.sub_corpus
 
     @property
@@ -147,3 +143,32 @@ class FullContainer:
             sdgs.extend(slice.sdgs)
         ret = Counter(sdgs).most_common(n)
         return [i[0] for i in ret]
+
+    def overview(self):
+        ret = []
+        for _slice in sorted(
+            self.contained_slices, key=lambda x: x.order, reverse=True
+        ):
+            _slice: ContainedSlice
+            ret.append(_slice.content)
+        return "\n\n[...]".join(ret)
+
+    def to_document(self) -> Document:
+        return Document(
+            score=self.mean_score,
+            payload=DocumentPayloadModel(
+                document_corpus=self.corpus.source_name,
+                document_sub_corpus=(
+                    self.sub_corpus.source_name if self.sub_corpus else None
+                ),
+                document_desc=self.description,
+                document_id=self.id,
+                document_title=self.title,
+                document_lang=self.lang,
+                document_sdg=self.n_most_common_sdg(n=2),
+                document_url=self.url,
+                document_details=self.details,
+                slice_sdg=None,
+                slice_content=self.overview(),
+            ),
+        )

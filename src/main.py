@@ -2,6 +2,7 @@
 
 import time
 
+import uvicorn
 from fastapi import Depends, FastAPI, Request, Response, status
 from fastapi.encoders import jsonable_encoder
 from fastapi.exception_handlers import http_exception_handler
