@@ -2,7 +2,6 @@
 import uuid
 from collections import Counter
 from threading import Lock
-from typing import Any
 from uuid import UUID
 
 from qdrant_client.http.models import ScoredPoint

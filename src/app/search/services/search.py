@@ -1,7 +1,6 @@
 # src/app/services/search.py
 
 import time
-from itertools import groupby
 from typing import Tuple, cast
 
 import numpy as np
@@ -17,7 +16,7 @@ from sklearn.metrics.pairwise import cosine_similarity
 from transformers import AutoModel, AutoTokenizer
 
 from src.app.models.collections import Collection
-from src.app.models.documents import Document, DocumentPayloadModel, FullContainer
+from src.app.models.documents import Document, FullContainer
 from src.app.search.models.search import (
     EnhancedSearchQuery,
     FilterDefinition,
@@ -30,7 +29,6 @@ from src.app.services.sql_db.queries import (
     batch_fetch_sdgs,
     get_corpus_and_sub_corpus_repartition,
     get_documents_according_slice_ids,
-    get_documents_payload_by_ids_sync,
     get_embeddings_model_id_according_name,
     get_subject,
 )
@@ -46,8 +44,6 @@ async def get_qdrant(request: Request) -> AsyncQdrantClient:
 
 
 class SearchService:
-    import threading
-
     model = {}
 
     def __init__(self, client):
