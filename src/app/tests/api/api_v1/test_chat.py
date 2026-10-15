@@ -22,6 +22,7 @@ source_example = [
         "id": "testId",
         "payload": {
             "document_corpus": "testCorpus",
+            "document_sub_corpus": "testsubCorpus",
             "document_desc": "testDesc",
             "document_details": {
                 "author": "testAuthor",
