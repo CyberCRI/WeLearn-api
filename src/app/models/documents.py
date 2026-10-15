@@ -1,8 +1,10 @@
+import hashlib
 import uuid
 from enum import StrEnum, auto
 from statistics import mean
 from typing import Counter
 
+from _hashlib import HASH
 from pydantic import BaseModel
 from qdrant_client.http.models import ScoredPoint
 from welearn_database.data.models import Corpus, DocumentSlice, Sdg, WeLearnDocument
@@ -105,6 +107,14 @@ class FullContainer:
             )
 
     @property
+    def deduplicate_hash(self) -> HASH:
+        local_hash = hashlib.sha256()
+        values_to_check = [self.title.encode("utf-8"), self.description.encode("utf-8")]
+        for vtc in sorted(values_to_check):
+            local_hash.update(vtc)
+        return local_hash
+
+    @property
     def corpus(self) -> Corpus:
         return self._corpus_relation.corpus
 
@@ -146,9 +156,7 @@ class FullContainer:
 
     def overview(self):
         ret = []
-        for _slice in sorted(
-            self.contained_slices, key=lambda x: x.order
-        ):
+        for _slice in sorted(self.contained_slices, key=lambda x: x.order):
             _slice: ContainedSlice
             ret.append(_slice.content)
         return "\n\n[...]".join(ret)

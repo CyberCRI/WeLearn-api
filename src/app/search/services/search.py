@@ -408,7 +408,10 @@ def sort_using_mmr(
         return []
 
     logger.debug("sort_slices_using_mmr=start")
-    reward = [r.mean_score for r in containers]
+    reward = [
+        r.mean_score
+        for r in sorted(containers, key=lambda x: x.mean_score, reverse=True)
+    ]
     sim = cosine_similarity(np.array([r.mean_vector for r in containers]))
 
     id_s = [0]
