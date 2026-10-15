@@ -34,6 +34,7 @@ def handle_schema_with_sqlite(db_engine: Engine):
 
 class DummyContainer:
     """Minimal stand-in for FullContainer used by DataQualityChecker."""
+
     def __init__(self, id, deduplicate_hash):
         self.id = id
         self.deduplicate_hash = deduplicate_hash
@@ -85,10 +86,12 @@ class TestRemoveDuplicates(unittest.TestCase):
 
     def test_empty_list(self):
         self.assertListEqual(self.checker.remove_duplicates([]), [])
+
     def test_no_duplicates(self):
         containers = [DummyContainer(1, "a"), DummyContainer(2, "b")]
         result = self.checker.remove_duplicates(containers)
         self.assertListEqual(result, containers)
+
     def test_consecutive_duplicates_keep_last(self):
         containers = [
             DummyContainer(1, "a"),
@@ -97,6 +100,7 @@ class TestRemoveDuplicates(unittest.TestCase):
         ]
         result = self.checker.remove_duplicates(containers)
         self.assertListEqual(result, [containers[1], containers[2]])
+
     def test_all_duplicates(self):
         containers = [
             DummyContainer(1, "a"),
@@ -105,15 +109,18 @@ class TestRemoveDuplicates(unittest.TestCase):
         ]
         result = self.checker.remove_duplicates(containers)
         self.assertListEqual(result, [containers[2]])
-    def test_non_consecutive_duplicates_are_kept(self):
-        # groupby only groups consecutive items
+
+    def test_non_consecutive_duplicates_are_removed(self):
         containers = [
             DummyContainer(1, "a"),
             DummyContainer(2, "b"),
             DummyContainer(3, "a"),
         ]
         result = self.checker.remove_duplicates(containers)
-        self.assertListEqual(result, containers)
+        self.assertEqual(len(result), 2)
+        # last duplicate of each group is kept
+        self.assertCountEqual(result, [containers[1], containers[2]])
+
     @patch("src.app.services.sql_db.queries.session_maker")
     def test__log_duplicates_containers_in_db(self, mocked_session_maker):
         s_maker = sessionmaker(self.engine)
@@ -134,6 +141,7 @@ class TestRemoveDuplicates(unittest.TestCase):
         self.assertEqual(len(states), 1)
         self.assertEqual(states[0].document_id, dsp_id)
         self.assertEqual(states[0].title, Step.DOCUMENT_IS_INVALID.value.lower())
+
     @patch("src.app.services.data_quality.write_process_state")
     @patch("src.app.services.data_quality.write_new_data_quality_error")
     def test__log_duplicates_containers_in_db_integrity_error(

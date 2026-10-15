@@ -32,7 +32,8 @@ class DataQualityChecker:
         """
         Remove duplicated containers, keeping one container per duplicate group.
 
-        Containers are grouped by consecutive `deduplicate_hash` values. For each
+        Containers are sorted then grouped by `deduplicate_hash`, so duplicates are
+        detected even when they are not adjacent. For each
         group, the last container is kept and the others are logged as duplicates.
         If a background task manager is available, the logging of duplicates in
         the database is scheduled as a background task.
@@ -44,18 +45,20 @@ class DataQualityChecker:
             The containers without duplicates.
         """
         ret: list[FullContainer] = []
-        for k, g in groupby(containers_to_check, key=lambda x: x.deduplicate_hash):
+        for k, g in groupby(
+            sorted(containers_to_check, key=lambda x: x.deduplicate_hash),
+            key=lambda x: x.deduplicate_hash,
+        ):
             group = list(g)
             ret.append(group.pop())
             if len(group) > 0:
                 logger.warning(
                     f"Duplicated {len(group)} points found in data quality check for document {k}"
                 )
-
-        if self.log_background_tasks:
-            self.log_background_tasks.add_task(
-                self._log_duplicates_points_in_db, containers_to_check, ret
-            )
+                if self.log_background_tasks:
+                    self.log_background_tasks.add_task(
+                        self._log_duplicates_containers_in_db, group
+                    )
         return ret
 
     @staticmethod

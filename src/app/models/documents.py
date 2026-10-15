@@ -4,7 +4,6 @@ from enum import StrEnum, auto
 from statistics import mean
 from typing import Counter
 
-from _hashlib import HASH
 from pydantic import BaseModel
 from qdrant_client.http.models import ScoredPoint
 from welearn_database.data.models import Corpus, DocumentSlice, Sdg, WeLearnDocument
@@ -107,12 +106,12 @@ class FullContainer:
             )
 
     @property
-    def deduplicate_hash(self) -> HASH:
+    def deduplicate_hash(self) -> str:
         local_hash = hashlib.sha256()
         values_to_check = [self.title.encode("utf-8"), self.description.encode("utf-8")]
         for vtc in sorted(values_to_check):
             local_hash.update(vtc)
-        return local_hash
+        return local_hash.hexdigest()
 
     @property
     def corpus(self) -> Corpus:
