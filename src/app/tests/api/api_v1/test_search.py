@@ -378,17 +378,25 @@ class SearchTestsAll(IsolatedAsyncioTestCase):
 
 
 class TestSortSlicesUsingMMR(IsolatedAsyncioTestCase):
+    @staticmethod
+    def _containers():
+        return [
+            SimpleNamespace(mean_score=p.score, mean_vector=p.vector, mmr_rank=None)
+            for p in mocked_scored_points
+        ]
+
     def test_sort_slices_using_mmr_default_theta(self, *mocks):
-        sorted_points = sort_using_mmr(mocked_scored_points)
-        self.assertEqual(sorted_points, mocked_scored_points)
+        containers = self._containers()
+        result = sort_using_mmr(containers)
+        self.assertEqual([c.mmr_rank for c in result], [0, 1, 2])
 
     def test_sort_slices_using_mmr_custom_theta(self, *mocks):
-        theta = 0.5
-        sorted_points = sort_using_mmr(mocked_scored_points, theta)
-        self.assertEqual(
-            sorted_points,
-            [mocked_scored_points[0], mocked_scored_points[2], mocked_scored_points[1]],
-        )
+        containers = self._containers()
+        result = sort_using_mmr(containers, 0.5)
+        self.assertEqual([c.mmr_rank for c in result], [0, 2, 1])
+
+    def test_sort_slices_using_mmr_empty(self, *mocks):
+        self.assertEqual(sort_using_mmr([]), [])
 
 
 @patch("src.app.services.sql_db.queries.session_maker")
@@ -490,9 +498,9 @@ class DocumentsByIdsTests(IsolatedAsyncioTestCase):
         # 2) sdgs .all()
         exec_sdgs = mock.MagicMock()
         exec_sdgs.all.return_value = [
-            SimpleNamespace(sdg_number=1, slice_id=slice1),
-            SimpleNamespace(sdg_number=3, slice_id=slice2),
-            SimpleNamespace(sdg_number=1, slice_id=slice2),
+            (SimpleNamespace(sdg_number=1, slice_id=slice1),),
+            (SimpleNamespace(sdg_number=3, slice_id=slice2),),
+            (SimpleNamespace(sdg_number=1, slice_id=slice2),),
         ]
 
         session.execute.side_effect = [exec_slices, exec_sdgs]
