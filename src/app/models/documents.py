@@ -19,7 +19,7 @@ class Collection_schema(BaseModel):
 
 class DocumentPayloadModel(BaseModel):
     document_corpus: str
-    document_sub_corpus: str | None
+    document_sub_corpus: str | None = None
     document_desc: str
     document_details: dict[
         str, list[dict] | list[str] | str | int | float | dict | None
@@ -147,7 +147,7 @@ class FullContainer:
     def overview(self):
         ret = []
         for _slice in sorted(
-            self.contained_slices, key=lambda x: x.order, reverse=True
+            self.contained_slices, key=lambda x: x.order
         ):
             _slice: ContainedSlice
             ret.append(_slice.content)
