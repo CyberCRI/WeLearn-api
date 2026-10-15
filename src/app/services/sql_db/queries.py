@@ -57,7 +57,7 @@ def get_collections_info_sync():
             Corpus.source_name, Corpus.is_active, Category.title.label("category_name")
         )
         .outerjoin(Category, Corpus.category_id == Category.id)
-        .where(and_(Corpus.is_active, Corpus.parent_corpus_id is None))
+        .where(and_(Corpus.is_active, Corpus.parent_corpus_id.is_(None)))
     )
 
     with session_maker() as session:
@@ -109,7 +109,7 @@ main_corpus_dict: dict[UUID, Corpus | None] = {}
 def get_corpus_and_sub_corpus_repartition(corpus: Corpus) -> CorpusRelation:
     with session_maker() as s:
 
-        if corpus not in main_corpus_dict:
+        if corpus.id not in main_corpus_dict:
             req_corpus: Corpus | None = (
                 s.query(Corpus).filter(Corpus.id == corpus.parent_corpus_id).first()
             )
