@@ -7,6 +7,7 @@ from fastapi.testclient import TestClient
 from welearn_database.data.models import InferredUser, Session
 
 from src.app.core.config import settings
+from src.app.services.keycloak import KeycloakTokenError, KeycloakUnavailableError
 from src.app.shared.domain.exceptions import UserNotFoundError
 from src.main import app
 
@@ -18,6 +19,68 @@ client = TestClient(app)
     new=mock.MagicMock(return_value=True),
 )
 class UserApiTests(unittest.IsolatedAsyncioTestCase):
+    @mock.patch("src.app.user.api.router.resolve_user_and_session")
+    @mock.patch("src.app.user.api.router.resolve_keycloak_user_and_session")
+    async def test_user_and_session_with_keycloak_token(
+        self, resolve_keycloak_mock, resolve_anonymous_mock, *mocks
+    ):
+        """Avec un token Keycloak, l'utilisateur est résolu via Keycloak"""
+        session_id = uuid.uuid4()
+        resolve_keycloak_mock.return_value = (uuid.uuid4(), session_id)
+
+        response = client.post(
+            f"{settings.API_V1_STR}/user/user_and_session",
+            headers={"X-API-Key": "test", "Authorization": "Bearer a.b.c"},
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.json()["session_id"], str(session_id))
+        self.assertEqual(resolve_keycloak_mock.call_args.kwargs["token"], "a.b.c")
+        resolve_anonymous_mock.assert_not_called()
+
+    @mock.patch("src.app.user.api.router.resolve_user_and_session")
+    @mock.patch("src.app.user.api.router.resolve_keycloak_user_and_session")
+    async def test_user_and_session_without_token(
+        self, resolve_keycloak_mock, resolve_anonymous_mock, *mocks
+    ):
+        """Sans token, le flux anonyme est conservé"""
+        resolve_anonymous_mock.return_value = (uuid.uuid4(), uuid.uuid4())
+
+        response = client.post(
+            f"{settings.API_V1_STR}/user/user_and_session",
+            headers={"X-API-Key": "test"},
+        )
+
+        self.assertEqual(response.status_code, 200)
+        resolve_anonymous_mock.assert_called_once()
+        resolve_keycloak_mock.assert_not_called()
+
+    @mock.patch("src.app.user.api.router.resolve_keycloak_user_and_session")
+    async def test_user_and_session_invalid_token(self, resolve_keycloak_mock, *mocks):
+        """Token invalide ou expiré -> 401"""
+        resolve_keycloak_mock.side_effect = KeycloakTokenError("expired")
+
+        response = client.post(
+            f"{settings.API_V1_STR}/user/user_and_session",
+            headers={"X-API-Key": "test", "Authorization": "Bearer a.b.c"},
+        )
+
+        self.assertEqual(response.status_code, 401)
+
+    @mock.patch("src.app.user.api.router.resolve_keycloak_user_and_session")
+    async def test_user_and_session_keycloak_unavailable(
+        self, resolve_keycloak_mock, *mocks
+    ):
+        """Keycloak injoignable -> 503"""
+        resolve_keycloak_mock.side_effect = KeycloakUnavailableError("timeout")
+
+        response = client.post(
+            f"{settings.API_V1_STR}/user/user_and_session",
+            headers={"X-API-Key": "test", "Authorization": "Bearer a.b.c"},
+        )
+
+        self.assertEqual(response.status_code, 503)
+
     @mock.patch("src.app.services.sql_db.queries_user.session_maker")
     async def test_create_user_when_not_exists(self, session_maker_mock, *mocks):
         """Si user_id non fourni, crée un nouvel utilisateur"""

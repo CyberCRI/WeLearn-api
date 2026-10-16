@@ -74,6 +74,12 @@ class Settings(BaseSettings):
     # TIKA
     TIKA_URL_BASE: str
 
+    # KEYCLOAK (front-end login; tokens are verified against the realm's JWKS)
+    KEYCLOAK_URL: Optional[str] = None  # e.g. https://auth.example.org
+    KEYCLOAK_REALM: Optional[str] = None
+    # if set, the token's "azp" claim must match this front-end client id
+    KEYCLOAK_CLIENT_ID: Optional[str] = None
+
     model_config = SettingsConfigDict(
         env_file=".env", extra="ignore", case_sensitive=True
     )
