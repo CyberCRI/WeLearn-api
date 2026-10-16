@@ -3,6 +3,11 @@ import uuid
 from fastapi import APIRouter, HTTPException, Request, Response
 from fastapi.concurrency import run_in_threadpool
 
+from src.app.services.keycloak import (
+    KeycloakTokenError,
+    KeycloakUnavailableError,
+    extract_bearer_token,
+)
 from src.app.services.sql_db.queries_user import (
     add_institution_data_to_user_sync,
     add_user_bookmark_sync,
@@ -20,7 +25,10 @@ from src.app.shared.utils.requests import (
     extract_session_cookie,
 )
 from src.app.user.models.models import InstitutionData
-from src.app.user.utils.utils import resolve_user_and_session
+from src.app.user.utils.utils import (
+    resolve_keycloak_user_and_session,
+    resolve_user_and_session,
+)
 from src.app.utils.logger import logger as logger_utils
 
 router = APIRouter()
@@ -36,13 +44,28 @@ async def handle_user_and_session(
 ):
     host = extract_origin_from_request(request)
     session_uuid = extract_session_cookie(request)
+    token = extract_bearer_token(request)
 
     try:
-        _, session_uuid = await resolve_user_and_session(
-            session_uuid=session_uuid,
-            host=host,
-            referer=referer,
-        )
+        if token:
+            _, session_uuid = await resolve_keycloak_user_and_session(
+                token=token,
+                session_uuid=session_uuid,
+                host=host,
+                referer=referer,
+            )
+        else:
+            _, session_uuid = await resolve_user_and_session(
+                session_uuid=session_uuid,
+                host=host,
+                referer=referer,
+            )
+    except KeycloakTokenError as e:
+        logger.warning(f"Invalid keycloak token: {e}")
+        raise HTTPException(status_code=401, detail="Invalid or expired token")
+    except KeycloakUnavailableError as e:
+        logger.error(f"Keycloak unavailable: {e}")
+        raise HTTPException(status_code=503, detail="Keycloak unavailable")
     except UserNotFoundError as e:
         raise HTTPException(status_code=404, detail=str(e))
     except Exception as e:
