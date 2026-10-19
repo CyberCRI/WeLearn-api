@@ -308,7 +308,7 @@ class SearchService:
         for s in db_ret.values():
             wl_slices.extend(s)
 
-        wl_sdgs = batch_fetch_sdgs(slice_ids=[s.id for s in wl_slices])
+        wl_sdgs = await run_in_threadpool(batch_fetch_sdgs, [s.id for s in wl_slices])
         containers: list[FullContainer] = []
         for db_document in db_ret:
             containers.append(
