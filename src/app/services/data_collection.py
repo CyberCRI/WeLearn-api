@@ -13,6 +13,7 @@ from src.app.services.sql_db.queries import (
     get_current_data_collection_campaign,
     get_last_syllabus_conversation_id,
     get_last_syllabus_id_for_user,
+    register_form_answers_sync,
     update_returned_document_click,
     update_syllabus_retrieved_status,
     write_chat_answer,
@@ -24,6 +25,7 @@ from src.app.services.sql_db.queries_user import get_user_from_session_id
 from src.app.shared.utils.dependencies import get_settings
 from src.app.tutor.service.models import SyllabusFeedback, TutorSyllabusRequest
 from src.app.utils.logger import logger as utils_logger
+from welearn_database.data.models import QuestionType
 
 logger = utils_logger(__name__)
 
@@ -336,11 +338,29 @@ class DataCollection:
 
         await run_in_threadpool(update_syllabus_retrieved_status, syllabus_id)
 
+    async def register_form_answer(
+        self,
+        form_name: str,
+        question: str,
+        answer: str,
+        answer_type: QuestionType,
+        session_id: uuid.UUID,
+    ):
+
+        logger.info("collecting data from form  {form_name}")
+
+        await run_in_threadpool(
+            register_form_answers_sync,
+            form_name,
+            question,
+            answer,
+            answer_type,
+            session_id,
+        )
+
 
 def get_data_collection_service(request: Request) -> DataCollection:
-    origin = request.headers["origin"]
+    origin = request.headers.get("origin", "")
     stripped_origin = re.sub(r"https?://www\.|https?://", "", origin).strip("/")
 
-    if stripped_origin is None:
-        return DataCollection(origin="")
     return DataCollection(origin=stripped_origin)
