@@ -5,12 +5,13 @@ from unittest.mock import patch
 
 from fastapi.testclient import TestClient
 from qdrant_client.http import models
+from welearn_database.data.models import Corpus, WeLearnDocument
 
 from src.app.core.config import settings
 from src.app.models import collections
 from src.app.models.documents import Document, DocumentPayloadModel
 from src.app.search.models.search import EnhancedSearchQuery
-from src.app.search.services.search import SearchService, sort_slices_using_mmr
+from src.app.search.services.search import SearchService, sort_using_mmr
 from src.app.shared.domain.exceptions import CollectionNotFoundError, ModelNotFoundError
 from src.main import app
 
@@ -85,6 +86,7 @@ mocked_documents = [
         score=0.9,
         payload=DocumentPayloadModel(
             document_corpus="corpus",
+            document_sub_corpus="sub_corpus",
             document_desc="desc",
             document_details={},
             document_id=uuid.UUID("12345678-1234-5678-1234-567812345678"),
@@ -100,6 +102,7 @@ mocked_documents = [
         score=0.89,
         payload=DocumentPayloadModel(
             document_corpus="corpus",
+            document_sub_corpus="sub_corpus",
             document_desc="desc",
             document_details={},
             document_id=uuid.UUID("12345678-1234-5678-1234-567812345678"),
@@ -115,6 +118,7 @@ mocked_documents = [
         score=0.88,
         payload=DocumentPayloadModel(
             document_corpus="corpus",
+            document_sub_corpus="sub_corpus",
             document_desc="desc",
             document_details={},
             document_id=uuid.UUID("12345678-1234-5678-1234-567812345678"),
@@ -130,6 +134,7 @@ mocked_documents = [
         score=0.88,
         payload=DocumentPayloadModel(
             document_corpus="corpus",
+            document_sub_corpus="sub_corpus",
             document_desc="desc",
             document_details={},
             document_id=uuid.UUID("78901234-5678-9012-3456-789012345678"),  # UUID
@@ -388,17 +393,25 @@ class SearchTestsAll(IsolatedAsyncioTestCase):
 
 
 class TestSortSlicesUsingMMR(IsolatedAsyncioTestCase):
+    @staticmethod
+    def _containers():
+        return [
+            SimpleNamespace(mean_score=p.score, mean_vector=p.vector, mmr_rank=None)
+            for p in mocked_scored_points
+        ]
+
     def test_sort_slices_using_mmr_default_theta(self, *mocks):
-        sorted_points = sort_slices_using_mmr(mocked_scored_points)
-        self.assertEqual(sorted_points, mocked_scored_points)
+        containers = self._containers()
+        result = sort_using_mmr(containers)
+        self.assertEqual([c.mmr_rank for c in result], [0, 1, 2])
 
     def test_sort_slices_using_mmr_custom_theta(self, *mocks):
-        theta = 0.5
-        sorted_points = sort_slices_using_mmr(mocked_scored_points, theta)
-        self.assertEqual(
-            sorted_points,
-            [mocked_scored_points[0], mocked_scored_points[2], mocked_scored_points[1]],
-        )
+        containers = self._containers()
+        result = sort_using_mmr(containers, 0.5)
+        self.assertEqual([c.mmr_rank for c in result], [0, 2, 1])
+
+    def test_sort_slices_using_mmr_empty(self, *mocks):
+        self.assertEqual(sort_using_mmr([]), [])
 
 
 @patch("src.app.services.sql_db.queries.session_maker")
@@ -462,24 +475,34 @@ class DocumentsByIdsTests(IsolatedAsyncioTestCase):
 
         doc_id = "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa"
         corpus_id = "bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb"
-        docs_row = SimpleNamespace(
+        docs_row = WeLearnDocument(
             title="Title",
             url="https://example.com",
             corpus_id=corpus_id,
             id=doc_id,
             description="Desc",
             details={"k": "v"},
+            lang="fr",
+            corpus=Corpus(
+                id=corpus_id,
+                source_name="Corpus",
+            ),
         )
 
-        session.query.return_value.where.return_value.options.return_value.all.return_value = [
-            docs_row
-        ]
-        # 1) corpora .all()
-        exec_corpora = mock.MagicMock()
-        exec_corpora.all.return_value = [
-            SimpleNamespace(id=corpus_id, source_name="Corpus")
-        ]
-        # 2) slices .all()
+        query_docs = mock.MagicMock()
+        query_docs.where.return_value.options.return_value.all.return_value = [docs_row]
+
+        query_corpus = mock.MagicMock()
+        query_corpus.filter.return_value.first.return_value = Corpus(
+            id=corpus_id,
+            source_name="Corpus",
+        )
+
+        session.query.side_effect = lambda model: (
+            query_docs if model is WeLearnDocument else query_corpus
+        )
+
+        # 1) slices .all()
         slice1 = "11111111-1111-1111-1111-111111111111"
         slice2 = "22222222-2222-2222-2222-222222222222"
         exec_slices = mock.MagicMock()
@@ -487,15 +510,15 @@ class DocumentsByIdsTests(IsolatedAsyncioTestCase):
             SimpleNamespace(id=slice1, document_id=doc_id),
             SimpleNamespace(id=slice2, document_id=doc_id),
         ]
-        # 3) sdgs .all()
+        # 2) sdgs .all()
         exec_sdgs = mock.MagicMock()
         exec_sdgs.all.return_value = [
-            SimpleNamespace(sdg_number=1, slice_id=slice1),
-            SimpleNamespace(sdg_number=3, slice_id=slice2),
-            SimpleNamespace(sdg_number=1, slice_id=slice2),
+            (SimpleNamespace(sdg_number=1, slice_id=slice1),),
+            (SimpleNamespace(sdg_number=3, slice_id=slice2),),
+            (SimpleNamespace(sdg_number=1, slice_id=slice2),),
         ]
 
-        session.execute.side_effect = [exec_corpora, exec_slices, exec_sdgs]
+        session.execute.side_effect = [exec_slices, exec_sdgs]
 
         response = client.post(
             f"{settings.API_V1_STR}/search/documents/by_ids",
@@ -514,7 +537,7 @@ class DocumentsByIdsTests(IsolatedAsyncioTestCase):
         self.assertEqual(payload["document_details"], {"k": "v"})
         self.assertEqual(payload["document_corpus"], "Corpus")
         self.assertEqual(payload["document_sdg"], [1, 3])
-        self.assertEqual(payload["slice_content"], "")
+        self.assertIsNone(payload["slice_content"])
         self.assertIsNone(payload["slice_sdg"])
 
     def test_documents_by_ids_corpus_missing(self, session_maker_mock, *mocks):
@@ -522,18 +545,31 @@ class DocumentsByIdsTests(IsolatedAsyncioTestCase):
 
         doc_id = "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa"
         corpus_id = "bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb"
-        docs_row = SimpleNamespace(
+        docs_row = WeLearnDocument(
             title="Title",
             url="https://example.com",
             corpus_id=corpus_id,
             id=doc_id,
             description="Desc",
             details={},
+            lang="fr",
+            corpus=Corpus(
+                id=corpus_id,
+                source_name="",
+                parent_corpus_id=None,
+            ),
         )
 
-        session.query.return_value.where.return_value.options.return_value.all.return_value = [
-            docs_row
-        ]
+        query_docs = mock.MagicMock()
+        query_docs.where.return_value.options.return_value.all.return_value = [docs_row]
+
+        query_corpus = mock.MagicMock()
+        query_corpus.filter.return_value.first.return_value = None
+
+        session.query.side_effect = lambda model: (
+            query_docs if model is WeLearnDocument else query_corpus
+        )
+
         exec_corpora = mock.MagicMock()
         exec_corpora.all.return_value = []
         exec_slices = mock.MagicMock()

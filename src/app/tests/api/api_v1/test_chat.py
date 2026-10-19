@@ -22,6 +22,7 @@ source_example = [
         "id": "testId",
         "payload": {
             "document_corpus": "testCorpus",
+            "document_sub_corpus": "testsubCorpus",
             "document_desc": "testDesc",
             "document_details": {
                 "author": "testAuthor",
@@ -109,6 +110,7 @@ class QnATests(unittest.IsolatedAsyncioTestCase):
                         score=0.636549,
                         payload=DocumentPayloadModel(
                             document_corpus="testCorpus",
+                            document_sub_corpus="testsubCorpus",
                             document_desc="testDesc",
                             document_details={
                                 "author": "testAuthor",
@@ -205,6 +207,7 @@ class QnATests(unittest.IsolatedAsyncioTestCase):
                             score=0.636549,
                             payload=DocumentPayloadModel(
                                 document_corpus="testCorpus",
+                                document_sub_corpus="testsubCorpus",
                                 document_desc="testDesc",
                                 document_details={
                                     "author": "testAuthor",

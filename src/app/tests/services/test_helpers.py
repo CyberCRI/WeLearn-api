@@ -43,6 +43,7 @@ class HelpersTests(TestCase):
                 score=0.5,
                 payload=DocumentPayloadModel(
                     document_corpus="test",
+                    document_sub_corpus="subtest",
                     document_desc="desc",
                     document_details={},
                     document_id="12345678-1234-5678-1234-567812345678",
@@ -58,6 +59,7 @@ class HelpersTests(TestCase):
                 score=0.7,
                 payload=DocumentPayloadModel(
                     document_corpus="test",
+                    document_sub_corpus="subtest",
                     document_desc="desc",
                     document_details={},
                     document_id="12345677-1234-5678-1234-567812345678",
@@ -100,6 +102,7 @@ class HelpersTests(TestCase):
             score=0.5,
             payload=DocumentPayloadModel(
                 document_corpus="test",
+                document_sub_corpus="subtest",
                 document_desc="desc",
                 document_details={},
                 document_id="12345678-1234-5678-1234-567812345678",
