@@ -38,6 +38,7 @@ from src.app.services.sql_db.sql_service import session_maker
 from src.app.shared.domain.constants import APP_NAME
 
 model_id_lock = Lock()
+main_corpus_dict: dict[UUID, Corpus | None] = {}
 
 
 def get_collections_sync():
@@ -101,9 +102,6 @@ def get_documents_by_ids(documents_ids: list[str]) -> list[WeLearnDocument]:
     ret = list(documents)
 
     return ret
-
-
-main_corpus_dict: dict[UUID, Corpus | None] = {}
 
 
 def get_corpus_and_sub_corpus_repartition(corpus: Corpus) -> CorpusRelation:

@@ -256,7 +256,7 @@ class SearchService:
         qp: EnhancedSearchQuery,
         method: SearchMethods = SearchMethods.BY_SLICES,
         without_vectors: bool = False,
-    ) -> list[http_models.ScoredPoint]:
+    ) -> list[Document]:
         assert isinstance(qp.query, str)
 
         collection = await self.get_collection_by_language(lang="mul")
@@ -302,19 +302,8 @@ class SearchService:
         else:
             raise ValueError(f"Unknown search method: {method}")
 
-        try:
-            dqc = DataQualityChecker(log_background_task=background_tasks)
-            data = dqc.remove_duplicates(
-                points_to_check=data,
-                keys_to_check=["document_desc", "document_title"],
-            )
-        except Exception as ex:
-            logger.exception(
-                "Error during duplicate removal: %s, ignore it for letting the user see results",
-                ex,
-            )
-
-        db_ret = get_documents_according_slice_ids(slice_ids=[d.id for d in data])
+        slice_ids = [d.id for d in data]
+        db_ret = await run_in_threadpool(get_documents_according_slice_ids, slice_ids)
         wl_slices = []
         for s in db_ret.values():
             wl_slices.extend(s)
@@ -332,6 +321,18 @@ class SearchService:
                         corpus=db_document.corpus
                     ),
                 )
+            )
+
+        try:
+            dqc = DataQualityChecker(log_background_task=background_tasks)
+            containers = dqc.remove_duplicates(
+                points_to_check=containers,
+                keys_to_check=["document_desc", "document_title"],
+            )
+        except Exception as ex:
+            logger.exception(
+                "Error during duplicate removal: %s, ignore it for letting the user see results",
+                ex,
             )
 
         enhance_with_rank_data = sort_using_mmr(containers, theta=qp.relevance_factor)
