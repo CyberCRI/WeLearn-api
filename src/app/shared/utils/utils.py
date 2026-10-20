@@ -3,7 +3,6 @@ import asyncio
 from docx import Document as DocxReader
 from fastapi import HTTPException, UploadFile
 from pypdf import PdfReader
-from qdrant_client.models import ScoredPoint
 
 from src.app.models.documents import EnhancedDocumentSlice
 from src.app.shared.infra.pdf_extractor import extract_txt_from_pdf_with_tika

@@ -2,7 +2,6 @@ import asyncio
 from typing import Awaitable, Callable
 
 from fastapi import BackgroundTasks
-from qdrant_client.http.models import ScoredPoint
 
 from src.app.models.documents import EnhancedDocumentSlice
 from src.app.search.models.search import EnhancedSearchQuery, SearchMethods
