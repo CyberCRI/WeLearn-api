@@ -4,6 +4,7 @@ from typing import Awaitable, Callable
 from fastapi import BackgroundTasks
 from qdrant_client.http.models import ScoredPoint
 
+from src.app.models.documents import Document
 from src.app.search.models.search import EnhancedSearchQuery, SearchMethods
 from src.app.shared.domain.exceptions import handle_error
 from src.app.utils.logger import logger as logger_utils
@@ -14,8 +15,8 @@ logger = logger_utils(__name__)
 async def search_multi_inputs(
     background_tasks: BackgroundTasks,
     qp: EnhancedSearchQuery,
-    callback_function: Callable[..., Awaitable[list[ScoredPoint]]],
-) -> list[ScoredPoint] | None:
+    callback_function: Callable[..., Awaitable[list[Document]]],
+) -> list[Document] | None:
     try:
         qps: list[EnhancedSearchQuery] = []
         for query in qp.query:
@@ -32,7 +33,7 @@ async def search_multi_inputs(
             for qp in qps
         ]
 
-        all_data: list[ScoredPoint] = []
+        all_data: list[Document] = []
         for coroutine in asyncio.as_completed(tasks):
             data = await coroutine
             if data:

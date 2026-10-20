@@ -326,7 +326,7 @@ class SearchService:
         try:
             dqc = DataQualityChecker(log_background_task=background_tasks)
             containers = dqc.remove_duplicates(
-                points_to_check=containers,
+                containers_to_check=containers,
                 keys_to_check=["document_desc", "document_title"],
             )
         except Exception as ex:
