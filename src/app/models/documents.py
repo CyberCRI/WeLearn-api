@@ -34,6 +34,7 @@ class EnhancedDocumentSlicePayloadModel(BaseModel):
 
 class EnhancedDocumentSlice(BaseModel):
     score: float
+    id: uuid.UUID | None = None
     payload: EnhancedDocumentSlicePayloadModel
 
 
@@ -158,7 +159,7 @@ class FullContainer:
             ret.append(_slice.content)
         return "\n\n[...]".join(ret)
 
-    def to_document(self) -> EnhancedDocumentSlice:
+    def to_enhanced_document_slice(self) -> EnhancedDocumentSlice:
         return EnhancedDocumentSlice(
             score=self.mean_score,
             payload=EnhancedDocumentSlicePayloadModel(

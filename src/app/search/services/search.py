@@ -325,10 +325,7 @@ class SearchService:
 
         try:
             dqc = DataQualityChecker(log_background_task=background_tasks)
-            containers = dqc.remove_duplicates(
-                containers_to_check=containers,
-                keys_to_check=["document_desc", "document_title"],
-            )
+            containers = dqc.remove_duplicates(containers_to_check=containers)
         except Exception as ex:
             logger.exception(
                 "Error during duplicate removal: %s, ignore it for letting the user see results",
@@ -339,7 +336,7 @@ class SearchService:
 
         ret = []
         for d in sorted(enhance_with_rank_data, key=lambda d: d.mmr_rank):
-            ret.append(d.to_document())
+            ret.append(d.to_enhanced_document_slice())
 
         return ret
 

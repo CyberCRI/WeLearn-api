@@ -118,7 +118,9 @@ class QnATests(unittest.IsolatedAsyncioTestCase):
                                 "readability": 42.61,
                                 "source": "au",
                             },
-                            document_id="12345678-1234-5678-1234-567812345678",
+                            document_id=uuid.UUID(
+                                "12345678-1234-5678-1234-567812345678"
+                            ),
                             document_lang="en",
                             document_sdg=[11, 12, 13, 15, 2, 8],
                             document_title="testTitle",
@@ -215,7 +217,9 @@ class QnATests(unittest.IsolatedAsyncioTestCase):
                                     "readability": 42.61,
                                     "source": "au",
                                 },
-                                document_id="12345678-1234-5678-1234-567812345678",
+                                document_id=uuid.UUID(
+                                    "12345678-1234-5678-1234-567812345678"
+                                ),
                                 document_lang="en",
                                 document_sdg=[11, 12, 13, 15, 2, 8],
                                 document_title="testTitle",
@@ -297,7 +301,7 @@ class QnATests(unittest.IsolatedAsyncioTestCase):
                 headers={"X-API-Key": "test", "origin": "test"},
             )
             self.assertEqual(response.status_code, 200)
-            returned_ids = [doc["id"] for doc in response.json()["docs"]]
+            returned_ids = [doc["document_id"] for doc in response.json()["docs"]]
             self.assertEqual(returned_ids, ["latestDoc"])
 
     @mock.patch("psycopg.AsyncConnection.connect", new_callable=mock.AsyncMock)
@@ -333,7 +337,7 @@ class QnATests(unittest.IsolatedAsyncioTestCase):
                 headers={"X-API-Key": "test", "origin": "test"},
             )
             self.assertEqual(response.status_code, 200)
-            returned_ids = [doc["id"] for doc in response.json()["docs"]]
+            returned_ids = [doc["document_id"] for doc in response.json()["docs"]]
             self.assertEqual(returned_ids, ["reusedDoc"])
 
     @mock.patch(
