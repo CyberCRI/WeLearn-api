@@ -5,6 +5,7 @@ from fastapi import HTTPException, UploadFile
 from pypdf import PdfReader
 from qdrant_client.models import ScoredPoint
 
+from src.app.models.documents import EnhancedDocumentSlice
 from src.app.shared.infra.pdf_extractor import extract_txt_from_pdf_with_tika
 from src.app.shared.utils.dependencies import get_settings
 from src.app.utils.decorators import log_time_and_error_sync
@@ -29,7 +30,7 @@ def build_system_message(
     return message
 
 
-def extract_doc_info(documents: list[ScoredPoint]) -> list[dict]:
+def extract_doc_info(documents: list[EnhancedDocumentSlice]) -> list[dict]:
     """
     Extracts the document information from a list of documents.
     Args:
@@ -39,9 +40,9 @@ def extract_doc_info(documents: list[ScoredPoint]) -> list[dict]:
     """
     return [
         {
-            "title": doc.payload.get("document_title", ""),
-            "url": doc.payload.get("document_url", ""),
-            "content": doc.payload.get("slice_content", ""),
+            "title": doc.payload.document_title,
+            "url": doc.payload.document_url,
+            "content": doc.payload.slice_content,
         }
         for doc in documents
         if doc.payload is not None
