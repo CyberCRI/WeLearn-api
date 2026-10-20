@@ -38,15 +38,34 @@ def extract_doc_info(documents: list[EnhancedDocumentSlice]) -> list[dict]:
     Returns:
         list[dict]: List of dictionaries containing document information.
     """
-    return [
-        {
-            "title": doc.payload.document_title,
-            "url": doc.payload.document_url,
-            "content": doc.payload.slice_content,
-        }
-        for doc in documents
-        if doc.payload is not None
-    ]
+    result = []
+    for doc in documents:
+        payload = getattr(doc, "payload", None)
+        if payload is None and isinstance(doc, dict):
+            payload = doc
+        if payload is None:
+            continue
+
+        if isinstance(payload, dict):
+            title = payload.get("document_title")
+            url = payload.get("document_url")
+            content = payload.get("slice_content")
+        else:
+            title = getattr(payload, "document_title", None)
+            url = getattr(payload, "document_url", None)
+            content = getattr(payload, "slice_content", None)
+
+        if title is None and url is None and content is None:
+            continue
+
+        result.append(
+            {
+                "title": title,
+                "url": url,
+                "content": content,
+            }
+        )
+    return result
 
 
 @log_time_and_error_sync
