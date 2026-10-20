@@ -34,8 +34,8 @@ async def get_nb_docs_info_per_corpus(
             current = RowCorpusQtyDocInfo(
                 corpus=r_corpus.source_name,
                 url=r_corpus.main_url,
-                qty_total=r_qty_doc_total.count,
-                qty_in_qdrant=r_qty_doc_in_qdrant.count,
+                qty_total=r_qty_doc_total,
+                qty_in_qdrant=r_qty_doc_in_qdrant,
             )
             ret.append(current)
         except ValidationError as e:
@@ -43,6 +43,7 @@ async def get_nb_docs_info_per_corpus(
             logger.error(f"Validation error for corpus {r_corpus.source_name}: {e}")
     if len(ret) == 0:
         response.status_code = status.HTTP_500_INTERNAL_SERVER_ERROR
+    ret.sort(key=lambda x: x.qty_in_qdrant, reverse=True)
     return ret
 
 
