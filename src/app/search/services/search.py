@@ -16,7 +16,7 @@ from sklearn.metrics.pairwise import cosine_similarity
 from transformers import AutoModel, AutoTokenizer
 
 from src.app.models.collections import Collection
-from src.app.models.documents import Document, FullContainer
+from src.app.models.documents import EnhancedDocumentSlice, FullContainer
 from src.app.search.models.search import (
     EnhancedSearchQuery,
     FilterDefinition,
@@ -256,7 +256,7 @@ class SearchService:
         qp: EnhancedSearchQuery,
         method: SearchMethods = SearchMethods.BY_SLICES,
         without_vectors: bool = False,
-    ) -> list[Document]:
+    ) -> list[EnhancedDocumentSlice]:
         assert isinstance(qp.query, str)
 
         collection = await self.get_collection_by_language(lang="mul")
@@ -440,8 +440,8 @@ async def get_search_service(
 
 @log_time_and_error_sync
 def concatenate_same_doc_id_slices(
-    qdrant_results: list[Document],
-) -> list[Document]:
+    qdrant_results: list[EnhancedDocumentSlice],
+) -> list[EnhancedDocumentSlice]:
     """
     Concatenate slices on the same document ID and remove duplicates.
 

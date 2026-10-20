@@ -6,7 +6,10 @@ from unittest import IsolatedAsyncioTestCase, mock
 from qdrant_client.models import CollectionDescription, CollectionsResponse
 
 from src.app.models.collections import Collection
-from src.app.models.documents import Document, DocumentPayloadModel
+from src.app.models.documents import (
+    EnhancedDocumentSlice,
+    EnhancedDocumentSlicePayloadModel,
+)
 from src.app.search.services.search import SearchService, concatenate_same_doc_id_slices
 
 os.environ["USE_CACHED_SETTINGS"] = "False"
@@ -90,9 +93,9 @@ class SearchServiceTests(IsolatedAsyncioTestCase):
         id2 = uuid.UUID("78901234-5678-9012-3456-789012345678")
 
         def make_doc(doc_id, content, score):
-            return Document(
+            return EnhancedDocumentSlice(
                 score=score,
-                payload=DocumentPayloadModel(
+                payload=EnhancedDocumentSlicePayloadModel(
                     document_corpus="corpus",
                     document_sub_corpus=None,
                     document_desc="desc",
@@ -107,7 +110,7 @@ class SearchServiceTests(IsolatedAsyncioTestCase):
                 ),
             )
 
-        qdrant_docs: List[Document] = [
+        qdrant_docs: List[EnhancedDocumentSlice] = [
             make_doc(id1, "content1", 0.5),
             make_doc(id1, "content2", 0.8),
             make_doc(id2, "content3", 0.8),

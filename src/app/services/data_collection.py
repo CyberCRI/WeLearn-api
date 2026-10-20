@@ -7,8 +7,9 @@ from typing import Any, Literal
 from fastapi import HTTPException, Request, status
 from fastapi.concurrency import run_in_threadpool
 from qdrant_client.models import ScoredPoint
+from welearn_database.data.models import QuestionType
 
-from src.app.models.documents import Document
+from src.app.models.documents import EnhancedDocumentSlice
 from src.app.services.sql_db.queries import (
     get_current_data_collection_campaign,
     get_last_syllabus_conversation_id,
@@ -25,7 +26,6 @@ from src.app.services.sql_db.queries_user import get_user_from_session_id
 from src.app.shared.utils.dependencies import get_settings
 from src.app.tutor.service.models import SyllabusFeedback, TutorSyllabusRequest
 from src.app.utils.logger import logger as utils_logger
-from welearn_database.data.models import QuestionType
 
 logger = utils_logger(__name__)
 
@@ -69,7 +69,7 @@ class DataCollection:
         self,
         session_id: uuid.UUID | None,
         query: str,
-        search_results: list[Document | ScoredPoint],
+        search_results: list[EnhancedDocumentSlice | ScoredPoint],
         sdg_filter: list[int] | None = None,
         corpora: list[str] | None = None,
         feature: str | None = "search",
@@ -243,7 +243,7 @@ class DataCollection:
         user_query: str,
         conversation_id: uuid.UUID | None,
         answer_content: str,
-        sources: list[Document],
+        sources: list[EnhancedDocumentSlice],
         feature: str | None = "chat",
     ) -> tuple[uuid.UUID | None, uuid.UUID | None]:
         if not self.should_collect:

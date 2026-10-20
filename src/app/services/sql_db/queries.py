@@ -9,6 +9,7 @@ from sqlalchemy import Row, and_, func, select
 from sqlalchemy.orm import Session, joinedload
 from welearn_database.data.enumeration import Step
 from welearn_database.data.models import (
+    AnalyticForm,
     Category,
     ChatMessage,
     ContextDocument,
@@ -25,16 +26,19 @@ from welearn_database.data.models import (
     QtyDocumentInQdrant,
     QtyDocumentInQdrantPerCorpus,
     QtyDocumentPerCorpus,
+    QuestionType,
     ReturnedDocument,
     Sdg,
     WeLearnDocument,
-    AnalyticForm,
-    QuestionType,
 )
 
 from src.app.models.chat import Role
 from src.app.models.collections import CorpusRelation
-from src.app.models.documents import Document, DocumentPayloadModel, JourneySection
+from src.app.models.documents import (
+    EnhancedDocumentSlice,
+    EnhancedDocumentSlicePayloadModel,
+    JourneySection,
+)
 from src.app.search.models.search import ContextType
 from src.app.services.sql_db.sql_service import session_maker
 from src.app.shared.domain.constants import APP_NAME
@@ -162,7 +166,9 @@ def get_documents_according_slice_ids(
     return ret
 
 
-def get_documents_payload_by_ids_sync(documents_ids: list[str]) -> list[Document]:
+def get_documents_payload_by_ids_sync(
+    documents_ids: list[str],
+) -> list[EnhancedDocumentSlice]:
     with session_maker() as s:
         documents: list[WeLearnDocument] = get_documents_by_ids(
             documents_ids=documents_ids
@@ -186,9 +192,9 @@ def get_documents_payload_by_ids_sync(documents_ids: list[str]) -> list[Document
                 [sdg.sdg_number for sdg in sdgs_for_doc]
             ).most_common(2)
             docs.append(
-                Document(
+                EnhancedDocumentSlice(
                     score=0.0,
-                    payload=DocumentPayloadModel(
+                    payload=EnhancedDocumentSlicePayloadModel(
                         document_id=doc.id,
                         document_title=doc.title,
                         document_url=doc.url,
@@ -422,7 +428,7 @@ def write_user_query(
 def write_chat_answer(
     user_id: UUID,
     answer: str,
-    docs: list[Document | ScoredPoint] | None,
+    docs: list[EnhancedDocumentSlice | ScoredPoint] | None,
     conversation_id: UUID,
     feature: str | None = None,
 ) -> UUID:
@@ -508,7 +514,9 @@ def update_syllabus_retrieved_status(syllabus_id: UUID) -> None:
 
 
 def write_returned_docs(
-    message_id: UUID, docs: list[Document | ScoredPoint], is_clicked: bool = False
+    message_id: UUID,
+    docs: list[EnhancedDocumentSlice | ScoredPoint],
+    is_clicked: bool = False,
 ) -> None:
     """
     Register the returned documents for a chat message in the database.
@@ -519,9 +527,9 @@ def write_returned_docs(
     returned_docs = []
     for doc in docs:
         if isinstance(doc, ScoredPoint):
-            doc = Document(
+            doc = EnhancedDocumentSlice(
                 score=0.0,
-                payload=DocumentPayloadModel(**doc.payload),
+                payload=EnhancedDocumentSlicePayloadModel(**doc.payload),
             )
 
         returned_doc = ReturnedDocument(

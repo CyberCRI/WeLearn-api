@@ -12,7 +12,7 @@ from fastapi import (
 )
 from fastapi.concurrency import run_in_threadpool
 
-from src.app.models.documents import Document
+from src.app.models.documents import EnhancedDocumentSlice
 from src.app.search.helpers.search_helpers import search_multi_inputs
 from src.app.search.models.search import (
     DocumentSearchQuery,
@@ -140,7 +140,7 @@ async def get_nb_docs() -> dict[str, int]:
     "/collections/{collection}",
     summary="search documents in a specific collection",
     description="Search documents in a specific collection",
-    response_model=list[Document] | str | None,
+    response_model=list[EnhancedDocumentSlice] | str | None,
 )
 async def search_doc_by_collection(
     background_tasks: BackgroundTasks,
@@ -183,7 +183,7 @@ async def search_doc_by_collection(
     "/by_slices",
     summary="search all slices",
     description="Search slices in all collections or in collections specified",
-    response_model=list[Document] | None | str,
+    response_model=list[EnhancedDocumentSlice] | None | str,
 )
 async def search_all_slices_by_lang(
     background_tasks: BackgroundTasks,
@@ -213,7 +213,7 @@ async def search_all_slices_by_lang(
     "/multiple_by_slices",
     summary="search all slices",
     description="Search slices in all collections or in collections specified",
-    response_model=list[Document] | None,
+    response_model=list[EnhancedDocumentSlice] | None,
 )
 async def multi_search_all_slices_by_lang(
     background_tasks: BackgroundTasks,
@@ -310,6 +310,8 @@ async def search_all(
     summary="Get documents payload by ids",
     description="Get documents payload by list of document ids",
 )
-async def get_documents_payload_by_ids(documents_ids: list[str]) -> list[Document]:
+async def get_documents_payload_by_ids(
+    documents_ids: list[str],
+) -> list[EnhancedDocumentSlice]:
     docs = await run_in_threadpool(get_documents_payload_by_ids_sync, documents_ids)
     return docs

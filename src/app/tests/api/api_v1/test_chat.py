@@ -9,8 +9,8 @@ from langchain_core.messages import AIMessage, HumanMessage, ToolMessage
 from langgraph.checkpoint.memory import InMemorySaver
 
 from src.app.core.config import settings
-from src.app.models.documents import Document as DocumentModel
-from src.app.models.documents import DocumentPayloadModel
+from src.app.models.documents import EnhancedDocumentSlice as DocumentModel
+from src.app.models.documents import EnhancedDocumentSlicePayloadModel
 from src.app.shared.domain.exceptions import LanguageNotSupportedError
 from src.main import app
 
@@ -108,7 +108,7 @@ class QnATests(unittest.IsolatedAsyncioTestCase):
                 docs=[
                     DocumentModel(
                         score=0.636549,
-                        payload=DocumentPayloadModel(
+                        payload=EnhancedDocumentSlicePayloadModel(
                             document_corpus="testCorpus",
                             document_sub_corpus="testsubCorpus",
                             document_desc="testDesc",
@@ -205,7 +205,7 @@ class QnATests(unittest.IsolatedAsyncioTestCase):
                     docs=[
                         DocumentModel(
                             score=0.636549,
-                            payload=DocumentPayloadModel(
+                            payload=EnhancedDocumentSlicePayloadModel(
                                 document_corpus="testCorpus",
                                 document_sub_corpus="testsubCorpus",
                                 document_desc="testDesc",

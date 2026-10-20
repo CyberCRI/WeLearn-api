@@ -18,7 +18,7 @@ class Collection_schema(BaseModel):
     model: str
 
 
-class DocumentPayloadModel(BaseModel):
+class EnhancedDocumentSlicePayloadModel(BaseModel):
     document_corpus: str
     document_sub_corpus: str | None = None
     document_desc: str
@@ -32,9 +32,9 @@ class DocumentPayloadModel(BaseModel):
     slice_sdg: int | None
 
 
-class Document(BaseModel):
+class EnhancedDocumentSlice(BaseModel):
     score: float
-    payload: DocumentPayloadModel
+    payload: EnhancedDocumentSlicePayloadModel
 
 
 class JourneySectionType(StrEnum):
@@ -44,7 +44,7 @@ class JourneySectionType(StrEnum):
 
 class JourneySection(BaseModel):
     type: JourneySectionType
-    content: Document
+    content: EnhancedDocumentSlice
 
 
 class ContainedSlice:
@@ -158,10 +158,10 @@ class FullContainer:
             ret.append(_slice.content)
         return "\n\n[...]".join(ret)
 
-    def to_document(self) -> Document:
-        return Document(
+    def to_document(self) -> EnhancedDocumentSlice:
+        return EnhancedDocumentSlice(
             score=self.mean_score,
-            payload=DocumentPayloadModel(
+            payload=EnhancedDocumentSlicePayloadModel(
                 document_corpus=self.corpus.source_name,
                 document_sub_corpus=(
                     self.sub_corpus.source_name if self.sub_corpus else None

@@ -6,7 +6,7 @@ from pydantic import BaseModel, ConfigDict, Field
 from qdrant_client.http.models import Range, ScoredPoint
 from qdrant_client.models import FieldCondition, Filter, MatchAny
 
-from src.app.models.documents import Document
+from src.app.models.documents import EnhancedDocumentSlice
 from src.app.utils.decorators import log_time_and_error_sync
 from src.app.utils.logger import logger as logger_utils
 
@@ -18,7 +18,7 @@ class SearchOutput(BaseModel):
         default=None,
         description="Identifier of the stored search event for analytics/tracking.",
     )
-    docs: list[Document] | list[ScoredPoint] | None = Field(
+    docs: list[EnhancedDocumentSlice] | list[ScoredPoint] | None = Field(
         default=None,
         description="Search results returned by the endpoint.",
     )

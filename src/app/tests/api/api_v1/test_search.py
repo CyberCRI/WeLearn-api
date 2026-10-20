@@ -9,7 +9,10 @@ from welearn_database.data.models import Corpus, WeLearnDocument
 
 from src.app.core.config import settings
 from src.app.models import collections
-from src.app.models.documents import Document, DocumentPayloadModel
+from src.app.models.documents import (
+    EnhancedDocumentSlice,
+    EnhancedDocumentSlicePayloadModel,
+)
 from src.app.search.models.search import EnhancedSearchQuery
 from src.app.search.services.search import SearchService, sort_using_mmr
 from src.app.shared.domain.exceptions import CollectionNotFoundError, ModelNotFoundError
@@ -82,9 +85,9 @@ mocked_scored_points = [
 ]
 
 mocked_documents = [
-    Document(
+    EnhancedDocumentSlice(
         score=0.9,
-        payload=DocumentPayloadModel(
+        payload=EnhancedDocumentSlicePayloadModel(
             document_corpus="corpus",
             document_sub_corpus="sub_corpus",
             document_desc="desc",
@@ -98,9 +101,9 @@ mocked_documents = [
             slice_sdg=1,
         ),
     ),
-    Document(
+    EnhancedDocumentSlice(
         score=0.89,
-        payload=DocumentPayloadModel(
+        payload=EnhancedDocumentSlicePayloadModel(
             document_corpus="corpus",
             document_sub_corpus="sub_corpus",
             document_desc="desc",
@@ -114,9 +117,9 @@ mocked_documents = [
             slice_sdg=1,
         ),
     ),
-    Document(
+    EnhancedDocumentSlice(
         score=0.88,
-        payload=DocumentPayloadModel(
+        payload=EnhancedDocumentSlicePayloadModel(
             document_corpus="corpus",
             document_sub_corpus="sub_corpus",
             document_desc="desc",
@@ -130,9 +133,9 @@ mocked_documents = [
             slice_sdg=1,
         ),
     ),
-    Document(
+    EnhancedDocumentSlice(
         score=0.88,
-        payload=DocumentPayloadModel(
+        payload=EnhancedDocumentSlicePayloadModel(
             document_corpus="corpus",
             document_sub_corpus="sub_corpus",
             document_desc="desc",
