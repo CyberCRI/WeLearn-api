@@ -325,7 +325,11 @@ class SearchService:
 
         try:
             dqc = DataQualityChecker(log_background_task=background_tasks)
-            containers = dqc.remove_duplicates(containers_to_check=containers)
+            containers = sorted(
+                dqc.remove_duplicates(containers_to_check=containers),
+                key=lambda container: container.mean_score,
+                reverse=True,
+            )
         except Exception as ex:
             logger.exception(
                 "Error during duplicate removal: %s, ignore it for letting the user see results",
