@@ -6,7 +6,7 @@ from welearn_database.data.models import QuestionType
 
 class RowCorpusQtyDocInfo(BaseModel):
     corpus: str
-    url: str | None = None
+    url: str
     qty_total: int
     qty_in_qdrant: int
 
