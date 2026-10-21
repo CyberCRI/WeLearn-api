@@ -28,6 +28,7 @@ class EnhancedDocumentSlicePayloadModel(BaseModel):
     document_sdg: list[int]
     document_title: str
     document_url: str
+    document_external_id: str | None = None
     slice_content: str | None
     slice_sdg: int | None
 
@@ -79,6 +80,7 @@ class FullContainer:
         self.id = wl_document.id
         self.title = wl_document.title
         self.description = wl_document.description
+        self.external_id = wl_document.external_id
         self.url = wl_document.url
         self.details = wl_document.details
         self.lang = wl_document.lang
@@ -176,5 +178,6 @@ class FullContainer:
                 document_details=self.details,
                 slice_sdg=None,
                 slice_content=self.overview(),
+                document_external_id=self.external_id,
             ),
         )

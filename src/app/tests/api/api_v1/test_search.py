@@ -485,6 +485,7 @@ class DocumentsByIdsTests(IsolatedAsyncioTestCase):
             id=doc_id,
             description="Desc",
             details={"k": "v"},
+            external_id="external-id-123",
             lang="fr",
             corpus=Corpus(
                 id=corpus_id,
@@ -555,6 +556,7 @@ class DocumentsByIdsTests(IsolatedAsyncioTestCase):
             id=doc_id,
             description="Desc",
             details={},
+            external_id=None,
             lang="fr",
             corpus=Corpus(
                 id=corpus_id,
