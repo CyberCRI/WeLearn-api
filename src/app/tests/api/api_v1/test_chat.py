@@ -9,8 +9,8 @@ from langchain_core.messages import AIMessage, HumanMessage, ToolMessage
 from langgraph.checkpoint.memory import InMemorySaver
 
 from src.app.core.config import settings
-from src.app.models.documents import EnhancedDocumentSlice as DocumentModel
-from src.app.models.documents import EnhancedDocumentSlicePayloadModel
+from src.app.shared.domain.documents import EnhancedDocumentSlice as DocumentModel
+from src.app.shared.domain.documents import EnhancedDocumentSlicePayloadModel
 from src.app.shared.domain.exceptions import LanguageNotSupportedError
 from src.main import app
 

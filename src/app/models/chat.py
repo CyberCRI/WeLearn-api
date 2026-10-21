@@ -5,8 +5,7 @@ from typing import Literal, TypedDict
 from pydantic import BaseModel, ConfigDict, Field
 
 from src.app.search.models.search import SDGFilter
-
-from .documents import EnhancedDocumentSlice
+from src.app.shared.domain.documents import EnhancedDocumentSlice
 
 
 class Context(BaseModel):

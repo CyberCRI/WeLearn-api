@@ -4,10 +4,10 @@ from docx import Document as DocxReader
 from fastapi import HTTPException, UploadFile
 from pypdf import PdfReader
 
-from src.app.models.documents import EnhancedDocumentSlice
+from src.app.shared.domain.documents import EnhancedDocumentSlice
 from src.app.shared.infra.pdf_extractor import extract_txt_from_pdf_with_tika
+from src.app.shared.utils.decorators import log_time_and_error_sync
 from src.app.shared.utils.dependencies import get_settings
-from src.app.utils.decorators import log_time_and_error_sync
 
 settings = get_settings()
 

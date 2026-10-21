@@ -7,9 +7,9 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.sql import select
 from welearn_database.data.models import Bookmark, InferredUser, Session
 
-from src.app.services.sql_db.sql_service import session_maker
 from src.app.shared.domain.exceptions import SessionNotFoundError, UserNotFoundError
-from src.app.utils.logger import logger as logger_utils
+from src.app.shared.infra.db import session_maker
+from src.app.shared.utils.logger import logger as logger_utils
 
 logger = logger_utils(__name__)
 

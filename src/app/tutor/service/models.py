@@ -6,7 +6,7 @@ from typing import Any, Dict, List, Optional
 from pydantic import BaseModel, Field
 
 from src.app.baml_client import types
-from src.app.models.documents import EnhancedDocumentSlice
+from src.app.shared.domain.documents import EnhancedDocumentSlice
 
 
 class SummariesList(BaseModel):

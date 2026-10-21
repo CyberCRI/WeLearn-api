@@ -13,8 +13,8 @@ from langchain_core.prompts import ChatPromptTemplate
 from langchain_core.runnables import RunnableConfig
 from pydantic import ValidationError
 
+from src.app.shared.utils.logger import logger as utils_logger
 from src.app.tutor.service.models import DraftSyllabus, Limits, MessageWithResources
-from src.app.utils.logger import logger as utils_logger
 
 logger = utils_logger(__name__)
 

@@ -1,7 +1,7 @@
 import functools
 import time
 
-from src.app.utils.logger import logger as utils_logger
+from src.app.shared.utils.logger import logger as utils_logger
 
 logger = utils_logger(__name__)
 

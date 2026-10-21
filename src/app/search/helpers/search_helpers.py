@@ -3,10 +3,10 @@ from typing import Awaitable, Callable
 
 from fastapi import BackgroundTasks
 
-from src.app.models.documents import EnhancedDocumentSlice
 from src.app.search.models.search import EnhancedSearchQuery, SearchMethods
+from src.app.shared.domain.documents import EnhancedDocumentSlice
 from src.app.shared.domain.exceptions import handle_error
-from src.app.utils.logger import logger as logger_utils
+from src.app.shared.utils.logger import logger as logger_utils
 
 logger = logger_utils(__name__)
 

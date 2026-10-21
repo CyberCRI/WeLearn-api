@@ -12,7 +12,7 @@ from psycopg.rows import AsyncRowFactory, DictRow
 from src.app.models import chat as models
 from src.app.search.services.search import SearchService
 from src.app.services.helpers import linkify_missing_citations
-from src.app.utils.logger import logger as utils_logger
+from src.app.shared.utils.logger import logger as utils_logger
 
 logger = utils_logger(__name__)
 

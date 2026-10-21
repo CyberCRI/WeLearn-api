@@ -4,13 +4,13 @@ from fastapi import BackgroundTasks
 from sqlalchemy.exc import IntegrityError
 from welearn_database.data.enumeration import Step
 
-from src.app.models.documents import FullContainer
 from src.app.services.sql_db.queries import (
     write_new_data_quality_error,
     write_process_state,
 )
-from src.app.utils.decorators import log_time_and_error_sync
-from src.app.utils.logger import logger as logger_utils
+from src.app.shared.domain.documents import FullContainer
+from src.app.shared.utils.decorators import log_time_and_error_sync
+from src.app.shared.utils.logger import logger as logger_utils
 
 logger = logger_utils(__name__)
 

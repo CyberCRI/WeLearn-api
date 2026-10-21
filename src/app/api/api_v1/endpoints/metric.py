@@ -10,8 +10,8 @@ from src.app.models.metric import (
 from src.app.services.data_collection import get_data_collection_service
 from src.app.services.sql_db.queries import get_document_qty_table_info_sync
 from src.app.shared.utils.dependencies import get_settings
+from src.app.shared.utils.logger import logger as utils_logger
 from src.app.shared.utils.requests import extract_session_cookie
-from src.app.utils.logger import logger as utils_logger
 
 logger = utils_logger(__name__)
 

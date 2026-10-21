@@ -13,10 +13,6 @@ from src.app.bibliography.helpers.helpers import (
     ris_line,
     welearn_document_to_ris,
 )
-from src.app.models.documents import (
-    EnhancedDocumentSlice,
-    EnhancedDocumentSlicePayloadModel,
-)
 from src.app.services.helpers import (
     convert_embedding_bytes,
     detect_language_from_entry,
@@ -24,6 +20,10 @@ from src.app.services.helpers import (
     latest_tool_docs,
     linkify_missing_citations,
     stringify_docs_content,
+)
+from src.app.shared.domain.documents import (
+    EnhancedDocumentSlice,
+    EnhancedDocumentSlicePayloadModel,
 )
 from src.app.shared.domain.exceptions import LanguageNotSupportedError
 

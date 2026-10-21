@@ -33,15 +33,15 @@ from welearn_database.data.models import (
 )
 
 from src.app.models.chat import Role
-from src.app.models.collections import CorpusRelation
-from src.app.models.documents import (
+from src.app.search.models.search import ContextType
+from src.app.shared.domain.collections import CorpusRelation
+from src.app.shared.domain.constants import APP_NAME
+from src.app.shared.domain.documents import (
     EnhancedDocumentSlice,
     EnhancedDocumentSlicePayloadModel,
     JourneySection,
 )
-from src.app.search.models.search import ContextType
-from src.app.services.sql_db.sql_service import session_maker
-from src.app.shared.domain.constants import APP_NAME
+from src.app.shared.infra.db import session_maker
 
 model_id_lock = Lock()
 main_corpus_dict: dict[UUID, Corpus | None] = {}

@@ -3,8 +3,8 @@ from typing import Any, Optional
 
 from welearn_database.data.models import WeLearnDocument
 
-from src.app.utils.decorators import log_time_and_error_sync
-from src.app.utils.logger import logger as utils_logger
+from src.app.shared.utils.decorators import log_time_and_error_sync
+from src.app.shared.utils.logger import logger as utils_logger
 
 logger = utils_logger(__name__)
 

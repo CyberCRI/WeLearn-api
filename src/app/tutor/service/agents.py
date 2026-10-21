@@ -8,6 +8,7 @@ from langchain_core.output_parsers import StrOutputParser
 from langchain_core.prompts import ChatPromptTemplate
 from langchain_core.runnables import RunnableConfig
 
+from src.app.shared.utils.logger import logger as utils_logger
 from src.app.shared.utils.utils import build_system_message
 from src.app.tutor.service.models import (
     ExtractorOutput,
@@ -15,7 +16,6 @@ from src.app.tutor.service.models import (
     SyllabusResponseAgent,
 )
 from src.app.tutor.service.syllabus import COUNTS_GUIDE, GREENCOMP_NAMES_GUIDE
-from src.app.utils.logger import logger as utils_logger
 
 logger = utils_logger(__name__)
 

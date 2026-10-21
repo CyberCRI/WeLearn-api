@@ -1,10 +1,10 @@
-# src/app/services/sql_db/sql_service.py
+# src/app/shared/infra/db.py
 
 from sqlalchemy import URL, create_engine
 from sqlalchemy.orm import sessionmaker
 
+from src.app.shared.utils.decorators import singleton
 from src.app.shared.utils.dependencies import get_settings
-from src.app.utils.decorators import singleton
 
 settings = get_settings()
 
