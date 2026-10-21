@@ -3,15 +3,14 @@ from enum import Enum
 from typing import Literal, TypedDict
 
 from pydantic import BaseModel, ConfigDict, Field
-from qdrant_client.models import ScoredPoint
 
 from src.app.search.models.search import SDGFilter
 
-from .documents import Document
+from .documents import EnhancedDocumentSlice
 
 
 class Context(BaseModel):
-    sources: list[Document] = []
+    sources: list[EnhancedDocumentSlice] = []
     history: list[dict] | None = []
     query: str | None = None
     subject: str | None = Field(None)
@@ -19,7 +18,7 @@ class Context(BaseModel):
 
 
 class ContextOut(BaseModel):
-    sources: list[Document] = []
+    sources: list[EnhancedDocumentSlice] = []
     history: list[dict] = []
     query: str
     subject: str | None = Field(None)
@@ -97,7 +96,7 @@ class AgentResponse(BaseModel):
     content: str | None = None
     status: str | None = None
     step: str | None = None
-    docs: list[ScoredPoint] | None = None
+    docs: list[EnhancedDocumentSlice] | None = None
     thread_id: uuid.UUID | None = None
 
 

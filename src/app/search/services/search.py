@@ -16,7 +16,7 @@ from sklearn.metrics.pairwise import cosine_similarity
 from transformers import AutoModel, AutoTokenizer
 
 from src.app.models.collections import Collection
-from src.app.models.documents import Document, FullContainer
+from src.app.models.documents import EnhancedDocumentSlice, FullContainer
 from src.app.search.models.search import (
     EnhancedSearchQuery,
     FilterDefinition,
@@ -256,7 +256,7 @@ class SearchService:
         qp: EnhancedSearchQuery,
         method: SearchMethods = SearchMethods.BY_SLICES,
         without_vectors: bool = False,
-    ) -> list[Document]:
+    ) -> list[EnhancedDocumentSlice]:
         assert isinstance(qp.query, str)
 
         collection = await self.get_collection_by_language(lang="mul")
@@ -325,9 +325,10 @@ class SearchService:
 
         try:
             dqc = DataQualityChecker(log_background_task=background_tasks)
-            containers = dqc.remove_duplicates(
-                points_to_check=containers,
-                keys_to_check=["document_desc", "document_title"],
+            containers = sorted(
+                dqc.remove_duplicates(containers_to_check=containers),
+                key=lambda container: container.mean_score,
+                reverse=True,
             )
         except Exception as ex:
             logger.exception(
@@ -339,7 +340,7 @@ class SearchService:
 
         ret = []
         for d in sorted(enhance_with_rank_data, key=lambda d: d.mmr_rank):
-            ret.append(d.to_document())
+            ret.append(d.to_enhanced_document_slice())
 
         return ret
 
@@ -440,8 +441,8 @@ async def get_search_service(
 
 @log_time_and_error_sync
 def concatenate_same_doc_id_slices(
-    qdrant_results: list[Document],
-) -> list[Document]:
+    qdrant_results: list[EnhancedDocumentSlice],
+) -> list[EnhancedDocumentSlice]:
     """
     Concatenate slices on the same document ID and remove duplicates.
 

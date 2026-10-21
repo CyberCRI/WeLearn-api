@@ -4,7 +4,7 @@ from fastapi import BackgroundTasks
 from langchain_core.runnables import RunnableConfig
 from langchain_core.tools import tool
 
-from src.app.models.documents import Document
+from src.app.models.documents import EnhancedDocumentSlice
 from src.app.search.models.search import EnhancedSearchQuery
 from src.app.search.services.search import SearchService
 from src.app.services.helpers import stringify_docs_content
@@ -17,7 +17,7 @@ logger = utils_logger(__name__)
 async def _get_resources_about_sustainability(
     rag_query: str,
     config: RunnableConfig,
-) -> Tuple[str, List[Document]]:
+) -> Tuple[str, List[EnhancedDocumentSlice]]:
     """Core logic for getting relevant resources about sustainability from WeLearn database."""
 
     tool_called: list = config["configurable"].get("tool_called", [False])
@@ -55,7 +55,7 @@ async def _get_resources_about_sustainability(
 async def get_resources_about_sustainability(
     rag_query: str,
     config: RunnableConfig,
-) -> Tuple[str, List[Document]]:
+) -> Tuple[str, List[EnhancedDocumentSlice]]:
     """Get relevant resources about sustainability from WeLearn database.
 
     Args:

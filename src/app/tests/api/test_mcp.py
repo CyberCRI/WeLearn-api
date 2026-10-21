@@ -9,7 +9,10 @@ from fastapi.testclient import TestClient
 
 from src import main
 from src.app.core.config import settings
-from src.app.models.documents import Document, DocumentPayloadModel
+from src.app.models.documents import (
+    EnhancedDocumentSlice,
+    EnhancedDocumentSlicePayloadModel,
+)
 from src.app.search.services.search import get_search_service
 from src.app.services.data_collection import get_data_collection_service
 
@@ -89,9 +92,9 @@ def test_mcp_tools_forward_api_key(mcp_client, monkeypatch, tool_name, api_key):
     monkeypatch.setattr(
         "src.app.search.api.router.get_collections_info_sync", collections
     )
-    document = Document(
+    document = EnhancedDocumentSlice(
         score=0.9,
-        payload=DocumentPayloadModel(
+        payload=EnhancedDocumentSlicePayloadModel(
             document_id="12345678-1234-5678-1234-567812345678",
             document_corpus="test-corpus",
             document_desc="Clean water",

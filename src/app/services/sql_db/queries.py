@@ -9,6 +9,7 @@ from sqlalchemy import Row, and_, func, select
 from sqlalchemy.orm import Session, joinedload
 from welearn_database.data.enumeration import Step
 from welearn_database.data.models import (
+    AnalyticForm,
     Category,
     ChatMessage,
     ContextDocument,
@@ -25,16 +26,19 @@ from welearn_database.data.models import (
     QtyDocumentInQdrant,
     QtyDocumentInQdrantPerCorpus,
     QtyDocumentPerCorpus,
+    QuestionType,
     ReturnedDocument,
     Sdg,
     WeLearnDocument,
-    AnalyticForm,
-    QuestionType,
 )
 
 from src.app.models.chat import Role
 from src.app.models.collections import CorpusRelation
-from src.app.models.documents import Document, DocumentPayloadModel, JourneySection
+from src.app.models.documents import (
+    EnhancedDocumentSlice,
+    EnhancedDocumentSlicePayloadModel,
+    JourneySection,
+)
 from src.app.search.models.search import ContextType
 from src.app.services.sql_db.sql_service import session_maker
 from src.app.shared.domain.constants import APP_NAME
@@ -93,20 +97,37 @@ def get_nb_docs_sync():
         return s.execute(statement).first()
 
 
-def get_document_qty_table_info_sync() -> (
-    list[tuple[Corpus, QtyDocumentInQdrantPerCorpus, QtyDocumentPerCorpus]]
-):
+def get_document_qty_table_info_sync() -> list[tuple[Corpus, int, int]]:
+    group_id = func.coalesce(Corpus.parent_corpus_id, Corpus.id)
+
     with session_maker() as s:
-        return (
-            s.query(Corpus, QtyDocumentInQdrantPerCorpus, QtyDocumentPerCorpus)
-            .join(
+        totals = (
+            s.query(
+                group_id.label("group_id"),
+                func.coalesce(func.sum(QtyDocumentInQdrantPerCorpus.count), 0).label(
+                    "qty_in_qdrant"
+                ),
+                func.coalesce(func.sum(QtyDocumentPerCorpus.count), 0).label(
+                    "qty_documents"
+                ),
+            )
+            .select_from(Corpus)
+            .outerjoin(
                 QtyDocumentInQdrantPerCorpus,
                 Corpus.source_name == QtyDocumentInQdrantPerCorpus.source_name,
             )
-            .join(
+            .outerjoin(
                 QtyDocumentPerCorpus,
                 Corpus.source_name == QtyDocumentPerCorpus.source_name,
             )
+            .group_by(group_id)
+            .subquery()
+        )
+
+        return (
+            s.query(Corpus, totals.c.qty_in_qdrant, totals.c.qty_documents)
+            .join(totals, Corpus.id == totals.c.group_id)
+            .filter(Corpus.is_active)
             .all()
         )  # type: ignore
 
@@ -162,7 +183,9 @@ def get_documents_according_slice_ids(
     return ret
 
 
-def get_documents_payload_by_ids_sync(documents_ids: list[str]) -> list[Document]:
+def get_documents_payload_by_ids_sync(
+    documents_ids: list[str],
+) -> list[EnhancedDocumentSlice]:
     with session_maker() as s:
         documents: list[WeLearnDocument] = get_documents_by_ids(
             documents_ids=documents_ids
@@ -186,9 +209,9 @@ def get_documents_payload_by_ids_sync(documents_ids: list[str]) -> list[Document
                 [sdg.sdg_number for sdg in sdgs_for_doc]
             ).most_common(2)
             docs.append(
-                Document(
+                EnhancedDocumentSlice(
                     score=0.0,
-                    payload=DocumentPayloadModel(
+                    payload=EnhancedDocumentSlicePayloadModel(
                         document_id=doc.id,
                         document_title=doc.title,
                         document_url=doc.url,
@@ -422,7 +445,7 @@ def write_user_query(
 def write_chat_answer(
     user_id: UUID,
     answer: str,
-    docs: list[Document | ScoredPoint] | None,
+    docs: list[EnhancedDocumentSlice | ScoredPoint] | None,
     conversation_id: UUID,
     feature: str | None = None,
 ) -> UUID:
@@ -508,7 +531,9 @@ def update_syllabus_retrieved_status(syllabus_id: UUID) -> None:
 
 
 def write_returned_docs(
-    message_id: UUID, docs: list[Document | ScoredPoint], is_clicked: bool = False
+    message_id: UUID,
+    docs: list[EnhancedDocumentSlice | ScoredPoint],
+    is_clicked: bool = False,
 ) -> None:
     """
     Register the returned documents for a chat message in the database.
@@ -519,9 +544,9 @@ def write_returned_docs(
     returned_docs = []
     for doc in docs:
         if isinstance(doc, ScoredPoint):
-            doc = Document(
+            doc = EnhancedDocumentSlice(
                 score=0.0,
-                payload=DocumentPayloadModel(**doc.payload),
+                payload=EnhancedDocumentSlicePayloadModel(**doc.payload),
             )
 
         returned_doc = ReturnedDocument(

@@ -35,7 +35,7 @@ from langgraph.checkpoint.postgres.aio import AsyncPostgresSaver  # type: ignore
 from langgraph.graph.message import REMOVE_ALL_MESSAGES  # type: ignore
 from langsmith import traceable
 
-from src.app.models.documents import Document
+from src.app.models.documents import EnhancedDocumentSlice
 from src.app.search.services.search import SearchService
 from src.app.services import prompts
 from src.app.services.agent import get_resources_about_sustainability
@@ -438,7 +438,7 @@ class AbstractChat(ABC):
         self,
         query: str,
         history: List[Dict[str, str]],
-        docs: List[Document],
+        docs: List[EnhancedDocumentSlice],
         subject: str | None = None,
         streamed_ans: bool = False,
     ):
