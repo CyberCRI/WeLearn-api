@@ -3,7 +3,9 @@ ARG PYTHON_VERSION=3.14
 FROM python:${PYTHON_VERSION}-slim AS requirements-stage
 WORKDIR /tmp
 
-RUN pip install poetry==1.8.2
+RUN pip install --upgrade pip
+
+RUN pip install poetry==2.5.1
 
 ENV POETRY_NO_INTERACTION=1 \
     POETRY_VIRTUALENVS_IN_PROJECT=1 \
