@@ -36,6 +36,42 @@ logger = logger_utils(__name__)
 settings = get_settings()
 
 
+async def resolve_bookmark_user(request: Request) -> uuid.UUID:
+    """
+    Resolve the bookmarks owner: from the Keycloak token when there is one, so
+    bookmarks follow the account across sessions, else from the session cookie.
+    """
+    session_uuid = extract_session_cookie(request)
+    token = extract_bearer_token(request)
+    if not token and not session_uuid:
+        raise HTTPException(status_code=401, detail="Session cookie is missing")
+    host = extract_origin_from_request(request)
+
+    try:
+        if token:
+            user_id, _ = await resolve_keycloak_user_and_session(
+                token=token,
+                session_uuid=session_uuid,
+                host=host,
+                referer=None,
+            )
+        else:
+            user_id, _ = await resolve_user_and_session(
+                session_uuid=session_uuid,
+                host=host,
+                referer=None,
+            )
+    except KeycloakTokenError as e:
+        logger.warning(f"Invalid keycloak token: {e}")
+        raise HTTPException(status_code=401, detail="Invalid or expired token")
+    except KeycloakUnavailableError as e:
+        logger.error(f"Keycloak unavailable: {e}")
+        raise HTTPException(status_code=503, detail="Keycloak unavailable")
+    except UserNotFoundError as e:
+        raise HTTPException(status_code=404, detail=str(e))
+    return user_id
+
+
 @router.post(
     "/user_and_session", summary="Create new user and session", response_model=dict
 )
@@ -118,19 +154,7 @@ async def handle_session(
 
 @router.get("/bookmarks", summary="Get user bookmarks")
 async def get_user_bookmarks(request: Request):
-    session_uuid = extract_session_cookie(request)
-    host = extract_origin_from_request(request)
-
-    if not session_uuid:
-        raise HTTPException(status_code=401, detail="Session cookie is missing")
-    try:
-        user_id, _ = await resolve_user_and_session(
-            session_uuid=session_uuid,
-            host=host,
-            referer=None,
-        )
-    except UserNotFoundError as e:
-        raise HTTPException(status_code=404, detail=str(e))
+    user_id = await resolve_bookmark_user(request)
 
     try:
         bookmarks = await run_in_threadpool(get_user_bookmarks_sync, user_id)
@@ -144,18 +168,7 @@ async def get_user_bookmarks(request: Request):
 
 @router.delete("/bookmarks", summary="Delete all user bookmarks", response_model=dict)
 async def delete_user_bookmarks(request: Request):
-    session_uuid = extract_session_cookie(request)
-    if not session_uuid:
-        raise HTTPException(status_code=401, detail="Session cookie is missing")
-    host = extract_origin_from_request(request)
-    try:
-        user_id, _ = await resolve_user_and_session(
-            session_uuid=session_uuid,
-            host=host,
-            referer=None,
-        )
-    except UserNotFoundError as e:
-        raise HTTPException(status_code=404, detail=str(e))
+    user_id = await resolve_bookmark_user(request)
 
     try:
         deleted_count = await run_in_threadpool(delete_user_bookmarks_sync, user_id)
@@ -173,18 +186,7 @@ async def delete_user_bookmarks(request: Request):
     response_model=dict,
 )
 async def delete_user_bookmark(request: Request, document_id: uuid.UUID):
-    session_uuid = extract_session_cookie(request)
-    if not session_uuid:
-        raise HTTPException(status_code=401, detail="Session cookie is missing")
-    host = extract_origin_from_request(request)
-    try:
-        user_id, _ = await resolve_user_and_session(
-            session_uuid=session_uuid,
-            host=host,
-            referer=None,
-        )
-    except UserNotFoundError as e:
-        raise HTTPException(status_code=404, detail=str(e))
+    user_id = await resolve_bookmark_user(request)
 
     try:
         deleted_id = await run_in_threadpool(
@@ -202,19 +204,7 @@ async def delete_user_bookmark(request: Request, document_id: uuid.UUID):
     "/bookmarks/:document_id", summary="Add user bookmark", response_model=dict
 )
 async def add_user_bookmark(request: Request, document_id: uuid.UUID):
-    session_uuid = extract_session_cookie(request)
-    if not session_uuid:
-        raise HTTPException(status_code=401, detail="Session cookie is missing")
-    host = extract_origin_from_request(request)
-
-    try:
-        user_id, _ = await resolve_user_and_session(
-            session_uuid=session_uuid,
-            host=host,
-            referer=None,
-        )
-    except UserNotFoundError as e:
-        raise HTTPException(status_code=404, detail=str(e))
+    user_id = await resolve_bookmark_user(request)
 
     try:
         added_id = await run_in_threadpool(add_user_bookmark_sync, user_id, document_id)

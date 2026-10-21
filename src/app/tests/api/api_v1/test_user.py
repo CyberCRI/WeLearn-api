@@ -331,6 +331,54 @@ class UserApiTests(unittest.IsolatedAsyncioTestCase):
 
     @mock.patch("src.app.user.api.router.run_in_threadpool")
     @mock.patch("src.app.user.api.router.resolve_user_and_session")
+    @mock.patch("src.app.user.api.router.resolve_keycloak_user_and_session")
+    async def test_get_user_bookmarks_with_keycloak_token(
+        self,
+        resolve_keycloak_mock,
+        resolve_anonymous_mock,
+        run_in_threadpool_mock,
+        *mocks,
+    ):
+        """Avec un token Keycloak, les bookmarks sont ceux du compte Keycloak"""
+        user_id = uuid.uuid4()
+        resolve_keycloak_mock.return_value = (user_id, uuid.uuid4())
+        run_in_threadpool_mock.return_value = []
+
+        response = client.get(
+            f"{settings.API_V1_STR}/user/bookmarks",
+            headers={"X-API-Key": "test", "Authorization": "Bearer a.b.c"},
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(resolve_keycloak_mock.call_args.kwargs["token"], "a.b.c")
+        self.assertEqual(run_in_threadpool_mock.call_args.args[1], user_id)
+        resolve_anonymous_mock.assert_not_called()
+
+    @mock.patch("src.app.user.api.router.resolve_keycloak_user_and_session")
+    async def test_add_user_bookmark_invalid_token(self, resolve_keycloak_mock, *mocks):
+        """Token invalide -> 401, même avec un cookie de session"""
+        resolve_keycloak_mock.side_effect = KeycloakTokenError("expired")
+
+        response = client.post(
+            f"{settings.API_V1_STR}/user/bookmarks/:document_id",
+            params={"document_id": str(uuid.uuid4())},
+            headers={"X-API-Key": "test", "Authorization": "Bearer a.b.c"},
+            cookies={"x-session-id": str(uuid.uuid4())},
+        )
+
+        self.assertEqual(response.status_code, 401)
+
+    async def test_delete_user_bookmarks_without_token_nor_session(self, *mocks):
+        """Ni token ni cookie de session -> 401"""
+        response = client.delete(
+            f"{settings.API_V1_STR}/user/bookmarks",
+            headers={"X-API-Key": "test"},
+        )
+
+        self.assertEqual(response.status_code, 401)
+
+    @mock.patch("src.app.user.api.router.run_in_threadpool")
+    @mock.patch("src.app.user.api.router.resolve_user_and_session")
     async def test_add_user_bookmark_user_not_found(
         self, resolve_user_and_session_mock, run_in_threadpool_mock, *mocks
     ):
