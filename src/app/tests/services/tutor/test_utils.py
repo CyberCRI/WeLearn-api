@@ -42,18 +42,18 @@ class TestTutorUtils(IsolatedAsyncioTestCase):
     def test_extract_doc_info(self):
         # Create mock documents
         doc1 = Mock(spec=ScoredPoint)
-        doc1.payload = Mock(
-            document_title="Test Doc 1",
-            document_url="http://test1.com",
-            slice_content="Content 1",
-        )
+        doc1.payload = {
+            "document_title": "Test Doc 1",
+            "document_url": "http://test1.com",
+            "slice_content": "Content 1",
+        }
 
         doc2 = Mock(spec=ScoredPoint)
-        doc2.payload = Mock(
-            document_title="Test Doc 2",
-            document_url="http://test2.com",
-            slice_content="Content 2",
-        )
+        doc2.payload = {
+            "document_title": "Test Doc 2",
+            "document_url": "http://test2.com",
+            "slice_content": "Content 2",
+        }
 
         doc3 = Mock(spec=ScoredPoint)
         doc3.payload = None  # Test case for None payload

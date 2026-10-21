@@ -6,6 +6,7 @@ import json_repair
 import numpy
 from fastapi import HTTPException
 from json_repair import JSONReturnType
+from langchain_core.messages import BaseMessage, ToolMessage
 from langdetect import detect_langs
 from qdrant_client.http.models import models
 from welearn_database.data.models import EmbeddingModel
@@ -140,15 +141,26 @@ def stringify_docs_content(docs: List[Any]) -> str:
     return documents.strip()
 
 
-_CITATION_RE = re.compile(r'(?<!target="_blank">)\[Doc\s*(\d+)\]')
+_CITATION_RE = re.compile(
+    r'(?<!\[)(?<!target="_blank">)\[Doc\s*(\d+)\](?!\()', re.IGNORECASE
+)
 
 
 def linkify_missing_citations(text: str, docs: List[Any]) -> str:
     """
-    Wraps any bare `[Doc N]` marker in `text` with the `<a href=... target="_blank">`
-    tag for document N, using the URL from `docs[N-1]`. Markers already wrapped in an
-    <a> tag are left untouched. Safety net for when the LLM forgets to format a
-    citation as a link itself.
+    Wraps any bare `[Doc N]` marker in `text` into a double-bracket Markdown link
+    `[[Doc N]](URL)` for document N, using the URL from `docs[N-1]`. The double
+    bracket is intentional: a plain Markdown link `[Doc N](URL)` renders with its
+    brackets stripped (shows just "Doc N"), so the visible label must itself
+    contain a literal "[Doc N]" for the brackets to survive rendering.
+
+    Markers already wrapped this way, already a single-bracket Markdown link, or
+    already wrapped in an HTML `<a>` tag, are left untouched. Safety net for when
+    the LLM forgets to format a citation as a link itself.
+
+    Only matches a single document number per marker — a combined citation like
+    "[Docs 3 et 5]" is intentionally left as-is, since there's no single URL a
+    two-document marker could safely resolve to.
 
     Args:
         text: The assembled answer text.
@@ -172,9 +184,30 @@ def linkify_missing_citations(text: str, docs: List[Any]) -> str:
         url = _url_for(n)
         if not url:
             return match.group(0)
-        return f'<a href="{url}" target="_blank">[Doc {n}]</a>'
+        return f"[[Doc {n}]]({url})"
 
     return _CITATION_RE.sub(_replace, text)
+
+
+def latest_tool_docs(messages: List[BaseMessage]) -> Optional[List[Any]]:
+    """
+    Finds the most recent tool call's retrieved documents in a message list.
+
+    Walks `messages` from the end, so a turn that made no new tool call still
+    resolves to the last tool call's results instead of nothing, and a turn
+    that did call the tool never picks up a stale, older call's results.
+
+    Args:
+        messages: The full conversation message list (may span many turns).
+
+    Returns:
+        The `artifact` of the most recent `ToolMessage` that has one, or
+        None if no tool call with results is found.
+    """
+    for msg in reversed(messages):
+        if isinstance(msg, ToolMessage) and getattr(msg, "artifact", None):
+            return msg.artifact
+    return None
 
 
 def extract_json_from_response(

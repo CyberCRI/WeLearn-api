@@ -1,47 +1,29 @@
+from langchain_core.runnables import RunnableConfig
 from langchain_mistralai import ChatMistralAI  # type: ignore
 
 from src.app.core.config import Settings
 from src.app.shared.utils.utils import extract_doc_info
 from src.app.tutor.service.agents import (
+    FeedbackAgent,
     PedagogicalEngineerAgent,
     SDGExpertAgent,
     UniversityTeacherAgent,
+    get_disciplinary_skills,
 )
 from src.app.tutor.service.models import (
     MessageWithResources,
+    SyllabusFeedback,
     SyllabusResponseAgent,
     TutorSyllabusRequest,
 )
-
-GREENCOMP_COMPETENCIES = (
-    "Here are the GreenComp competencies: "
-    "url: https://joint-research-centre.ec.europa.eu/greencomp-european-sustainability-competence-framework_en "
-    "1.1 Valuing sustainability: To reflect on personal values; identify and explain how values vary among people "
-    "and over time, while critically evaluating how they align with sustainability values. "
-    "1.2 Supporting fairness: To support equity and justice for current and future generations and learn from previous "
-    "generations for sustainability. "
-    "1.3 Promoting nature: To acknowledge that humans are part of nature; and to respect the needs and rights of other "
-    "species and of nature itself in order to restore and regenerate healthy and resilient ecosystems. "
-    "2.1 Systems thinking: To approach a sustainability problem from all sides; to consider time, space and context in "
-    "order to understand how elements interact within and between systems. "
-    "2.2 Critical thinking: To assess information and arguments, identify assumptions, challenge the status quo, and "
-    "reflect on how personal, social and cultural backgrounds influence thinking and conclusions. "
-    "2.3 Problem framing: To formulate current or potential challenges as a sustainability problem in terms of "
-    "difficulty, people involved, time and geographical scope, in order to identify suitable approaches to anticipating "
-    "and preventing problems, and to mitigating and adapting to already existing problems. "
-    "3.1 Futures literacy: To envision alternative sustainable futures by imagining and developing alternative scenarios "
-    "and identifying the steps needed to achieve a preferred sustainable future. "
-    "3.2 Adaptability: To manage transitions and challenges in complex sustainability situations and make decisions "
-    "related to the future in the face of uncertainty, ambiguity and risk. "
-    "3.3 Exploratory thinking: To adopt a relational way of thinking by exploring and linking different disciplines, "
-    "using creativity and experimentation with novel ideas or methods. "
-    "4.1 Political agency: To navigate the political system, identify political responsibility and accountability for "
-    "unsustainable behaviour, and demand effective policies for sustainability. "
-    "4.2 Collective action: To act for change in collaboration with others. "
-    "4.3 Individual initiative: To identify own potential for sustainability and to actively contribute to improving "
-    "prospects for the community and the planet.The weather should be in metric units"
+from src.app.tutor.service.syllabus import (
+    GREENCOMP_COMPETENCIES,
+    detect_syllabus_lang,
+    generate_syllabus,
+    render_references,
+    split_references,
+    trim_chatter,
 )
-
 
 chat_model: ChatMistralAI | None = None
 
@@ -100,6 +82,22 @@ async def tutor_manager(
         if endpoint:
             base_tags.append(f"endpoint:{endpoint}")
 
+    if settings.TUTOR_SINGLE_PASS:
+        content_md = await generate_syllabus(
+            formatted_content,
+            chat_model,
+            get_disciplinary_skills().get(formatted_content.discipline, []),
+            RunnableConfig(
+                tags=base_tags + ["agent:single_pass"],
+                metadata={**base_metadata, "agent": "SinglePassSyllabus"},
+                run_name="Tutor (SinglePassSyllabus)",
+            ),
+        )
+        # source name kept: the client picks the "PedagogicalEngineerAgent" item
+        return [
+            SyllabusResponseAgent(content=content_md, source="PedagogicalEngineerAgent")
+        ]
+
     teacher_agent = UniversityTeacherAgent(
         chat_model,
         lang,
@@ -126,5 +124,43 @@ async def tutor_manager(
         teacher_response, formatted_content.resources, lang
     )
     pedagogical_response = await pedagogical_agent.refine(sdg_response)
+    # references are never trusted from the LLM: rebuilt from the selected documents
+    body, _ = split_references(pedagogical_response.content)
+    pedagogical_response.content = (
+        trim_chatter(body)
+        + "\n\n"
+        + render_references(formatted_content.resources, lang)
+    )
 
     return [teacher_response, sdg_response, pedagogical_response]
+
+
+async def apply_feedback(
+    body: SyllabusFeedback, settings: Settings, trace_context: dict | None = None
+) -> str:
+    """Apply the teacher's feedback to the syllabus body; references are kept verbatim."""
+    if chat_model is None:
+        raise RuntimeError(
+            "Chat model not initialized. Call init_chat_model() at startup."
+        )
+    syllabus_body, references = split_references(body.syllabus[0].content)
+    # same tags/metadata as generation; the client sends no lang here, so it is
+    # read from the syllabus's own headings
+    tags = ["welearn", "tutor", "syllabus"]
+    if trace_context and trace_context.get("endpoint"):
+        tags.append(f"endpoint:{trace_context['endpoint']}")
+    agent = FeedbackAgent(
+        chat_model,
+        GREENCOMP_COMPETENCIES,
+        trace_tags=tags,
+        trace_metadata={
+            "component": "tutor_syllabus",
+            "environment": settings.ENV,
+            "language": detect_syllabus_lang(syllabus_body),
+            **(trace_context or {}),
+        },
+    )
+    new_body = trim_chatter(
+        await agent.apply(syllabus_body, body.feedback, body.extracts)
+    )
+    return f"{new_body}\n\n{references}" if references else new_body

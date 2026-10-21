@@ -36,7 +36,6 @@ class SecurityTests(unittest.TestCase):
 
 
 class GetUserTests(unittest.IsolatedAsyncioTestCase):
-
     @mock.patch(
         "src.app.shared.infra.security.check_api_key_sync",
         new=mock.MagicMock(return_value=True),

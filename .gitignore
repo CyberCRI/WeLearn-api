@@ -247,3 +247,6 @@ http-client.private.env.json
 charts/
 test.yaml
 src/app/baml_client
+.DS_Store
+src/.DS_Store
+*.swp

@@ -3,11 +3,13 @@ from uuid import UUID
 
 from fastapi.concurrency import run_in_threadpool
 
+from src.app.services.keycloak import get_or_create_keycloak_user
 from src.app.services.sql_db.queries_user import (
     get_or_create_session_sync,
     get_or_create_user_sync,
     get_user_from_session_id,
 )
+from src.app.shared.domain.exceptions import SessionNotFoundError
 from src.app.utils.logger import logger as logger_utils
 
 logger = logger_utils(__name__)
@@ -37,4 +39,33 @@ async def resolve_user_and_session(
             get_or_create_session_sync, user_id, session_uuid, host, referer
         )
 
+    return user_id, session_uuid
+
+
+async def resolve_keycloak_user_and_session(
+    token: str,
+    session_uuid: Optional[UUID],
+    host: str,
+    referer: Optional[str],
+) -> tuple[UUID, UUID]:
+    """
+    Resolve the user from a Keycloak token. An anonymous user found through the
+    session cookie is linked to the Keycloak account instead of being dropped.
+    """
+    anonymous_user_id = None
+    if session_uuid:
+        try:
+            anonymous_user_id = await run_in_threadpool(
+                get_user_from_session_id, session_uuid
+            )
+        except SessionNotFoundError:
+            logger.info("Session %s not found, ignoring it", session_uuid)
+            session_uuid = None
+
+    user_id, _ = await get_or_create_keycloak_user(token, anonymous_user_id, referer)
+
+    # reuses the session only if it belongs to this user and is still valid
+    session_uuid = await run_in_threadpool(
+        get_or_create_session_sync, user_id, session_uuid, host, referer
+    )
     return user_id, session_uuid

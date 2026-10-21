@@ -5,10 +5,12 @@ from unittest.mock import MagicMock
 
 import backoff
 from fastapi.testclient import TestClient
+from langchain_core.messages import AIMessage, HumanMessage, ToolMessage
+from langgraph.checkpoint.memory import InMemorySaver
 
 from src.app.core.config import settings
-from src.app.models.documents import Document as DocumentModel
-from src.app.models.documents import DocumentPayloadModel
+from src.app.models.documents import EnhancedDocumentSlice as DocumentModel
+from src.app.models.documents import EnhancedDocumentSlicePayloadModel
 from src.app.shared.domain.exceptions import LanguageNotSupportedError
 from src.main import app
 
@@ -17,9 +19,10 @@ client = TestClient(app)
 
 source_example = [
     {
-        "id": "testId",
+        "score": 0.636549,
         "payload": {
             "document_corpus": "testCorpus",
+            "document_sub_corpus": "testsubCorpus",
             "document_desc": "testDesc",
             "document_details": {
                 "author": "testAuthor",
@@ -36,10 +39,19 @@ source_example = [
             "slice_content": "testContent",
             "slice_sdg": 15,
         },
-        "score": 0.636549,
-        "version": 164925,
     }
 ]
+
+
+def _extract_document_id(doc):
+    if "payload" in doc and isinstance(doc["payload"], dict):
+        document_id = doc["payload"].get("document_id")
+        if document_id is not None:
+            return str(document_id)
+    if "id" in doc:
+        return str(doc["id"])
+    return ""
+
 
 JSON_NO_HIST = {
     "sources": source_example,
@@ -105,8 +117,9 @@ class QnATests(unittest.IsolatedAsyncioTestCase):
                 docs=[
                     DocumentModel(
                         score=0.636549,
-                        payload=DocumentPayloadModel(
+                        payload=EnhancedDocumentSlicePayloadModel(
                             document_corpus="testCorpus",
+                            document_sub_corpus="testsubCorpus",
                             document_desc="testDesc",
                             document_details={
                                 "author": "testAuthor",
@@ -114,7 +127,9 @@ class QnATests(unittest.IsolatedAsyncioTestCase):
                                 "readability": 42.61,
                                 "source": "au",
                             },
-                            document_id="12345678-1234-5678-1234-567812345678",
+                            document_id=uuid.UUID(
+                                "12345678-1234-5678-1234-567812345678"
+                            ),
                             document_lang="en",
                             document_sdg=[11, 12, 13, 15, 2, 8],
                             document_title="testTitle",
@@ -144,7 +159,6 @@ class QnATests(unittest.IsolatedAsyncioTestCase):
             self.assertEqual(response.status_code, 400)
 
     def test_new_questions_empty_query(self, *mocks):
-
         with TestClient(app) as client:
             response = client.post(
                 f"{settings.API_V1_STR}/qna/reformulate/questions",
@@ -188,7 +202,6 @@ class QnATests(unittest.IsolatedAsyncioTestCase):
         with mock.patch(
             "src.app.shared.infra.abst_chat.AbstractChat.chat_message",
         ) as stream_mock:
-
             with TestClient(app) as client:
                 response = client.post(
                     f"{settings.API_V1_STR}/qna/stream",
@@ -203,8 +216,9 @@ class QnATests(unittest.IsolatedAsyncioTestCase):
                     docs=[
                         DocumentModel(
                             score=0.636549,
-                            payload=DocumentPayloadModel(
+                            payload=EnhancedDocumentSlicePayloadModel(
                                 document_corpus="testCorpus",
+                                document_sub_corpus="testsubCorpus",
                                 document_desc="testDesc",
                                 document_details={
                                     "author": "testAuthor",
@@ -212,7 +226,9 @@ class QnATests(unittest.IsolatedAsyncioTestCase):
                                     "readability": 42.61,
                                     "source": "au",
                                 },
-                                document_id="12345678-1234-5678-1234-567812345678",
+                                document_id=uuid.UUID(
+                                    "12345678-1234-5678-1234-567812345678"
+                                ),
                                 document_lang="en",
                                 document_sdg=[11, 12, 13, 15, 2, 8],
                                 document_title="testTitle",
@@ -264,7 +280,123 @@ class QnATests(unittest.IsolatedAsyncioTestCase):
         new=mock.MagicMock(return_value=True),
     )
     @mock.patch("src.app.shared.infra.abst_chat.AbstractChat.agent_message")
-    def test_chat_agent_stream(self, agent_message_mock, *mocks):
+    def test_chat_agent_returns_only_latest_tool_call_docs(
+        self, agent_message_mock, *mocks
+    ):
+        earlier_doc_id = "11111111-1111-4111-8111-111111111111"
+        latest_doc_id = "22222222-2222-4222-8222-222222222222"
+        earlier_docs = [
+            {
+                **source_example[0],
+                "payload": {
+                    **source_example[0]["payload"],
+                    "document_id": earlier_doc_id,
+                },
+            }
+        ]
+        latest_docs = [
+            {
+                **source_example[0],
+                "payload": {
+                    **source_example[0]["payload"],
+                    "document_id": latest_doc_id,
+                },
+            }
+        ]
+        agent_message_mock.return_value = {
+            "messages": [
+                HumanMessage(content="first question"),
+                AIMessage(content=""),
+                ToolMessage(content="...", tool_call_id="1", artifact=earlier_docs),
+                AIMessage(content="answer using earlier docs"),
+                HumanMessage(content="second, unrelated question"),
+                AIMessage(content=""),
+                ToolMessage(content="...", tool_call_id="2", artifact=latest_docs),
+                AIMessage(content="answer using latest docs"),
+            ]
+        }
+
+        with TestClient(app) as client:
+            response = client.post(
+                f"{settings.API_V1_STR}/qna/chat/agent",
+                json={
+                    "query": "a second, unrelated question",
+                    "thread_id": str(uuid.uuid4()),
+                    "corpora": ["corpus1"],
+                    "sdg_filter": [1, 2, 3],
+                },
+                headers={"X-API-Key": "test", "origin": "test"},
+            )
+            self.assertEqual(response.status_code, 200)
+            returned_ids = [
+                _extract_document_id(doc) for doc in response.json()["docs"]
+            ]
+            self.assertEqual(returned_ids, [latest_doc_id])
+
+    @mock.patch("psycopg.AsyncConnection.connect", new_callable=mock.AsyncMock)
+    @mock.patch(
+        "src.app.shared.infra.security.check_api_key_sync",
+        new=mock.MagicMock(return_value=True),
+    )
+    @mock.patch("src.app.shared.infra.abst_chat.AbstractChat.agent_message")
+    def test_chat_agent_reuses_docs_when_no_new_search(
+        self, agent_message_mock, *mocks
+    ):
+        reused_doc_id = "33333333-3333-4333-8333-333333333333"
+        docs = [
+            {
+                **source_example[0],
+                "payload": {
+                    **source_example[0]["payload"],
+                    "document_id": reused_doc_id,
+                },
+            }
+        ]
+        agent_message_mock.return_value = {
+            "messages": [
+                HumanMessage(content="first question"),
+                AIMessage(content=""),
+                ToolMessage(content="...", tool_call_id="1", artifact=docs),
+                AIMessage(content="answer"),
+                HumanMessage(content="follow-up needing no new search"),
+                AIMessage(content="answer reusing the same docs"),
+            ]
+        }
+
+        with TestClient(app) as client:
+            response = client.post(
+                f"{settings.API_V1_STR}/qna/chat/agent",
+                json={
+                    "query": "follow-up needing no new search",
+                    "thread_id": str(uuid.uuid4()),
+                    "corpora": ["corpus1"],
+                    "sdg_filter": [1, 2, 3],
+                },
+                headers={"X-API-Key": "test", "origin": "test"},
+            )
+            self.assertEqual(response.status_code, 200)
+            returned_ids = [
+                _extract_document_id(doc) for doc in response.json()["docs"]
+            ]
+            self.assertEqual(returned_ids, [reused_doc_id])
+
+    @mock.patch(
+        "src.app.shared.infra.security.check_api_key_sync",
+        new=mock.MagicMock(return_value=True),
+    )
+    @mock.patch(
+        "src.app.api.api_v1.endpoints.chat_utils.AsyncPostgresSaver",
+        return_value=InMemorySaver(),
+    )
+    @mock.patch(
+        "src.app.api.api_v1.endpoints.chat_utils.psycopg.AsyncConnection.connect"
+    )
+    @mock.patch("src.app.shared.infra.abst_chat.AbstractChat.agent_message")
+    def test_chat_agent_stream(self, agent_message_mock, connect_mock, *mocks):
+        fake_conn = mock.AsyncMock()
+        # async with await AsyncConnection.connect(...) as conn:
+        connect_mock.return_value.__aenter__.return_value = fake_conn
+
         async def _fake_stream():
             yield {"status": "test", "content": "fake content"}
 

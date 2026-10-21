@@ -24,11 +24,9 @@ class WL_SQL:
         self.session_maker = self._create_session()
 
     def _create_engine(self):
-
         return create_engine(self.engine_url)
 
     def _create_session(self):
-
         Session = sessionmaker(bind=self.engine)
         return Session
 

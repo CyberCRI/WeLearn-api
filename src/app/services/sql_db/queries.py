@@ -5,10 +5,11 @@ from threading import Lock
 from uuid import UUID
 
 from qdrant_client.http.models import ScoredPoint
-from sqlalchemy import func, select
-from sqlalchemy.orm import joinedload
+from sqlalchemy import Row, and_, func, select
+from sqlalchemy.orm import Session, joinedload
 from welearn_database.data.enumeration import Step
 from welearn_database.data.models import (
+    AnalyticForm,
     Category,
     ChatMessage,
     ContextDocument,
@@ -25,18 +26,44 @@ from welearn_database.data.models import (
     QtyDocumentInQdrant,
     QtyDocumentInQdrantPerCorpus,
     QtyDocumentPerCorpus,
+    QuestionType,
     ReturnedDocument,
     Sdg,
     WeLearnDocument,
 )
 
 from src.app.models.chat import Role
-from src.app.models.documents import Document, DocumentPayloadModel, JourneySection
+from src.app.models.collections import CorpusRelation
+from src.app.models.documents import (
+    EnhancedDocumentSlice,
+    EnhancedDocumentSlicePayloadModel,
+    JourneySection,
+)
 from src.app.search.models.search import ContextType
 from src.app.services.sql_db.sql_service import session_maker
 from src.app.shared.domain.constants import APP_NAME
 
 model_id_lock = Lock()
+main_corpus_dict: dict[UUID, Corpus | None] = {}
+
+
+def register_form_answers_sync(
+    form_name: str,
+    question: str,
+    answer: str,
+    answer_type: QuestionType,
+    session_id: UUID,
+):
+    with session_maker() as session:
+        form_ans = AnalyticForm(
+            form_name=form_name,
+            question=question,
+            answer=answer,
+            answer_type=answer_type,
+            session_id=session_id,
+        )
+        session.add(form_ans)
+        session.commit()
 
 
 def get_collections_sync():
@@ -50,12 +77,13 @@ def get_collections_sync():
 
 
 def get_collections_info_sync():
+    # Get active parent corpus
     stmt = (
         select(
             Corpus.source_name, Corpus.is_active, Category.title.label("category_name")
         )
         .outerjoin(Category, Corpus.category_id == Category.id)
-        .where(Corpus.is_active)
+        .where(and_(Corpus.is_active, Corpus.parent_corpus_id.is_(None)))
     )
 
     with session_maker() as session:
@@ -69,20 +97,37 @@ def get_nb_docs_sync():
         return s.execute(statement).first()
 
 
-def get_document_qty_table_info_sync() -> (
-    list[tuple[Corpus, QtyDocumentInQdrantPerCorpus, QtyDocumentPerCorpus]]
-):
+def get_document_qty_table_info_sync() -> list[tuple[Corpus, int, int]]:
+    group_id = func.coalesce(Corpus.parent_corpus_id, Corpus.id)
+
     with session_maker() as s:
-        return (
-            s.query(Corpus, QtyDocumentInQdrantPerCorpus, QtyDocumentPerCorpus)
-            .join(
+        totals = (
+            s.query(
+                group_id.label("group_id"),
+                func.coalesce(func.sum(QtyDocumentInQdrantPerCorpus.count), 0).label(
+                    "qty_in_qdrant"
+                ),
+                func.coalesce(func.sum(QtyDocumentPerCorpus.count), 0).label(
+                    "qty_documents"
+                ),
+            )
+            .select_from(Corpus)
+            .outerjoin(
                 QtyDocumentInQdrantPerCorpus,
                 Corpus.source_name == QtyDocumentInQdrantPerCorpus.source_name,
             )
-            .join(
+            .outerjoin(
                 QtyDocumentPerCorpus,
                 Corpus.source_name == QtyDocumentPerCorpus.source_name,
             )
+            .group_by(group_id)
+            .subquery()
+        )
+
+        return (
+            s.query(Corpus, totals.c.qty_in_qdrant, totals.c.qty_documents)
+            .join(totals, Corpus.id == totals.c.group_id)
+            .filter(Corpus.is_active)
             .all()
         )  # type: ignore
 
@@ -101,41 +146,61 @@ def get_documents_by_ids(documents_ids: list[str]) -> list[WeLearnDocument]:
     return ret
 
 
-def get_documents_payload_by_ids_sync(documents_ids: list[str]) -> list[Document]:
+def get_corpus_and_sub_corpus_repartition(corpus: Corpus) -> CorpusRelation:
     with session_maker() as s:
-        documents = get_documents_by_ids(documents_ids=documents_ids)
 
-        # Batch fetch corpora
-        corpus_ids = list({doc.corpus_id for doc in documents})
-        corpora = s.execute(
-            select(Corpus.id, Corpus.source_name).where(Corpus.id.in_(corpus_ids))
-        ).all()
-        corpus_map = {corpus.id: corpus.source_name for corpus in corpora}
+        if corpus.id not in main_corpus_dict:
+            req_corpus: Corpus | None = (
+                s.query(Corpus).filter(Corpus.id == corpus.parent_corpus_id).first()
+            )
+            main_corpus_dict[corpus.id] = req_corpus
+        main_corpus = main_corpus_dict[corpus.id]
+
+        if main_corpus:
+            return CorpusRelation(sub_corpus=corpus, corpus=main_corpus)
+
+        return CorpusRelation(
+            corpus=corpus,
+        )
+
+
+def get_documents_according_slice_ids(
+    slice_ids: list[str],
+) -> dict[WeLearnDocument, list[DocumentSlice]]:
+    ret: dict[WeLearnDocument, list[DocumentSlice]] = {}
+    stmt = (
+        select(DocumentSlice, WeLearnDocument)
+        .join(WeLearnDocument, WeLearnDocument.id == DocumentSlice.document_id)
+        .where(DocumentSlice.id.in_(slice_ids))
+        .options(joinedload(WeLearnDocument.corpus))
+    )
+    with session_maker() as s:
+        db_ret = s.execute(stmt).all()
+        for wl_slice, wl_document in db_ret:
+            if wl_document not in ret:
+                ret[wl_document] = []
+            ret[wl_document].append(wl_slice)
+    return ret
+
+
+def get_documents_payload_by_ids_sync(
+    documents_ids: list[str],
+) -> list[EnhancedDocumentSlice]:
+    with session_maker() as s:
+        documents: list[WeLearnDocument] = get_documents_by_ids(
+            documents_ids=documents_ids
+        )
 
         # Batch fetch slices
-        slices = s.execute(
-            select(DocumentSlice.id, DocumentSlice.document_id).where(
-                DocumentSlice.document_id.in_(documents_ids)
-            )
-        ).all()
-        slices_ids_map = {}
-        slice_ids = []
-        for slice_ in slices:
-            slices_ids_map.setdefault(slice_.document_id, []).append(slice_.id)
-            slice_ids.append(slice_.id)
+        slice_ids, slices_ids_map = batch_fetch_slices(documents_ids, s)
 
         # Batch fetch SDGs
-        sdgs = s.execute(
-            select(Sdg.sdg_number, Sdg.slice_id).where(Sdg.slice_id.in_(slice_ids))
-        ).all()
-        sdg_map = {}
-        for sdg in sdgs:
-            sdg_map.setdefault(sdg.slice_id, []).append(sdg)
+        sdg_map = batch_fetch_sdgs(slice_ids)
 
         # Compose documents
         docs = []
         for doc in documents:
-            corpus = corpus_map.get(doc.corpus_id)
+            corpus_relation = get_corpus_and_sub_corpus_repartition(corpus=doc.corpus)
             slices_id_for_doc = slices_ids_map.get(doc.id, [])
             sdgs_for_doc = []
             for slice_id in slices_id_for_doc:
@@ -144,9 +209,9 @@ def get_documents_payload_by_ids_sync(documents_ids: list[str]) -> list[Document
                 [sdg.sdg_number for sdg in sdgs_for_doc]
             ).most_common(2)
             docs.append(
-                Document(
+                EnhancedDocumentSlice(
                     score=0.0,
-                    payload=DocumentPayloadModel(
+                    payload=EnhancedDocumentSlicePayloadModel(
                         document_id=doc.id,
                         document_title=doc.title,
                         document_url=doc.url,
@@ -154,10 +219,15 @@ def get_documents_payload_by_ids_sync(documents_ids: list[str]) -> list[Document
                         document_external_id=doc.external_id,
                         document_sdg=[sdg[0] for sdg in short_sdg_list],
                         document_details=doc.details,
-                        slice_content="",
-                        document_lang="",
-                        document_corpus=corpus if corpus else "",
+                        document_lang=doc.lang,
+                        document_corpus=corpus_relation.corpus.source_name,
+                        document_sub_corpus=(
+                            corpus_relation.sub_corpus.source_name
+                            if corpus_relation.sub_corpus
+                            else None
+                        ),
                         slice_sdg=None,
+                        slice_content=None,
                     ),
                 )
             )
@@ -184,6 +254,41 @@ def get_external_ids_by_document_ids_sync(document_ids: list[str]) -> dict[str, 
         ).all()
 
     return {str(row.id): row.external_id for row in rows if row.external_id}
+  
+  
+def batch_fetch_sdgs(slice_ids: list[UUID]) -> dict[uuid.UUID, list[Sdg]]:
+    with session_maker() as s:
+        db_ret_sdgs: tuple[Row[Sdg]] = s.execute(
+            select(Sdg).where(Sdg.slice_id.in_(slice_ids))
+        ).all()
+        sdgs = [s[0] for s in db_ret_sdgs]
+        sdg_map = {}
+        for sdg in sdgs:
+            sdg_map.setdefault(sdg.slice_id, []).append(sdg)
+        return sdg_map
+
+
+def batch_fetch_slices(
+    documents_ids: list[str], s: Session
+) -> tuple[list[UUID], dict[UUID, list[UUID]]]:
+    """
+    This method create a dict with the form <document_id: slice id list> and a list of slice ids
+    :param documents_ids: list of document ids
+    :param s: SQLAlchemy db session
+    :return: tuple[list[UUID], dict[UUID, list[UUID]]]
+    """
+    slices = s.execute(
+        select(DocumentSlice.id, DocumentSlice.document_id).where(
+            DocumentSlice.document_id.in_(documents_ids)
+        )
+    ).all()
+
+    slices_ids_map: dict[UUID, list[UUID]] = {}
+    slice_ids: list[UUID] = []
+    for slice_ in slices:
+        slices_ids_map.setdefault(slice_.document_id, []).append(slice_.id)
+        slice_ids.append(slice_.id)
+    return slice_ids, slices_ids_map
 
 
 def register_endpoint(endpoint, session_id, http_code):
@@ -363,7 +468,7 @@ def write_user_query(
 def write_chat_answer(
     user_id: UUID,
     answer: str,
-    docs: list[Document | ScoredPoint] | None,
+    docs: list[EnhancedDocumentSlice | ScoredPoint] | None,
     conversation_id: UUID,
     feature: str | None = None,
 ) -> UUID:
@@ -449,7 +554,9 @@ def update_syllabus_retrieved_status(syllabus_id: UUID) -> None:
 
 
 def write_returned_docs(
-    message_id: UUID, docs: list[Document | ScoredPoint], is_clicked: bool = False
+    message_id: UUID,
+    docs: list[EnhancedDocumentSlice | ScoredPoint],
+    is_clicked: bool = False,
 ) -> None:
     """
     Register the returned documents for a chat message in the database.
@@ -460,9 +567,9 @@ def write_returned_docs(
     returned_docs = []
     for doc in docs:
         if isinstance(doc, ScoredPoint):
-            doc = Document(
+            doc = EnhancedDocumentSlice(
                 score=0.0,
-                payload=DocumentPayloadModel(**doc.payload),
+                payload=EnhancedDocumentSlicePayloadModel(**doc.payload),
             )
 
         returned_doc = ReturnedDocument(

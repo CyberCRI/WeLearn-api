@@ -1,12 +1,19 @@
 import uuid
-from typing import Dict, cast
+from typing import Annotated, Dict, cast
 from uuid import UUID
 
 import backoff
 import psycopg
-from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Request, status
+from fastapi import (
+    APIRouter,
+    BackgroundTasks,
+    Body,
+    Depends,
+    HTTPException,
+    Request,
+    status,
+)
 from fastapi.responses import StreamingResponse
-from langchain_core.messages import ToolMessage
 from langgraph.checkpoint.postgres.aio import AsyncPostgresSaver
 from openai import RateLimitError
 from psycopg.rows import AsyncRowFactory, DictRow, dict_row
@@ -20,7 +27,7 @@ from src.app.api.api_v1.endpoints.chat_utils import (
 from src.app.models import chat as models
 from src.app.search.services.search import SearchService, get_search_service
 from src.app.services.data_collection import get_data_collection_service
-from src.app.services.helpers import linkify_missing_citations
+from src.app.services.helpers import latest_tool_docs, linkify_missing_citations
 from src.app.shared.domain.constants import subjects as subjectsDict
 from src.app.shared.domain.exceptions import (
     EmptyQueryError,
@@ -95,7 +102,14 @@ def get_params(body: models.Context) -> models.ContextOut:
     )
 
 
-def get_agent_params(body: models.AgentContext) -> models.AgentContext:
+def get_agent_params(
+    body: Annotated[
+        models.AgentContext,
+        Body(
+            description="Agent request payload with query, optional thread, and filters."
+        ),
+    ],
+) -> models.AgentContext:
     if not body.query or body.query == "":
         e = EmptyQueryError()
         return bad_request(message=e.message, msg_code=e.msg_code)
@@ -328,9 +342,37 @@ async def agent_stream_response(
 
 @router.post(
     "/chat/agent",
+    operation_id="chat_agent_response",
     summary="Agent Response",
     description="This endpoint is used to get an agent response to the user's message",
     response_model=models.AgentResponse,
+    openapi_extra={
+        "requestBody": {
+            "content": {
+                "application/json": {
+                    "examples": {
+                        "new_thread": {
+                            "summary": "Start a new agent thread",
+                            "value": {
+                                "query": "How can communities improve clean water access?",
+                                "corpora": ["conversation"],
+                                "sdg_filter": [6],
+                            },
+                        },
+                        "existing_thread": {
+                            "summary": "Continue an existing thread",
+                            "value": {
+                                "query": "Can you give 3 concrete actions?",
+                                "thread_id": "6fca8d02-0bc2-48a5-9c95-4942ca57e651",
+                                "corpora": ["conversation"],
+                                "sdg_filter": [6],
+                            },
+                        },
+                    }
+                }
+            }
+        }
+    },
 )
 @backoff.on_exception(
     wait_gen=backoff.expo,
@@ -351,7 +393,6 @@ async def agent_response(
 ):
     try:
         session_id = extract_session_cookie(request)
-        docs = []
 
         thread_id = body.thread_id if body.thread_id else None
 
@@ -400,11 +441,7 @@ async def agent_response(
                 trace_context=trace_context,
             )
 
-        all_docs = []
-        for msg in res["messages"]:
-            if isinstance(msg, ToolMessage) and getattr(msg, "artifact", None):
-                all_docs.extend(msg.artifact)
-        docs = all_docs if all_docs else None
+        docs = latest_tool_docs(res["messages"])
         content = linkify_missing_citations(
             cast(str, res["messages"][-1].content), docs or []
         )

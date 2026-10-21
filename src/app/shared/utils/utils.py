@@ -3,8 +3,8 @@ import asyncio
 from docx import Document as DocxReader
 from fastapi import HTTPException, UploadFile
 from pypdf import PdfReader
-from qdrant_client.models import ScoredPoint
 
+from src.app.models.documents import EnhancedDocumentSlice
 from src.app.shared.infra.pdf_extractor import extract_txt_from_pdf_with_tika
 from src.app.shared.utils.dependencies import get_settings
 from src.app.utils.decorators import log_time_and_error_sync
@@ -29,7 +29,7 @@ def build_system_message(
     return message
 
 
-def extract_doc_info(documents: list[ScoredPoint]) -> list[dict]:
+def extract_doc_info(documents: list[EnhancedDocumentSlice]) -> list[dict]:
     """
     Extracts the document information from a list of documents.
     Args:
@@ -37,15 +37,34 @@ def extract_doc_info(documents: list[ScoredPoint]) -> list[dict]:
     Returns:
         list[dict]: List of dictionaries containing document information.
     """
-    return [
-        {
-            "title": getattr(doc.payload, "document_title", ""),  # type: ignore
-            "url": getattr(doc.payload, "document_url", ""),  # type: ignore
-            "content": getattr(doc.payload, "slice_content", ""),  # type: ignore
-        }
-        for doc in documents
-        if doc.payload is not None
-    ]
+    result = []
+    for doc in documents:
+        payload = getattr(doc, "payload", None)
+        if payload is None and isinstance(doc, dict):
+            payload = doc
+        if payload is None:
+            continue
+
+        if isinstance(payload, dict):
+            title = payload.get("document_title")
+            url = payload.get("document_url")
+            content = payload.get("slice_content")
+        else:
+            title = getattr(payload, "document_title", None)
+            url = getattr(payload, "document_url", None)
+            content = getattr(payload, "slice_content", None)
+
+        if title is None and url is None and content is None:
+            continue
+
+        result.append(
+            {
+                "title": title,
+                "url": url,
+                "content": content,
+            }
+        )
+    return result
 
 
 @log_time_and_error_sync
