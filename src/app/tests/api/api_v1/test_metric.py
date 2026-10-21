@@ -1,4 +1,5 @@
 import unittest
+from types import SimpleNamespace
 from unittest import mock
 
 from fastapi.testclient import TestClient
@@ -10,14 +11,14 @@ client = TestClient(app)
 
 MOCK_RESULT = [
     (
-        mock.Mock(source_name="corpus1", main_url="http://example.com/corpus1"),
-        mock.Mock(count=5),
-        mock.Mock(count=10),
+        SimpleNamespace(source_name="corpus1", main_url="http://example.com/corpus1"),
+        5,
+        10,
     ),
     (
-        mock.Mock(source_name="corpus2", main_url="http://example.org/corpus2"),
-        mock.Mock(count=0),
-        mock.Mock(count=0),
+        SimpleNamespace(source_name="corpus2", main_url="http://example.org/corpus2"),
+        0,
+        0,
     ),
 ]
 
@@ -66,7 +67,6 @@ class TestMetricEndpoint(unittest.IsolatedAsyncioTestCase):
 
     @mock.patch("src.app.api.api_v1.endpoints.metric.get_document_qty_table_info_sync")
     async def test_nb_docs_info_per_corpus_no_content(self, mock_get_info):
-        # Cas où certains champs sont None ou manquants
         result = []
         mock_get_info.return_value = result
         response = client.get(
@@ -77,12 +77,11 @@ class TestMetricEndpoint(unittest.IsolatedAsyncioTestCase):
 
     @mock.patch("src.app.api.api_v1.endpoints.metric.get_document_qty_table_info_sync")
     async def test_nb_docs_info_per_corpus_content_empty(self, mock_get_info):
-        # Cas où certains champs sont None ou manquants
         partial_result = [
             (
-                mock.Mock(source_name=None, main_url=None),
-                mock.Mock(count=None),
-                mock.Mock(count=None),
+                SimpleNamespace(source_name=None, main_url=None),
+                0,
+                0,
             ),
         ]
         mock_get_info.return_value = partial_result
@@ -94,17 +93,18 @@ class TestMetricEndpoint(unittest.IsolatedAsyncioTestCase):
 
     @mock.patch("src.app.api.api_v1.endpoints.metric.get_document_qty_table_info_sync")
     async def test_nb_docs_info_per_corpus_partial(self, mock_get_info):
-        # Cas où certains champs sont None ou manquants
         partial_result = [
             (
-                mock.Mock(source_name=None, main_url=None),
-                mock.Mock(count=None),
-                mock.Mock(count=None),
+                SimpleNamespace(source_name=None, main_url=None),
+                0,
+                0,
             ),
             (
-                mock.Mock(source_name="corpus1", main_url="http://example.com/corpus1"),
-                mock.Mock(count=5),
-                mock.Mock(count=10),
+                SimpleNamespace(
+                    source_name="corpus1", main_url="http://example.com/corpus1"
+                ),
+                5,
+                10,
             ),
         ]
         mock_get_info.return_value = partial_result

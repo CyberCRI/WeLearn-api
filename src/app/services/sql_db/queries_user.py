@@ -3,6 +3,7 @@
 import uuid
 from datetime import datetime, timedelta
 
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.sql import select
 from welearn_database.data.models import Bookmark, InferredUser, Session
 
@@ -33,6 +34,49 @@ def get_or_create_user_sync(
         user = InferredUser(origin_referrer=referer)
         s.add(user)
         s.commit()
+        return user.id
+
+
+def get_or_create_user_from_keycloak_sync(
+    keycloak_id: uuid.UUID,
+    anonymous_user_id: uuid.UUID | None = None,
+    referer: str | None = None,
+) -> uuid.UUID:
+    with session_maker() as s:
+        user = s.execute(
+            select(InferredUser.id).where(InferredUser.keycloak_id == keycloak_id)
+        ).first()
+        if user:
+            return user.id
+
+        anonymous_user = None
+        if anonymous_user_id:
+            anonymous_user = s.execute(
+                select(InferredUser).where(
+                    (InferredUser.id == anonymous_user_id)
+                    & (InferredUser.keycloak_id.is_(None))
+                )
+            ).scalar_one_or_none()
+
+        if anonymous_user:
+            # keep the anonymous user's history (bookmarks, chats...) on login
+            logger.info(
+                "Linking user_id=%s to keycloak_id=%s", anonymous_user.id, keycloak_id
+            )
+            anonymous_user.keycloak_id = keycloak_id
+            user = anonymous_user
+        else:
+            logger.info("Creating new user for keycloak_id=%s", keycloak_id)
+            user = InferredUser(keycloak_id=keycloak_id, origin_referrer=referer)
+        s.add(user)
+        try:
+            s.commit()
+        except IntegrityError:
+            # keycloak_id is unique: a concurrent request created it first
+            s.rollback()
+            return s.execute(
+                select(InferredUser.id).where(InferredUser.keycloak_id == keycloak_id)
+            ).scalar_one()
         return user.id
 
 

@@ -1,7 +1,7 @@
 import unittest
+from types import SimpleNamespace
 from unittest import mock
 from unittest.mock import AsyncMock
-from types import SimpleNamespace
 
 from src.app.shared.infra.llm_proxy import LLMProxy
 
@@ -158,7 +158,9 @@ class TestLLMProxy(unittest.IsolatedAsyncioTestCase):
             {"ls_provider": "azure", "ls_model_name": "fake_model"}
         )
 
-    async def test_record_langsmith_usage_does_not_overwrite_existing_provider_metadata(self):
+    async def test_record_langsmith_usage_does_not_overwrite_existing_provider_metadata(
+        self,
+    ):
         run_tree = mock.Mock()
         run_tree.metadata = {"ls_provider": "existing", "ls_model_name": "preset"}
 

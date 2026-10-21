@@ -51,6 +51,7 @@ class Settings(BaseSettings):
     # old tutor: one structured LLM call instead of the 3-agent chain (False = revert)
     TUTOR_SINGLE_PASS: bool = True
     ENV: str
+    MCP_ENABLED: bool = True
 
     # LANGSMITH / LANGCHAIN TRACING
     # TBD: migrate Optional/Union annotations to PEP 604 shorthand (X | Y, X | None) in a dedicated refactor.
@@ -72,6 +73,12 @@ class Settings(BaseSettings):
 
     # TIKA
     TIKA_URL_BASE: str
+
+    # KEYCLOAK (front-end login; tokens are verified against the realm's JWKS)
+    KEYCLOAK_URL: Optional[str] = None  # e.g. https://auth.example.org
+    KEYCLOAK_REALM: Optional[str] = None
+    # if set, the token's "azp" claim must match this front-end client id
+    KEYCLOAK_CLIENT_ID: Optional[str] = None
 
     model_config = SettingsConfigDict(
         env_file=".env", extra="ignore", case_sensitive=True

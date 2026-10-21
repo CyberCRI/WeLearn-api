@@ -13,7 +13,10 @@ from src.app.bibliography.helpers.helpers import (
     ris_line,
     welearn_document_to_ris,
 )
-from src.app.models.documents import Document, DocumentPayloadModel
+from src.app.models.documents import (
+    EnhancedDocumentSlice,
+    EnhancedDocumentSlicePayloadModel,
+)
 from src.app.services.helpers import (
     convert_embedding_bytes,
     detect_language_from_entry,
@@ -39,10 +42,11 @@ class HelpersTests(TestCase):
 
     def test_stringify_docs_content(self):
         docs = [
-            Document(
+            EnhancedDocumentSlice(
                 score=0.5,
-                payload=DocumentPayloadModel(
+                payload=EnhancedDocumentSlicePayloadModel(
                     document_corpus="test",
+                    document_sub_corpus="subtest",
                     document_desc="desc",
                     document_details={},
                     document_id="12345678-1234-5678-1234-567812345678",
@@ -54,10 +58,11 @@ class HelpersTests(TestCase):
                     slice_sdg=None,
                 ),
             ),
-            Document(
+            EnhancedDocumentSlice(
                 score=0.7,
-                payload=DocumentPayloadModel(
+                payload=EnhancedDocumentSlicePayloadModel(
                     document_corpus="test",
+                    document_sub_corpus="subtest",
                     document_desc="desc",
                     document_details={},
                     document_id="12345677-1234-5678-1234-567812345678",
@@ -95,11 +100,12 @@ class HelpersTests(TestCase):
         with self.assertRaises(ValueError):
             extract_json_from_response(response)
 
-    def _make_doc(self, url: str) -> Document:
-        return Document(
+    def _make_doc(self, url: str) -> EnhancedDocumentSlice:
+        return EnhancedDocumentSlice(
             score=0.5,
-            payload=DocumentPayloadModel(
+            payload=EnhancedDocumentSlicePayloadModel(
                 document_corpus="test",
+                document_sub_corpus="subtest",
                 document_desc="desc",
                 document_details={},
                 document_id="12345678-1234-5678-1234-567812345678",

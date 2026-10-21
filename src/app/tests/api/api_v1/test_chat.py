@@ -2,14 +2,15 @@ import unittest
 import uuid
 from unittest import mock
 from unittest.mock import MagicMock
-from langgraph.checkpoint.memory import InMemorySaver
+
 import backoff
 from fastapi.testclient import TestClient
 from langchain_core.messages import AIMessage, HumanMessage, ToolMessage
+from langgraph.checkpoint.memory import InMemorySaver
 
 from src.app.core.config import settings
-from src.app.models.documents import Document as DocumentModel
-from src.app.models.documents import DocumentPayloadModel
+from src.app.models.documents import EnhancedDocumentSlice as DocumentModel
+from src.app.models.documents import EnhancedDocumentSlicePayloadModel
 from src.app.shared.domain.exceptions import LanguageNotSupportedError
 from src.main import app
 
@@ -18,9 +19,10 @@ client = TestClient(app)
 
 source_example = [
     {
-        "id": "testId",
+        "score": 0.636549,
         "payload": {
             "document_corpus": "testCorpus",
+            "document_sub_corpus": "testsubCorpus",
             "document_desc": "testDesc",
             "document_details": {
                 "author": "testAuthor",
@@ -37,10 +39,19 @@ source_example = [
             "slice_content": "testContent",
             "slice_sdg": 15,
         },
-        "score": 0.636549,
-        "version": 164925,
     }
 ]
+
+
+def _extract_document_id(doc):
+    if "payload" in doc and isinstance(doc["payload"], dict):
+        document_id = doc["payload"].get("document_id")
+        if document_id is not None:
+            return str(document_id)
+    if "id" in doc:
+        return str(doc["id"])
+    return ""
+
 
 JSON_NO_HIST = {
     "sources": source_example,
@@ -106,8 +117,9 @@ class QnATests(unittest.IsolatedAsyncioTestCase):
                 docs=[
                     DocumentModel(
                         score=0.636549,
-                        payload=DocumentPayloadModel(
+                        payload=EnhancedDocumentSlicePayloadModel(
                             document_corpus="testCorpus",
+                            document_sub_corpus="testsubCorpus",
                             document_desc="testDesc",
                             document_details={
                                 "author": "testAuthor",
@@ -115,7 +127,9 @@ class QnATests(unittest.IsolatedAsyncioTestCase):
                                 "readability": 42.61,
                                 "source": "au",
                             },
-                            document_id="12345678-1234-5678-1234-567812345678",
+                            document_id=uuid.UUID(
+                                "12345678-1234-5678-1234-567812345678"
+                            ),
                             document_lang="en",
                             document_sdg=[11, 12, 13, 15, 2, 8],
                             document_title="testTitle",
@@ -202,8 +216,9 @@ class QnATests(unittest.IsolatedAsyncioTestCase):
                     docs=[
                         DocumentModel(
                             score=0.636549,
-                            payload=DocumentPayloadModel(
+                            payload=EnhancedDocumentSlicePayloadModel(
                                 document_corpus="testCorpus",
+                                document_sub_corpus="testsubCorpus",
                                 document_desc="testDesc",
                                 document_details={
                                     "author": "testAuthor",
@@ -211,7 +226,9 @@ class QnATests(unittest.IsolatedAsyncioTestCase):
                                     "readability": 42.61,
                                     "source": "au",
                                 },
-                                document_id="12345678-1234-5678-1234-567812345678",
+                                document_id=uuid.UUID(
+                                    "12345678-1234-5678-1234-567812345678"
+                                ),
                                 document_lang="en",
                                 document_sdg=[11, 12, 13, 15, 2, 8],
                                 document_title="testTitle",
@@ -266,8 +283,26 @@ class QnATests(unittest.IsolatedAsyncioTestCase):
     def test_chat_agent_returns_only_latest_tool_call_docs(
         self, agent_message_mock, *mocks
     ):
-        earlier_docs = [{**source_example[0], "id": "earlierDoc"}]
-        latest_docs = [{**source_example[0], "id": "latestDoc"}]
+        earlier_doc_id = "11111111-1111-4111-8111-111111111111"
+        latest_doc_id = "22222222-2222-4222-8222-222222222222"
+        earlier_docs = [
+            {
+                **source_example[0],
+                "payload": {
+                    **source_example[0]["payload"],
+                    "document_id": earlier_doc_id,
+                },
+            }
+        ]
+        latest_docs = [
+            {
+                **source_example[0],
+                "payload": {
+                    **source_example[0]["payload"],
+                    "document_id": latest_doc_id,
+                },
+            }
+        ]
         agent_message_mock.return_value = {
             "messages": [
                 HumanMessage(content="first question"),
@@ -293,8 +328,10 @@ class QnATests(unittest.IsolatedAsyncioTestCase):
                 headers={"X-API-Key": "test", "origin": "test"},
             )
             self.assertEqual(response.status_code, 200)
-            returned_ids = [doc["id"] for doc in response.json()["docs"]]
-            self.assertEqual(returned_ids, ["latestDoc"])
+            returned_ids = [
+                _extract_document_id(doc) for doc in response.json()["docs"]
+            ]
+            self.assertEqual(returned_ids, [latest_doc_id])
 
     @mock.patch("psycopg.AsyncConnection.connect", new_callable=mock.AsyncMock)
     @mock.patch(
@@ -305,7 +342,16 @@ class QnATests(unittest.IsolatedAsyncioTestCase):
     def test_chat_agent_reuses_docs_when_no_new_search(
         self, agent_message_mock, *mocks
     ):
-        docs = [{**source_example[0], "id": "reusedDoc"}]
+        reused_doc_id = "33333333-3333-4333-8333-333333333333"
+        docs = [
+            {
+                **source_example[0],
+                "payload": {
+                    **source_example[0]["payload"],
+                    "document_id": reused_doc_id,
+                },
+            }
+        ]
         agent_message_mock.return_value = {
             "messages": [
                 HumanMessage(content="first question"),
@@ -329,8 +375,10 @@ class QnATests(unittest.IsolatedAsyncioTestCase):
                 headers={"X-API-Key": "test", "origin": "test"},
             )
             self.assertEqual(response.status_code, 200)
-            returned_ids = [doc["id"] for doc in response.json()["docs"]]
-            self.assertEqual(returned_ids, ["reusedDoc"])
+            returned_ids = [
+                _extract_document_id(doc) for doc in response.json()["docs"]
+            ]
+            self.assertEqual(returned_ids, [reused_doc_id])
 
     @mock.patch(
         "src.app.shared.infra.security.check_api_key_sync",

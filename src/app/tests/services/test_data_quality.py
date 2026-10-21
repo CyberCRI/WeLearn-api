@@ -4,6 +4,7 @@ from uuid import uuid4
 
 import sqlalchemy
 from sqlalchemy import Engine, create_engine
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import sessionmaker
 from welearn_database.data.enumeration import Step
 from welearn_database.data.models import (
@@ -31,10 +32,12 @@ def handle_schema_with_sqlite(db_engine: Engine):
             conn.execute(sqlalchemy.text(f"ATTACH ':memory:' AS {schema_name.value}"))
 
 
-class DummyScoredPoint:
-    def __init__(self, id, payload):
+class DummyContainer:
+    """Minimal stand-in for FullContainer used by DataQualityChecker."""
+
+    def __init__(self, id, deduplicate_hash):
         self.id = id
-        self.payload = payload
+        self.deduplicate_hash = deduplicate_hash
 
 
 class TestRemoveDuplicates(unittest.TestCase):
@@ -81,130 +84,49 @@ class TestRemoveDuplicates(unittest.TestCase):
 
         self.test_session.commit()
 
-    def test_basic(self):
-        points = [
-            DummyScoredPoint(1, {"text": "a"}),
-            DummyScoredPoint(2, {"text": "b"}),
-            DummyScoredPoint(3, {"text": "a"}),
-        ]
-        result = self.checker.remove_duplicates(["text"], points)
-        self.assertEqual(len(result), 2)
-        self.assertSetEqual(set(p.payload["text"] for p in result), {"a", "b"})
-
-    def test_empty_keys(self):
-        points = [DummyScoredPoint(1, {"text": "a"})]
-        result = self.checker.remove_duplicates([], points)
-        self.assertListEqual(result, points)
-
-    def test_empty_keys_strict(self):
-        points = [DummyScoredPoint(1, {"text": "a"})]
-        with self.assertRaises(ValueError):
-            self.checker.remove_duplicates([], points, strict=True)
-
-    def test_missing_key(self):
-        points = [
-            DummyScoredPoint(1, {"text": "a"}),
-            DummyScoredPoint(2, {"other": "b"}),
-        ]
-        result = self.checker.remove_duplicates(["text"], points)
-        self.assertListEqual(result, points)
-
-    def test_missing_key_strict(self):
-        points = [
-            DummyScoredPoint(1, {"text": "a"}),
-            DummyScoredPoint(2, {"other": "b"}),
-        ]
-        with self.assertRaises(ValueError):
-            self.checker.remove_duplicates(["text"], points, strict=True)
-
-    def test_non_str_value(self):
-        points = [
-            DummyScoredPoint(1, {"text": 123}),
-            DummyScoredPoint(2, {"text": "a"}),
-        ]
-        result = self.checker.remove_duplicates(["text"], points)
-        self.assertListEqual(result, points)
-
-    def test_non_str_value_strict(self):
-        points = [DummyScoredPoint(1, {"text": 123})]
-        with self.assertRaises(TypeError):
-            self.checker.remove_duplicates(["text"], points, strict=True)
-
-    def test_empty_payload(self):
-        for payload in [{}, None]:
-            points = [DummyScoredPoint(1, payload)]
-            result = self.checker.remove_duplicates(["text"], points)
-            self.assertListEqual(result, points)
+    def test_empty_list(self):
+        self.assertListEqual(self.checker.remove_duplicates([]), [])
 
     def test_no_duplicates(self):
-        points = [
-            DummyScoredPoint(1, {"text": "a"}),
-            DummyScoredPoint(2, {"text": "b"}),
-        ]
-        result = self.checker.remove_duplicates(["text"], points)
-        self.assertEqual(len(result), 2)
-        self.assertListEqual(result, points)
+        containers = [DummyContainer(1, "a"), DummyContainer(2, "b")]
+        result = self.checker.remove_duplicates(containers)
+        self.assertListEqual(result, containers)
 
-    def test_multiple_keys(self):
-        points = [
-            DummyScoredPoint(1, {"a": "x", "b": "y"}),
-            DummyScoredPoint(2, {"a": "x", "b": "y"}),
-            DummyScoredPoint(3, {"a": "x", "b": "z"}),
+    def test_consecutive_duplicates_keep_last(self):
+        containers = [
+            DummyContainer(1, "a"),
+            DummyContainer(2, "a"),
+            DummyContainer(3, "b"),
         ]
-        result = self.checker.remove_duplicates(["a", "b"], points)
-        self.assertEqual(len(result), 2)
-        self.assertListEqual(result, [points[0], points[2]])
+        result = self.checker.remove_duplicates(containers)
+        self.assertListEqual(result, [containers[1], containers[2]])
 
     def test_all_duplicates(self):
-        points = [
-            DummyScoredPoint(1, {"text": "a"}),
-            DummyScoredPoint(2, {"text": "a"}),
-            DummyScoredPoint(3, {"text": "a"}),
+        containers = [
+            DummyContainer(1, "a"),
+            DummyContainer(2, "a"),
+            DummyContainer(3, "a"),
         ]
-        result = self.checker.remove_duplicates(["text"], points)
-        self.assertEqual(len(result), 1)
-        self.assertListEqual(result, [points[0]])
+        result = self.checker.remove_duplicates(containers)
+        self.assertListEqual(result, [containers[2]])
+
+    def test_non_consecutive_duplicates_are_removed(self):
+        containers = [
+            DummyContainer(1, "a"),
+            DummyContainer(2, "b"),
+            DummyContainer(3, "a"),
+        ]
+        result = self.checker.remove_duplicates(containers)
+        self.assertEqual(len(result), 2)
+        # last duplicate of each group is kept
+        self.assertCountEqual(result, [containers[1], containers[2]])
 
     @patch("src.app.services.sql_db.queries.session_maker")
-    def test__log_duplicates_points_in_db(self, mocked_session_maker):
+    def test__log_duplicates_containers_in_db(self, mocked_session_maker):
         s_maker = sessionmaker(self.engine)
         mocked_session_maker.return_value = s_maker()
-
         dsp_id = uuid4()
-
-        points = [
-            DummyScoredPoint(
-                1,
-                {
-                    "document_title": self.doc_test.title,
-                    "document_desc": self.doc_test.description,
-                    "document_url": self.doc_test.url,
-                    "document_id": self.doc_test_id,
-                },
-            ),
-            DummyScoredPoint(
-                1,
-                {
-                    "document_title": self.doc_test.title,
-                    "document_desc": self.doc_test.description,
-                    "document_url": self.doc_test.url + "1",
-                    "document_id": dsp_id,
-                },
-            ),
-            DummyScoredPoint(
-                3,
-                {
-                    "text": "b",
-                    "document_id": self.doc_test_id,
-                    "document_title": "lorem",
-                    "document_desc": "description",
-                    "document_url": "https://example.com",
-                },
-            ),
-        ]
-        deduped = [points[0], points[2]]
-        self.checker._log_duplicates_points_in_db(points, deduped)
-
+        self.checker._log_duplicates_containers_in_db([DummyContainer(dsp_id, "a")])
         errors = (
             self.test_session.query(ErrorDataQuality)
             .filter_by(document_id=dsp_id)
@@ -213,10 +135,19 @@ class TestRemoveDuplicates(unittest.TestCase):
         self.assertEqual(len(errors), 1)
         self.assertEqual(errors[0].document_id, dsp_id)
         self.assertEqual(errors[0].error_raiser, APP_NAME)
-
         states = (
             self.test_session.query(ProcessState).filter_by(document_id=dsp_id).all()
         )
         self.assertEqual(len(states), 1)
         self.assertEqual(states[0].document_id, dsp_id)
         self.assertEqual(states[0].title, Step.DOCUMENT_IS_INVALID.value.lower())
+
+    @patch("src.app.services.data_quality.write_process_state")
+    @patch("src.app.services.data_quality.write_new_data_quality_error")
+    def test__log_duplicates_containers_in_db_integrity_error(
+        self, mock_write_error, mock_write_state
+    ):
+        mock_write_error.side_effect = IntegrityError("stmt", {}, Exception("dup"))
+        self.checker._log_duplicates_containers_in_db([DummyContainer(uuid4(), "a")])
+        mock_write_error.assert_called_once()
+        mock_write_state.assert_not_called()

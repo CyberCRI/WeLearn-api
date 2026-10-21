@@ -7,12 +7,14 @@ from typing import Any, Literal
 from fastapi import HTTPException, Request, status
 from fastapi.concurrency import run_in_threadpool
 from qdrant_client.models import ScoredPoint
+from welearn_database.data.models import QuestionType
 
-from src.app.models.documents import Document
+from src.app.models.documents import EnhancedDocumentSlice
 from src.app.services.sql_db.queries import (
     get_current_data_collection_campaign,
     get_last_syllabus_conversation_id,
     get_last_syllabus_id_for_user,
+    register_form_answers_sync,
     update_returned_document_click,
     update_syllabus_retrieved_status,
     write_chat_answer,
@@ -67,7 +69,7 @@ class DataCollection:
         self,
         session_id: uuid.UUID | None,
         query: str,
-        search_results: list[Document | ScoredPoint],
+        search_results: list[EnhancedDocumentSlice | ScoredPoint],
         sdg_filter: list[int] | None = None,
         corpora: list[str] | None = None,
         feature: str | None = "search",
@@ -241,7 +243,7 @@ class DataCollection:
         user_query: str,
         conversation_id: uuid.UUID | None,
         answer_content: str,
-        sources: list[Document],
+        sources: list[EnhancedDocumentSlice],
         feature: str | None = "chat",
     ) -> tuple[uuid.UUID | None, uuid.UUID | None]:
         if not self.should_collect:
@@ -336,11 +338,29 @@ class DataCollection:
 
         await run_in_threadpool(update_syllabus_retrieved_status, syllabus_id)
 
+    async def register_form_answer(
+        self,
+        form_name: str,
+        question: str,
+        answer: str,
+        answer_type: QuestionType,
+        session_id: uuid.UUID,
+    ):
+
+        logger.info("collecting data from form  {form_name}")
+
+        await run_in_threadpool(
+            register_form_answers_sync,
+            form_name,
+            question,
+            answer,
+            answer_type,
+            session_id,
+        )
+
 
 def get_data_collection_service(request: Request) -> DataCollection:
-    origin = request.headers["origin"]
+    origin = request.headers.get("origin", "")
     stripped_origin = re.sub(r"https?://www\.|https?://", "", origin).strip("/")
 
-    if stripped_origin is None:
-        return DataCollection(origin="")
     return DataCollection(origin=stripped_origin)

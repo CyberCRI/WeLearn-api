@@ -1,10 +1,15 @@
 import os
+import uuid
 from typing import List
 from unittest import IsolatedAsyncioTestCase, mock
 
-from qdrant_client.models import CollectionDescription, CollectionsResponse, ScoredPoint
+from qdrant_client.models import CollectionDescription, CollectionsResponse
 
 from src.app.models.collections import Collection
+from src.app.models.documents import (
+    EnhancedDocumentSlice,
+    EnhancedDocumentSlicePayloadModel,
+)
 from src.app.search.services.search import SearchService, concatenate_same_doc_id_slices
 
 os.environ["USE_CACHED_SETTINGS"] = "False"
@@ -84,41 +89,35 @@ class SearchServiceTests(IsolatedAsyncioTestCase):
             self.assertEqual(collection, exp_collection)
 
     def test_concatenate_same_doc_id_slices(self):
-        qdrant_docs: List[ScoredPoint] = [
-            ScoredPoint(
-                id=1,
-                version=1,
-                score=0.5,
-                payload={"document_id": "1", "slice_content": "content1"},
-            ),
-            ScoredPoint(
-                id=1,
-                version=1,
-                score=0.8,
-                payload={"document_id": "1", "slice_content": "content2"},
-            ),
-            ScoredPoint(
-                id=2,
-                version=1,
-                score=0.8,
-                payload={"document_id": "2", "slice_content": "content3"},
-            ),
+        id1 = uuid.UUID("12345678-1234-5678-1234-567812345678")
+        id2 = uuid.UUID("78901234-5678-9012-3456-789012345678")
+
+        def make_doc(doc_id, content, score):
+            return EnhancedDocumentSlice(
+                score=score,
+                payload=EnhancedDocumentSlicePayloadModel(
+                    document_corpus="corpus",
+                    document_sub_corpus=None,
+                    document_desc="desc",
+                    document_details={},
+                    document_id=doc_id,
+                    document_lang="fr",
+                    document_sdg=[1],
+                    document_title="title",
+                    document_url="url",
+                    slice_content=content,
+                    slice_sdg=1,
+                ),
+            )
+
+        qdrant_docs: List[EnhancedDocumentSlice] = [
+            make_doc(id1, "content1", 0.5),
+            make_doc(id1, "content2", 0.8),
+            make_doc(id2, "content3", 0.8),
         ]
         results = concatenate_same_doc_id_slices(qdrant_results=qdrant_docs)
-        expected_result = [
-            ScoredPoint(
-                id=1,
-                version=1,
-                score=0.5,
-                payload={"document_id": "1", "slice_content": "content1\n\ncontent2"},
-            ),
-            ScoredPoint(
-                id=2,
-                version=1,
-                score=0.8,
-                payload={"document_id": "2", "slice_content": "content3"},
-            ),
-        ]
         self.assertEqual(len(results), 2)
-        self.assertEqual(results[0].payload, expected_result[0].payload)
-        self.assertEqual(results[1].payload, expected_result[1].payload)
+        self.assertEqual(results[0].payload.document_id, id1)
+        self.assertEqual(results[0].payload.slice_content, "content1\n\ncontent2")
+        self.assertEqual(results[1].payload.document_id, id2)
+        self.assertEqual(results[1].payload.slice_content, "content3")

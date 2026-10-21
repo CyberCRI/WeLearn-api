@@ -4,9 +4,9 @@ from enum import Enum
 from typing import Any, Dict, List, Optional
 
 from pydantic import BaseModel, Field
-from qdrant_client.models import ScoredPoint
 
 from src.app.baml_client import types
+from src.app.models.documents import EnhancedDocumentSlice
 
 
 class SummariesList(BaseModel):
@@ -25,7 +25,7 @@ class ExtractorOutputList(BaseModel):
 class TutorSearchResponse(BaseModel):
     extracts: list[ExtractorOutput]
     nb_results: int
-    documents: list[ScoredPoint]
+    documents: list[EnhancedDocumentSlice]
 
 
 class TutorSyllabusRequest(TutorSearchResponse):
@@ -43,7 +43,7 @@ class SyllabusResponseAgent(BaseModel):
 
 class SyllabusResponse(BaseModel):
     syllabus: list[SyllabusResponseAgent]
-    documents: list[ScoredPoint]
+    documents: list[EnhancedDocumentSlice]
     extracts: list[ExtractorOutput]
     syllabus_message_id: uuid.UUID | None = None
 
