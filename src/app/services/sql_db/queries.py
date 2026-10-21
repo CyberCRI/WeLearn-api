@@ -97,25 +97,6 @@ def get_nb_docs_sync():
         return s.execute(statement).first()
 
 
-#
-# def get_document_qty_table_info_sync() -> (
-#     list[tuple[Corpus, QtyDocumentInQdrantPerCorpus, QtyDocumentPerCorpus]]
-# ):
-#     with session_maker() as s:
-#         return (
-#             s.query(Corpus, QtyDocumentInQdrantPerCorpus, QtyDocumentPerCorpus)
-#             .join(
-#                 QtyDocumentInQdrantPerCorpus,
-#                 Corpus.source_name == QtyDocumentInQdrantPerCorpus.source_name,
-#             )
-#             .join(
-#                 QtyDocumentPerCorpus,
-#                 Corpus.source_name == QtyDocumentPerCorpus.source_name,
-#             )
-#             .all()
-#         )  # type: ignore
-
-
 def get_document_qty_table_info_sync() -> list[tuple[Corpus, int, int]]:
     group_id = func.coalesce(Corpus.parent_corpus_id, Corpus.id)
 
