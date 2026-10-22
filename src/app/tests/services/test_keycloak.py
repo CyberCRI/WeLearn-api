@@ -8,15 +8,15 @@ from cryptography.hazmat.primitives.asymmetric import rsa
 from sqlalchemy.exc import IntegrityError
 from welearn_database.data.models import InferredUser
 
-from src.app.services import keycloak
-from src.app.services.keycloak import (
+from src.app.user.infra import keycloak
+from src.app.user.infra.keycloak import (
     KeycloakConfigError,
     KeycloakTokenError,
     KeycloakUnavailableError,
     decode_keycloak_token,
     extract_bearer_token,
 )
-from src.app.services.sql_db.queries_user import get_or_create_user_from_keycloak_sync
+from src.app.user.infra.queries import get_or_create_user_from_keycloak_sync
 
 KEYCLOAK_URL = "https://auth.example.org"
 KEYCLOAK_REALM = "welearn"
@@ -43,7 +43,7 @@ def make_token(key=PRIVATE_KEY, algorithm="RS256", **overrides) -> str:
 @patch.object(keycloak.settings, "KEYCLOAK_CLIENT_ID", None)
 @patch.object(keycloak.settings, "KEYCLOAK_REALM", KEYCLOAK_REALM)
 @patch.object(keycloak.settings, "KEYCLOAK_URL", KEYCLOAK_URL)
-@patch("src.app.services.keycloak.get_jwks_client")
+@patch("src.app.user.infra.keycloak.get_jwks_client")
 class TestDecodeKeycloakToken(unittest.TestCase):
     def _use_public_key(self, get_jwks_client_mock, key=PRIVATE_KEY):
         signing_key = MagicMock(key=key.public_key())
@@ -168,8 +168,8 @@ class TestExtractBearerToken(unittest.TestCase):
 
 
 class TestGetOrCreateKeycloakUser(unittest.IsolatedAsyncioTestCase):
-    @patch("src.app.services.keycloak.get_or_create_user_from_keycloak_sync")
-    @patch("src.app.services.keycloak.decode_keycloak_token")
+    @patch("src.app.user.infra.keycloak.get_or_create_user_from_keycloak_sync")
+    @patch("src.app.user.infra.keycloak.decode_keycloak_token")
     async def test_returns_user_id_and_claims(self, decode_mock, get_or_create_mock):
         keycloak_user = keycloak.KeycloakUser(keycloak_id=uuid.uuid4())
         decode_mock.return_value = keycloak_user
@@ -188,8 +188,8 @@ class TestGetOrCreateKeycloakUser(unittest.IsolatedAsyncioTestCase):
             keycloak_user.keycloak_id, anonymous_user_id, "welearn"
         )
 
-    @patch("src.app.services.keycloak.get_or_create_user_from_keycloak_sync")
-    @patch("src.app.services.keycloak.decode_keycloak_token")
+    @patch("src.app.user.infra.keycloak.get_or_create_user_from_keycloak_sync")
+    @patch("src.app.user.infra.keycloak.decode_keycloak_token")
     async def test_invalid_token_does_not_hit_db(self, decode_mock, get_or_create_mock):
         decode_mock.side_effect = KeycloakTokenError("bad token")
         with self.assertRaises(KeycloakTokenError):
@@ -197,7 +197,7 @@ class TestGetOrCreateKeycloakUser(unittest.IsolatedAsyncioTestCase):
         get_or_create_mock.assert_not_called()
 
 
-@patch("src.app.services.sql_db.queries_user.session_maker")
+@patch("src.app.user.infra.queries.session_maker")
 class TestGetOrCreateUserFromKeycloakSync(unittest.TestCase):
     def _session(self, session_maker_mock, *results):
         session = MagicMock()

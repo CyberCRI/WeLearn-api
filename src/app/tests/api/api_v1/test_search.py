@@ -312,7 +312,7 @@ class SearchTestsSlices(IsolatedAsyncioTestCase):
             self.assertEqual(response.status_code, 204)
 
 
-@patch("src.app.services.sql_db.queries.session_maker")
+@patch("src.app.search.infra.queries.session_maker")
 @patch(
     "src.app.shared.infra.security.check_api_key_sync",
     new=mock.MagicMock(return_value=True),
@@ -417,7 +417,7 @@ class TestSortSlicesUsingMMR(IsolatedAsyncioTestCase):
         self.assertEqual(sort_using_mmr([]), [])
 
 
-@patch("src.app.services.sql_db.queries.session_maker")
+@patch("src.app.search.infra.queries.session_maker")
 @patch(
     "src.app.shared.infra.security.check_api_key_sync",
     new=mock.MagicMock(return_value=True),
@@ -442,7 +442,7 @@ class SearchTestsMultiInput(IsolatedAsyncioTestCase):
             self.assertEqual(response.status_code, 204)
 
 
-@patch("src.app.services.sql_db.queries.session_maker")
+@patch("src.app.search.infra.queries.session_maker")
 @patch(
     "src.app.shared.infra.security.check_api_key_sync",
     new=mock.MagicMock(return_value=True),

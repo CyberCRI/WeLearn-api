@@ -1,4 +1,4 @@
-# src/app/services/keycloak.py
+# src/app/user/infra/keycloak.py
 """
 Keycloak JWT verification.
 
@@ -16,9 +16,9 @@ from fastapi import Request
 from fastapi.concurrency import run_in_threadpool
 from pydantic import BaseModel, ValidationError
 
-from src.app.services.sql_db.queries_user import get_or_create_user_from_keycloak_sync
 from src.app.shared.utils.dependencies import get_settings
 from src.app.shared.utils.logger import logger as logger_utils
+from src.app.user.infra.queries import get_or_create_user_from_keycloak_sync
 
 logger = logger_utils(__name__)
 settings = get_settings()

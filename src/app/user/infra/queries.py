@@ -1,4 +1,4 @@
-# src/app/services/sql_db/queries_user.py
+# src/app/user/infra/queries.py
 
 import uuid
 from datetime import datetime, timedelta

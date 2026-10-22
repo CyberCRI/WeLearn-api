@@ -11,10 +11,10 @@ from langdetect import detect_langs
 from qdrant_client.http.models import models
 from welearn_database.data.models import EmbeddingModel
 
-from src.app.services.sql_db.queries import get_embeddings_model_id_according_name
 from src.app.shared.domain.collections import Collection
 from src.app.shared.domain.documents import JourneySectionType
 from src.app.shared.domain.exceptions import LanguageNotSupportedError
+from src.app.shared.infra.queries import get_embeddings_model_id_according_name
 from src.app.shared.utils.decorators import log_time_and_error_sync
 from src.app.shared.utils.logger import logger as utils_logger
 

@@ -3,14 +3,14 @@ from uuid import UUID
 
 from fastapi.concurrency import run_in_threadpool
 
-from src.app.services.keycloak import get_or_create_keycloak_user
-from src.app.services.sql_db.queries_user import (
+from src.app.shared.domain.exceptions import SessionNotFoundError
+from src.app.shared.utils.logger import logger as logger_utils
+from src.app.user.infra.keycloak import get_or_create_keycloak_user
+from src.app.user.infra.queries import (
     get_or_create_session_sync,
     get_or_create_user_sync,
     get_user_from_session_id,
 )
-from src.app.shared.domain.exceptions import SessionNotFoundError
-from src.app.shared.utils.logger import logger as logger_utils
 
 logger = logger_utils(__name__)
 
