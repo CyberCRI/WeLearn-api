@@ -17,7 +17,7 @@ from welearn_database.data.models import (
     WeLearnDocument,
 )
 
-from src.app.services.data_quality import DataQualityChecker
+from src.app.search.services.data_quality import DataQualityChecker
 from src.app.shared.domain.constants import APP_NAME
 
 
@@ -142,8 +142,8 @@ class TestRemoveDuplicates(unittest.TestCase):
         self.assertEqual(states[0].document_id, dsp_id)
         self.assertEqual(states[0].title, Step.DOCUMENT_IS_INVALID.value.lower())
 
-    @patch("src.app.services.data_quality.write_process_state")
-    @patch("src.app.services.data_quality.write_new_data_quality_error")
+    @patch("src.app.search.services.data_quality.write_process_state")
+    @patch("src.app.search.services.data_quality.write_new_data_quality_error")
     def test__log_duplicates_containers_in_db_integrity_error(
         self, mock_write_error, mock_write_state
     ):

@@ -1,4 +1,4 @@
-# src/app/services/search.py
+# src/app/search/services/search.py
 
 import time
 from typing import Tuple, cast
@@ -27,7 +27,7 @@ from src.app.search.models.search import (
     SearchFilters,
     SearchMethods,
 )
-from src.app.services.data_quality import DataQualityChecker
+from src.app.search.services.data_quality import DataQualityChecker
 from src.app.shared.domain.collections import Collection
 from src.app.shared.domain.documents import EnhancedDocumentSlice, FullContainer
 from src.app.shared.domain.exceptions import CollectionNotFoundError, ModelNotFoundError

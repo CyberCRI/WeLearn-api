@@ -2,13 +2,13 @@ from fastapi import APIRouter, Depends, Request, Response, status
 from pydantic import ValidationError
 from starlette.concurrency import run_in_threadpool
 
+from src.app.data_collection.services.data_collection import get_data_collection_service
 from src.app.metric.domain.models import (
     DocumentClickUpdateResponse,
     RegisterFormAnswerBody,
     RowCorpusQtyDocInfo,
 )
 from src.app.metric.infra.queries import get_document_qty_table_info_sync
-from src.app.services.data_collection import get_data_collection_service
 from src.app.shared.utils.dependencies import get_settings
 from src.app.shared.utils.logger import logger as utils_logger
 from src.app.shared.utils.requests import extract_session_cookie

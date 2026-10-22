@@ -9,8 +9,8 @@ from fastapi.testclient import TestClient
 
 from src import main
 from src.app.core.config import settings
+from src.app.data_collection.services.data_collection import get_data_collection_service
 from src.app.search.services.search import get_search_service
-from src.app.services.data_collection import get_data_collection_service
 from src.app.shared.domain.documents import (
     EnhancedDocumentSlice,
     EnhancedDocumentSlicePayloadModel,
