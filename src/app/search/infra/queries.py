@@ -18,7 +18,7 @@ from welearn_database.data.models import (
     WeLearnDocument,
 )
 
-from src.app.search.models.search import ContextType
+from src.app.search.domain.models import ContextType
 from src.app.shared.domain.collections import CorpusRelation
 from src.app.shared.domain.constants import APP_NAME
 from src.app.shared.domain.documents import (

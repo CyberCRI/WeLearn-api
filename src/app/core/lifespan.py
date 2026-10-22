@@ -8,7 +8,7 @@ from qdrant_client import AsyncQdrantClient
 from src.app.core.langsmith import configure_langsmith_tracing
 from src.app.shared.infra.llm_proxy import LLMProxy
 from src.app.shared.utils.dependencies import get_settings
-from src.app.tutor.service.tutor import init_chat_model
+from src.app.tutor.services.tutor import init_chat_model
 
 
 @asynccontextmanager

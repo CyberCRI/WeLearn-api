@@ -15,17 +15,17 @@ from qdrant_client.http import models as http_models
 from sklearn.metrics.pairwise import cosine_similarity
 from transformers import AutoModel, AutoTokenizer
 
+from src.app.search.domain.models import (
+    EnhancedSearchQuery,
+    FilterDefinition,
+    SearchFilters,
+    SearchMethods,
+)
 from src.app.search.infra.queries import (
     batch_fetch_sdgs,
     get_corpus_and_sub_corpus_repartition,
     get_documents_according_slice_ids,
     get_subject,
-)
-from src.app.search.models.search import (
-    EnhancedSearchQuery,
-    FilterDefinition,
-    SearchFilters,
-    SearchMethods,
 )
 from src.app.search.services.data_quality import DataQualityChecker
 from src.app.shared.domain.collections import Collection

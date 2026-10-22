@@ -4,7 +4,7 @@ from typing import Literal, TypedDict
 
 from pydantic import BaseModel, ConfigDict, Field
 
-from src.app.search.models.search import SDGFilter
+from src.app.search.domain.models import SDGFilter
 from src.app.shared.domain.documents import EnhancedDocumentSlice
 
 

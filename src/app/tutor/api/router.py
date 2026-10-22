@@ -17,15 +17,15 @@ from src.app.baml_client.async_client import b, types
 from src.app.chat.services.abst_chat import get_chat_service
 from src.app.core.config import Settings
 from src.app.data_collection.services.data_collection import get_data_collection_service
-from src.app.search.helpers.search_helpers import search_multi_inputs
-from src.app.search.models.search import EnhancedSearchQuery
+from src.app.search.domain.models import EnhancedSearchQuery
 from src.app.search.services.search import SearchService, get_search_service
+from src.app.search.services.search_helpers import search_multi_inputs
 from src.app.shared.domain.exceptions import NoResultsError
 from src.app.shared.utils.dependencies import get_settings
 from src.app.shared.utils.logger import logger as utils_logger
 from src.app.shared.utils.requests import extract_session_cookie
 from src.app.shared.utils.utils import get_files_content
-from src.app.tutor.service.models import (
+from src.app.tutor.domain.models import (
     CompetencyMappingRequest,
     CourseDescriptionRequest,
     ExtractorOutputList,
@@ -42,13 +42,13 @@ from src.app.tutor.service.models import (
     TutorSyllabusRequest,
     UserInput,
 )
-from src.app.tutor.service.orchestrator import SyllabusOrchestrator
-from src.app.tutor.service.prompts import (
+from src.app.tutor.services.orchestrator import SyllabusOrchestrator
+from src.app.tutor.services.prompts import (
     extractor_system_prompt,
     extractor_user_prompt,
     summaries_schema,
 )
-from src.app.tutor.service.tutor import apply_feedback, tutor_manager
+from src.app.tutor.services.tutor import apply_feedback, tutor_manager
 
 logger = utils_logger(__name__)
 

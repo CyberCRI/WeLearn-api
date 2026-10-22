@@ -1,0 +1,624 @@
+import uuid
+from types import SimpleNamespace
+from unittest import IsolatedAsyncioTestCase, mock
+from unittest.mock import patch
+
+from fastapi.testclient import TestClient
+from qdrant_client.http import models
+from welearn_database.data.models import Corpus, WeLearnDocument
+
+from src.app.core.config import settings
+from src.app.search.domain.models import EnhancedSearchQuery
+from src.app.search.services.search import SearchService, sort_using_mmr
+from src.app.shared.domain import collections
+from src.app.shared.domain.documents import (
+    EnhancedDocumentSlice,
+    EnhancedDocumentSlicePayloadModel,
+)
+from src.app.shared.domain.exceptions import CollectionNotFoundError, ModelNotFoundError
+from src.main import app
+
+client = TestClient(app)
+
+search_pipeline_path = "src.app.search.services.search.SearchService"
+
+mocked_collection = collections.Collection(
+    lang="mul",
+    model="model",
+    name="collection_welearn_mul_model",
+)
+mocked_scored_points = [
+    models.ScoredPoint(
+        id="1",
+        version=1,
+        score=0.9,
+        vector=[0.1, 0.2],
+        payload={
+            "document_corpus": "corpus",
+            "document_desc": "desc",
+            "document_details": {},
+            "document_id": "1",
+            "document_lang": "fr",
+            "document_sdg": [1],
+            "document_title": "title",
+            "document_url": "url",
+            "slice_content": "content",
+            "slice_sdg": 1,
+        },
+    ),
+    models.ScoredPoint(
+        id="2",
+        version=1,
+        score=0.89,
+        vector=[0.11, 0.21],
+        payload={
+            "document_corpus": "corpus",
+            "document_desc": "desc",
+            "document_details": {},
+            "document_id": "1",
+            "document_lang": "fr",
+            "document_sdg": [1],
+            "document_title": "title",
+            "document_url": "url",
+            "slice_content": "content",
+            "slice_sdg": 1,
+        },
+    ),
+    models.ScoredPoint(
+        id="3",
+        version=1,
+        score=0.88,
+        vector=[0.3, 0.4],
+        payload={
+            "document_corpus": "corpus",
+            "document_desc": "desc",
+            "document_details": {},
+            "document_id": "1",
+            "document_lang": "fr",
+            "document_sdg": [1],
+            "document_title": "title",
+            "document_url": "url",
+            "slice_content": "content",
+            "slice_sdg": 1,
+        },
+    ),
+]
+
+mocked_documents = [
+    EnhancedDocumentSlice(
+        score=0.9,
+        payload=EnhancedDocumentSlicePayloadModel(
+            document_corpus="corpus",
+            document_sub_corpus="sub_corpus",
+            document_desc="desc",
+            document_details={},
+            document_id=uuid.UUID("12345678-1234-5678-1234-567812345678"),
+            document_lang="fr",
+            document_sdg=[1],
+            document_title="title",
+            document_url="url",
+            slice_content="content",
+            slice_sdg=1,
+        ),
+    ),
+    EnhancedDocumentSlice(
+        score=0.89,
+        payload=EnhancedDocumentSlicePayloadModel(
+            document_corpus="corpus",
+            document_sub_corpus="sub_corpus",
+            document_desc="desc",
+            document_details={},
+            document_id=uuid.UUID("12345678-1234-5678-1234-567812345678"),
+            document_lang="fr",
+            document_sdg=[1],
+            document_title="title",
+            document_url="url",
+            slice_content="content",
+            slice_sdg=1,
+        ),
+    ),
+    EnhancedDocumentSlice(
+        score=0.88,
+        payload=EnhancedDocumentSlicePayloadModel(
+            document_corpus="corpus",
+            document_sub_corpus="sub_corpus",
+            document_desc="desc",
+            document_details={},
+            document_id=uuid.UUID("12345678-1234-5678-1234-567812345678"),
+            document_lang="fr",
+            document_sdg=[1],
+            document_title="title",
+            document_url="url",
+            slice_content="content",
+            slice_sdg=1,
+        ),
+    ),
+    EnhancedDocumentSlice(
+        score=0.88,
+        payload=EnhancedDocumentSlicePayloadModel(
+            document_corpus="corpus",
+            document_sub_corpus="sub_corpus",
+            document_desc="desc",
+            document_details={},
+            document_id=uuid.UUID("78901234-5678-9012-3456-789012345678"),  # UUID
+            document_lang="fr",
+            document_sdg=[1],
+            document_title="title",
+            document_url="url",
+            slice_content="content",
+            slice_sdg=1,
+        ),
+    ),
+]
+
+
+long_query = "français with a very long sentence to test what you are saying and if the issue is the size of the string"  # noqa: E501
+
+
+@patch("src.app.shared.infra.db.session_maker")
+@mock.patch(
+    "src.app.shared.infra.security.check_api_key_sync",
+    new=mock.MagicMock(return_value=True),
+)
+@patch(
+    f"{search_pipeline_path}.get_collections",
+    new=mock.AsyncMock(
+        return_value=(
+            "collection_welearn_fr_model",
+            "collection_en_model",
+            "collection_welearn_mul_model",
+        )
+    ),
+)
+class SearchTests(IsolatedAsyncioTestCase):
+    def test_search_items_no_query(self, *mocks):
+        """Test search_items when no query is provided"""
+
+        with TestClient(app) as client:
+            response = client.post(
+                f"{settings.API_V1_STR}/search/collections/collection_welearn_fr_model",  # noqa: E501
+                json={"nb_results": 10},
+                headers={"X-API-Key": "test"},
+            )
+
+            self.assertEqual(response.status_code, 422)
+
+    @patch(
+        f"{search_pipeline_path}._get_model",
+        new=mock.MagicMock(
+            side_effect=ModelNotFoundError("Model not found", "MODEL_NOT_FOUND")
+        ),
+    )
+    async def test_search_model_not_found(self, *mocks):
+        with TestClient(app) as client:
+            response = client.post(
+                f"{settings.API_V1_STR}/search/collections/collection_welearn_mul_model?query=français&nb_results=10",
+                headers={"X-API-Key": "test"},
+            )
+
+            assert response.status_code == 404
+
+    @patch(
+        f"{search_pipeline_path}.search_handler",
+        new=mock.AsyncMock(return_value=mocked_documents),
+    )
+    async def test_search_items_success(self, *mocks):
+        with TestClient(app) as client:
+            """Test successful search_items response"""
+
+            response = client.post(
+                f"{settings.API_V1_STR}/search/collections/collection_welearn_fr_model?query={long_query}&nb_results=10",
+                headers={"X-API-Key": "test"},  # noqa: E501
+            )
+
+            self.assertEqual(response.status_code, 200)
+
+    @patch(
+        f"{search_pipeline_path}.search_handler",
+        new=mock.AsyncMock(return_value=[]),
+    )
+    async def test_search_items_no_result(self, *mocks):
+        with TestClient(app) as client:
+            response = client.post(
+                f"{settings.API_V1_STR}/search/collections/collection_welearn_fr_model?query={long_query}&nb_results=10",
+                headers={"X-API-Key": "test"},  # noqa: E501
+            )
+
+            self.assertEqual(response.status_code, 206)
+            self.assertEqual(response.json(), [])
+
+    @patch(
+        f"{search_pipeline_path}.get_collection_by_language",
+        new=mock.AsyncMock(
+            side_effect=CollectionNotFoundError(
+                "Collection not found", "COLL_NOT_FOUND"
+            )
+        ),
+    )
+    async def test_search_all_slices_no_collections(self, *mocks):
+        with TestClient(app) as client:
+            response = client.post(
+                f"{settings.API_V1_STR}/search/collections/collection_welearn_fr_model?query={long_query}&nb_results=10",
+                headers={"X-API-Key": "test"},
+            )
+            self.assertEqual(response.status_code, 404)
+
+
+@patch("src.app.shared.infra.db.session_maker")
+@patch(
+    "src.app.shared.infra.security.check_api_key_sync",
+    new=mock.MagicMock(return_value=True),
+)
+class SearchTestsSlices(IsolatedAsyncioTestCase):
+    @patch(
+        f"{search_pipeline_path}.get_collection_by_language",
+        new=mock.AsyncMock(
+            side_effect=CollectionNotFoundError(
+                "Collection not found", "COLL_NOT_FOUND"
+            )
+        ),
+    )
+    async def test_search_all_slices_no_collections(self, *mocks):
+        with TestClient(app) as client:
+            response = client.post(
+                f"{settings.API_V1_STR}/search/by_slices?nb_results=10",
+                json={
+                    "query": "une phrase plus longue pour tester la recherche en français. et voir ce que cela donne"
+                },  # noqa: E501
+                headers={"X-API-Key": "test"},
+            )
+            self.assertEqual(response.status_code, 404)
+
+    @patch(f"{search_pipeline_path}.search_handler", return_value=mocked_documents)
+    async def test_search_all_slices_ok(self, *mocks):
+        with TestClient(app) as client:
+            response = client.post(
+                f"{settings.API_V1_STR}/search/by_slices",
+                json={
+                    "query": "Comment est-ce que les gouvernements font pour suivre ces conseils et les mettre en place ?",
+                    "relevance_factor": 0.75,
+                },
+                headers={"X-API-Key": "test"},
+            )
+
+            self.assertEqual(response.status_code, 200)
+
+    def test_search_all_slices_no_query(self, *mocks):
+        with TestClient(app) as client:
+            response = client.post(
+                f"{settings.API_V1_STR}/search/by_slices",
+                json={"query": ""},
+                headers={"X-API-Key": "test"},
+            )
+            self.assertEqual(response.status_code, 400)
+            self.assertEqual(
+                response.json().get("detail")["message"],
+                "Empty query",
+            )
+
+    @patch(
+        f"{search_pipeline_path}.search_handler",
+        return_value=[],
+    )
+    async def test_search_all_slices_no_result(self, *mocks):
+        with TestClient(app) as client:
+            response = client.post(
+                f"{settings.API_V1_STR}/search/by_slices?nb_results=10",
+                json={
+                    "query": "une phrase plus longue pour tester la recherche en français. et voir ce que cela donne"
+                },
+                headers={"X-API-Key": "test"},
+            )
+            self.assertEqual(response.status_code, 204)
+
+
+@patch("src.app.search.infra.queries.session_maker")
+@patch(
+    "src.app.shared.infra.security.check_api_key_sync",
+    new=mock.MagicMock(return_value=True),
+)
+class SearchTestsAll(IsolatedAsyncioTestCase):
+    @patch(
+        f"{search_pipeline_path}.get_collection_by_language",
+        new=mock.AsyncMock(
+            side_effect=CollectionNotFoundError(
+                "Collection not found", "COLL_NOT_FOUND"
+            )
+        ),
+    )
+    @patch(
+        f"{search_pipeline_path}._get_info_from_collection_name",
+        new=mock.MagicMock(return_value=mocked_collection),
+    )
+    async def test_search_all_no_collections(self, *mocks):
+        with TestClient(app) as client:
+            response = client.post(
+                f"{settings.API_V1_STR}/search/by_document?nb_results=10",
+                json={
+                    "query": "une phrase plus longue pour tester la recherche en français. et voir ce que cela donne"
+                },
+                headers={
+                    "X-API-Key": "test",
+                    "origin": "test.com",
+                    "Cookie": f"x-session-id={str(uuid.uuid4())}",
+                },
+            )
+            self.assertEqual(response.status_code, 404)
+
+    @patch(f"{search_pipeline_path}.search_handler", return_value=[])
+    async def test_search_all_no_result(self, *mocks):
+        with TestClient(app) as client:
+            response = client.post(
+                f"{settings.API_V1_STR}/search/by_document?nb_results=10",
+                json={
+                    "query": "une phrase plus longue pour tester la recherche en français. et voir ce que cela donne"
+                },
+                headers={
+                    "X-API-Key": "test",
+                    "origin": "test.com",
+                    "Cookie": f"x-session-id={str(uuid.uuid4())}",
+                },  # noqa: E501
+            )
+
+            self.assertEqual(response.status_code, 204)
+
+    def test_search_all_no_query(self, *mocks):
+        with TestClient(app) as client:
+            response = client.post(
+                f"{settings.API_V1_STR}/search/by_document",
+                json={"query": ""},
+                headers={
+                    "X-API-Key": "test",
+                    "origin": "test.com",
+                    "Cookie": f"x-session-id={str(uuid.uuid4())}",
+                },
+            )
+            self.assertEqual(response.status_code, 400)
+            self.assertEqual(
+                response.json().get("detail")["message"],
+                "Empty query",
+            )
+
+    def test_search_by_document_schema_requires_string_query(self, *mocks):
+        schema = app.openapi()
+        request_schema = schema["paths"]["/api/v1/search/by_document"]["post"][
+            "requestBody"
+        ]["content"]["application/json"]["schema"]
+        self.assertEqual(
+            request_schema["$ref"], "#/components/schemas/DocumentSearchQuery"
+        )
+
+        query_schema = schema["components"]["schemas"]["DocumentSearchQuery"][
+            "properties"
+        ]["query"]
+
+        self.assertEqual(query_schema["type"], "string")
+
+
+class TestSortSlicesUsingMMR(IsolatedAsyncioTestCase):
+    @staticmethod
+    def _containers():
+        return [
+            SimpleNamespace(mean_score=p.score, mean_vector=p.vector, mmr_rank=None)
+            for p in mocked_scored_points
+        ]
+
+    def test_sort_slices_using_mmr_default_theta(self, *mocks):
+        containers = self._containers()
+        result = sort_using_mmr(containers)
+        self.assertEqual([c.mmr_rank for c in result], [0, 1, 2])
+
+    def test_sort_slices_using_mmr_custom_theta(self, *mocks):
+        containers = self._containers()
+        result = sort_using_mmr(containers, 0.5)
+        self.assertEqual([c.mmr_rank for c in result], [0, 2, 1])
+
+    def test_sort_slices_using_mmr_empty(self, *mocks):
+        self.assertEqual(sort_using_mmr([]), [])
+
+
+@patch("src.app.search.infra.queries.session_maker")
+@patch(
+    "src.app.shared.infra.security.check_api_key_sync",
+    new=mock.MagicMock(return_value=True),
+)
+class SearchTestsMultiInput(IsolatedAsyncioTestCase):
+    @patch(
+        f"{search_pipeline_path}.search_handler",
+        return_value=[],
+    )
+    async def test_search_multi_no_result(self, *mocks):
+        with TestClient(app) as client:
+            response = client.post(
+                f"{settings.API_V1_STR}/search/multiple_by_slices?nb_results=10",
+                json={
+                    "query": [
+                        "une phrase plus longue pour tester la recherche en français. et voir ce que cela donne",
+                        "another long sentence to test the search in english and see what happens",
+                    ]
+                },
+                headers={"X-API-Key": "test"},
+            )
+            self.assertEqual(response.status_code, 204)
+
+
+@patch("src.app.search.infra.queries.session_maker")
+@patch(
+    "src.app.shared.infra.security.check_api_key_sync",
+    new=mock.MagicMock(return_value=True),
+)
+class DocumentsByIdsTests(IsolatedAsyncioTestCase):
+    def test_documents_by_ids_empty(self, session_maker_mock, *mocks):
+
+        session = session_maker_mock.return_value.__enter__.return_value
+        session.query.return_value.where.return_value.options.return_value.all.return_value = (
+            []
+        )
+        exec_corpora = mock.MagicMock()
+        exec_corpora.all.return_value = []
+        exec_slices = mock.MagicMock()
+        exec_slices.all.return_value = []
+        exec_sdgs = mock.MagicMock()
+        exec_sdgs.all.return_value = []
+
+        session.execute.side_effect = [exec_corpora, exec_slices, exec_sdgs]
+
+        with TestClient(app) as client:
+            response = client.post(
+                f"{settings.API_V1_STR}/search/documents/by_ids",
+                json=[],
+                headers={"X-API-Key": "test"},
+            )
+
+            self.assertEqual(response.status_code, 200)
+            self.assertEqual(response.json(), [])
+
+    def test_documents_by_ids_single_doc(self, session_maker_mock, *mocks):
+        session = session_maker_mock.return_value.__enter__.return_value
+
+        doc_id = "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa"
+        corpus_id = "bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb"
+        docs_row = WeLearnDocument(
+            title="Title",
+            url="https://example.com",
+            corpus_id=corpus_id,
+            id=doc_id,
+            description="Desc",
+            details={"k": "v"},
+            external_id="external-id-123",
+            lang="fr",
+            corpus=Corpus(
+                id=corpus_id,
+                source_name="Corpus",
+            ),
+        )
+
+        query_docs = mock.MagicMock()
+        query_docs.where.return_value.options.return_value.all.return_value = [docs_row]
+
+        query_corpus = mock.MagicMock()
+        query_corpus.filter.return_value.first.return_value = Corpus(
+            id=corpus_id,
+            source_name="Corpus",
+        )
+
+        session.query.side_effect = lambda model: (
+            query_docs if model is WeLearnDocument else query_corpus
+        )
+
+        # 1) slices .all()
+        slice1 = "11111111-1111-1111-1111-111111111111"
+        slice2 = "22222222-2222-2222-2222-222222222222"
+        exec_slices = mock.MagicMock()
+        exec_slices.all.return_value = [
+            SimpleNamespace(id=slice1, document_id=doc_id),
+            SimpleNamespace(id=slice2, document_id=doc_id),
+        ]
+        # 2) sdgs .all()
+        exec_sdgs = mock.MagicMock()
+        exec_sdgs.all.return_value = [
+            (SimpleNamespace(sdg_number=1, slice_id=slice1),),
+            (SimpleNamespace(sdg_number=3, slice_id=slice2),),
+            (SimpleNamespace(sdg_number=1, slice_id=slice2),),
+        ]
+
+        session.execute.side_effect = [exec_slices, exec_sdgs]
+
+        response = client.post(
+            f"{settings.API_V1_STR}/search/documents/by_ids",
+            json=[doc_id],
+            headers={"X-API-Key": "test"},
+        )
+
+        self.assertEqual(response.status_code, 200)
+        body = response.json()
+        self.assertEqual(len(body), 1)
+        payload = body[0]["payload"]
+        self.assertEqual(payload["document_id"], doc_id)
+        self.assertEqual(payload["document_title"], "Title")
+        self.assertEqual(payload["document_url"], "https://example.com")
+        self.assertEqual(payload["document_desc"], "Desc")
+        self.assertEqual(payload["document_details"], {"k": "v"})
+        self.assertEqual(payload["document_corpus"], "Corpus")
+        self.assertEqual(payload["document_sdg"], [1, 3])
+        self.assertIsNone(payload["slice_content"])
+        self.assertIsNone(payload["slice_sdg"])
+
+    def test_documents_by_ids_corpus_missing(self, session_maker_mock, *mocks):
+        session = session_maker_mock.return_value.__enter__.return_value
+
+        doc_id = "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa"
+        corpus_id = "bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb"
+        docs_row = WeLearnDocument(
+            title="Title",
+            url="https://example.com",
+            corpus_id=corpus_id,
+            id=doc_id,
+            description="Desc",
+            details={},
+            external_id=None,
+            lang="fr",
+            corpus=Corpus(
+                id=corpus_id,
+                source_name="",
+                parent_corpus_id=None,
+            ),
+        )
+
+        query_docs = mock.MagicMock()
+        query_docs.where.return_value.options.return_value.all.return_value = [docs_row]
+
+        query_corpus = mock.MagicMock()
+        query_corpus.filter.return_value.first.return_value = None
+
+        session.query.side_effect = lambda model: (
+            query_docs if model is WeLearnDocument else query_corpus
+        )
+
+        exec_corpora = mock.MagicMock()
+        exec_corpora.all.return_value = []
+        exec_slices = mock.MagicMock()
+        exec_slices.all.return_value = []
+        exec_sdgs = mock.MagicMock()
+        exec_sdgs.all.return_value = []
+        session.execute.side_effect = [exec_corpora, exec_slices, exec_sdgs]
+
+        with TestClient(app) as client:
+            response = client.post(
+                f"{settings.API_V1_STR}/search/documents/by_ids",
+                json=[doc_id],
+                headers={"X-API-Key": "test"},
+            )
+            self.assertEqual(response.status_code, 200)
+            body = response.json()
+            payload = body[0]["payload"]
+            self.assertEqual(len(body), 1)
+            self.assertEqual(payload["document_corpus"], "")
+
+    def test_search_multi_single_query(self, *mocks):
+        with mock.patch(
+            "src.app.search.api.router.search_multi_inputs",
+        ) as search_multi, mock.patch.object(
+            SearchService, "search_handler", return_value=mocked_documents
+        ) as search_handler:
+            with TestClient(app) as _client:
+                _client.post(
+                    f"{settings.API_V1_STR}/search/multiple_by_slices?nb_results=10",
+                    json={
+                        "query": long_query,
+                    },
+                    headers={"X-API-Key": "test"},
+                )
+                search_multi.assert_called_once_with(
+                    qp=EnhancedSearchQuery(
+                        query=[long_query],
+                        sdg_filter=None,
+                        corpora=None,
+                        subject=None,
+                        nb_results=10,
+                        influence_factor=2.0,
+                        relevance_factor=1.0,
+                    ),
+                    background_tasks=mock.ANY,
+                    callback_function=search_handler,  # noqa: E501
+                )

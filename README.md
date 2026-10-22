@@ -216,9 +216,11 @@ Here’s an overview of the project directory structure:
 - **`src/app/baml_src/`**, **`src/app/baml_client/`**: BAML sources and the generated client (`make generate-baml`).
 - **`docker-compose.yml`**: The configuration for Docker Compose.
 - **`Dockerfile`**: The Dockerfile for building the application container.
-- **`tests/`**: Contains unit and integration tests for the application.
+- **`src/app/tests/`**: Unit and integration tests, one folder per feature (`tests/<feature>/`), mirroring `src/app/`.
 - **`.env.example`**: Example environment variable file. Copy this to .env and configure it with your settings.
 - **`Makefile`**: Contains commonly used commands like make run or make test.
+
+The dependency rules between these packages (`shared` never imports a feature, only `src/app/router.py` imports feature routers) are enforced by [import-linter](https://import-linter.readthedocs.io/): the contracts live in `pyproject.toml` and run with `lint-imports` as part of `make lint`.
 
 ## License
 

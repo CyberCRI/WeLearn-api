@@ -16,6 +16,7 @@ lint:
 	flake8 src
 	isort src
 	black src
+	lint-imports
 
 test-poetry: generate-baml-poetry
 	poetry run pytest -s -v --cov=src --cov-report=term-missing --cov-fail-under=82 --cov-report=html

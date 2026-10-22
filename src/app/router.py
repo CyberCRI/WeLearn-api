@@ -2,7 +2,7 @@
 
 from fastapi import APIRouter
 
-from src.app.bibliography.api import bibliography as biblio_router
+from src.app.bibliography.api import router as bibliography_router
 from src.app.chat.api import router as chat_router
 from src.app.metric.api import router as metric_router
 from src.app.micro_learning.api import router as micro_learning_router
@@ -20,7 +20,7 @@ api_router.include_router(
 )
 api_router.include_router(user_router.router, prefix="/user", tags=["user"])
 api_router.include_router(
-    biblio_router.router, prefix="/bibliography", tags=["bibliography"]
+    bibliography_router.router, prefix="/bibliography", tags=["bibliography"]
 )
 
 
