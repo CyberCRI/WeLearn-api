@@ -35,10 +35,10 @@ from langgraph.checkpoint.postgres.aio import AsyncPostgresSaver  # type: ignore
 from langgraph.graph.message import REMOVE_ALL_MESSAGES  # type: ignore
 from langsmith import traceable
 
+from src.app.chat.services import prompts
+from src.app.chat.services.agent import get_resources_about_sustainability
 from src.app.chat.services.helpers import latest_tool_docs, stringify_docs_content
 from src.app.search.services.search import SearchService
-from src.app.services import prompts
-from src.app.services.agent import get_resources_about_sustainability
 from src.app.shared.domain.documents import EnhancedDocumentSlice
 from src.app.shared.domain.exceptions import LanguageNotSupportedError
 from src.app.shared.infra.tracing import TRACE_RUN_TYPE_LLM, TraceComponent, TraceName

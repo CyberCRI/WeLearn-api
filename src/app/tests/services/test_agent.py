@@ -3,13 +3,15 @@ from unittest.mock import AsyncMock
 
 from fastapi import BackgroundTasks
 
-from src.app.services.agent import _get_resources_about_sustainability
+from src.app.chat.services.agent import _get_resources_about_sustainability
 
 
 class TestAgent(IsolatedAsyncioTestCase):
     async def test_get_resources_about_sustainability_found(self):
         # Mock SearchService and its search_handler
-        with mock.patch("src.app.services.agent.SearchService") as MockSearchService:
+        with mock.patch(
+            "src.app.chat.services.agent.SearchService"
+        ) as MockSearchService:
             mock_service = MockSearchService.return_value
             mock_doc = mock.Mock()
             mock_doc.payload = {
@@ -35,7 +37,9 @@ class TestAgent(IsolatedAsyncioTestCase):
             self.assertIn("Doc 1", content)
 
     async def test_get_resources_about_sustainability_not_found(self):
-        with mock.patch("src.app.services.agent.SearchService") as MockSearchService:
+        with mock.patch(
+            "src.app.chat.services.agent.SearchService"
+        ) as MockSearchService:
             mock_service = MockSearchService.return_value
             mock_service.search_handler = AsyncMock(return_value=[])
             config = {"configurable": {"sdg_filter": None, "corpora": None}}
@@ -61,7 +65,9 @@ class TestAgent(IsolatedAsyncioTestCase):
 
     async def test_get_resources_about_sustainability_with_background_tasks(self):
         # Mock SearchService and its search_handler
-        with mock.patch("src.app.services.agent.SearchService") as MockSearchService:
+        with mock.patch(
+            "src.app.chat.services.agent.SearchService"
+        ) as MockSearchService:
             mock_service = MockSearchService.return_value
             mock_doc = mock.Mock()
             mock_doc.payload = {
@@ -86,7 +92,9 @@ class TestAgent(IsolatedAsyncioTestCase):
 
     async def test_get_resources_about_sustainability_limits_to_seven_docs(self):
         # Mock SearchService and its search_handler
-        with mock.patch("src.app.services.agent.SearchService") as MockSearchService:
+        with mock.patch(
+            "src.app.chat.services.agent.SearchService"
+        ) as MockSearchService:
             mock_service = MockSearchService.return_value
             mock_doc = mock.Mock()
             mock_doc.payload = {
@@ -104,7 +112,7 @@ class TestAgent(IsolatedAsyncioTestCase):
                 }
             }
             with mock.patch(
-                "src.app.services.agent.stringify_docs_content"
+                "src.app.chat.services.agent.stringify_docs_content"
             ) as mock_stringify:
                 mock_stringify.return_value = "stringified content"
                 content, docs = await _get_resources_about_sustainability(

@@ -2,7 +2,7 @@ import types
 import unittest
 from unittest import mock
 
-from src.app.shared.infra import abst_chat
+from src.app.chat.services import abst_chat
 
 
 class TestAbstChatUtils(unittest.IsolatedAsyncioTestCase):

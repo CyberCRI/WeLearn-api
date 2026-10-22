@@ -80,9 +80,9 @@ JSON = {
     new=mock.MagicMock(return_value=True),
 )
 @mock.patch(
-    "src.app.shared.infra.abst_chat.AbstractChat._detect_language",
+    "src.app.chat.services.abst_chat.AbstractChat._detect_language",
 )
-@mock.patch("src.app.shared.infra.abst_chat.AbstractChat.chat_message")
+@mock.patch("src.app.chat.services.abst_chat.AbstractChat.chat_message")
 class QnATests(unittest.IsolatedAsyncioTestCase):
     def setUp(self):
         backoff.on_exception = MagicMock()
@@ -180,7 +180,7 @@ class QnATests(unittest.IsolatedAsyncioTestCase):
         self, mock_db_session, mock_chat_completion, mock__detect_language
     ):
         with mock.patch(
-            "src.app.shared.infra.abst_chat.AbstractChat.get_new_questions",
+            "src.app.chat.services.abst_chat.AbstractChat.get_new_questions",
             return_value={"NEW_QUESTIONS": ["Your reformulated question"]},
         ) as new_questions_mock:
             mock__detect_language.return_value = {"ISO_CODE": "en"}
@@ -200,7 +200,7 @@ class QnATests(unittest.IsolatedAsyncioTestCase):
 
     async def test_stream(self, *mocks):
         with mock.patch(
-            "src.app.shared.infra.abst_chat.AbstractChat.chat_message",
+            "src.app.chat.services.abst_chat.AbstractChat.chat_message",
         ) as stream_mock:
             with TestClient(app) as client:
                 response = client.post(
@@ -250,7 +250,7 @@ class QnATests(unittest.IsolatedAsyncioTestCase):
         "src.app.shared.infra.security.check_api_key_sync",
         new=mock.MagicMock(return_value=True),
     )
-    @mock.patch("src.app.shared.infra.abst_chat.AbstractChat.agent_message")
+    @mock.patch("src.app.chat.services.abst_chat.AbstractChat.agent_message")
     def test_chat_agent(self, agent_message_mock, *mocks):
         agent_message_mock.return_value = {
             "messages": [
@@ -279,7 +279,7 @@ class QnATests(unittest.IsolatedAsyncioTestCase):
         "src.app.shared.infra.security.check_api_key_sync",
         new=mock.MagicMock(return_value=True),
     )
-    @mock.patch("src.app.shared.infra.abst_chat.AbstractChat.agent_message")
+    @mock.patch("src.app.chat.services.abst_chat.AbstractChat.agent_message")
     def test_chat_agent_returns_only_latest_tool_call_docs(
         self, agent_message_mock, *mocks
     ):
@@ -338,7 +338,7 @@ class QnATests(unittest.IsolatedAsyncioTestCase):
         "src.app.shared.infra.security.check_api_key_sync",
         new=mock.MagicMock(return_value=True),
     )
-    @mock.patch("src.app.shared.infra.abst_chat.AbstractChat.agent_message")
+    @mock.patch("src.app.chat.services.abst_chat.AbstractChat.agent_message")
     def test_chat_agent_reuses_docs_when_no_new_search(
         self, agent_message_mock, *mocks
     ):
@@ -385,13 +385,11 @@ class QnATests(unittest.IsolatedAsyncioTestCase):
         new=mock.MagicMock(return_value=True),
     )
     @mock.patch(
-        "src.app.api.api_v1.endpoints.chat_utils.AsyncPostgresSaver",
+        "src.app.chat.services.chat_utils.AsyncPostgresSaver",
         return_value=InMemorySaver(),
     )
-    @mock.patch(
-        "src.app.api.api_v1.endpoints.chat_utils.psycopg.AsyncConnection.connect"
-    )
-    @mock.patch("src.app.shared.infra.abst_chat.AbstractChat.agent_message")
+    @mock.patch("src.app.chat.services.chat_utils.psycopg.AsyncConnection.connect")
+    @mock.patch("src.app.chat.services.abst_chat.AbstractChat.agent_message")
     def test_chat_agent_stream(self, agent_message_mock, connect_mock, *mocks):
         fake_conn = mock.AsyncMock()
         # async with await AsyncConnection.connect(...) as conn:

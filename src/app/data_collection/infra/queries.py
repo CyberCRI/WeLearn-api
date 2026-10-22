@@ -14,7 +14,7 @@ from welearn_database.data.models import (
     ReturnedDocument,
 )
 
-from src.app.models.chat import Role
+from src.app.chat.domain.models import Role
 from src.app.shared.domain.documents import (
     EnhancedDocumentSlice,
     EnhancedDocumentSlicePayloadModel,

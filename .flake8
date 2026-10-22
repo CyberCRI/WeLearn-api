@@ -20,6 +20,6 @@ exclude =
 max-complexity = 12
 max-line-length = 88
 per-file-ignores =
-    src/app/services/prompts.py: E501, E266,
+    src/app/chat/services/prompts.py: E501, E266,
     src/app/tests/*: E501
     src/app/api/api_v1/endpoints/search.py: C901

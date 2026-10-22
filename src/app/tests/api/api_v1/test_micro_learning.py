@@ -21,13 +21,13 @@ class AsyncMock(mock.MagicMock):
 )
 class MicroLearningTests(unittest.IsolatedAsyncioTestCase):
     @mock.patch(
-        "src.app.api.api_v1.endpoints.micro_learning.collection_and_model_id_according_lang",
+        "src.app.micro_learning.api.router.collection_and_model_id_according_lang",
         new_callable=AsyncMock,
     )
-    @mock.patch("src.app.api.api_v1.endpoints.micro_learning.get_context_documents")
-    @mock.patch("src.app.api.api_v1.endpoints.micro_learning.get_subject")
+    @mock.patch("src.app.micro_learning.api.router.get_context_documents")
+    @mock.patch("src.app.micro_learning.api.router.get_subject")
     @mock.patch("src.app.search.services.search.SearchService.search")
-    @mock.patch("src.app.api.api_v1.endpoints.micro_learning.convert_embedding_bytes")
+    @mock.patch("src.app.micro_learning.api.router.convert_embedding_bytes")
     async def test_get_full_journey(
         self,
         mock_convert_embedding,
@@ -91,10 +91,10 @@ class MicroLearningTests(unittest.IsolatedAsyncioTestCase):
             self.assertEqual(len(response.json()["target"]), 2)
 
     @mock.patch(
-        "src.app.api.api_v1.endpoints.micro_learning.collection_and_model_id_according_lang",
+        "src.app.micro_learning.api.router.collection_and_model_id_according_lang",
         new_callable=AsyncMock,
     )
-    @mock.patch("src.app.api.api_v1.endpoints.micro_learning.get_subjects")
+    @mock.patch("src.app.micro_learning.api.router.get_subjects")
     async def test_get_subject_list(
         self, mock_get_subjects, mock_collection_and_model_id_according_lang
     ):
