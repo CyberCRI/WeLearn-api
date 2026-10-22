@@ -9,8 +9,8 @@ from fastapi.encoders import jsonable_encoder
 from langgraph.checkpoint.postgres.aio import AsyncPostgresSaver
 from psycopg.rows import AsyncRowFactory, DictRow
 
+from src.app.chat.domain import models
 from src.app.chat.services.helpers import linkify_missing_citations
-from src.app.models import chat as models
 from src.app.search.services.search import SearchService
 from src.app.shared.utils.logger import logger as utils_logger
 

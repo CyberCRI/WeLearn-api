@@ -28,7 +28,7 @@ MOCK_RESULT = [
     new=mock.MagicMock(return_value=True),
 )
 class TestMetricEndpoint(unittest.IsolatedAsyncioTestCase):
-    @mock.patch("src.app.api.api_v1.endpoints.metric.get_document_qty_table_info_sync")
+    @mock.patch("src.app.metric.api.router.get_document_qty_table_info_sync")
     async def test_nb_docs_info_per_corpus_ok(self, mock_get_info):
         mock_get_info.return_value = MOCK_RESULT
         response = client.get(
@@ -45,7 +45,7 @@ class TestMetricEndpoint(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(data[1]["corpus"], "corpus2")
         self.assertEqual(data[1]["qty_total"], 0)
 
-    @mock.patch("src.app.api.api_v1.endpoints.metric.get_document_qty_table_info_sync")
+    @mock.patch("src.app.metric.api.router.get_document_qty_table_info_sync")
     async def test_nb_docs_info_per_corpus_empty(self, mock_get_info):
         mock_get_info.return_value = []
         response = client.get(
@@ -55,7 +55,7 @@ class TestMetricEndpoint(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(response.status_code, 500)
         self.assertEqual(response.json(), [])
 
-    @mock.patch("src.app.api.api_v1.endpoints.metric.get_document_qty_table_info_sync")
+    @mock.patch("src.app.metric.api.router.get_document_qty_table_info_sync")
     async def test_nb_docs_info_per_corpus_none(self, mock_get_info):
         mock_get_info.return_value = None
         response = client.get(
@@ -65,7 +65,7 @@ class TestMetricEndpoint(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(response.status_code, 500)
         self.assertEqual(response.json(), [])
 
-    @mock.patch("src.app.api.api_v1.endpoints.metric.get_document_qty_table_info_sync")
+    @mock.patch("src.app.metric.api.router.get_document_qty_table_info_sync")
     async def test_nb_docs_info_per_corpus_no_content(self, mock_get_info):
         result = []
         mock_get_info.return_value = result
@@ -75,7 +75,7 @@ class TestMetricEndpoint(unittest.IsolatedAsyncioTestCase):
         )
         self.assertEqual(response.status_code, 500)
 
-    @mock.patch("src.app.api.api_v1.endpoints.metric.get_document_qty_table_info_sync")
+    @mock.patch("src.app.metric.api.router.get_document_qty_table_info_sync")
     async def test_nb_docs_info_per_corpus_content_empty(self, mock_get_info):
         partial_result = [
             (
@@ -91,7 +91,7 @@ class TestMetricEndpoint(unittest.IsolatedAsyncioTestCase):
         )
         self.assertEqual(response.status_code, 500)
 
-    @mock.patch("src.app.api.api_v1.endpoints.metric.get_document_qty_table_info_sync")
+    @mock.patch("src.app.metric.api.router.get_document_qty_table_info_sync")
     async def test_nb_docs_info_per_corpus_partial(self, mock_get_info):
         partial_result = [
             (

@@ -2,7 +2,7 @@ import unittest
 import uuid
 from unittest import mock
 
-from src.app.api.api_v1.endpoints import chat_utils
+from src.app.chat.services import chat_utils
 
 
 class TestChatUtils(unittest.TestCase):
@@ -74,7 +74,7 @@ class TestChatUtils(unittest.TestCase):
 
 
 class TestStreamAgentWithMemory(unittest.IsolatedAsyncioTestCase):
-    @mock.patch("src.app.api.api_v1.endpoints.chat_utils.AsyncPostgresSaver")
+    @mock.patch("src.app.chat.services.chat_utils.AsyncPostgresSaver")
     @mock.patch("psycopg.AsyncConnection.connect", new_callable=mock.AsyncMock)
     async def test_skips_state_fetch_when_tool_call_happened_this_turn(
         self, mock_connect, mock_saver
@@ -103,7 +103,7 @@ class TestStreamAgentWithMemory(unittest.IsolatedAsyncioTestCase):
         chatfactory.agent_get_latest_docs.assert_not_called()
         self.assertEqual(len(chunks), 2)
 
-    @mock.patch("src.app.api.api_v1.endpoints.chat_utils.AsyncPostgresSaver")
+    @mock.patch("src.app.chat.services.chat_utils.AsyncPostgresSaver")
     @mock.patch("psycopg.AsyncConnection.connect", new_callable=mock.AsyncMock)
     async def test_falls_back_to_latest_docs_when_no_tool_call_this_turn(
         self, mock_connect, mock_saver
