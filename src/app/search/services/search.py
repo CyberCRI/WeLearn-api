@@ -28,12 +28,12 @@ from src.app.search.models.search import (
     SearchMethods,
 )
 from src.app.services.data_quality import DataQualityChecker
-from src.app.services.helpers import convert_embedding_bytes
 from src.app.shared.domain.collections import Collection
 from src.app.shared.domain.documents import EnhancedDocumentSlice, FullContainer
 from src.app.shared.domain.exceptions import CollectionNotFoundError, ModelNotFoundError
 from src.app.shared.infra.queries import get_embeddings_model_id_according_name
 from src.app.shared.utils.decorators import log_time_and_error, log_time_and_error_sync
+from src.app.shared.utils.embeddings import convert_embedding_bytes
 from src.app.shared.utils.logger import logger as logger_utils
 
 logger = logger_utils(__name__)

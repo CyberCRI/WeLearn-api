@@ -24,10 +24,10 @@ from src.app.api.api_v1.endpoints.chat_utils import (
     _sse_wrap,
     _stream_agent_response,
 )
+from src.app.chat.services.helpers import latest_tool_docs, linkify_missing_citations
 from src.app.models import chat as models
 from src.app.search.services.search import SearchService, get_search_service
 from src.app.services.data_collection import get_data_collection_service
-from src.app.services.helpers import latest_tool_docs, linkify_missing_citations
 from src.app.shared.domain.constants import subjects as subjectsDict
 from src.app.shared.domain.exceptions import (
     EmptyQueryError,
