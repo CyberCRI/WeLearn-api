@@ -3,8 +3,8 @@ from fastapi.concurrency import run_in_threadpool
 from starlette.middleware.base import BaseHTTPMiddleware
 
 from src.app.services.sql_db.queries import register_endpoint
+from src.app.shared.utils.logger import logger as logger_utils
 from src.app.shared.utils.requests import extract_session_cookie
-from src.app.utils.logger import logger as logger_utils
 
 logger = logger_utils(__name__)
 

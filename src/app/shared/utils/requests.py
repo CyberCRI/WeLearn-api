@@ -4,7 +4,7 @@ from uuid import UUID
 from fastapi import Request
 
 from src.app.shared.domain.constants import SESSION_COOKIE_NAME
-from src.app.utils.logger import logger as utils_logger
+from src.app.shared.utils.logger import logger as utils_logger
 
 logger = utils_logger(__name__)
 

@@ -5,12 +5,12 @@ from unittest import IsolatedAsyncioTestCase, mock
 
 from qdrant_client.models import CollectionDescription, CollectionsResponse
 
-from src.app.models.collections import Collection
-from src.app.models.documents import (
+from src.app.search.services.search import SearchService, concatenate_same_doc_id_slices
+from src.app.shared.domain.collections import Collection
+from src.app.shared.domain.documents import (
     EnhancedDocumentSlice,
     EnhancedDocumentSlicePayloadModel,
 )
-from src.app.search.services.search import SearchService, concatenate_same_doc_id_slices
 
 os.environ["USE_CACHED_SETTINGS"] = "False"
 

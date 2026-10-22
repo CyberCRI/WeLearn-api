@@ -8,13 +8,13 @@ from qdrant_client.http import models
 from welearn_database.data.models import Corpus, WeLearnDocument
 
 from src.app.core.config import settings
-from src.app.models import collections
-from src.app.models.documents import (
+from src.app.search.models.search import EnhancedSearchQuery
+from src.app.search.services.search import SearchService, sort_using_mmr
+from src.app.shared.domain import collections
+from src.app.shared.domain.documents import (
     EnhancedDocumentSlice,
     EnhancedDocumentSlicePayloadModel,
 )
-from src.app.search.models.search import EnhancedSearchQuery
-from src.app.search.services.search import SearchService, sort_using_mmr
 from src.app.shared.domain.exceptions import CollectionNotFoundError, ModelNotFoundError
 from src.main import app
 
@@ -155,7 +155,7 @@ mocked_documents = [
 long_query = "français with a very long sentence to test what you are saying and if the issue is the size of the string"  # noqa: E501
 
 
-@patch("src.app.services.sql_db.sql_service.session_maker")
+@patch("src.app.shared.infra.db.session_maker")
 @mock.patch(
     "src.app.shared.infra.security.check_api_key_sync",
     new=mock.MagicMock(return_value=True),
@@ -244,7 +244,7 @@ class SearchTests(IsolatedAsyncioTestCase):
             self.assertEqual(response.status_code, 404)
 
 
-@patch("src.app.services.sql_db.sql_service.session_maker")
+@patch("src.app.shared.infra.db.session_maker")
 @patch(
     "src.app.shared.infra.security.check_api_key_sync",
     new=mock.MagicMock(return_value=True),

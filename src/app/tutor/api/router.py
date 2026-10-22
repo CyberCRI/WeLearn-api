@@ -22,6 +22,7 @@ from src.app.services.data_collection import get_data_collection_service
 from src.app.shared.domain.exceptions import NoResultsError
 from src.app.shared.infra.abst_chat import get_chat_service
 from src.app.shared.utils.dependencies import get_settings
+from src.app.shared.utils.logger import logger as utils_logger
 from src.app.shared.utils.requests import extract_session_cookie
 from src.app.shared.utils.utils import get_files_content
 from src.app.tutor.service.models import (
@@ -48,7 +49,6 @@ from src.app.tutor.service.prompts import (
     summaries_schema,
 )
 from src.app.tutor.service.tutor import apply_feedback, tutor_manager
-from src.app.utils.logger import logger as utils_logger
 
 logger = utils_logger(__name__)
 

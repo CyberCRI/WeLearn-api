@@ -15,8 +15,6 @@ from qdrant_client.http import models as http_models
 from sklearn.metrics.pairwise import cosine_similarity
 from transformers import AutoModel, AutoTokenizer
 
-from src.app.models.collections import Collection
-from src.app.models.documents import EnhancedDocumentSlice, FullContainer
 from src.app.search.models.search import (
     EnhancedSearchQuery,
     FilterDefinition,
@@ -32,9 +30,11 @@ from src.app.services.sql_db.queries import (
     get_embeddings_model_id_according_name,
     get_subject,
 )
+from src.app.shared.domain.collections import Collection
+from src.app.shared.domain.documents import EnhancedDocumentSlice, FullContainer
 from src.app.shared.domain.exceptions import CollectionNotFoundError, ModelNotFoundError
-from src.app.utils.decorators import log_time_and_error, log_time_and_error_sync
-from src.app.utils.logger import logger as logger_utils
+from src.app.shared.utils.decorators import log_time_and_error, log_time_and_error_sync
+from src.app.shared.utils.logger import logger as logger_utils
 
 logger = logger_utils(__name__)
 

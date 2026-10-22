@@ -1,6 +1,6 @@
 from fastapi import HTTPException, Response, status
 
-from src.app.utils.logger import logger as logger_utils
+from src.app.shared.utils.logger import logger as logger_utils
 
 logger = logger_utils(__name__)
 

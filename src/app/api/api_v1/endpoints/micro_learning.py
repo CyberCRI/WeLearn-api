@@ -2,7 +2,6 @@ import numpy
 from fastapi import APIRouter, Depends, HTTPException
 from welearn_database.data.models import ContextDocument
 
-from src.app.models.documents import JourneySectionType
 from src.app.search.models.search import FilterDefinition, SearchFilters
 from src.app.search.services.search import SearchService, get_search_service
 from src.app.services.helpers import (
@@ -15,7 +14,8 @@ from src.app.services.sql_db.queries import (
     get_subject,
     get_subjects,
 )
-from src.app.utils.logger import logger as logger_utils
+from src.app.shared.domain.documents import JourneySectionType
+from src.app.shared.utils.logger import logger as logger_utils
 
 router = APIRouter()
 logger = logger_utils(__name__)

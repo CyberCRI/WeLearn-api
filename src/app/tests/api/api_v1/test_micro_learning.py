@@ -6,7 +6,7 @@ from fastapi.testclient import TestClient
 from welearn_database.data.models import ContextDocument, EmbeddingModel
 
 from src.app.core.config import settings
-from src.app.models.collections import Collection
+from src.app.shared.domain.collections import Collection
 from src.main import app
 
 

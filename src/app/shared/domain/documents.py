@@ -8,7 +8,7 @@ from pydantic import BaseModel
 from qdrant_client.http.models import ScoredPoint
 from welearn_database.data.models import Corpus, DocumentSlice, Sdg, WeLearnDocument
 
-from src.app.models.collections import CorpusRelation
+from src.app.shared.domain.collections import CorpusRelation
 
 
 class Collection_schema(BaseModel):
