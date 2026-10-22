@@ -3,20 +3,6 @@ import uuid
 from fastapi import APIRouter, HTTPException, Request, Response
 from fastapi.concurrency import run_in_threadpool
 
-from src.app.services.keycloak import (
-    KeycloakTokenError,
-    KeycloakUnavailableError,
-    extract_bearer_token,
-)
-from src.app.services.sql_db.queries_user import (
-    add_institution_data_to_user_sync,
-    add_user_bookmark_sync,
-    delete_user_bookmark_sync,
-    delete_user_bookmarks_sync,
-    get_or_create_session_sync,
-    get_or_create_user_sync,
-    get_user_bookmarks_sync,
-)
 from src.app.shared.domain.constants import SESSION_COOKIE_NAME, SESSION_TTL_SECONDS
 from src.app.shared.domain.exceptions import UserNotFoundError
 from src.app.shared.utils.dependencies import get_settings
@@ -24,6 +10,20 @@ from src.app.shared.utils.logger import logger as logger_utils
 from src.app.shared.utils.requests import (
     extract_origin_from_request,
     extract_session_cookie,
+)
+from src.app.user.infra.keycloak import (
+    KeycloakTokenError,
+    KeycloakUnavailableError,
+    extract_bearer_token,
+)
+from src.app.user.infra.queries import (
+    add_institution_data_to_user_sync,
+    add_user_bookmark_sync,
+    delete_user_bookmark_sync,
+    delete_user_bookmarks_sync,
+    get_or_create_session_sync,
+    get_or_create_user_sync,
+    get_user_bookmarks_sync,
 )
 from src.app.user.models.models import InstitutionData
 from src.app.user.utils.utils import (

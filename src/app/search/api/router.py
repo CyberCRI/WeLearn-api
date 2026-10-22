@@ -13,6 +13,11 @@ from fastapi import (
 from fastapi.concurrency import run_in_threadpool
 
 from src.app.search.helpers.search_helpers import search_multi_inputs
+from src.app.search.infra.queries import (
+    get_collections_info_sync,
+    get_documents_payload_by_ids_sync,
+    get_nb_docs_sync,
+)
 from src.app.search.models.search import (
     DocumentSearchQuery,
     EnhancedSearchQuery,
@@ -23,11 +28,6 @@ from src.app.search.models.search import (
 )
 from src.app.search.services.search import SearchService, get_search_service
 from src.app.services.data_collection import get_data_collection_service
-from src.app.services.sql_db.queries import (
-    get_collections_info_sync,
-    get_documents_payload_by_ids_sync,
-    get_nb_docs_sync,
-)
 from src.app.shared.domain.documents import EnhancedDocumentSlice
 from src.app.shared.domain.exceptions import (
     CollectionNotFoundError,

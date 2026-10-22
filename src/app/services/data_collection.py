@@ -9,7 +9,7 @@ from fastapi.concurrency import run_in_threadpool
 from qdrant_client.models import ScoredPoint
 from welearn_database.data.models import QuestionType
 
-from src.app.services.sql_db.queries import (
+from src.app.data_collection.infra.queries import (
     get_current_data_collection_campaign,
     get_last_syllabus_conversation_id,
     get_last_syllabus_id_for_user,
@@ -21,11 +21,11 @@ from src.app.services.sql_db.queries import (
     write_returned_docs,
     write_user_query,
 )
-from src.app.services.sql_db.queries_user import get_user_from_session_id
 from src.app.shared.domain.documents import EnhancedDocumentSlice
 from src.app.shared.utils.dependencies import get_settings
 from src.app.shared.utils.logger import logger as utils_logger
 from src.app.tutor.service.models import SyllabusFeedback, TutorSyllabusRequest
+from src.app.user.infra.queries import get_user_from_session_id
 
 logger = utils_logger(__name__)
 

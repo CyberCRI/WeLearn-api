@@ -74,7 +74,7 @@ JSON = {
 }
 
 
-@mock.patch("src.app.services.sql_db.queries.session_maker")
+@mock.patch("src.app.data_collection.infra.queries.session_maker")
 @mock.patch(
     "src.app.shared.infra.security.check_api_key_sync",
     new=mock.MagicMock(return_value=True),

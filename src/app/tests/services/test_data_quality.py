@@ -121,7 +121,7 @@ class TestRemoveDuplicates(unittest.TestCase):
         # last duplicate of each group is kept
         self.assertCountEqual(result, [containers[1], containers[2]])
 
-    @patch("src.app.services.sql_db.queries.session_maker")
+    @patch("src.app.search.infra.queries.session_maker")
     def test__log_duplicates_containers_in_db(self, mocked_session_maker):
         s_maker = sessionmaker(self.engine)
         mocked_session_maker.return_value = s_maker()

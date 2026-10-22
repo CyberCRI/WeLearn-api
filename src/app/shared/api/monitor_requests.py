@@ -2,7 +2,7 @@ from fastapi import Request
 from fastapi.concurrency import run_in_threadpool
 from starlette.middleware.base import BaseHTTPMiddleware
 
-from src.app.services.sql_db.queries import register_endpoint
+from src.app.shared.infra.queries import register_endpoint
 from src.app.shared.utils.logger import logger as logger_utils
 from src.app.shared.utils.requests import extract_session_cookie
 

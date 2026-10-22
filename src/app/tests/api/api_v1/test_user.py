@@ -7,8 +7,8 @@ from fastapi.testclient import TestClient
 from welearn_database.data.models import InferredUser, Session
 
 from src.app.core.config import settings
-from src.app.services.keycloak import KeycloakTokenError, KeycloakUnavailableError
 from src.app.shared.domain.exceptions import UserNotFoundError
+from src.app.user.infra.keycloak import KeycloakTokenError, KeycloakUnavailableError
 from src.main import app
 
 client = TestClient(app)
@@ -81,7 +81,7 @@ class UserApiTests(unittest.IsolatedAsyncioTestCase):
 
         self.assertEqual(response.status_code, 503)
 
-    @mock.patch("src.app.services.sql_db.queries_user.session_maker")
+    @mock.patch("src.app.user.infra.queries.session_maker")
     async def test_create_user_when_not_exists(self, session_maker_mock, *mocks):
         """Si user_id non fourni, crée un nouvel utilisateur"""
         session = MagicMock()
@@ -100,7 +100,7 @@ class UserApiTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(user_in_db.id, response.json()["user_id"])
         self.assertIsNone(user_in_db.origin_referrer)
 
-    @mock.patch("src.app.services.sql_db.queries_user.session_maker")
+    @mock.patch("src.app.user.infra.queries.session_maker")
     async def test_create_user_when_not_exists_with_referer(
         self, session_maker_mock, *mocks
     ):
@@ -121,7 +121,7 @@ class UserApiTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(user_in_db.id, response.json()["user_id"])
         self.assertEqual(user_in_db.origin_referrer, "test_referer")
 
-    @mock.patch("src.app.services.sql_db.queries_user.session_maker")
+    @mock.patch("src.app.user.infra.queries.session_maker")
     async def test_create_user_when_already_exists(self, session_maker_mock, *mocks):
         """Si user_id fourni et trouvé, retourne le même id sans créer"""
         session = MagicMock()
@@ -143,7 +143,7 @@ class UserApiTests(unittest.IsolatedAsyncioTestCase):
         session.add.assert_not_called()
         session.commit.assert_not_called()
 
-    @mock.patch("src.app.services.sql_db.queries_user.session_maker")
+    @mock.patch("src.app.user.infra.queries.session_maker")
     async def test_create_user_when_already_exists_with_referer(
         self, session_maker_mock, *mocks
     ):
@@ -170,7 +170,7 @@ class UserApiTests(unittest.IsolatedAsyncioTestCase):
         session.add.assert_not_called()
         session.commit.assert_not_called()
 
-    @mock.patch("src.app.services.sql_db.queries_user.session_maker")
+    @mock.patch("src.app.user.infra.queries.session_maker")
     async def test_create_user_handles_exception(self, session_maker_mock, *mocks):
         """Simule une erreur DB et vérifie que l’API renvoie 500"""
         session = MagicMock()
@@ -185,7 +185,7 @@ class UserApiTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(response.status_code, 500)
         self.assertIn("db error", response.json()["detail"])
 
-    @mock.patch("src.app.services.sql_db.queries_user.session_maker")
+    @mock.patch("src.app.user.infra.queries.session_maker")
     async def test_create_session_user_not_found(self, session_maker_mock, *mocks):
         """User inexistant -> 404"""
         session = MagicMock()
@@ -200,7 +200,7 @@ class UserApiTests(unittest.IsolatedAsyncioTestCase):
         )
         self.assertEqual(response.status_code, 404)
 
-    @mock.patch("src.app.services.sql_db.queries_user.session_maker")
+    @mock.patch("src.app.user.infra.queries.session_maker")
     async def test_create_session_existing_valid_session(
         self, session_maker_mock, *mocks
     ):
@@ -227,7 +227,7 @@ class UserApiTests(unittest.IsolatedAsyncioTestCase):
             response.json(), {"session_id": "bdb62bb2-1fe5-4d14-92fd-60a041355aea"}
         )
 
-    @mock.patch("src.app.services.sql_db.queries_user.session_maker")
+    @mock.patch("src.app.user.infra.queries.session_maker")
     async def test_create_session_create_new_when_not_found(
         self, session_maker_mock, *mocks
     ):
@@ -246,7 +246,7 @@ class UserApiTests(unittest.IsolatedAsyncioTestCase):
         session.add.assert_called_once()
         session.commit.assert_called_once()
 
-    @mock.patch("src.app.services.sql_db.queries_user.session_maker")
+    @mock.patch("src.app.user.infra.queries.session_maker")
     async def test_create_session_create_new_when_not_found_with_referer(
         self, session_maker_mock, *mocks
     ):
@@ -272,7 +272,7 @@ class UserApiTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(response.status_code, 200)
         self.assertEqual(session_in_db.origin_referrer, "test_referer")
 
-    @mock.patch("src.app.services.sql_db.queries_user.session_maker")
+    @mock.patch("src.app.user.infra.queries.session_maker")
     async def test_get_user_bookmarks_user_not_found(self, session_maker_mock, *mocks):
         """Bookmarks pour user inexistant -> 404"""
         session = MagicMock()
@@ -287,7 +287,7 @@ class UserApiTests(unittest.IsolatedAsyncioTestCase):
         )
         self.assertEqual(response.status_code, 404)
 
-    @mock.patch("src.app.services.sql_db.queries_user.session_maker")
+    @mock.patch("src.app.user.infra.queries.session_maker")
     async def test_get_user_bookmarks_success_empty(self, session_maker_mock, *mocks):
         """Bookmarks existants -> liste vide si pas de bookmarks"""
         session = MagicMock()
