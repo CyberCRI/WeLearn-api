@@ -5,7 +5,7 @@ from unittest.mock import MagicMock, patch
 from fastapi import HTTPException
 from starlette.requests import Request
 
-from src.app.services.data_collection import (
+from src.app.data_collection.services.data_collection import (
     DataCollection,
     _cache,
     get_data_collection_service,
@@ -22,7 +22,9 @@ class TestDataCollectionCampaignState(unittest.TestCase):
         _cache["is_campaign_active"] = None
         _cache["expires"] = None
 
-    @patch("src.app.services.data_collection.get_current_data_collection_campaign")
+    @patch(
+        "src.app.data_collection.services.data_collection.get_current_data_collection_campaign"
+    )
     def test_campaign_active(self, mock_get_campaign):
         mock_campaign = MagicMock()
         mock_campaign.is_active = True
@@ -32,7 +34,9 @@ class TestDataCollectionCampaignState(unittest.TestCase):
 
         self.assertTrue(dc.should_collect)
 
-    @patch("src.app.services.data_collection.get_current_data_collection_campaign")
+    @patch(
+        "src.app.data_collection.services.data_collection.get_current_data_collection_campaign"
+    )
     def test_campaign_inactive(self, mock_get_campaign):
         mock_campaign = MagicMock()
         mock_campaign.is_active = False
@@ -42,7 +46,9 @@ class TestDataCollectionCampaignState(unittest.TestCase):
 
         self.assertFalse(dc.should_collect)
 
-    @patch("src.app.services.data_collection.get_current_data_collection_campaign")
+    @patch(
+        "src.app.data_collection.services.data_collection.get_current_data_collection_campaign"
+    )
     def test_non_workshop_origin(self, mock_get_campaign):
         mock_campaign = MagicMock()
         mock_campaign.is_active = True
@@ -54,7 +60,7 @@ class TestDataCollectionCampaignState(unittest.TestCase):
 
 
 class TestGetDataCollectionService(unittest.TestCase):
-    @patch("src.app.services.data_collection.DataCollection")
+    @patch("src.app.data_collection.services.data_collection.DataCollection")
     def test_origin_is_optional(self, mock_data_collection):
         request = Request(
             {
@@ -67,7 +73,7 @@ class TestGetDataCollectionService(unittest.TestCase):
 
         mock_data_collection.assert_called_once_with(origin="")
 
-    @patch("src.app.services.data_collection.DataCollection")
+    @patch("src.app.data_collection.services.data_collection.DataCollection")
     def test_origin_is_normalized(self, mock_data_collection):
         request = Request(
             {
@@ -87,13 +93,15 @@ class TestRegisterChatData(unittest.IsolatedAsyncioTestCase):
         _cache["expires"] = None
 
     @patch(
-        "src.app.services.data_collection.run_in_threadpool",
+        "src.app.data_collection.services.data_collection.run_in_threadpool",
         side_effect=fake_run_in_threadpool,
     )
-    @patch("src.app.services.data_collection.write_chat_answer")
-    @patch("src.app.services.data_collection.write_user_query")
-    @patch("src.app.services.data_collection.get_user_from_session_id")
-    @patch("src.app.services.data_collection.get_current_data_collection_campaign")
+    @patch("src.app.data_collection.services.data_collection.write_chat_answer")
+    @patch("src.app.data_collection.services.data_collection.write_user_query")
+    @patch("src.app.data_collection.services.data_collection.get_user_from_session_id")
+    @patch(
+        "src.app.data_collection.services.data_collection.get_current_data_collection_campaign"
+    )
     async def test_register_chat_data_success(
         self, mock_campaign, mock_get_user, mock_write_query, mock_write_answer, _
     ):
@@ -120,13 +128,15 @@ class TestRegisterChatData(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(result, (conversation_id, message_id))
 
     @patch(
-        "src.app.services.data_collection.run_in_threadpool",
+        "src.app.data_collection.services.data_collection.run_in_threadpool",
         side_effect=fake_run_in_threadpool,
     )
-    @patch("src.app.services.data_collection.write_chat_answer")
-    @patch("src.app.services.data_collection.write_user_query")
-    @patch("src.app.services.data_collection.get_user_from_session_id")
-    @patch("src.app.services.data_collection.get_current_data_collection_campaign")
+    @patch("src.app.data_collection.services.data_collection.write_chat_answer")
+    @patch("src.app.data_collection.services.data_collection.write_user_query")
+    @patch("src.app.data_collection.services.data_collection.get_user_from_session_id")
+    @patch(
+        "src.app.data_collection.services.data_collection.get_current_data_collection_campaign"
+    )
     async def test_register_chat_data_no_session(self, *args):
         dc = DataCollection(origin="workshop.example.com")
 
@@ -142,13 +152,16 @@ class TestRegisterChatData(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(ctx.exception.status_code, 401)
 
     @patch(
-        "src.app.services.data_collection.run_in_threadpool",
+        "src.app.data_collection.services.data_collection.run_in_threadpool",
         side_effect=fake_run_in_threadpool,
     )
     @patch(
-        "src.app.services.data_collection.get_user_from_session_id", return_value=None
+        "src.app.data_collection.services.data_collection.get_user_from_session_id",
+        return_value=None,
     )
-    @patch("src.app.services.data_collection.get_current_data_collection_campaign")
+    @patch(
+        "src.app.data_collection.services.data_collection.get_current_data_collection_campaign"
+    )
     async def test_register_chat_data_user_not_found(self, mock_campaign, _, __):
         mock_campaign.return_value = MagicMock(is_active=True)
 
@@ -168,11 +181,15 @@ class TestRegisterChatData(unittest.IsolatedAsyncioTestCase):
 
 class TestRegisterDocumentClick(unittest.IsolatedAsyncioTestCase):
     @patch(
-        "src.app.services.data_collection.run_in_threadpool",
+        "src.app.data_collection.services.data_collection.run_in_threadpool",
         side_effect=fake_run_in_threadpool,
     )
-    @patch("src.app.services.data_collection.update_returned_document_click")
-    @patch("src.app.services.data_collection.get_current_data_collection_campaign")
+    @patch(
+        "src.app.data_collection.services.data_collection.update_returned_document_click"
+    )
+    @patch(
+        "src.app.data_collection.services.data_collection.get_current_data_collection_campaign"
+    )
     async def test_register_document_click(self, mock_campaign, mock_update, _):
         mock_campaign.return_value = MagicMock(is_active=True)
 
@@ -188,13 +205,19 @@ class TestRegisterDocumentClick(unittest.IsolatedAsyncioTestCase):
 
 class TestRegisterDownloadSyllabus(unittest.IsolatedAsyncioTestCase):
     @patch(
-        "src.app.services.data_collection.run_in_threadpool",
+        "src.app.data_collection.services.data_collection.run_in_threadpool",
         side_effect=fake_run_in_threadpool,
     )
-    @patch("src.app.services.data_collection.update_syllabus_retrieved_status")
-    @patch("src.app.services.data_collection.get_last_syllabus_id_for_user")
-    @patch("src.app.services.data_collection.get_user_from_session_id")
-    @patch("src.app.services.data_collection.get_current_data_collection_campaign")
+    @patch(
+        "src.app.data_collection.services.data_collection.update_syllabus_retrieved_status"
+    )
+    @patch(
+        "src.app.data_collection.services.data_collection.get_last_syllabus_id_for_user"
+    )
+    @patch("src.app.data_collection.services.data_collection.get_user_from_session_id")
+    @patch(
+        "src.app.data_collection.services.data_collection.get_current_data_collection_campaign"
+    )
     async def test_register_syllabus_download(
         self,
         mock_campaign,
@@ -220,13 +243,17 @@ class TestRegisterDownloadSyllabus(unittest.IsolatedAsyncioTestCase):
 
 class TestRegisterSyllabus(unittest.IsolatedAsyncioTestCase):
     @patch(
-        "src.app.services.data_collection.run_in_threadpool",
+        "src.app.data_collection.services.data_collection.run_in_threadpool",
         side_effect=fake_run_in_threadpool,
     )
-    @patch("src.app.services.data_collection.write_user_query")
-    @patch("src.app.services.data_collection.get_last_syllabus_conversation_id")
-    @patch("src.app.services.data_collection.get_user_from_session_id")
-    @patch("src.app.services.data_collection.get_current_data_collection_campaign")
+    @patch("src.app.data_collection.services.data_collection.write_user_query")
+    @patch(
+        "src.app.data_collection.services.data_collection.get_last_syllabus_conversation_id"
+    )
+    @patch("src.app.data_collection.services.data_collection.get_user_from_session_id")
+    @patch(
+        "src.app.data_collection.services.data_collection.get_current_data_collection_campaign"
+    )
     async def test_register_syllabus_update(
         self,
         mock_campaign,
@@ -254,14 +281,16 @@ class TestRegisterSyllabus(unittest.IsolatedAsyncioTestCase):
         )
 
     @patch(
-        "src.app.services.data_collection.run_in_threadpool",
+        "src.app.data_collection.services.data_collection.run_in_threadpool",
         side_effect=fake_run_in_threadpool,
     )
-    @patch("src.app.services.data_collection.write_returned_docs")
-    @patch("src.app.services.data_collection.write_chat_answer")
-    @patch("src.app.services.data_collection.write_user_query")
-    @patch("src.app.services.data_collection.get_user_from_session_id")
-    @patch("src.app.services.data_collection.get_current_data_collection_campaign")
+    @patch("src.app.data_collection.services.data_collection.write_returned_docs")
+    @patch("src.app.data_collection.services.data_collection.write_chat_answer")
+    @patch("src.app.data_collection.services.data_collection.write_user_query")
+    @patch("src.app.data_collection.services.data_collection.get_user_from_session_id")
+    @patch(
+        "src.app.data_collection.services.data_collection.get_current_data_collection_campaign"
+    )
     async def test_register_syllabus_data(
         self,
         mock_campaign,

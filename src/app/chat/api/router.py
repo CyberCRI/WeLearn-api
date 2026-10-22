@@ -27,8 +27,8 @@ from src.app.chat.services.chat_utils import (
     _stream_agent_response,
 )
 from src.app.chat.services.helpers import latest_tool_docs, linkify_missing_citations
+from src.app.data_collection.services.data_collection import get_data_collection_service
 from src.app.search.services.search import SearchService, get_search_service
-from src.app.services.data_collection import get_data_collection_service
 from src.app.shared.domain.constants import subjects as subjectsDict
 from src.app.shared.domain.exceptions import (
     EmptyQueryError,
