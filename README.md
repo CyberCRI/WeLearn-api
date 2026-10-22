@@ -203,12 +203,17 @@ docker-compose down
 ## Project Structure
 Here’s an overview of the project directory structure:
 
-- **`app/`**: Contains the FastAPI application code.
-- **`app/main.py`**: The entry point of the FastAPI app.
-- **`app/api/`**: Contains the different API routes.
-- **`app/models/`**: Contains the Pydantic models and database models.
-- **`app/services/`**: Contains business logic or services.
-- **`app/utils/`**: Contains utility functions used across the app.
+- **`src/main.py`**: The entry point of the FastAPI app.
+- **`src/app/`**: Contains the FastAPI application code, organised by feature.
+- **`src/app/router.py`**: Combines the routers of every feature under `/api/v1`.
+- **`src/app/core/`**: Configuration and app lifespan.
+- **`src/app/shared/`**: Code used by several features (domain models, database session, logging, security, middleware). It never imports from a feature.
+- **`src/app/<feature>/`**: One package per feature (`search`, `chat`, `tutor`, `user`, `metric`, `micro_learning`, `bibliography`, `data_collection`), split into:
+  - **`api/`**: the FastAPI router
+  - **`domain/`**: Pydantic models and enums
+  - **`services/`**: business logic
+  - **`infra/`**: database queries and external clients
+- **`src/app/baml_src/`**, **`src/app/baml_client/`**: BAML sources and the generated client (`make generate-baml`).
 - **`docker-compose.yml`**: The configuration for Docker Compose.
 - **`Dockerfile`**: The Dockerfile for building the application container.
 - **`tests/`**: Contains unit and integration tests for the application.

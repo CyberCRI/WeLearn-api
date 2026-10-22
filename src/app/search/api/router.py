@@ -1,4 +1,4 @@
-# src/app/api/api_v1/endpoints/search.py
+# src/app/search/api/router.py
 
 from fastapi import (
     APIRouter,
