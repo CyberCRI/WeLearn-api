@@ -14,7 +14,7 @@ class TestAbstChatUtils(unittest.IsolatedAsyncioTestCase):
             return_value='{"key": "value"}'
         )
         with mock.patch(
-            "src.app.services.helpers.extract_json_from_response",
+            "src.app.shared.utils.json_parsing.extract_json_from_response",
             return_value={"key": "value"},
         ):
             result = await self.chat.json_formatter_agent("bad", "schema")
@@ -151,7 +151,7 @@ class TestAbstChatUtils(unittest.IsolatedAsyncioTestCase):
     async def test_run_llm_with_json_parsing_success(self):
         self.chat.chat_client.completion = mock.AsyncMock(return_value='{"foo": "bar"}')
         with mock.patch(
-            "src.app.services.helpers.extract_json_from_response",
+            "src.app.shared.utils.json_parsing.extract_json_from_response",
             return_value={"foo": "bar"},
         ):
 
@@ -166,7 +166,7 @@ class TestAbstChatUtils(unittest.IsolatedAsyncioTestCase):
     async def test_run_llm_with_json_parsing_fallback(self):
         self.chat.chat_client.completion = mock.AsyncMock(return_value="notjson")
         with mock.patch(
-            "src.app.services.helpers.extract_json_from_response",
+            "src.app.shared.utils.json_parsing.extract_json_from_response",
             side_effect=Exception(),
         ):
             self.chat.json_formatter_agent = mock.AsyncMock(return_value={"foo": "bar"})
@@ -183,7 +183,7 @@ class TestAbstChatUtils(unittest.IsolatedAsyncioTestCase):
     async def test_run_llm_with_json_parsing_error(self):
         self.chat.chat_client.completion = mock.AsyncMock(return_value="notjson")
         with mock.patch(
-            "src.app.services.helpers.extract_json_from_response",
+            "src.app.shared.utils.json_parsing.extract_json_from_response",
             side_effect=Exception(),
         ):
             self.chat.json_formatter_agent = mock.AsyncMock(side_effect=Exception())
