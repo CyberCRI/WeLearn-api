@@ -70,6 +70,7 @@ pytest-env = "^1.0.1"
 flake8 = "^6.1.0"
 black = "^24.3.0"
 isort = "^5.12.0"
+import-linter = "^2.15"
 
 [tool.poetry.group.metrics.dependencies]
 locust = "^2.20.1"
@@ -87,3 +88,73 @@ priority = "explicit"
 [build-system]
 requires = ["poetry-core"]
 build-backend = "poetry.core.masonry.api"
+
+[tool.black]
+extend-exclude = "^/src/app/baml_client/"
+
+[tool.importlinter]
+root_package = "src"
+
+[[tool.importlinter.contracts]]
+name = "shared does not import features"
+type = "forbidden"
+source_modules = ["src.app.shared"]
+forbidden_modules = [
+    "src.app.bibliography",
+    "src.app.chat",
+    "src.app.data_collection",
+    "src.app.metric",
+    "src.app.micro_learning",
+    "src.app.search",
+    "src.app.tutor",
+    "src.app.user",
+    "src.app.router",
+]
+
+[[tool.importlinter.contracts]]
+name = "only the app router imports feature routers"
+type = "forbidden"
+source_modules = [
+    "src.app.bibliography.domain",
+    "src.app.bibliography.services",
+    "src.app.chat.domain",
+    "src.app.chat.services",
+    "src.app.data_collection.infra",
+    "src.app.data_collection.services",
+    "src.app.metric.domain",
+    "src.app.metric.infra",
+    "src.app.micro_learning.infra",
+    "src.app.micro_learning.services",
+    "src.app.search.domain",
+    "src.app.search.infra",
+    "src.app.search.services",
+    "src.app.tutor.domain",
+    "src.app.tutor.services",
+    "src.app.user.domain",
+    "src.app.user.infra",
+    "src.app.user.services",
+    "src.app.shared",
+    "src.app.core",
+]
+forbidden_modules = [
+    "src.app.bibliography.api",
+    "src.app.chat.api",
+    "src.app.metric.api",
+    "src.app.micro_learning.api",
+    "src.app.search.api",
+    "src.app.tutor.api",
+    "src.app.user.api",
+]
+
+[[tool.importlinter.contracts]]
+name = "feature routers are independent"
+type = "independence"
+modules = [
+    "src.app.bibliography.api",
+    "src.app.chat.api",
+    "src.app.metric.api",
+    "src.app.micro_learning.api",
+    "src.app.search.api",
+    "src.app.tutor.api",
+    "src.app.user.api",
+]

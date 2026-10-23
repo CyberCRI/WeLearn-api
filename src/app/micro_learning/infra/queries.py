@@ -3,7 +3,7 @@ from uuid import UUID
 
 from welearn_database.data.models import ContextDocument
 
-from src.app.search.models.search import ContextType
+from src.app.search.domain.models import ContextType
 from src.app.shared.domain.documents import JourneySection
 from src.app.shared.infra.db import session_maker
 

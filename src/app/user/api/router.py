@@ -11,6 +11,7 @@ from src.app.shared.utils.requests import (
     extract_origin_from_request,
     extract_session_cookie,
 )
+from src.app.user.domain.models import InstitutionData
 from src.app.user.infra.keycloak import (
     KeycloakTokenError,
     KeycloakUnavailableError,
@@ -25,8 +26,7 @@ from src.app.user.infra.queries import (
     get_or_create_user_sync,
     get_user_bookmarks_sync,
 )
-from src.app.user.models.models import InstitutionData
-from src.app.user.utils.utils import (
+from src.app.user.services.session import (
     resolve_keycloak_user_and_session,
     resolve_user_and_session,
 )

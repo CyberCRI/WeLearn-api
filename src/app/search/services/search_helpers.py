@@ -1,0 +1,44 @@
+import asyncio
+from typing import Awaitable, Callable
+
+from fastapi import BackgroundTasks
+
+from src.app.search.domain.models import EnhancedSearchQuery, SearchMethods
+from src.app.shared.domain.documents import EnhancedDocumentSlice
+from src.app.shared.domain.exceptions import handle_error
+from src.app.shared.utils.logger import logger as logger_utils
+
+logger = logger_utils(__name__)
+
+
+async def search_multi_inputs(
+    background_tasks: BackgroundTasks,
+    qp: EnhancedSearchQuery,
+    callback_function: Callable[..., Awaitable[list[EnhancedDocumentSlice]]],
+) -> list[EnhancedDocumentSlice] | None:
+    try:
+        qps: list[EnhancedSearchQuery] = []
+        for query in qp.query:
+            temp_qp = qp.model_copy()
+            temp_qp.query = query
+            qps.append(temp_qp)
+
+        tasks = [
+            callback_function(
+                qp=qp,
+                background_tasks=background_tasks,
+                method=SearchMethods.BY_SLICES,
+            )
+            for qp in qps
+        ]
+
+        all_data: list[EnhancedDocumentSlice] = []
+        for coroutine in asyncio.as_completed(tasks):
+            data = await coroutine
+            if data:
+                all_data.extend(data)
+
+        return all_data
+    except Exception as e:
+        handle_error(exc=e)
+        return None

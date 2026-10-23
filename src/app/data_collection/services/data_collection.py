@@ -24,7 +24,7 @@ from src.app.data_collection.infra.queries import (
 from src.app.shared.domain.documents import EnhancedDocumentSlice
 from src.app.shared.utils.dependencies import get_settings
 from src.app.shared.utils.logger import logger as utils_logger
-from src.app.tutor.service.models import SyllabusFeedback, TutorSyllabusRequest
+from src.app.tutor.domain.models import SyllabusFeedback, TutorSyllabusRequest
 from src.app.user.infra.queries import get_user_from_session_id
 
 logger = utils_logger(__name__)

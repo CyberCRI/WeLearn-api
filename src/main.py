@@ -12,9 +12,9 @@ from fastapi_mcp import FastApiMCP
 from qdrant_client.http import exceptions as qdrant_exceptions
 from starlette.exceptions import HTTPException as StarletteHTTPException
 
-from src.app.api.api_v1.api import api_router, api_tags_metadata
 from src.app.core.config import settings
 from src.app.core.lifespan import lifespan
+from src.app.router import api_router, api_tags_metadata
 from src.app.shared.api import health
 from src.app.shared.api.monitor_requests import MonitorRequestsMiddleware
 from src.app.shared.infra.security import get_user

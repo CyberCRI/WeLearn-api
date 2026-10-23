@@ -1,6 +1,6 @@
 [run]
 
 omit =
-    src/app/services/tutor/agents.py
-    src/app/services/tutor/tutor.py
+    src/app/tutor/services/agents.py
+    src/app/tutor/services/tutor.py
     src/app/baml_client/*

@@ -5,7 +5,7 @@ from langchain_core.runnables import RunnableConfig
 from langchain_core.tools import tool
 
 from src.app.chat.services.helpers import stringify_docs_content
-from src.app.search.models.search import EnhancedSearchQuery
+from src.app.search.domain.models import EnhancedSearchQuery
 from src.app.search.services.search import SearchService
 from src.app.shared.domain.documents import EnhancedDocumentSlice
 from src.app.shared.utils.decorators import log_time_and_error
