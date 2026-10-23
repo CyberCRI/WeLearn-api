@@ -6,7 +6,9 @@ references section are handled here in code, so they can't be hallucinated.
 
 import re
 from math import ceil
+from pathlib import Path
 
+from jinja2 import Environment, FileSystemLoader
 from langchain_core.exceptions import OutputParserException
 from langchain_core.language_models import BaseChatModel
 from langchain_core.prompts import ChatPromptTemplate
@@ -171,6 +173,26 @@ def trim_chatter(body: str) -> str:
     return "\n".join(lines[start : end + 1]).strip()
 
 
+def _cell(text: str) -> str:
+    return text.replace("|", "/").replace("\n", "<br>").strip()
+
+
+def _refs(prefix: str, numbers: list[int], max_n: int) -> str:
+    return ", ".join(f"{prefix}{n}" for n in numbers if 1 <= n <= max_n)
+
+
+# markdown output (and the references hold <a> tags), so no HTML autoescape
+_ENV = Environment(
+    loader=FileSystemLoader(Path(__file__).parent.parent / "domain"),
+    trim_blocks=True,
+    lstrip_blocks=True,
+    autoescape=False,
+)
+_ENV.filters["cell"] = _cell
+_ENV.globals["refs"] = _refs
+_TEMPLATE = _ENV.get_template("syllabus.md.j2").module
+
+
 def render_references(resources: list[dict], lang: str) -> str:
     h = HEADINGS.get(lang, HEADINGS["en"])
     seen, items = set(), []
@@ -181,36 +203,28 @@ def render_references(resources: list[dict], lang: str) -> str:
         if not (url and title) or url in seen:
             continue
         seen.add(url)
-        items.append(f'- {title} <a href="{url}" target="_blank">[{h["link"]}]</a>')
-    return f"## {h['references']}\n\n" + ("\n".join(items) or h["no_references"])
-
-
-def _cell(text: str) -> str:
-    return text.replace("|", "/").replace("\n", "<br>").strip()
-
-
-def _refs(prefix: str, numbers: list[int], max_n: int) -> str:
-    return ", ".join(f"{prefix}{n}" for n in numbers if 1 <= n <= max_n)
+        items.append({"url": url, "title": title})
+    return _TEMPLATE.references(h, items).rstrip("\n")
 
 
 def render_markdown(draft: DraftSyllabus, lang: str, limits: Limits) -> str:
     h = HEADINGS.get(lang, HEADINGS["en"])
-    objectives = draft.objectives[: limits.objectives]
     outcomes = draft.outcomes[: limits.outcomes]
-    n_obj, n_lo, lo = len(objectives), len(outcomes), h["lo"]
 
     greencomp, others, seen_codes = [], [], set()
     for comp in draft.competencies:
-        linked = _refs(lo, comp.outcome_numbers, n_lo)
-        suffix = f" *({linked})*" if linked else ""
+        item = {
+            "text": comp.text,
+            "los": _refs(h["lo"], comp.outcome_numbers, len(outcomes)),
+        }
         code = (comp.greencomp_code or "").strip()
         if code not in GREENCOMP_NAMES:
-            others.append(f"- {comp.text}{suffix}")
-        elif linked and code not in seen_codes:
+            others.append(item)
+        elif item["los"] and code not in seen_codes:
             # GreenComp only when it supports a listed outcome, each code once
             seen_codes.add(code)
             name = GREENCOMP_NAMES[code].get(lang, GREENCOMP_NAMES[code]["en"])
-            greencomp.append(f"- **GreenComp {code} – {name}** : {comp.text}{suffix}")
+            greencomp.append(item | {"code": code, "name": name})
     if not greencomp:
         logger.warning(
             "Syllabus draft has no GreenComp competency linked to an outcome"
@@ -220,38 +234,17 @@ def render_markdown(draft: DraftSyllabus, lang: str, limits: Limits) -> str:
     greencomp = greencomp[: limits.competencies]
     competencies = greencomp + others[: limits.competencies - len(greencomp)]
 
-    sections = [f"# {draft.course_title}", f"## {h['description']}", draft.description]
-    sections += [
-        f"## {h['objectives']}",
-        "\n".join(f"{i}. {o}" for i, o in enumerate(objectives, 1)),
-    ]
-    sections += [
-        f"## {h['outcomes']}",
-        "\n".join(
-            f"- **{lo}{i}** {o.text}"
-            + (
-                f" *({h['objectives_ref']} {refs})*"
-                if (refs := _refs("", o.objective_numbers, n_obj))
-                else ""
-            )
-            for i, o in enumerate(outcomes, 1)
-        ),
-    ]
-    sections += [f"## {h['competencies']}", "\n".join(competencies)]
-    sections += [
-        f"## {h['assessment']}",
-        "\n".join(
-            f"- **{a.method}** ({a.weight})"
-            + (f" — {refs}" if (refs := _refs(lo, a.outcome_numbers, n_lo)) else "")
-            for a in draft.assessment
-        ),
-    ]
-    table = [h["table"], "|---|---|---|---|"] + [
-        f"| {i} | {_cell(s.topics)} | {_refs(lo, s.outcome_numbers, n_lo)} | {_cell(s.class_plan)} |"
-        for i, s in enumerate(draft.schedule, 1)
-    ]
-    sections += [f"## {h['schedule']}", "\n".join(table)]
-    return "\n\n".join(sections)
+    # rstrip: the last loop row leaves a trailing newline
+    return _TEMPLATE.syllabus(
+        h,
+        title=draft.course_title,
+        description=draft.description,
+        objectives=draft.objectives[: limits.objectives],
+        outcomes=outcomes,
+        competencies=competencies,
+        assessment=draft.assessment,
+        schedule=draft.schedule,
+    ).rstrip("\n")
 
 
 SYSTEM_PROMPT = (
