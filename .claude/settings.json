@@ -1,0 +1,45 @@
+{
+  "permissions": {
+    "ask": [
+      "Bash(poetry add *)",
+      "Bash(poetry remove *)",
+      "Bash(poetry update *)",
+      "Bash(poetry update)",
+      "Bash(poetry install *)",
+      "Bash(poetry install)",
+      "Bash(poetry lock *)",
+      "Bash(poetry lock)",
+      "Bash(poetry self *)",
+      "Bash(pip install *)",
+      "Bash(pip uninstall *)",
+      "Bash(pip3 install *)",
+      "Bash(pip3 uninstall *)",
+      "Bash(python -m pip *)",
+      "Bash(python3 -m pip *)",
+      "Bash(.venv/bin/pip *)",
+      "Bash(uv pip *)",
+      "Bash(uv add *)",
+      "Bash(uv remove *)",
+      "Bash(apt install *)",
+      "Bash(apt-get install *)",
+      "Bash(sudo *)",
+      "Edit(pyproject.toml)",
+      "Edit(poetry.lock)"
+    ]
+  },
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "\"$CLAUDE_PROJECT_DIR\"/.claude/hooks/protect-main.sh",
+            "timeout": 10,
+            "onFailure": "block"
+          }
+        ]
+      }
+    ]
+  }
+}
