@@ -16,7 +16,12 @@ from langchain_core.runnables import RunnableConfig
 from pydantic import ValidationError
 
 from src.app.shared.utils.logger import logger as utils_logger
-from src.app.tutor.domain.models import DraftSyllabus, Limits, MessageWithResources
+from src.app.tutor.domain.models import (
+    DraftSyllabus,
+    Limits,
+    MessageWithResources,
+    RenderedCompetency,
+)
 
 logger = utils_logger(__name__)
 
@@ -213,18 +218,15 @@ def render_markdown(draft: DraftSyllabus, lang: str, limits: Limits) -> str:
 
     greencomp, others, seen_codes = [], [], set()
     for comp in draft.competencies:
-        item = {
-            "text": comp.text,
-            "los": _refs(h["lo"], comp.outcome_numbers, len(outcomes)),
-        }
+        los = _refs(h["lo"], comp.outcome_numbers, len(outcomes))
         code = (comp.greencomp_code or "").strip()
         if code not in GREENCOMP_NAMES:
-            others.append(item)
-        elif item["los"] and code not in seen_codes:
+            others.append(RenderedCompetency(comp.text, los))
+        elif los and code not in seen_codes:
             # GreenComp only when it supports a listed outcome, each code once
             seen_codes.add(code)
             name = GREENCOMP_NAMES[code].get(lang, GREENCOMP_NAMES[code]["en"])
-            greencomp.append(item | {"code": code, "name": name})
+            greencomp.append(RenderedCompetency(comp.text, los, code, name))
     if not greencomp:
         logger.warning(
             "Syllabus draft has no GreenComp competency linked to an outcome"
