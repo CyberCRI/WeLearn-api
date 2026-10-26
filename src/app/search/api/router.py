@@ -14,6 +14,7 @@ from fastapi.concurrency import run_in_threadpool
 
 from src.app.data_collection.services.data_collection import get_data_collection_service
 from src.app.search.domain.models import (
+    CorpusRead,
     DocumentSearchQuery,
     EnhancedSearchQuery,
     SDGFilter,
@@ -110,7 +111,9 @@ def get_document_search_params(
     )
 
 
-@router.get("/collections", operation_id="get_corpus_list")
+@router.get(
+    "/collections", operation_id="get_corpus_list", response_model=list[CorpusRead]
+)
 async def get_corpus():
     collections = await run_in_threadpool(get_collections_info_sync)
 
@@ -242,7 +245,7 @@ async def multi_search_all_slices_by_lang(
     operation_id="search_by_document",
     summary="search all documents",
     description="Search by documents, returns only one result by document id",
-    response_model=SearchOutput | None | str,
+    response_model=SearchOutput,
     openapi_extra={
         "requestBody": {
             "content": {

@@ -1,0 +1,46 @@
+name: OpenAPI contract
+
+# openapi.json is the contract WeLearn-client is generated from. Drift between
+# the code and the committed file is caught by
+# src/app/tests/shared/test_openapi_contract.py; this job flags changes that
+# would break existing clients.
+on:
+  pull_request:
+    paths:
+      - "openapi.json"
+
+jobs:
+  breaking-changes:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Get the base branch schema
+        id: base
+        env:
+          BASE_REF: ${{ github.base_ref }}
+        run: |
+          if git show "origin/${BASE_REF}:openapi.json" > base-openapi.json 2>/dev/null; then
+            echo "exists=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "No openapi.json on ${BASE_REF}, nothing to compare against."
+          fi
+
+      - name: Changelog
+        if: steps.base.outputs.exists == 'true'
+        run: |
+          {
+            echo '## OpenAPI changes'
+            echo '```'
+            docker run --rm -v "$PWD:/specs" tufin/oasdiff:v1.33.0 \
+              changelog /specs/base-openapi.json /specs/openapi.json
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Fail on breaking changes
+        if: steps.base.outputs.exists == 'true'
+        run: |
+          docker run --rm -v "$PWD:/specs" tufin/oasdiff:v1.33.0 \
+            breaking /specs/base-openapi.json /specs/openapi.json --fail-on ERR

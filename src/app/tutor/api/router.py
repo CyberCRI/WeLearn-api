@@ -21,6 +21,7 @@ from src.app.search.domain.models import EnhancedSearchQuery
 from src.app.search.services.search import SearchService, get_search_service
 from src.app.search.services.search_helpers import search_multi_inputs
 from src.app.shared.domain.exceptions import NoResultsError
+from src.app.shared.domain.responses import MessageResponse
 from src.app.shared.utils.dependencies import get_settings
 from src.app.shared.utils.logger import logger as utils_logger
 from src.app.shared.utils.requests import extract_session_cookie
@@ -35,6 +36,7 @@ from src.app.tutor.domain.models import (
     SummariesList,
     SyllabusFeedback,
     SyllabusGenerationRequest,
+    SyllabusGenerationResponse,
     SyllabusResponse,
     SyllabusResponseAgent,
     SyllabusUserUpdate,
@@ -143,7 +145,7 @@ async def extract_files_content_baml(
         raise e
 
 
-@router.post("/search_extracts")
+@router.post("/search_extracts", response_model=TutorSearchResponse)
 @with_backoff()
 async def tutor_search_extract(
     summaries: SummariesList,
@@ -243,7 +245,7 @@ async def create_syllabus(
     )
 
 
-@router.post("/syllabus/feedback")
+@router.post("/syllabus/feedback", response_model=SyllabusResponse)
 async def handle_syllabus_feedback(
     request: Request,
     body: SyllabusFeedback,
@@ -281,7 +283,7 @@ async def handle_syllabus_feedback(
         raise e
 
 
-@router.post("/syllabus/user_update")
+@router.post("/syllabus/user_update", response_model=MessageResponse)
 async def register_syllabus_user_update(
     request: Request,
     body: SyllabusUserUpdate,
@@ -453,7 +455,7 @@ async def generate_competency_map(
     return competencies
 
 
-@router.post("/api/generate")
+@router.post("/api/generate", response_model=SyllabusGenerationResponse)
 async def generate_syllabus(body: SyllabusGenerationRequest):
 
     try:

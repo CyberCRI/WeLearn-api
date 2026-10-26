@@ -3,6 +3,7 @@ import uuid
 from unittest import mock
 
 from fastapi.testclient import TestClient
+from qdrant_client.http.models import ScoredPoint
 from welearn_database.data.models import ContextDocument, EmbeddingModel
 
 from src.app.core.config import settings
@@ -72,7 +73,10 @@ class MicroLearningTests(unittest.IsolatedAsyncioTestCase):
                 context_type="subject",
             )
             mock_convert_embedding.return_value = [0.1, 0.2, 0.3]
-            mock_search.return_value = [{"id": "doc1", "title": "Doc 1"}]
+            doc_id = str(uuid.uuid4())
+            mock_search.return_value = [
+                ScoredPoint(id=doc_id, version=1, score=0.9, payload={"title": "Doc 1"})
+            ]
 
             # API call
             response = client.get(
@@ -85,7 +89,8 @@ class MicroLearningTests(unittest.IsolatedAsyncioTestCase):
             self.assertEqual(len(response.json()["introduction"]), 1)
             self.assertEqual(response.json()["introduction"][0]["title"], "Test Title")
             self.assertEqual(
-                response.json()["introduction"][0]["documents"][0]["title"], "Doc 1"
+                response.json()["introduction"][0]["documents"][0]["payload"]["title"],
+                "Doc 1",
             )
             self.assertIn("target", response.json())
             self.assertEqual(len(response.json()["target"]), 2)

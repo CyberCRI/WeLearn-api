@@ -11,6 +11,12 @@ from src.app.shared.domain.exceptions import UserNotFoundError
 from src.app.user.infra.keycloak import KeycloakTokenError, KeycloakUnavailableError
 from src.main import app
 
+
+def _assign_db_id(obj):
+    # the DB fills the id on commit, the mocked session does not
+    obj.id = uuid.uuid4()
+
+
 client = TestClient(app)
 
 
@@ -86,6 +92,7 @@ class UserApiTests(unittest.IsolatedAsyncioTestCase):
         """Si user_id non fourni, crée un nouvel utilisateur"""
         session = MagicMock()
         session_maker_mock.return_value.__enter__.return_value = session
+        session.add.side_effect = _assign_db_id
 
         response = client.post(
             f"{settings.API_V1_STR}/user/user",
@@ -97,7 +104,7 @@ class UserApiTests(unittest.IsolatedAsyncioTestCase):
         session.add.assert_called_once()
         session.commit.assert_called_once()
         user_in_db: InferredUser = session.add.call_args[0][0]
-        self.assertEqual(user_in_db.id, response.json()["user_id"])
+        self.assertEqual(str(user_in_db.id), response.json()["user_id"])
         self.assertIsNone(user_in_db.origin_referrer)
 
     @mock.patch("src.app.user.infra.queries.session_maker")
@@ -107,6 +114,7 @@ class UserApiTests(unittest.IsolatedAsyncioTestCase):
         """Si user_id non fourni, crée un nouvel utilisateur"""
         session = MagicMock()
         session_maker_mock.return_value.__enter__.return_value = session
+        session.add.side_effect = _assign_db_id
 
         response = client.post(
             f"{settings.API_V1_STR}/user/user?referer=test_referer",
@@ -118,7 +126,7 @@ class UserApiTests(unittest.IsolatedAsyncioTestCase):
         session.add.assert_called_once()
         session.commit.assert_called_once()
         user_in_db: InferredUser = session.add.call_args[0][0]
-        self.assertEqual(user_in_db.id, response.json()["user_id"])
+        self.assertEqual(str(user_in_db.id), response.json()["user_id"])
         self.assertEqual(user_in_db.origin_referrer, "test_referer")
 
     @mock.patch("src.app.user.infra.queries.session_maker")
@@ -235,6 +243,7 @@ class UserApiTests(unittest.IsolatedAsyncioTestCase):
         session = MagicMock()
         session.execute.return_value.first.side_effect = [MagicMock(id="user-1"), None]
         session_maker_mock.return_value.__enter__.return_value = session
+        session.add.side_effect = _assign_db_id
 
         response = client.post(
             f"{settings.API_V1_STR}/user/session",
@@ -254,6 +263,7 @@ class UserApiTests(unittest.IsolatedAsyncioTestCase):
         session = MagicMock()
         session.execute.return_value.first.side_effect = [MagicMock(id="user-1"), None]
         session_maker_mock.return_value.__enter__.return_value = session
+        session.add.side_effect = _assign_db_id
 
         response = client.post(
             f"{settings.API_V1_STR}/user/session",

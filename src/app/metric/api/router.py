@@ -23,7 +23,7 @@ settings = get_settings()
 @router.get("/nb_docs_info_per_corpus")
 async def get_nb_docs_info_per_corpus(
     response: Response,
-) -> list[RowCorpusQtyDocInfo | None]:
+) -> list[RowCorpusQtyDocInfo]:
     result = await run_in_threadpool(get_document_qty_table_info_sync)
     if result is None or len(result) == 0:
         response.status_code = status.HTTP_500_INTERNAL_SERVER_ERROR
@@ -72,7 +72,7 @@ async def register_form_data(
     response: Response,
     body: RegisterFormAnswerBody,
     data_collection=Depends(get_data_collection_service),
-):
+) -> str:
     try:
         session_id = extract_session_cookie(request)
 
