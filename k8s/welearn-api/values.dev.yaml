@@ -10,6 +10,9 @@ config:
     LANGSMITH_TRACING_ENABLED: "true"
     LANGSMITH_PROJECT: WeLearn_Dev
     LANGSMITH_ENDPOINT: https://eu.api.smith.langchain.com
+    KEYCLOAK_URL: https://keycloak.k8s.lp-i.dev/
+    KEYCLOAK_CLIENT_ID: welearn-dev
+    KEYCLOAK_REALM: lp
     ENV: development
 allowedHostsRegexes:
   mainUrl: |-
