@@ -17,6 +17,8 @@ from src.app.core.lifespan import lifespan
 from src.app.router import api_router, api_tags_metadata
 from src.app.shared.api import health
 from src.app.shared.api.monitor_requests import MonitorRequestsMiddleware
+from src.app.shared.api.openapi import generate_operation_id
+from src.app.shared.domain.responses import ERROR_RESPONSES
 from src.app.shared.infra.security import get_user
 from src.app.shared.utils.logger import logger as utils_logger
 
@@ -28,6 +30,7 @@ app = FastAPI(
     title=settings.PROJECT_NAME,
     openapi_url=f"{settings.API_V1_STR}/openapi.json",
     lifespan=lifespan,
+    generate_unique_id_function=generate_operation_id,
 )
 
 # Middleware global monitoring
@@ -116,6 +119,7 @@ app.include_router(
     api_router,
     prefix=settings.API_V1_STR,
     dependencies=[Depends(get_user)],
+    responses=ERROR_RESPONSES,
 )
 
 if settings.MCP_ENABLED:

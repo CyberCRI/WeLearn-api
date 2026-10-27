@@ -288,6 +288,7 @@ async def get_chat_history(
     summary="Agent Response Stream",
     description="This endpoint streams an agent response to the user's message and ends with the full response payload.",
     response_class=StreamingResponse,
+    responses={200: {"content": {"text/event-stream": {"schema": {"type": "string"}}}}},
 )
 @backoff.on_exception(
     wait_gen=backoff.expo,

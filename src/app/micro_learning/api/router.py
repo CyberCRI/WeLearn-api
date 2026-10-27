@@ -2,6 +2,7 @@ import numpy
 from fastapi import APIRouter, Depends, HTTPException
 from welearn_database.data.models import ContextDocument
 
+from src.app.micro_learning.domain.models import FullJourney
 from src.app.micro_learning.infra.queries import get_context_documents, get_subjects
 from src.app.micro_learning.services.helpers import (
     choose_readability_according_journey_section_type,
@@ -43,6 +44,7 @@ async def get_subject_list(
     "/full_journey",
     summary="get the full journey",
     description="Get all documents for the micro learning journey of one sdg",
+    response_model=FullJourney,
 )
 async def get_full_journey(
     sdg: int,

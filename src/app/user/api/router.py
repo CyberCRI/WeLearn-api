@@ -11,7 +11,17 @@ from src.app.shared.utils.requests import (
     extract_origin_from_request,
     extract_session_cookie,
 )
-from src.app.user.domain.models import InstitutionData
+from src.app.user.domain.models import (
+    BookmarkAddedResponse,
+    BookmarkDeletedResponse,
+    BookmarksDeletedResponse,
+    BookmarksResponse,
+    InstitutionData,
+    InstitutionDataResponse,
+    SessionResponse,
+    UserAndSessionResponse,
+    UserResponse,
+)
 from src.app.user.infra.keycloak import (
     KeycloakTokenError,
     KeycloakUnavailableError,
@@ -73,7 +83,9 @@ async def resolve_bookmark_user(request: Request) -> uuid.UUID:
 
 
 @router.post(
-    "/user_and_session", summary="Create new user and session", response_model=dict
+    "/user_and_session",
+    summary="Create new user and session",
+    response_model=UserAndSessionResponse,
 )
 async def handle_user_and_session(
     request: Request, response: Response, referer: str | None = None
@@ -121,7 +133,7 @@ async def handle_user_and_session(
     return {"message": "session created", "session_id": session_uuid}
 
 
-@router.post("/user", summary="Create new user", response_model=dict)
+@router.post("/user", summary="Create new user", response_model=UserResponse)
 async def handle_user(user_id: uuid.UUID | None = None, referer: str | None = None):
     try:
         user_id = await run_in_threadpool(get_or_create_user_sync, user_id, referer)
@@ -132,7 +144,7 @@ async def handle_user(user_id: uuid.UUID | None = None, referer: str | None = No
         raise HTTPException(status_code=500, detail=str(e))
 
 
-@router.post("/session", summary="Create new session", response_model=dict)
+@router.post("/session", summary="Create new session", response_model=SessionResponse)
 async def handle_session(
     user_id: uuid.UUID,
     request: Request,
@@ -152,7 +164,9 @@ async def handle_session(
         raise HTTPException(status_code=500, detail=str(e))
 
 
-@router.get("/bookmarks", summary="Get user bookmarks")
+@router.get(
+    "/bookmarks", summary="Get user bookmarks", response_model=BookmarksResponse
+)
 async def get_user_bookmarks(request: Request):
     user_id = await resolve_bookmark_user(request)
 
@@ -166,7 +180,11 @@ async def get_user_bookmarks(request: Request):
         raise HTTPException(status_code=500, detail=str(e))
 
 
-@router.delete("/bookmarks", summary="Delete all user bookmarks", response_model=dict)
+@router.delete(
+    "/bookmarks",
+    summary="Delete all user bookmarks",
+    response_model=BookmarksDeletedResponse,
+)
 async def delete_user_bookmarks(request: Request):
     user_id = await resolve_bookmark_user(request)
 
@@ -183,7 +201,7 @@ async def delete_user_bookmarks(request: Request):
 @router.delete(
     "/bookmarks/:document_id",
     summary="Delete a user bookmark",
-    response_model=dict,
+    response_model=BookmarkDeletedResponse,
 )
 async def delete_user_bookmark(request: Request, document_id: uuid.UUID):
     user_id = await resolve_bookmark_user(request)
@@ -201,7 +219,9 @@ async def delete_user_bookmark(request: Request, document_id: uuid.UUID):
 
 
 @router.post(
-    "/bookmarks/:document_id", summary="Add user bookmark", response_model=dict
+    "/bookmarks/:document_id",
+    summary="Add user bookmark",
+    response_model=BookmarkAddedResponse,
 )
 async def add_user_bookmark(request: Request, document_id: uuid.UUID):
     user_id = await resolve_bookmark_user(request)
@@ -217,7 +237,9 @@ async def add_user_bookmark(request: Request, document_id: uuid.UUID):
 
 
 @router.post(
-    "/institution-data", summary="Add institution data to user", response_model=dict
+    "/institution-data",
+    summary="Add institution data to user",
+    response_model=InstitutionDataResponse,
 )
 async def add_institution_data_to_user(request: Request, data: InstitutionData):
     session_uuid = extract_session_cookie(request)

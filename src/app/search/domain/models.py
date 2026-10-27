@@ -24,6 +24,12 @@ class SearchOutput(BaseModel):
     )
 
 
+class CorpusRead(BaseModel):
+    name: str
+    category: str | None
+    is_active: bool
+
+
 class SDGFilter(BaseModel):
     sdg_filter: list[int] | None = Field(
         None,

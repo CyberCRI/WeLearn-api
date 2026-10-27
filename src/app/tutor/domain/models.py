@@ -1,7 +1,7 @@
 import uuid
 from dataclasses import dataclass
 from enum import Enum
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Literal, Optional
 
 from pydantic import BaseModel, Field
 
@@ -378,6 +378,30 @@ class SyllabusOutput(BaseModel):
     sustainability: Optional[SustainabilityIntegration] = None
     sessions: Optional[List[SessionPlan]] = None
     # activities: Optional[Dict[int, List[ActivityGuide]]] = None
+
+
+class SyllabusValidation(BaseModel):
+    passed: bool
+    major_issues: List[str]
+    minor_issues: List[str]
+    suggestions: List[str]
+
+
+class SyllabusGenerationResponse(BaseModel):
+    """
+    `/tutor/api/generate` output. The orchestrator stores the BAML outputs as
+    is, so the sections use the BAML types, not the models above.
+    """
+
+    status: Literal["success", "error"]
+    message: Optional[str] = None
+    validation: SyllabusValidation
+    description: Optional[types.CourseDescription] = None
+    objectives: Optional[types.LearningObjectives] = None
+    outcomes: Optional[types.LearningOutcomes] = None
+    competencies: Optional[types.CompetencyMappings] = None
+    sustainability: Optional[types.SustainabilityIntegration] = None
+    sessions: Optional[List[types.SessionPlan]] = None
 
 
 # Checkpoint Models for Interactive Flow

@@ -411,10 +411,10 @@ def sort_using_mmr(
         return []
 
     logger.debug("sort_slices_using_mmr=start")
-    reward = [
-        r.mean_score
-        for r in sorted(containers, key=lambda x: x.mean_score, reverse=True)
-    ]
+    # reward, sim and the indices below must share one order, and MMR starts
+    # from the best-scored container: sort here rather than trust the caller
+    containers = sorted(containers, key=lambda x: x.mean_score, reverse=True)
+    reward = [r.mean_score for r in containers]
     sim = cosine_similarity(np.array([r.mean_vector for r in containers]))
 
     id_s = [0]

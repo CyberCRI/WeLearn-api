@@ -1,0 +1,4862 @@
+{
+  "components": {
+    "schemas": {
+      "AgentContext": {
+        "examples": [
+          {
+            "corpora": [
+              "conversation"
+            ],
+            "query": "How can communities improve clean water access?",
+            "sdg_filter": [
+              6
+            ]
+          },
+          {
+            "corpora": [
+              "conversation",
+              "wikipedia"
+            ],
+            "query": "Give me practical school-level actions for SDG 4 and SDG 6.",
+            "sdg_filter": [
+              4,
+              6
+            ],
+            "thread_id": "6fca8d02-0bc2-48a5-9c95-4942ca57e651"
+          }
+        ],
+        "properties": {
+          "corpora": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Optional list of corpus names used by retrieval tools during agent execution.",
+            "examples": [
+              [
+                "conversation"
+              ]
+            ],
+            "title": "Corpora"
+          },
+          "query": {
+            "anyOf": [
+              {
+                "maxLength": 4096,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "User message for the agent to answer.",
+            "examples": [
+              "How can communities improve clean water access?"
+            ],
+            "title": "Query"
+          },
+          "sdg_filter": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "integer"
+                },
+                "maxItems": 17,
+                "minItems": 0,
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "List of SDGs to filter the results",
+            "examples": [
+              [
+                1,
+                2,
+                3
+              ]
+            ],
+            "title": "Sdg Filter"
+          },
+          "thread_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Optional conversation thread id. If omitted, a new thread id is generated.",
+            "examples": [
+              "6fca8d02-0bc2-48a5-9c95-4942ca57e651"
+            ],
+            "title": "Thread Id"
+          }
+        },
+        "title": "AgentContext",
+        "type": "object"
+      },
+      "AgentResponse": {
+        "properties": {
+          "content": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Content"
+          },
+          "docs": {
+            "anyOf": [
+              {
+                "items": {
+                  "$ref": "#/components/schemas/EnhancedDocumentSlice"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Docs"
+          },
+          "status": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Status"
+          },
+          "step": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Step"
+          },
+          "thread_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Thread Id"
+          }
+        },
+        "title": "AgentResponse",
+        "type": "object"
+      },
+      "Body_tutor-extract_files_content": {
+        "properties": {
+          "files": {
+            "items": {
+              "format": "binary",
+              "type": "string"
+            },
+            "title": "Files",
+            "type": "array"
+          }
+        },
+        "required": [
+          "files"
+        ],
+        "title": "Body_tutor-extract_files_content",
+        "type": "object"
+      },
+      "Body_tutor-extract_files_content_baml": {
+        "properties": {
+          "files": {
+            "items": {
+              "format": "binary",
+              "type": "string"
+            },
+            "title": "Files",
+            "type": "array"
+          }
+        },
+        "required": [
+          "files"
+        ],
+        "title": "Body_tutor-extract_files_content_baml",
+        "type": "object"
+      },
+      "BookmarkAddedResponse": {
+        "properties": {
+          "added": {
+            "format": "uuid",
+            "title": "Added",
+            "type": "string"
+          }
+        },
+        "required": [
+          "added"
+        ],
+        "title": "BookmarkAddedResponse",
+        "type": "object"
+      },
+      "BookmarkDeletedResponse": {
+        "properties": {
+          "deleted": {
+            "format": "uuid",
+            "title": "Deleted",
+            "type": "string"
+          }
+        },
+        "required": [
+          "deleted"
+        ],
+        "title": "BookmarkDeletedResponse",
+        "type": "object"
+      },
+      "BookmarkRead": {
+        "properties": {
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "document_id": {
+            "format": "uuid",
+            "title": "Document Id",
+            "type": "string"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "inferred_user_id": {
+            "format": "uuid",
+            "title": "Inferred User Id",
+            "type": "string"
+          },
+          "updated_at": {
+            "format": "date-time",
+            "title": "Updated At",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "document_id",
+          "inferred_user_id",
+          "created_at",
+          "updated_at"
+        ],
+        "title": "BookmarkRead",
+        "type": "object"
+      },
+      "BookmarksDeletedResponse": {
+        "properties": {
+          "deleted": {
+            "title": "Deleted",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "deleted"
+        ],
+        "title": "BookmarksDeletedResponse",
+        "type": "object"
+      },
+      "BookmarksResponse": {
+        "properties": {
+          "bookmarks": {
+            "items": {
+              "$ref": "#/components/schemas/BookmarkRead"
+            },
+            "title": "Bookmarks",
+            "type": "array"
+          }
+        },
+        "required": [
+          "bookmarks"
+        ],
+        "title": "BookmarksResponse",
+        "type": "object"
+      },
+      "CompetencyMapping": {
+        "properties": {
+          "greencomp_competencies": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Greencomp Competencies",
+            "type": "array"
+          },
+          "outcome_number": {
+            "title": "Outcome Number",
+            "type": "integer"
+          },
+          "rationale": {
+            "title": "Rationale",
+            "type": "string"
+          }
+        },
+        "required": [
+          "outcome_number",
+          "greencomp_competencies",
+          "rationale"
+        ],
+        "title": "CompetencyMapping",
+        "type": "object"
+      },
+      "CompetencyMappingRequest": {
+        "properties": {
+          "framework": {
+            "anyOf": [
+              {
+                "additionalProperties": {
+                  "type": "string"
+                },
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Framework"
+          },
+          "outcomes": {
+            "items": {
+              "$ref": "#/components/schemas/LearningOutcome"
+            },
+            "title": "Outcomes",
+            "type": "array"
+          },
+          "output_language": {
+            "title": "Output Language",
+            "type": "string"
+          }
+        },
+        "required": [
+          "outcomes",
+          "output_language"
+        ],
+        "title": "CompetencyMappingRequest",
+        "type": "object"
+      },
+      "CompetencyMappings": {
+        "properties": {
+          "mappings": {
+            "items": {
+              "$ref": "#/components/schemas/CompetencyMapping"
+            },
+            "title": "Mappings",
+            "type": "array"
+          }
+        },
+        "required": [
+          "mappings"
+        ],
+        "title": "CompetencyMappings",
+        "type": "object"
+      },
+      "Context": {
+        "properties": {
+          "history": {
+            "anyOf": [
+              {
+                "items": {
+                  "additionalProperties": true,
+                  "type": "object"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": [],
+            "title": "History"
+          },
+          "lang": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Lang"
+          },
+          "query": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Query"
+          },
+          "sources": {
+            "default": [],
+            "items": {
+              "$ref": "#/components/schemas/EnhancedDocumentSlice"
+            },
+            "title": "Sources",
+            "type": "array"
+          },
+          "subject": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Subject"
+          }
+        },
+        "title": "Context",
+        "type": "object"
+      },
+      "CorpusRead": {
+        "properties": {
+          "category": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Category"
+          },
+          "is_active": {
+            "title": "Is Active",
+            "type": "boolean"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          }
+        },
+        "required": [
+          "name",
+          "category",
+          "is_active"
+        ],
+        "title": "CorpusRead",
+        "type": "object"
+      },
+      "CourseDescription": {
+        "properties": {
+          "text": {
+            "title": "Text",
+            "type": "string"
+          },
+          "word_count": {
+            "title": "Word Count",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "text",
+          "word_count"
+        ],
+        "title": "CourseDescription",
+        "type": "object"
+      },
+      "CourseDescriptionRequest": {
+        "properties": {
+          "context_text": {
+            "title": "Context Text",
+            "type": "string"
+          },
+          "course_metadata": {
+            "$ref": "#/components/schemas/CourseMetadata"
+          },
+          "mode": {
+            "title": "Mode",
+            "type": "string"
+          }
+        },
+        "required": [
+          "mode",
+          "course_metadata",
+          "context_text"
+        ],
+        "title": "CourseDescriptionRequest",
+        "type": "object"
+      },
+      "CourseMetadata": {
+        "properties": {
+          "class_size": {
+            "title": "Class Size",
+            "type": "integer"
+          },
+          "discipline": {
+            "title": "Discipline",
+            "type": "string"
+          },
+          "level": {
+            "title": "Level",
+            "type": "string"
+          },
+          "num_sessions": {
+            "title": "Num Sessions",
+            "type": "integer"
+          },
+          "output_language": {
+            "title": "Output Language",
+            "type": "string"
+          },
+          "session_duration": {
+            "title": "Session Duration",
+            "type": "number"
+          },
+          "session_mode": {
+            "$ref": "#/components/schemas/SessionMode"
+          },
+          "session_type": {
+            "title": "Session Type",
+            "type": "string"
+          },
+          "topic": {
+            "title": "Topic",
+            "type": "string"
+          },
+          "user_description": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "User Description"
+          }
+        },
+        "required": [
+          "discipline",
+          "topic",
+          "level",
+          "num_sessions",
+          "session_duration",
+          "session_type",
+          "session_mode",
+          "class_size",
+          "output_language"
+        ],
+        "title": "CourseMetadata",
+        "type": "object"
+      },
+      "Document": {
+        "properties": {
+          "corpus": {
+            "title": "Corpus",
+            "type": "string"
+          },
+          "description": {
+            "title": "Description",
+            "type": "string"
+          },
+          "relevance_score": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Relevance Score"
+          },
+          "sdg": {
+            "items": {
+              "type": "integer"
+            },
+            "title": "Sdg",
+            "type": "array"
+          },
+          "text": {
+            "title": "Text",
+            "type": "string"
+          },
+          "title": {
+            "title": "Title",
+            "type": "string"
+          },
+          "url": {
+            "title": "Url",
+            "type": "string"
+          }
+        },
+        "required": [
+          "text",
+          "corpus",
+          "description",
+          "sdg",
+          "url",
+          "title"
+        ],
+        "title": "Document",
+        "type": "object"
+      },
+      "DocumentClickUpdateResponse": {
+        "properties": {
+          "doc_id": {
+            "format": "uuid",
+            "title": "Doc Id",
+            "type": "string"
+          },
+          "message_id": {
+            "format": "uuid",
+            "title": "Message Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "message_id",
+          "doc_id"
+        ],
+        "title": "DocumentClickUpdateResponse",
+        "type": "object"
+      },
+      "DocumentIDs": {
+        "properties": {
+          "documents_ids": {
+            "items": {
+              "format": "uuid",
+              "type": "string"
+            },
+            "title": "Documents Ids",
+            "type": "array"
+          }
+        },
+        "required": [
+          "documents_ids"
+        ],
+        "title": "DocumentIDs",
+        "type": "object"
+      },
+      "DocumentSearchQuery": {
+        "examples": [
+          {
+            "corpora": [
+              "conversation"
+            ],
+            "lang": [
+              "en"
+            ],
+            "query": "How can schools reduce water waste?",
+            "sdg_filter": [
+              6
+            ]
+          },
+          {
+            "corpora": [
+              "conversation",
+              "wikipedia"
+            ],
+            "lang": [
+              "en",
+              "fr"
+            ],
+            "query": "Compare carbon pricing and cap-and-trade: how do they work, and what are their pros and cons?",
+            "sdg_filter": [
+              3,
+              6
+            ]
+          }
+        ],
+        "properties": {
+          "corpora": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Optional list of corpus names to restrict search scope.",
+            "examples": [
+              [
+                "conversation",
+                "wikipedia"
+              ]
+            ],
+            "title": "Corpora"
+          },
+          "lang": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Optional language filters to apply to results.",
+            "examples": [
+              [
+                "en",
+                "fr"
+              ]
+            ],
+            "title": "Lang"
+          },
+          "query": {
+            "description": "User query text.",
+            "examples": [
+              "How can schools reduce water waste?"
+            ],
+            "title": "Query",
+            "type": "string"
+          },
+          "sdg_filter": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "integer"
+                },
+                "maxItems": 17,
+                "minItems": 0,
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "List of SDGs to filter the results",
+            "examples": [
+              [
+                1,
+                2,
+                3
+              ]
+            ],
+            "title": "Sdg Filter"
+          }
+        },
+        "required": [
+          "query"
+        ],
+        "title": "DocumentSearchQuery",
+        "type": "object"
+      },
+      "EnhancedDocumentSlice": {
+        "properties": {
+          "id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Id"
+          },
+          "payload": {
+            "$ref": "#/components/schemas/EnhancedDocumentSlicePayloadModel"
+          },
+          "score": {
+            "title": "Score",
+            "type": "number"
+          }
+        },
+        "required": [
+          "score",
+          "payload"
+        ],
+        "title": "EnhancedDocumentSlice",
+        "type": "object"
+      },
+      "EnhancedDocumentSlicePayloadModel": {
+        "properties": {
+          "document_corpus": {
+            "title": "Document Corpus",
+            "type": "string"
+          },
+          "document_desc": {
+            "title": "Document Desc",
+            "type": "string"
+          },
+          "document_details": {
+            "additionalProperties": true,
+            "title": "Document Details",
+            "type": "object"
+          },
+          "document_external_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Document External Id"
+          },
+          "document_id": {
+            "format": "uuid",
+            "title": "Document Id",
+            "type": "string"
+          },
+          "document_lang": {
+            "title": "Document Lang",
+            "type": "string"
+          },
+          "document_sdg": {
+            "items": {
+              "type": "integer"
+            },
+            "title": "Document Sdg",
+            "type": "array"
+          },
+          "document_sub_corpus": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Document Sub Corpus"
+          },
+          "document_title": {
+            "title": "Document Title",
+            "type": "string"
+          },
+          "document_url": {
+            "title": "Document Url",
+            "type": "string"
+          },
+          "slice_content": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Slice Content"
+          },
+          "slice_sdg": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Slice Sdg"
+          }
+        },
+        "required": [
+          "document_corpus",
+          "document_desc",
+          "document_details",
+          "document_id",
+          "document_lang",
+          "document_sdg",
+          "document_title",
+          "document_url",
+          "slice_content",
+          "slice_sdg"
+        ],
+        "title": "EnhancedDocumentSlicePayloadModel",
+        "type": "object"
+      },
+      "ErrorDetail": {
+        "properties": {
+          "code": {
+            "title": "Code",
+            "type": "string"
+          },
+          "message": {
+            "title": "Message",
+            "type": "string"
+          }
+        },
+        "required": [
+          "message",
+          "code"
+        ],
+        "title": "ErrorDetail",
+        "type": "object"
+      },
+      "ErrorResponse": {
+        "description": "Body of every error the API returns. `detail` is an `ErrorDetail` for\ndomain errors, a plain string for most `HTTPException`s, and a list of\nvalidation errors for 422s.",
+        "properties": {
+          "detail": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ErrorDetail"
+              },
+              {
+                "type": "string"
+              },
+              {
+                "items": {
+                  "additionalProperties": true,
+                  "type": "object"
+                },
+                "type": "array"
+              }
+            ],
+            "title": "Detail"
+          }
+        },
+        "required": [
+          "detail"
+        ],
+        "title": "ErrorResponse",
+        "type": "object"
+      },
+      "ExtractorOutput": {
+        "properties": {
+          "summary": {
+            "title": "Summary",
+            "type": "string"
+          },
+          "themes": {
+            "items": {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            "title": "Themes",
+            "type": "array"
+          }
+        },
+        "required": [
+          "summary",
+          "themes"
+        ],
+        "title": "ExtractorOutput",
+        "type": "object"
+      },
+      "ExtractorOutputList": {
+        "properties": {
+          "extracts": {
+            "items": {
+              "$ref": "#/components/schemas/ExtractorOutput"
+            },
+            "title": "Extracts",
+            "type": "array"
+          }
+        },
+        "required": [
+          "extracts"
+        ],
+        "title": "ExtractorOutputList",
+        "type": "object"
+      },
+      "FileSummary": {
+        "properties": {
+          "confidence": {
+            "title": "Confidence",
+            "type": "number"
+          },
+          "description": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Description"
+          },
+          "detected_document_type": {
+            "title": "Detected Document Type",
+            "type": "string"
+          },
+          "objectives": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Objectives",
+            "type": "array"
+          },
+          "reasoning": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reasoning"
+          },
+          "summary": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Summary"
+          }
+        },
+        "required": [
+          "detected_document_type",
+          "confidence",
+          "objectives"
+        ],
+        "title": "FileSummary",
+        "type": "object"
+      },
+      "HealthCheck": {
+        "description": "Response model to validate and return when performing a health check.",
+        "properties": {
+          "status": {
+            "default": "OK",
+            "title": "Status",
+            "type": "string"
+          }
+        },
+        "title": "HealthCheck",
+        "type": "object"
+      },
+      "InstitutionData": {
+        "properties": {
+          "institution": {
+            "title": "Institution",
+            "type": "string"
+          },
+          "role": {
+            "title": "Role",
+            "type": "string"
+          }
+        },
+        "required": [
+          "institution",
+          "role"
+        ],
+        "title": "InstitutionData",
+        "type": "object"
+      },
+      "InstitutionDataResponse": {
+        "properties": {
+          "institution": {
+            "title": "Institution",
+            "type": "string"
+          },
+          "message": {
+            "title": "Message",
+            "type": "string"
+          },
+          "role": {
+            "title": "Role",
+            "type": "string"
+          }
+        },
+        "required": [
+          "institution",
+          "role",
+          "message"
+        ],
+        "title": "InstitutionDataResponse",
+        "type": "object"
+      },
+      "IntegrateSustainabilityRequest": {
+        "properties": {
+          "course_metadata": {
+            "$ref": "#/components/schemas/CourseMetadata"
+          },
+          "description": {
+            "title": "Description",
+            "type": "string"
+          },
+          "mode": {
+            "title": "Mode",
+            "type": "string"
+          },
+          "objectives": {
+            "$ref": "#/components/schemas/LearningObjectives"
+          },
+          "sdg_resources": {
+            "items": {
+              "$ref": "#/components/schemas/Document"
+            },
+            "title": "Sdg Resources",
+            "type": "array"
+          }
+        },
+        "required": [
+          "description",
+          "objectives",
+          "course_metadata",
+          "sdg_resources",
+          "mode"
+        ],
+        "title": "IntegrateSustainabilityRequest",
+        "type": "object"
+      },
+      "JourneySection": {
+        "properties": {
+          "content": {
+            "title": "Content",
+            "type": "string"
+          },
+          "documents": {
+            "items": {
+              "$ref": "#/components/schemas/ScoredPoint"
+            },
+            "title": "Documents",
+            "type": "array"
+          },
+          "title": {
+            "title": "Title",
+            "type": "string"
+          }
+        },
+        "required": [
+          "title",
+          "content",
+          "documents"
+        ],
+        "title": "JourneySection",
+        "type": "object"
+      },
+      "LearningObjective": {
+        "properties": {
+          "bloom_level": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Bloom Level"
+          },
+          "number": {
+            "title": "Number",
+            "type": "integer"
+          },
+          "text": {
+            "title": "Text",
+            "type": "string"
+          }
+        },
+        "required": [
+          "number",
+          "text"
+        ],
+        "title": "LearningObjective",
+        "type": "object"
+      },
+      "LearningObjectives": {
+        "properties": {
+          "objectives": {
+            "items": {
+              "$ref": "#/components/schemas/LearningObjective"
+            },
+            "title": "Objectives",
+            "type": "array"
+          }
+        },
+        "required": [
+          "objectives"
+        ],
+        "title": "LearningObjectives",
+        "type": "object"
+      },
+      "LearningObjectivesRequest": {
+        "properties": {
+          "context_text": {
+            "title": "Context Text",
+            "type": "string"
+          },
+          "course_metadata": {
+            "$ref": "#/components/schemas/CourseMetadata"
+          },
+          "description": {
+            "title": "Description",
+            "type": "string"
+          },
+          "mode": {
+            "title": "Mode",
+            "type": "string"
+          }
+        },
+        "required": [
+          "description",
+          "course_metadata",
+          "mode",
+          "context_text"
+        ],
+        "title": "LearningObjectivesRequest",
+        "type": "object"
+      },
+      "LearningOutcome": {
+        "properties": {
+          "assessment_method": {
+            "title": "Assessment Method",
+            "type": "string"
+          },
+          "number": {
+            "title": "Number",
+            "type": "integer"
+          },
+          "related_objectives": {
+            "items": {
+              "type": "integer"
+            },
+            "title": "Related Objectives",
+            "type": "array"
+          },
+          "text": {
+            "title": "Text",
+            "type": "string"
+          }
+        },
+        "required": [
+          "number",
+          "text",
+          "related_objectives",
+          "assessment_method"
+        ],
+        "title": "LearningOutcome",
+        "type": "object"
+      },
+      "LearningOutcomes": {
+        "properties": {
+          "outcomes": {
+            "items": {
+              "$ref": "#/components/schemas/LearningOutcome"
+            },
+            "title": "Outcomes",
+            "type": "array"
+          }
+        },
+        "required": [
+          "outcomes"
+        ],
+        "title": "LearningOutcomes",
+        "type": "object"
+      },
+      "LearningOutcomesRequest": {
+        "properties": {
+          "course_metadata": {
+            "$ref": "#/components/schemas/CourseMetadata"
+          },
+          "description": {
+            "title": "Description",
+            "type": "string"
+          },
+          "objectives": {
+            "$ref": "#/components/schemas/LearningObjectives"
+          },
+          "sustainability_map": {
+            "$ref": "#/components/schemas/SustainabilityIntegration"
+          }
+        },
+        "required": [
+          "description",
+          "objectives",
+          "course_metadata",
+          "sustainability_map"
+        ],
+        "title": "LearningOutcomesRequest",
+        "type": "object"
+      },
+      "MessageResponse": {
+        "properties": {
+          "message": {
+            "title": "Message",
+            "type": "string"
+          }
+        },
+        "required": [
+          "message"
+        ],
+        "title": "MessageResponse",
+        "type": "object"
+      },
+      "QuestionType": {
+        "enum": [
+          "text",
+          "checkbox",
+          "predefined_text"
+        ],
+        "title": "QuestionType",
+        "type": "string"
+      },
+      "ReformulatedQuestionsResponse": {
+        "properties": {
+          "NEW_QUESTIONS": {
+            "items": {
+              "type": "string"
+            },
+            "title": "New Questions",
+            "type": "array"
+          }
+        },
+        "required": [
+          "NEW_QUESTIONS"
+        ],
+        "title": "ReformulatedQuestionsResponse",
+        "type": "object"
+      },
+      "RegisterFormAnswerBody": {
+        "properties": {
+          "answer": {
+            "title": "Answer",
+            "type": "string"
+          },
+          "answer_type": {
+            "$ref": "#/components/schemas/QuestionType"
+          },
+          "form_name": {
+            "title": "Form Name",
+            "type": "string"
+          },
+          "question": {
+            "title": "Question",
+            "type": "string"
+          }
+        },
+        "required": [
+          "form_name",
+          "question",
+          "answer",
+          "answer_type"
+        ],
+        "title": "RegisterFormAnswerBody",
+        "type": "object"
+      },
+      "RowCorpusQtyDocInfo": {
+        "properties": {
+          "corpus": {
+            "title": "Corpus",
+            "type": "string"
+          },
+          "qty_in_qdrant": {
+            "title": "Qty In Qdrant",
+            "type": "integer"
+          },
+          "qty_total": {
+            "title": "Qty Total",
+            "type": "integer"
+          },
+          "url": {
+            "title": "Url",
+            "type": "string"
+          }
+        },
+        "required": [
+          "corpus",
+          "url",
+          "qty_total",
+          "qty_in_qdrant"
+        ],
+        "title": "RowCorpusQtyDocInfo",
+        "type": "object"
+      },
+      "SDGFilter": {
+        "properties": {
+          "sdg_filter": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "integer"
+                },
+                "maxItems": 17,
+                "minItems": 0,
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "List of SDGs to filter the results",
+            "examples": [
+              [
+                1,
+                2,
+                3
+              ]
+            ],
+            "title": "Sdg Filter"
+          }
+        },
+        "title": "SDGFilter",
+        "type": "object"
+      },
+      "ScoredPoint": {
+        "description": "Search result",
+        "properties": {
+          "id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "string"
+              },
+              {
+                "format": "uuid",
+                "type": "string"
+              }
+            ],
+            "description": "Search result",
+            "title": "Id"
+          },
+          "order_value": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Order-by value",
+            "title": "Order Value"
+          },
+          "payload": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Payload - values assigned to the point",
+            "title": "Payload"
+          },
+          "score": {
+            "description": "Points vector distance to the query vector",
+            "title": "Score",
+            "type": "number"
+          },
+          "shard_key": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Shard Key",
+            "title": "Shard Key"
+          },
+          "vector": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "number"
+                },
+                "type": "array"
+              },
+              {
+                "items": {
+                  "items": {
+                    "type": "number"
+                  },
+                  "type": "array"
+                },
+                "type": "array"
+              },
+              {
+                "additionalProperties": {
+                  "anyOf": [
+                    {
+                      "items": {
+                        "type": "number"
+                      },
+                      "type": "array"
+                    },
+                    {
+                      "$ref": "#/components/schemas/SparseVector"
+                    },
+                    {
+                      "items": {
+                        "items": {
+                          "type": "number"
+                        },
+                        "type": "array"
+                      },
+                      "type": "array"
+                    }
+                  ]
+                },
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Vector of the point",
+            "title": "Vector"
+          },
+          "version": {
+            "description": "Point version",
+            "title": "Version",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "id",
+          "version",
+          "score"
+        ],
+        "title": "ScoredPoint",
+        "type": "object"
+      },
+      "SearchOutput": {
+        "properties": {
+          "docs": {
+            "anyOf": [
+              {
+                "items": {
+                  "$ref": "#/components/schemas/EnhancedDocumentSlice"
+                },
+                "type": "array"
+              },
+              {
+                "items": {
+                  "$ref": "#/components/schemas/ScoredPoint"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Search results returned by the endpoint.",
+            "title": "Docs"
+          },
+          "search_message_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Identifier of the stored search event for analytics/tracking.",
+            "title": "Search Message Id"
+          }
+        },
+        "title": "SearchOutput",
+        "type": "object"
+      },
+      "SearchQuery": {
+        "examples": [
+          {
+            "corpora": [
+              "conversation"
+            ],
+            "lang": [
+              "en"
+            ],
+            "query": "How can schools reduce water waste?",
+            "sdg_filter": [
+              6
+            ]
+          },
+          {
+            "corpora": [
+              "conversation",
+              "wikipedia"
+            ],
+            "lang": [
+              "en",
+              "fr"
+            ],
+            "query": "Compare carbon pricing and cap-and-trade: how do they work, and what are their pros and cons?",
+            "sdg_filter": [
+              3,
+              6
+            ]
+          }
+        ],
+        "properties": {
+          "corpora": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Optional list of corpus names to restrict search scope.",
+            "examples": [
+              [
+                "conversation",
+                "wikipedia"
+              ]
+            ],
+            "title": "Corpora"
+          },
+          "lang": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Optional language filters to apply to results.",
+            "examples": [
+              [
+                "en",
+                "fr"
+              ]
+            ],
+            "title": "Lang"
+          },
+          "query": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "User query text.",
+            "examples": [
+              "How can schools reduce water waste?",
+              "Compare carbon pricing and cap-and-trade: how do they work, and what are their pros and cons?"
+            ],
+            "title": "Query"
+          },
+          "sdg_filter": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "integer"
+                },
+                "maxItems": 17,
+                "minItems": 0,
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "List of SDGs to filter the results",
+            "examples": [
+              [
+                1,
+                2,
+                3
+              ]
+            ],
+            "title": "Sdg Filter"
+          }
+        },
+        "required": [
+          "query"
+        ],
+        "title": "SearchQuery",
+        "type": "object"
+      },
+      "SessionMode": {
+        "enum": [
+          "PRESENTIEL",
+          "DISTANCIEL",
+          "HYBRIDE"
+        ],
+        "title": "SessionMode",
+        "type": "string"
+      },
+      "SessionPlan": {
+        "properties": {
+          "class_size": {
+            "title": "Class Size",
+            "type": "integer"
+          },
+          "duration": {
+            "title": "Duration",
+            "type": "number"
+          },
+          "mode": {
+            "$ref": "#/components/schemas/SessionMode"
+          },
+          "objectives": {
+            "items": {
+              "type": "integer"
+            },
+            "title": "Objectives",
+            "type": "array"
+          },
+          "session_number": {
+            "title": "Session Number",
+            "type": "integer"
+          },
+          "type": {
+            "title": "Type",
+            "type": "string"
+          }
+        },
+        "required": [
+          "session_number",
+          "objectives",
+          "type",
+          "mode",
+          "duration",
+          "class_size"
+        ],
+        "title": "SessionPlan",
+        "type": "object"
+      },
+      "SessionResponse": {
+        "properties": {
+          "session_id": {
+            "format": "uuid",
+            "title": "Session Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "session_id"
+        ],
+        "title": "SessionResponse",
+        "type": "object"
+      },
+      "SparseVector": {
+        "additionalProperties": false,
+        "description": "Sparse vector structure",
+        "properties": {
+          "indices": {
+            "description": "Indices must be unique",
+            "items": {
+              "type": "integer"
+            },
+            "title": "Indices",
+            "type": "array"
+          },
+          "values": {
+            "description": "Values and indices must be the same length",
+            "items": {
+              "type": "number"
+            },
+            "title": "Values",
+            "type": "array"
+          }
+        },
+        "required": [
+          "indices",
+          "values"
+        ],
+        "title": "SparseVector",
+        "type": "object"
+      },
+      "SummariesList": {
+        "properties": {
+          "summaries": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Summaries",
+            "type": "array"
+          }
+        },
+        "required": [
+          "summaries"
+        ],
+        "title": "SummariesList",
+        "type": "object"
+      },
+      "SustainabilityConnection": {
+        "properties": {
+          "connection_explanation": {
+            "title": "Connection Explanation",
+            "type": "string"
+          },
+          "key_resources": {
+            "items": {
+              "$ref": "#/components/schemas/Document"
+            },
+            "title": "Key Resources",
+            "type": "array"
+          },
+          "objective_number": {
+            "title": "Objective Number",
+            "type": "integer"
+          },
+          "sdg_themes": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Sdg Themes",
+            "type": "array"
+          }
+        },
+        "required": [
+          "objective_number",
+          "sdg_themes",
+          "connection_explanation",
+          "key_resources"
+        ],
+        "title": "SustainabilityConnection",
+        "type": "object"
+      },
+      "SustainabilityIntegration": {
+        "properties": {
+          "connections": {
+            "items": {
+              "$ref": "#/components/schemas/SustainabilityConnection"
+            },
+            "title": "Connections",
+            "type": "array"
+          },
+          "integration_strategy": {
+            "title": "Integration Strategy",
+            "type": "string"
+          },
+          "resources_used": {
+            "items": {
+              "$ref": "#/components/schemas/Document"
+            },
+            "title": "Resources Used",
+            "type": "array"
+          },
+          "suggested_objectives": {
+            "anyOf": [
+              {
+                "items": {
+                  "$ref": "#/components/schemas/LearningObjective"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Suggested Objectives"
+          }
+        },
+        "required": [
+          "connections",
+          "integration_strategy",
+          "resources_used"
+        ],
+        "title": "SustainabilityIntegration",
+        "type": "object"
+      },
+      "SyllabusFeedback": {
+        "properties": {
+          "documents": {
+            "items": {
+              "$ref": "#/components/schemas/EnhancedDocumentSlice"
+            },
+            "title": "Documents",
+            "type": "array"
+          },
+          "extracts": {
+            "items": {
+              "$ref": "#/components/schemas/ExtractorOutput"
+            },
+            "title": "Extracts",
+            "type": "array"
+          },
+          "feedback": {
+            "title": "Feedback",
+            "type": "string"
+          },
+          "lang": {
+            "default": "en",
+            "title": "Lang",
+            "type": "string"
+          },
+          "syllabus": {
+            "items": {
+              "$ref": "#/components/schemas/SyllabusResponseAgent"
+            },
+            "title": "Syllabus",
+            "type": "array"
+          },
+          "syllabus_message_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Syllabus Message Id"
+          }
+        },
+        "required": [
+          "syllabus",
+          "documents",
+          "extracts",
+          "feedback"
+        ],
+        "title": "SyllabusFeedback",
+        "type": "object"
+      },
+      "SyllabusGenerationRequest": {
+        "properties": {
+          "context": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/FileSummary"
+              },
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Context"
+          },
+          "course_metadata": {
+            "$ref": "#/components/schemas/CourseMetadata"
+          },
+          "mode": {
+            "title": "Mode",
+            "type": "string"
+          },
+          "provided_description": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Provided Description"
+          },
+          "provided_objectives": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Provided Objectives"
+          },
+          "rag_resources": {
+            "anyOf": [
+              {
+                "items": {
+                  "$ref": "#/components/schemas/Document"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Rag Resources"
+          }
+        },
+        "required": [
+          "mode",
+          "course_metadata"
+        ],
+        "title": "SyllabusGenerationRequest",
+        "type": "object"
+      },
+      "SyllabusGenerationResponse": {
+        "description": "`/tutor/api/generate` output. The orchestrator stores the BAML outputs as\nis, so the sections use the BAML types, not the models above.",
+        "properties": {
+          "competencies": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/CompetencyMappings"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "description": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/CourseDescription"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "message": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Message"
+          },
+          "objectives": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/LearningObjectives"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "outcomes": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/LearningOutcomes"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "sessions": {
+            "anyOf": [
+              {
+                "items": {
+                  "$ref": "#/components/schemas/SessionPlan"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Sessions"
+          },
+          "status": {
+            "enum": [
+              "success",
+              "error"
+            ],
+            "title": "Status",
+            "type": "string"
+          },
+          "sustainability": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/SustainabilityIntegration"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "validation": {
+            "$ref": "#/components/schemas/SyllabusValidation"
+          }
+        },
+        "required": [
+          "status",
+          "validation"
+        ],
+        "title": "SyllabusGenerationResponse",
+        "type": "object"
+      },
+      "SyllabusResponse": {
+        "properties": {
+          "documents": {
+            "items": {
+              "$ref": "#/components/schemas/EnhancedDocumentSlice"
+            },
+            "title": "Documents",
+            "type": "array"
+          },
+          "extracts": {
+            "items": {
+              "$ref": "#/components/schemas/ExtractorOutput"
+            },
+            "title": "Extracts",
+            "type": "array"
+          },
+          "syllabus": {
+            "items": {
+              "$ref": "#/components/schemas/SyllabusResponseAgent"
+            },
+            "title": "Syllabus",
+            "type": "array"
+          },
+          "syllabus_message_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Syllabus Message Id"
+          }
+        },
+        "required": [
+          "syllabus",
+          "documents",
+          "extracts"
+        ],
+        "title": "SyllabusResponse",
+        "type": "object"
+      },
+      "SyllabusResponseAgent": {
+        "properties": {
+          "content": {
+            "title": "Content",
+            "type": "string"
+          },
+          "source": {
+            "default": "default",
+            "title": "Source",
+            "type": "string"
+          }
+        },
+        "required": [
+          "content"
+        ],
+        "title": "SyllabusResponseAgent",
+        "type": "object"
+      },
+      "SyllabusUserUpdate": {
+        "properties": {
+          "syllabus": {
+            "title": "Syllabus",
+            "type": "string"
+          }
+        },
+        "required": [
+          "syllabus"
+        ],
+        "title": "SyllabusUserUpdate",
+        "type": "object"
+      },
+      "SyllabusValidation": {
+        "properties": {
+          "major_issues": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Major Issues",
+            "type": "array"
+          },
+          "minor_issues": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Minor Issues",
+            "type": "array"
+          },
+          "passed": {
+            "title": "Passed",
+            "type": "boolean"
+          },
+          "suggestions": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Suggestions",
+            "type": "array"
+          }
+        },
+        "required": [
+          "passed",
+          "major_issues",
+          "minor_issues",
+          "suggestions"
+        ],
+        "title": "SyllabusValidation",
+        "type": "object"
+      },
+      "TutorSearchResponse": {
+        "properties": {
+          "documents": {
+            "items": {
+              "$ref": "#/components/schemas/EnhancedDocumentSlice"
+            },
+            "title": "Documents",
+            "type": "array"
+          },
+          "extracts": {
+            "items": {
+              "$ref": "#/components/schemas/ExtractorOutput"
+            },
+            "title": "Extracts",
+            "type": "array"
+          },
+          "nb_results": {
+            "title": "Nb Results",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "extracts",
+          "nb_results",
+          "documents"
+        ],
+        "title": "TutorSearchResponse",
+        "type": "object"
+      },
+      "TutorSyllabusRequest": {
+        "properties": {
+          "course_title": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Course Title"
+          },
+          "description": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Description"
+          },
+          "discipline": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Discipline"
+          },
+          "documents": {
+            "items": {
+              "$ref": "#/components/schemas/EnhancedDocumentSlice"
+            },
+            "title": "Documents",
+            "type": "array"
+          },
+          "duration": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Duration"
+          },
+          "extracts": {
+            "items": {
+              "$ref": "#/components/schemas/ExtractorOutput"
+            },
+            "title": "Extracts",
+            "type": "array"
+          },
+          "level": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Level"
+          },
+          "nb_results": {
+            "title": "Nb Results",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "extracts",
+          "nb_results",
+          "documents"
+        ],
+        "title": "TutorSyllabusRequest",
+        "type": "object"
+      },
+      "UserAndSessionResponse": {
+        "properties": {
+          "message": {
+            "title": "Message",
+            "type": "string"
+          },
+          "session_id": {
+            "format": "uuid",
+            "title": "Session Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "message",
+          "session_id"
+        ],
+        "title": "UserAndSessionResponse",
+        "type": "object"
+      },
+      "UserResponse": {
+        "properties": {
+          "user_id": {
+            "format": "uuid",
+            "title": "User Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "user_id"
+        ],
+        "title": "UserResponse",
+        "type": "object"
+      }
+    },
+    "securitySchemes": {
+      "APIKeyHeader": {
+        "in": "header",
+        "name": "X-API-Key",
+        "type": "apiKey"
+      }
+    }
+  },
+  "info": {
+    "description": "\n    WeLearn API\n    Search\n    **search results are grouped by url**\n    - You can search by term\n    - Filter based on metadata\n    ",
+    "title": "WeLearn",
+    "version": "0.1.0"
+  },
+  "openapi": "3.1.0",
+  "paths": {
+    "/": {
+      "get": {
+        "operationId": "root-get_api_version",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Root-Get Api Version",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Get Api Version",
+        "tags": [
+          "root"
+        ]
+      }
+    },
+    "/api/v1/bibliography/export_bibliography": {
+      "post": {
+        "operationId": "bibliography-export_bibliography",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DocumentIDs"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "default": {
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Error"
+          }
+        },
+        "security": [
+          {
+            "APIKeyHeader": []
+          }
+        ],
+        "summary": "Export Bibliography",
+        "tags": [
+          "bibliography"
+        ]
+      }
+    },
+    "/api/v1/metric/clicked_document": {
+      "post": {
+        "operationId": "metric-update_clicked_doc_from_chat_message",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DocumentClickUpdateResponse"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "title": "Response Metric-Update Clicked Doc From Chat Message",
+                  "type": "string"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Error"
+          }
+        },
+        "security": [
+          {
+            "APIKeyHeader": []
+          }
+        ],
+        "summary": "Update Clicked Doc From Chat Message",
+        "tags": [
+          "metric"
+        ]
+      }
+    },
+    "/api/v1/metric/form_data": {
+      "post": {
+        "operationId": "metric-register_form_data",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RegisterFormAnswerBody"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "title": "Response Metric-Register Form Data",
+                  "type": "string"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Error"
+          }
+        },
+        "security": [
+          {
+            "APIKeyHeader": []
+          }
+        ],
+        "summary": "Register Form Data",
+        "tags": [
+          "metric"
+        ]
+      }
+    },
+    "/api/v1/metric/nb_docs_info_per_corpus": {
+      "get": {
+        "operationId": "metric-get_nb_docs_info_per_corpus",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/RowCorpusQtyDocInfo"
+                  },
+                  "title": "Response Metric-Get Nb Docs Info Per Corpus",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Error"
+          }
+        },
+        "security": [
+          {
+            "APIKeyHeader": []
+          }
+        ],
+        "summary": "Get Nb Docs Info Per Corpus",
+        "tags": [
+          "metric"
+        ]
+      }
+    },
+    "/api/v1/metric/syllabus_downloaded": {
+      "post": {
+        "operationId": "metric-register_syllabus_download",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "title": "Response Metric-Register Syllabus Download",
+                  "type": "string"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Error"
+          }
+        },
+        "security": [
+          {
+            "APIKeyHeader": []
+          }
+        ],
+        "summary": "Register Syllabus Download",
+        "tags": [
+          "metric"
+        ]
+      }
+    },
+    "/api/v1/micro_learning/full_journey": {
+      "get": {
+        "description": "Get all documents for the micro learning journey of one sdg",
+        "operationId": "micro_learning-get_full_journey",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "sdg",
+            "required": true,
+            "schema": {
+              "title": "Sdg",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "subject",
+            "required": true,
+            "schema": {
+              "title": "Subject",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "lang",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Lang"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": {
+                    "items": {
+                      "$ref": "#/components/schemas/JourneySection"
+                    },
+                    "type": "array"
+                  },
+                  "title": "Response Micro Learning-Get Full Journey",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Error"
+          }
+        },
+        "security": [
+          {
+            "APIKeyHeader": []
+          }
+        ],
+        "summary": "get the full journey",
+        "tags": [
+          "micro_learning"
+        ]
+      }
+    },
+    "/api/v1/micro_learning/subject_list": {
+      "get": {
+        "description": "Retrieve all the subjects",
+        "operationId": "micro_learning-get_subject_list",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "lang",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Lang"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "type": "string"
+                  },
+                  "title": "Response Micro Learning-Get Subject List",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Error"
+          }
+        },
+        "security": [
+          {
+            "APIKeyHeader": []
+          }
+        ],
+        "summary": "get subject's list",
+        "tags": [
+          "micro_learning"
+        ]
+      }
+    },
+    "/api/v1/qna/chat/agent": {
+      "post": {
+        "description": "This endpoint is used to get an agent response to the user's message",
+        "operationId": "chat_agent_response",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "examples": {
+                "existing_thread": {
+                  "summary": "Continue an existing thread",
+                  "value": {
+                    "corpora": [
+                      "conversation"
+                    ],
+                    "query": "Can you give 3 concrete actions?",
+                    "sdg_filter": [
+                      6
+                    ],
+                    "thread_id": "6fca8d02-0bc2-48a5-9c95-4942ca57e651"
+                  }
+                },
+                "new_thread": {
+                  "summary": "Start a new agent thread",
+                  "value": {
+                    "corpora": [
+                      "conversation"
+                    ],
+                    "query": "How can communities improve clean water access?",
+                    "sdg_filter": [
+                      6
+                    ]
+                  }
+                }
+              },
+              "schema": {
+                "$ref": "#/components/schemas/AgentContext",
+                "description": "Agent request payload with query, optional thread, and filters."
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AgentResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Error"
+          }
+        },
+        "security": [
+          {
+            "APIKeyHeader": []
+          }
+        ],
+        "summary": "Agent Response",
+        "tags": [
+          "qna"
+        ]
+      }
+    },
+    "/api/v1/qna/chat/agent_stream": {
+      "post": {
+        "description": "This endpoint streams an agent response to the user's message and ends with the full response payload.",
+        "operationId": "qna-agent_stream_response",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AgentContext",
+                "description": "Agent request payload with query, optional thread, and filters."
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "text/event-stream": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Error"
+          }
+        },
+        "security": [
+          {
+            "APIKeyHeader": []
+          }
+        ],
+        "summary": "Agent Response Stream",
+        "tags": [
+          "qna"
+        ]
+      }
+    },
+    "/api/v1/qna/chat/answer": {
+      "post": {
+        "description": "This endpoint is used to get the answer to the user's query based on the provided context and history",
+        "operationId": "qna-q_and_a_ans",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/Context"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": {
+                    "anyOf": [
+                      {
+                        "type": "string"
+                      },
+                      {
+                        "format": "uuid",
+                        "type": "string"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "title": "Response Qna-Q And A Ans",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Error"
+          }
+        },
+        "security": [
+          {
+            "APIKeyHeader": []
+          }
+        ],
+        "summary": "Chat Answer",
+        "tags": [
+          "qna"
+        ]
+      }
+    },
+    "/api/v1/qna/chat/history": {
+      "get": {
+        "operationId": "qna-get_chat_history",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "thread_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Thread Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "additionalProperties": {
+                      "anyOf": [
+                        {
+                          "type": "string"
+                        },
+                        {
+                          "items": {
+                            "additionalProperties": {
+                              "type": "string"
+                            },
+                            "type": "object"
+                          },
+                          "type": "array"
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
+                    },
+                    "type": "object"
+                  },
+                  "title": "Response Qna-Get Chat History",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Error"
+          }
+        },
+        "security": [
+          {
+            "APIKeyHeader": []
+          }
+        ],
+        "summary": "Get Chat History",
+        "tags": [
+          "qna"
+        ]
+      }
+    },
+    "/api/v1/qna/reformulate/questions": {
+      "post": {
+        "description": "This endpoint formulates new questions based on the provided context and history. They can be use to suggest it to the user.",
+        "operationId": "qna-q_and_a_new_questions",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/Context"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReformulatedQuestionsResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Error"
+          }
+        },
+        "security": [
+          {
+            "APIKeyHeader": []
+          }
+        ],
+        "summary": "Formulates new questions",
+        "tags": [
+          "qna"
+        ]
+      }
+    },
+    "/api/v1/qna/stream": {
+      "post": {
+        "description": "This endpoint is used to get the answer to the user's query based on the provided context and history. Streamed version",
+        "operationId": "qna-q_and_a_stream",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/Context"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response"
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Error"
+          }
+        },
+        "security": [
+          {
+            "APIKeyHeader": []
+          }
+        ],
+        "summary": "Chat Answer",
+        "tags": [
+          "qna"
+        ]
+      }
+    },
+    "/api/v1/search/by_document": {
+      "post": {
+        "description": "Search by documents, returns only one result by document id",
+        "operationId": "search_by_document",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "nb_results",
+            "required": false,
+            "schema": {
+              "default": 30,
+              "maximum": 100,
+              "minimum": 1,
+              "title": "Nb Results",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "subject",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Subject"
+            }
+          },
+          {
+            "in": "query",
+            "name": "influence_factor",
+            "required": false,
+            "schema": {
+              "default": 2,
+              "title": "Influence Factor",
+              "type": "number"
+            }
+          },
+          {
+            "in": "query",
+            "name": "relevance_factor",
+            "required": false,
+            "schema": {
+              "default": 1,
+              "title": "Relevance Factor",
+              "type": "number"
+            }
+          },
+          {
+            "in": "query",
+            "name": "concatenate",
+            "required": false,
+            "schema": {
+              "default": true,
+              "title": "Concatenate",
+              "type": "boolean"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "examples": {
+                "single_query": {
+                  "summary": "Single query with one corpus",
+                  "value": {
+                    "corpora": [
+                      "conversation"
+                    ],
+                    "lang": [
+                      "en"
+                    ],
+                    "query": "How can communities improve clean water access?",
+                    "sdg_filter": [
+                      6
+                    ]
+                  }
+                }
+              },
+              "schema": {
+                "$ref": "#/components/schemas/DocumentSearchQuery",
+                "description": "Core search payload containing query text and optional corpus/language/SDG filters."
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SearchOutput"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Error"
+          }
+        },
+        "security": [
+          {
+            "APIKeyHeader": []
+          }
+        ],
+        "summary": "search all documents",
+        "tags": [
+          "search"
+        ]
+      }
+    },
+    "/api/v1/search/by_slices": {
+      "post": {
+        "description": "Search slices in all collections or in collections specified",
+        "operationId": "search-search_all_slices_by_lang",
+        "parameters": [
+          {
+            "description": "Maximum number of search results to return.",
+            "in": "query",
+            "name": "nb_results",
+            "required": false,
+            "schema": {
+              "default": 30,
+              "description": "Maximum number of search results to return.",
+              "maximum": 100,
+              "minimum": 1,
+              "title": "Nb Results",
+              "type": "integer"
+            }
+          },
+          {
+            "description": "Optional subject hint to influence semantic ranking.",
+            "in": "query",
+            "name": "subject",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Optional subject hint to influence semantic ranking.",
+              "title": "Subject"
+            }
+          },
+          {
+            "description": "Weight applied to subject influence during flavored embedding.",
+            "in": "query",
+            "name": "influence_factor",
+            "required": false,
+            "schema": {
+              "default": 2,
+              "description": "Weight applied to subject influence during flavored embedding.",
+              "title": "Influence Factor",
+              "type": "number"
+            }
+          },
+          {
+            "description": "Weight applied to base relevance scoring.",
+            "in": "query",
+            "name": "relevance_factor",
+            "required": false,
+            "schema": {
+              "default": 1,
+              "description": "Weight applied to base relevance scoring.",
+              "title": "Relevance Factor",
+              "type": "number"
+            }
+          },
+          {
+            "description": "If true, combines query fragments before embedding.",
+            "in": "query",
+            "name": "concatenate",
+            "required": false,
+            "schema": {
+              "default": true,
+              "description": "If true, combines query fragments before embedding.",
+              "title": "Concatenate",
+              "type": "boolean"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SearchQuery",
+                "description": "Core search payload containing query text and optional corpus/language/SDG filters."
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {
+                      "items": {
+                        "$ref": "#/components/schemas/EnhancedDocumentSlice"
+                      },
+                      "type": "array"
+                    },
+                    {
+                      "type": "string"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ],
+                  "title": "Response Search-Search All Slices By Lang"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Error"
+          }
+        },
+        "security": [
+          {
+            "APIKeyHeader": []
+          }
+        ],
+        "summary": "search all slices",
+        "tags": [
+          "search"
+        ]
+      }
+    },
+    "/api/v1/search/collections": {
+      "get": {
+        "operationId": "get_corpus_list",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/CorpusRead"
+                  },
+                  "title": "Response Get Corpus List",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Error"
+          }
+        },
+        "security": [
+          {
+            "APIKeyHeader": []
+          }
+        ],
+        "summary": "Get Corpus",
+        "tags": [
+          "search"
+        ]
+      }
+    },
+    "/api/v1/search/collections/{collection}": {
+      "post": {
+        "description": "Search documents in a specific collection",
+        "operationId": "search-search_doc_by_collection",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "collection",
+            "required": true,
+            "schema": {
+              "title": "Collection",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "query",
+            "required": true,
+            "schema": {
+              "title": "Query",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "nb_results",
+            "required": false,
+            "schema": {
+              "default": 10,
+              "title": "Nb Results",
+              "type": "integer"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "anyOf": [
+                  {
+                    "$ref": "#/components/schemas/SDGFilter"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "title": "Sdg Filter"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {
+                      "items": {
+                        "$ref": "#/components/schemas/EnhancedDocumentSlice"
+                      },
+                      "type": "array"
+                    },
+                    {
+                      "type": "string"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ],
+                  "title": "Response Search-Search Doc By Collection"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Error"
+          }
+        },
+        "security": [
+          {
+            "APIKeyHeader": []
+          }
+        ],
+        "summary": "search documents in a specific collection",
+        "tags": [
+          "search"
+        ]
+      }
+    },
+    "/api/v1/search/documents/by_ids": {
+      "post": {
+        "description": "Get documents payload by list of document ids",
+        "operationId": "search-get_documents_payload_by_ids",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "items": {
+                  "type": "string"
+                },
+                "title": "Documents Ids",
+                "type": "array"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/EnhancedDocumentSlice"
+                  },
+                  "title": "Response Search-Get Documents Payload By Ids",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Error"
+          }
+        },
+        "security": [
+          {
+            "APIKeyHeader": []
+          }
+        ],
+        "summary": "Get documents payload by ids",
+        "tags": [
+          "search"
+        ]
+      }
+    },
+    "/api/v1/search/multiple_by_slices": {
+      "post": {
+        "description": "Search slices in all collections or in collections specified",
+        "operationId": "search-multi_search_all_slices_by_lang",
+        "parameters": [
+          {
+            "description": "Maximum number of search results to return.",
+            "in": "query",
+            "name": "nb_results",
+            "required": false,
+            "schema": {
+              "default": 30,
+              "description": "Maximum number of search results to return.",
+              "maximum": 100,
+              "minimum": 1,
+              "title": "Nb Results",
+              "type": "integer"
+            }
+          },
+          {
+            "description": "Optional subject hint to influence semantic ranking.",
+            "in": "query",
+            "name": "subject",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Optional subject hint to influence semantic ranking.",
+              "title": "Subject"
+            }
+          },
+          {
+            "description": "Weight applied to subject influence during flavored embedding.",
+            "in": "query",
+            "name": "influence_factor",
+            "required": false,
+            "schema": {
+              "default": 2,
+              "description": "Weight applied to subject influence during flavored embedding.",
+              "title": "Influence Factor",
+              "type": "number"
+            }
+          },
+          {
+            "description": "Weight applied to base relevance scoring.",
+            "in": "query",
+            "name": "relevance_factor",
+            "required": false,
+            "schema": {
+              "default": 1,
+              "description": "Weight applied to base relevance scoring.",
+              "title": "Relevance Factor",
+              "type": "number"
+            }
+          },
+          {
+            "description": "If true, combines query fragments before embedding.",
+            "in": "query",
+            "name": "concatenate",
+            "required": false,
+            "schema": {
+              "default": true,
+              "description": "If true, combines query fragments before embedding.",
+              "title": "Concatenate",
+              "type": "boolean"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SearchQuery",
+                "description": "Core search payload containing query text and optional corpus/language/SDG filters."
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {
+                      "items": {
+                        "$ref": "#/components/schemas/EnhancedDocumentSlice"
+                      },
+                      "type": "array"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ],
+                  "title": "Response Search-Multi Search All Slices By Lang"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Error"
+          }
+        },
+        "security": [
+          {
+            "APIKeyHeader": []
+          }
+        ],
+        "summary": "search all slices",
+        "tags": [
+          "search"
+        ]
+      }
+    },
+    "/api/v1/search/nb_docs": {
+      "get": {
+        "operationId": "search-get_nb_docs",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": {
+                    "type": "integer"
+                  },
+                  "title": "Response Search-Get Nb Docs",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Error"
+          }
+        },
+        "security": [
+          {
+            "APIKeyHeader": []
+          }
+        ],
+        "summary": "Get Nb Docs",
+        "tags": [
+          "search"
+        ]
+      }
+    },
+    "/api/v1/tutor/api/generate": {
+      "post": {
+        "operationId": "tutor-generate_syllabus",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SyllabusGenerationRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SyllabusGenerationResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Error"
+          }
+        },
+        "security": [
+          {
+            "APIKeyHeader": []
+          }
+        ],
+        "summary": "Generate Syllabus",
+        "tags": [
+          "tutor"
+        ]
+      }
+    },
+    "/api/v1/tutor/files/content": {
+      "post": {
+        "operationId": "tutor-extract_files_content",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "lang",
+            "required": false,
+            "schema": {
+              "default": "en",
+              "title": "Lang",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "$ref": "#/components/schemas/Body_tutor-extract_files_content"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {
+                      "$ref": "#/components/schemas/ExtractorOutputList"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ],
+                  "title": "Response Tutor-Extract Files Content"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Error"
+          }
+        },
+        "security": [
+          {
+            "APIKeyHeader": []
+          }
+        ],
+        "summary": "Extract Files Content",
+        "tags": [
+          "tutor"
+        ]
+      }
+    },
+    "/api/v1/tutor/mas_files/content": {
+      "post": {
+        "operationId": "tutor-extract_files_content_baml",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "lang",
+            "required": false,
+            "schema": {
+              "default": "en",
+              "title": "Lang",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "mode",
+            "required": false,
+            "schema": {
+              "default": "mode_1",
+              "title": "Mode",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "$ref": "#/components/schemas/Body_tutor-extract_files_content_baml"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {
+                      "$ref": "#/components/schemas/FileSummary"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ],
+                  "title": "Response Tutor-Extract Files Content Baml"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Error"
+          }
+        },
+        "security": [
+          {
+            "APIKeyHeader": []
+          }
+        ],
+        "summary": "Extract Files Content Baml",
+        "tags": [
+          "tutor"
+        ]
+      }
+    },
+    "/api/v1/tutor/search_extracts": {
+      "post": {
+        "operationId": "tutor-tutor_search_extract",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "nb_results",
+            "required": false,
+            "schema": {
+              "default": 15,
+              "title": "Nb Results",
+              "type": "integer"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SummariesList"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TutorSearchResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Error"
+          }
+        },
+        "security": [
+          {
+            "APIKeyHeader": []
+          }
+        ],
+        "summary": "Tutor Search Extract",
+        "tags": [
+          "tutor"
+        ]
+      }
+    },
+    "/api/v1/tutor/syllabus": {
+      "post": {
+        "operationId": "tutor-create_syllabus",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "lang",
+            "required": false,
+            "schema": {
+              "default": "en",
+              "title": "Lang",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TutorSyllabusRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SyllabusResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Error"
+          }
+        },
+        "security": [
+          {
+            "APIKeyHeader": []
+          }
+        ],
+        "summary": "Create Syllabus",
+        "tags": [
+          "tutor"
+        ]
+      }
+    },
+    "/api/v1/tutor/syllabus/competency_map": {
+      "post": {
+        "operationId": "tutor-generate_competency_map",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CompetencyMappingRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CompetencyMappings"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Error"
+          }
+        },
+        "security": [
+          {
+            "APIKeyHeader": []
+          }
+        ],
+        "summary": "Generate Competency Map",
+        "tags": [
+          "tutor"
+        ]
+      }
+    },
+    "/api/v1/tutor/syllabus/description": {
+      "post": {
+        "operationId": "tutor-baml_test",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CourseDescriptionRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CourseDescription"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Error"
+          }
+        },
+        "security": [
+          {
+            "APIKeyHeader": []
+          }
+        ],
+        "summary": "Baml Test",
+        "tags": [
+          "tutor"
+        ]
+      }
+    },
+    "/api/v1/tutor/syllabus/feedback": {
+      "post": {
+        "operationId": "tutor-handle_syllabus_feedback",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SyllabusFeedback"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SyllabusResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Error"
+          }
+        },
+        "security": [
+          {
+            "APIKeyHeader": []
+          }
+        ],
+        "summary": "Handle Syllabus Feedback",
+        "tags": [
+          "tutor"
+        ]
+      }
+    },
+    "/api/v1/tutor/syllabus/learning_objectives": {
+      "post": {
+        "operationId": "tutor-baml_learning_objectives",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/LearningObjectivesRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LearningObjectives"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Error"
+          }
+        },
+        "security": [
+          {
+            "APIKeyHeader": []
+          }
+        ],
+        "summary": "Baml Learning Objectives",
+        "tags": [
+          "tutor"
+        ]
+      }
+    },
+    "/api/v1/tutor/syllabus/learning_outcomes": {
+      "post": {
+        "operationId": "tutor-baml_learning_outcomes",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/LearningOutcomesRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LearningOutcomes"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Error"
+          }
+        },
+        "security": [
+          {
+            "APIKeyHeader": []
+          }
+        ],
+        "summary": "Baml Learning Outcomes",
+        "tags": [
+          "tutor"
+        ]
+      }
+    },
+    "/api/v1/tutor/syllabus/sustainability_integration": {
+      "post": {
+        "operationId": "tutor-integrate_sustainability",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/IntegrateSustainabilityRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SustainabilityIntegration"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Error"
+          }
+        },
+        "security": [
+          {
+            "APIKeyHeader": []
+          }
+        ],
+        "summary": "Integrate Sustainability",
+        "tags": [
+          "tutor"
+        ]
+      }
+    },
+    "/api/v1/tutor/syllabus/user_update": {
+      "post": {
+        "operationId": "tutor-register_syllabus_user_update",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SyllabusUserUpdate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MessageResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Error"
+          }
+        },
+        "security": [
+          {
+            "APIKeyHeader": []
+          }
+        ],
+        "summary": "Register Syllabus User Update",
+        "tags": [
+          "tutor"
+        ]
+      }
+    },
+    "/api/v1/user/bookmarks": {
+      "delete": {
+        "operationId": "user-delete_user_bookmarks",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BookmarksDeletedResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Error"
+          }
+        },
+        "security": [
+          {
+            "APIKeyHeader": []
+          }
+        ],
+        "summary": "Delete all user bookmarks",
+        "tags": [
+          "user"
+        ]
+      },
+      "get": {
+        "operationId": "user-get_user_bookmarks",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BookmarksResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Error"
+          }
+        },
+        "security": [
+          {
+            "APIKeyHeader": []
+          }
+        ],
+        "summary": "Get user bookmarks",
+        "tags": [
+          "user"
+        ]
+      }
+    },
+    "/api/v1/user/bookmarks/:document_id": {
+      "delete": {
+        "operationId": "user-delete_user_bookmark",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "document_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Document Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BookmarkDeletedResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Error"
+          }
+        },
+        "security": [
+          {
+            "APIKeyHeader": []
+          }
+        ],
+        "summary": "Delete a user bookmark",
+        "tags": [
+          "user"
+        ]
+      },
+      "post": {
+        "operationId": "user-add_user_bookmark",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "document_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Document Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BookmarkAddedResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Error"
+          }
+        },
+        "security": [
+          {
+            "APIKeyHeader": []
+          }
+        ],
+        "summary": "Add user bookmark",
+        "tags": [
+          "user"
+        ]
+      }
+    },
+    "/api/v1/user/institution-data": {
+      "post": {
+        "operationId": "user-add_institution_data_to_user",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/InstitutionData"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/InstitutionDataResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Error"
+          }
+        },
+        "security": [
+          {
+            "APIKeyHeader": []
+          }
+        ],
+        "summary": "Add institution data to user",
+        "tags": [
+          "user"
+        ]
+      }
+    },
+    "/api/v1/user/session": {
+      "post": {
+        "operationId": "user-handle_session",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "user_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "User Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "session_id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "uuid",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Session Id"
+            }
+          },
+          {
+            "in": "query",
+            "name": "referer",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Referer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SessionResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Error"
+          }
+        },
+        "security": [
+          {
+            "APIKeyHeader": []
+          }
+        ],
+        "summary": "Create new session",
+        "tags": [
+          "user"
+        ]
+      }
+    },
+    "/api/v1/user/user": {
+      "post": {
+        "operationId": "user-handle_user",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "user_id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "uuid",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "User Id"
+            }
+          },
+          {
+            "in": "query",
+            "name": "referer",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Referer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UserResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Error"
+          }
+        },
+        "security": [
+          {
+            "APIKeyHeader": []
+          }
+        ],
+        "summary": "Create new user",
+        "tags": [
+          "user"
+        ]
+      }
+    },
+    "/api/v1/user/user_and_session": {
+      "post": {
+        "operationId": "user-handle_user_and_session",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "referer",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Referer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UserAndSessionResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Error"
+          }
+        },
+        "security": [
+          {
+            "APIKeyHeader": []
+          }
+        ],
+        "summary": "Create new user and session",
+        "tags": [
+          "user"
+        ]
+      }
+    },
+    "/health/": {
+      "get": {
+        "description": "## Perform a Health Check\nEndpoint to perform a healthcheck on. This endpoint can primarily be used Docker\nto ensure a robust container orchestration and management is in place. Other\nservices which rely on proper functioning of the API service will not deploy if this\nendpoint returns any other HTTP status code except 200 (OK).\nReturns:\n    HealthCheck: Returns a JSON response with the health status",
+        "operationId": "healthcheck-get_health",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HealthCheck"
+                }
+              }
+            },
+            "description": "Return HTTP Status Code 200 (OK)"
+          }
+        },
+        "summary": "Perform a Health Check",
+        "tags": [
+          "healthcheck"
+        ]
+      }
+    },
+    "/health/db": {
+      "get": {
+        "description": "## Perform a Health Check\nEndpoint to perform a healthcheck on. This endpoint can primarily be used Docker\nto ensure a robust container orchestration and management is in place. Other\nservices which rely on proper functioning of the API service will not deploy if this\nendpoint returns any other HTTP status code except 200 (OK).\nReturns:\n    HealthCheck: Returns a JSON response with the health status",
+        "operationId": "healthcheck-get_db_health",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HealthCheck"
+                }
+              }
+            },
+            "description": "Return HTTP Status Code 200 (OK)"
+          }
+        },
+        "summary": "Perform a Health Check",
+        "tags": [
+          "healthcheck",
+          "healthcheck"
+        ]
+      }
+    }
+  },
+  "tags": [
+    {
+      "description": "Search operations",
+      "name": "search"
+    },
+    {
+      "description": "Q&A operations with openai",
+      "name": "qna"
+    },
+    {
+      "description": "Tests for tutor operations",
+      "name": "tutor"
+    },
+    {
+      "description": "Micro learning journey operations",
+      "name": "micro_learning"
+    },
+    {
+      "description": "User operations",
+      "name": "user"
+    },
+    {
+      "description": "Metric information",
+      "name": "metric"
+    },
+    {
+      "description": "Bibliography exporters for documents collected by welearn",
+      "name": "bibliography"
+    }
+  ]
+}

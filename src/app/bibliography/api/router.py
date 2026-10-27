@@ -8,7 +8,11 @@ from src.app.search.infra.queries import get_documents_by_ids
 router = APIRouter()
 
 
-@router.post("/export_bibliography", response_class=PlainTextResponse)
+@router.post(
+    "/export_bibliography",
+    response_class=PlainTextResponse,
+    responses={200: {"content": {"text/plain": {"schema": {"type": "string"}}}}},
+)
 async def export_bibliography(body: DocumentIDs) -> str:
     documents_ids = [str(u) for u in body.documents_ids]
     docs = get_documents_by_ids(documents_ids)

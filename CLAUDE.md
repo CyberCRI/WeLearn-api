@@ -18,6 +18,7 @@ make generate-baml-poetry          # regenerate src/app/baml_client from src/app
 make run-poetry                    # generate BAML + uvicorn src.main:app --reload (port 8000)
 make test-poetry                   # generate BAML + full pytest run with coverage gate (--cov-fail-under=82)
 make lint                          # flake8, isort, black, lint-imports
+make openapi-poetry                # regenerate openapi.json (the API/client contract) — commit it with the code change
 ```
 
 - **Single test:** `poetry run pytest src/app/tests/search/test_search_api.py::SearchTests::test_search_items_no_query -q`. Add `-k pattern` to select by name.
@@ -38,6 +39,14 @@ FastAPI service for the WeLearn platform: semantic search over a Qdrant vector s
   - creates the shared clients on `app.state`: `app.state.qdrant` (`AsyncQdrantClient`) and `app.state.llm` (`LLMProxy`, Mistral);
   - initialises the tutor's `ChatMistralAI` model;
   - configures LangSmith tracing.
+- **API contract (`openapi.json`):**
+  - The OpenAPI schema FastAPI generates is the single source of truth between this API and WeLearn-client. It is committed at the repo root, and the client generates its TypeScript types from it (`yarn gen:api` in WeLearn-client).
+  - After changing a route, a Pydantic model it uses, or a `response_model`, run `make openapi-poetry` and commit `openapi.json`. `src/app/tests/shared/test_openapi_contract.py` fails when the committed file is stale.
+  - The `openapi-contract` workflow runs `oasdiff breaking` on PRs that touch `openapi.json`. Breaking a field the client uses means changing the client in step: prefer additive changes.
+  - Every route declares what it returns: a `response_model` (or a return annotation) with a dedicated Pydantic model, never a bare `dict` or an ORM object. Input and output models are separate. Responses that are not JSON (SSE, RIS text) declare their content type in `responses=`.
+  - Operation ids are `<tag>-<function name>` (`shared/api/openapi.py::generate_operation_id`). An explicit `operation_id=` overrides it; keep the MCP ones.
+  - JSON fields stay snake_case: the client and MCP consumers depend on it.
+  - Errors are documented by `shared/domain/responses.py::ErrorResponse` (`{"detail": ...}`); raise domain errors with `detail={"message", "code"}` (see `shared/domain/exceptions.py`), the client reads `detail.code`.
 - **MCP:** when `MCP_ENABLED`, `fastapi-mcp` exposes selected operations at `/mcp`. Operations are chosen by `operation_id`: `get_corpus_list` and `search_by_document`. Renaming those operation ids breaks the MCP interface.
 
 ### Feature-sliced layout (enforced)

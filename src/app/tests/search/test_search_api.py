@@ -416,6 +416,17 @@ class TestSortSlicesUsingMMR(IsolatedAsyncioTestCase):
     def test_sort_slices_using_mmr_empty(self, *mocks):
         self.assertEqual(sort_using_mmr([]), [])
 
+    def test_sort_slices_using_mmr_unsorted_input(self, *mocks):
+        """scores stay attached to their container when the input is not sorted"""
+        containers = [
+            SimpleNamespace(mean_score=0.2, mean_vector=[0.0, 1.0], mmr_rank=None),
+            SimpleNamespace(mean_score=0.9, mean_vector=[1.0, 0.0], mmr_rank=None),
+            SimpleNamespace(mean_score=0.5, mean_vector=[0.7, 0.7], mmr_rank=None),
+        ]
+        sort_using_mmr(containers)
+        ranked = sorted(containers, key=lambda c: c.mmr_rank)
+        self.assertEqual([c.mean_score for c in ranked], [0.9, 0.5, 0.2])
+
 
 @patch("src.app.search.infra.queries.session_maker")
 @patch(
