@@ -1,21 +1,9 @@
 #!/usr/bin/env bash
-# Checks formatting and lint on the staged Python files before committing.
-# Install with `make install-hooks`; fix with `make lint`; skip once with `git commit --no-verify`.
+# Runs the hooks in .pre-commit-config.yaml on the staged files before committing.
+# Install with `make install-hooks`; skip once with `git commit --no-verify`.
+# (`pre-commit install` refuses to run while core.hooksPath is set, hence this wrapper.)
 set -euo pipefail
 
 cd "$(git rev-parse --show-toplevel)"
 
-mapfile -t files < <(git diff --cached --name-only --diff-filter=ACMR -- 'src/*.py' ':!src/app/baml_client/*')
-if [ ${#files[@]} -eq 0 ]; then
-    exit 0
-fi
-
-status=0
-poetry run black --check --quiet "${files[@]}" || status=1
-poetry run isort --check-only --quiet "${files[@]}" || status=1
-poetry run flake8 "${files[@]}" || status=1
-
-if [ $status -ne 0 ]; then
-    echo "pre-commit: style checks failed. Run 'make lint', review, re-stage, then commit." >&2
-    exit 1
-fi
+exec poetry run pre-commit run --hook-stage pre-commit

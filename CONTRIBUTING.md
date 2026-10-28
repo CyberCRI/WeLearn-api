@@ -7,4 +7,3 @@ At this time, **we are not accepting contributions** to this project. We appreci
 If you have any questions or need further information, feel free to reach out through the [contact information](/README.md#contact) in the main repository.
 
 Thank you for your interest!
-

@@ -73,6 +73,7 @@ flake8 = "^6.1.0"
 black = "^24.3.0"
 isort = "^5.12.0"
 import-linter = "^2.15"
+pre-commit = "^4.7.0"
 
 [tool.poetry.group.metrics.dependencies]
 locust = "^2.20.1"

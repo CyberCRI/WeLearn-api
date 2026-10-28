@@ -1,0 +1,57 @@
+# Hooks run on staged files at each commit. Install once per clone with `make install-hooks`.
+# Run on the whole repo with `poetry run pre-commit run --all-files`.
+#
+# black, isort, flake8 and import-linter are local hooks run through Poetry, so their
+# versions come from poetry.lock (the same ones CI uses), not from this file.
+
+# generated code, sops-encrypted files that must never be rewritten, and CSV data
+exclude: ^(src/app/baml_client/|k8s/.*/secrets\..*\.yaml$)|\.csv$
+
+repos:
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v5.0.0
+    hooks:
+      - id: trailing-whitespace
+        args: [--markdown-linebreak-ext=md]
+        exclude: ^openapi\.json$
+      - id: end-of-file-fixer
+        exclude: ^openapi\.json$
+      - id: mixed-line-ending
+        args: [--fix=lf]
+      - id: check-yaml
+        # Helm templates are not plain YAML
+        exclude: ^k8s/.*/templates/
+      - id: check-toml
+      - id: check-json
+      - id: check-merge-conflict
+      - id: check-added-large-files
+        args: [--maxkb=1000]
+      - id: detect-private-key
+
+  - repo: local
+    hooks:
+      - id: isort
+        name: isort
+        entry: poetry run isort
+        language: system
+        types: [python]
+        files: ^src/
+      - id: black
+        name: black
+        entry: poetry run black
+        language: system
+        types: [python]
+        files: ^src/
+      - id: flake8
+        name: flake8
+        entry: poetry run flake8
+        language: system
+        types: [python]
+        files: ^src/
+      - id: import-linter
+        name: import-linter
+        entry: poetry run lint-imports
+        language: system
+        types: [python]
+        files: ^src/
+        pass_filenames: false

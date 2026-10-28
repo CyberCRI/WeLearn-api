@@ -194,7 +194,7 @@ Install the git hooks once per clone:
 make install-hooks   # points git at .githooks/
 ```
 
-- `pre-commit` checks black, isort and flake8 on the staged Python files.
+- `pre-commit` runs the [pre-commit](https://pre-commit.com) hooks in `.pre-commit-config.yaml` on the staged files: black and isort (they fix files, re-stage and commit again), flake8, import-linter, and generic checks (whitespace, YAML/TOML/JSON validity, merge markers, large files, private keys). Run them on the whole repo with `poetry run pre-commit run --all-files`.
 - `pre-push` runs the full CI checks (`make ci-poetry`).
 
 Skip a hook once with `--no-verify`.
