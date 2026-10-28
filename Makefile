@@ -1,4 +1,4 @@
-.PHONY: run-dev run-poetry generate-baml generate-baml-poetry lint lint-check-poetry test test-poetry openapi openapi-poetry ci-poetry install-hooks
+.PHONY: run-dev run-poetry generate-baml generate-baml-poetry lint lint-check lint-check-poetry test test-poetry openapi openapi-poetry ci-poetry install-hooks
 
 generate-baml:
 	baml-cli generate --from ./src/app/baml_src
@@ -25,7 +25,13 @@ lint:
 	black src
 	lint-imports
 
-# same checks as `lint`, without rewriting files
+# same checks as `lint`, without rewriting files (what CI runs)
+lint-check:
+	flake8 src
+	isort --check-only --diff src
+	black --check --diff src
+	lint-imports
+
 lint-check-poetry:
 	poetry run flake8 src
 	poetry run isort --check-only --diff src

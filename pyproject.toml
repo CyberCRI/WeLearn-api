@@ -92,6 +92,8 @@ requires = ["poetry-core"]
 build-backend = "poetry.core.masonry.api"
 
 [tool.black]
+line-length = 88
+target-version = ["py312"]
 extend-exclude = "^/src/app/baml_client/"
 
 [tool.importlinter]
