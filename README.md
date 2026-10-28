@@ -67,15 +67,6 @@ The project exposes several REST API endpoints that allow clients to interact wi
 
 ### Q&A Operations (OpenAI Integration)
 
-- **POST** `/api/v1/qna/reformulate/questions`  
-  **Description**: Reformulates a set of questions to enhance understanding or to generate more context-specific queries.
-
-- **POST** `/api/v1/qna/chat/answer`  
-  **Description**: Provides an answer to a question from the chat interface, utilizing the LLM and relevant data.
-
-- **POST** `/api/v1/qna/stream`  
-  **Description**: Streams responses from the Q&A service, providing real-time answers to the user’s questions.
-
 - **POST** `/api/v1/qna/chat/agent`  
   **Description**: Interact in a conversation from the chat interface, using the LLM, and fetching relevant data from WeLearn only if needed.
 

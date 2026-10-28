@@ -22,17 +22,6 @@ def _format_sse_event(data: str) -> str:
     return "".join(f"data: {line}\n" for line in lines) + "\n"
 
 
-async def _sse_wrap(stream: Any) -> AsyncGenerator[str, None]:
-    async for chunk in stream:
-        if isinstance(chunk, str):
-            data = chunk
-        elif isinstance(chunk, bytes):
-            data = chunk.decode("utf-8", errors="replace")
-        else:
-            data = json.dumps(jsonable_encoder(chunk))
-        yield _format_sse_event(data)
-
-
 def _resolve_thread_id(thread_id: UUID | None) -> UUID:
     if thread_id:
         return thread_id
