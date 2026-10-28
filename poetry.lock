@@ -8007,18 +8007,18 @@ files = [
 
 [[package]]
 name = "welearn-database"
-version = "1.5.4.dev1"
+version = "1.5.5"
 description = "All stuff related to relationnal database from the WeLearn project"
 optional = false
 python-versions = ">=3.10"
 groups = ["main"]
 files = [
-    {file = "welearn_database-1.5.4.dev1-py3-none-any.whl", hash = "sha256:f77e26d968d8da0b58d37b490f525531e3c5cc0b373d14f33e2670e94aeace82"},
-    {file = "welearn_database-1.5.4.dev1.tar.gz", hash = "sha256:a789910e7d2c9075fc61ccde57c17776e2716b9981f6404b615d84f99efd92b7"},
+    {file = "welearn_database-1.5.5-py3-none-any.whl", hash = "sha256:b981df42e5b1403b01de72728fe476d2b5cc26d5171f95bd2460ff3f707d236f"},
+    {file = "welearn_database-1.5.5.tar.gz", hash = "sha256:e6fff30c51ad002bc8985cf4b0d50bd34f7f0dcb91f8aea35a976076d9e997c9"},
 ]
 
 [package.dependencies]
-alembic = ">=1.16.5,<2.0.0"
+alembic = ">=1.4.3,<2.0.0"
 psycopg2-binary = ">=2.9.11,<3.0.0"
 python-dotenv = ">=1.2.2,<2.0.0"
 sqlalchemy = ">=2.0.43,<3.0.0"
@@ -8670,4 +8670,4 @@ cffi = ["cffi (>=1.17,<2.0) ; platform_python_implementation != \"PyPy\" and pyt
 [metadata]
 lock-version = "2.1"
 python-versions = ">=3.12,<3.15"
-content-hash = "c81b325dfb1e53fe030dc8f8fbe7ced0ed242e45e94e990ac8712dc49070fdcd"
+content-hash = "cacf8580869f21d7eb7afeb8527439b4266109ab353daf7317d01da82e58e4c0"
