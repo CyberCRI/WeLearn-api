@@ -1,9 +1,7 @@
 import logging
 import os
-from statistics import mean
 
 from dotenv import load_dotenv
-from ecologits.utils.range_value import RangeValue, ValueOrRange  # type: ignore
 
 load_dotenv()
 RUN_ENV: str | None = os.getenv("RUN_ENV", None)
@@ -51,48 +49,3 @@ def logger(name: str) -> logging.Logger:
         logging.disable(logging.CRITICAL)
 
     return log
-
-
-def format_impact_value(impact_value: ValueOrRange) -> str:
-    if type(impact_value) is RangeValue:
-        return str(mean([impact_value.min, impact_value.max]))
-    else:
-        return str(impact_value)
-
-
-def log_environmental_impacts(response, logger):
-    """Logs environmental impacts of LLM API calls
-
-    Args:
-        response: response from LLM API
-        logger: logger object
-
-    Returns:
-        logger.info: log message
-    """
-    return logger.info("ECOLOGITS IS DISABLED")
-    # TODO: fix ecologits error when using crew ai
-    # try:
-    #     impacts = {
-    #         "energy": format_impact_value(response.impacts.energy.value)
-    #         + " "
-    #         + response.impacts.energy.unit,
-    #         "gwp": format_impact_value(response.impacts.gwp.value)
-    #         + " "
-    #         + response.impacts.gwp.unit,
-    #         "adpe": format_impact_value(response.impacts.adpe.value)
-    #         + " "
-    #         + response.impacts.adpe.unit,
-    #         "pe": format_impact_value(response.impacts.pe.value)
-    #         + " "
-    #         + response.impacts.pe.unit,
-    #     }
-    #     return logger.info(
-    #         "ecologits, energy=%s, gwp=%s, adpe=%s, pe=%s",
-    #         impacts["energy"],
-    #         impacts["gwp"],
-    #         impacts["adpe"],
-    #         impacts["pe"],
-    #     )
-    # except Exception as e:
-    #     return logger.error("Failed to log environmental impacts: %s", e)

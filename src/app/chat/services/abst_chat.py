@@ -45,11 +45,7 @@ from src.app.shared.utils.dependencies import get_settings
 from src.app.shared.utils.json_parsing import extract_json_from_response
 from src.app.shared.utils.logger import logger as utils_logger
 
-# from ecologits import EcoLogits  # type: ignore
-
-
 logger = utils_logger(__name__)
-# EcoLogits.init(["openai", "mistralai"])
 
 
 class _PersistClearedToolUses(AgentMiddleware):
