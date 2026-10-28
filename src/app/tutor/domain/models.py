@@ -67,6 +67,16 @@ class Limits:
     competencies: int
 
 
+@dataclass
+class RenderedCompetency:
+    """A competency line of the syllabus; code and name are set for GreenComp only."""
+
+    text: str
+    los: str
+    code: str = ""
+    name: str = ""
+
+
 class DraftOutcome(BaseModel):
     text: str = Field(
         description="Student-centred, measurable outcome starting with an action verb, "

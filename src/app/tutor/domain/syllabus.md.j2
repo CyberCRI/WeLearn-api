@@ -1,0 +1,58 @@
+{# Layout of the syllabus rendered by src/app/tutor/services/syllabus.py.
+   Selection rules (limits, GreenComp priority) stay in Python; refs() drops out-of-range numbers.
+   Keep headings as "## {{ h.<key> }}": detect_syllabus_lang/split_references parse them. #}
+{% macro syllabus(h, title, description, objectives, outcomes, competencies, assessment, schedule) %}
+{% set n_lo = outcomes | length %}
+# {{ title }}
+
+## {{ h.description }}
+
+{{ description }}
+
+## {{ h.objectives }}
+
+{% for o in objectives %}
+{{ loop.index }}. {{ o }}
+{% endfor %}
+
+## {{ h.outcomes }}
+
+{% for o in outcomes %}
+{% set objs = refs("", o.objective_numbers, objectives | length) %}
+- **{{ h.lo }}{{ loop.index }}** {{ o.text }}{% if objs %} *({{ h.objectives_ref }} {{ objs }})*{% endif %}
+
+{% endfor %}
+
+## {{ h.competencies }}
+
+{% for c in competencies %}
+- {% if c.code %}**GreenComp {{ c.code }} – {{ c.name }}** : {% endif %}{{ c.text }}{% if c.los %} *({{ c.los }})*{% endif %}
+
+{% endfor %}
+
+## {{ h.assessment }}
+
+{% for a in assessment %}
+{% set los = refs(h.lo, a.outcome_numbers, n_lo) %}
+- **{{ a.method }}** ({{ a.weight }}){% if los %} — {{ los }}{% endif %}
+
+{% endfor %}
+
+## {{ h.schedule }}
+
+{{ h.table }}
+|---|---|---|---|
+{% for s in schedule %}
+| {{ loop.index }} | {{ s.topics | cell }} | {{ refs(h.lo, s.outcome_numbers, n_lo) }} | {{ s.class_plan | cell }} |
+{% endfor %}
+{%- endmacro %}
+
+{% macro references(h, resources) %}
+## {{ h.references }}
+
+{% for r in resources %}
+- {{ r.title }} <a href="{{ r.url }}" target="_blank">[{{ h.link }}]</a>
+{% else %}
+{{ h.no_references }}
+{% endfor %}
+{%- endmacro %}
