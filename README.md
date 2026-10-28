@@ -174,6 +174,14 @@ Run App:
 make run-poetry
 ```
 
+Run the CI checks (lint + tests) before every push:
+
+```bash
+make install-hooks   # once per clone; points git at .githooks/
+```
+
+The `pre-push` hook runs `make ci-poetry`. Skip it for one push with `git push --no-verify`.
+
 For more details on available tasks, check the Makefile or run make to see the list of available commands.
 
 ### API Dependency
