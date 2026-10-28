@@ -1,0 +1,12 @@
+#!/usr/bin/env bash
+# Runs the same checks as the lint-and-test CI job before pushing.
+# Install with `make install-hooks`; skip once with `git push --no-verify`.
+set -euo pipefail
+
+cd "$(git rev-parse --show-toplevel)"
+
+echo "pre-push: running CI checks (make ci-poetry)..."
+if ! make ci-poetry; then
+    echo "pre-push: CI checks failed, push aborted (bypass with --no-verify)." >&2
+    exit 1
+fi
