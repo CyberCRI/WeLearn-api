@@ -3,7 +3,11 @@ from unittest.mock import AsyncMock
 
 from fastapi import BackgroundTasks
 
-from src.app.chat.services.agent import _get_resources_about_sustainability
+from src.app.chat.services.agent import (
+    NO_DOCUMENTS_FOUND,
+    SEARCH_UNAVAILABLE,
+    _get_resources_about_sustainability,
+)
 
 
 class TestAgent(IsolatedAsyncioTestCase):
@@ -46,7 +50,7 @@ class TestAgent(IsolatedAsyncioTestCase):
             content, docs = await _get_resources_about_sustainability(
                 "test query", config
             )
-            self.assertEqual(content, "No relevant documents found.")
+            self.assertEqual(content, NO_DOCUMENTS_FOUND)
             self.assertEqual(docs, [])
 
     async def test_get_resources_about_sustainability_search_error(self):
@@ -61,7 +65,7 @@ class TestAgent(IsolatedAsyncioTestCase):
             }
         }
         content, docs = await _get_resources_about_sustainability("test query", config)
-        self.assertIn("temporarily unavailable", content)
+        self.assertEqual(content, SEARCH_UNAVAILABLE)
         self.assertEqual(docs, [])
 
     async def test_get_resources_about_sustainability_no_search_service(self):
@@ -75,7 +79,7 @@ class TestAgent(IsolatedAsyncioTestCase):
             }
         }
         content, docs = await _get_resources_about_sustainability("test query", config)
-        self.assertEqual(content, "No relevant documents found.")
+        self.assertEqual(content, NO_DOCUMENTS_FOUND)
         self.assertEqual(docs, [])
 
     async def test_get_resources_about_sustainability_with_background_tasks(self):
