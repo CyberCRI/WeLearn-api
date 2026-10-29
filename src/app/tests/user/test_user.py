@@ -305,10 +305,12 @@ class UserApiTests(unittest.IsolatedAsyncioTestCase):
         session.execute.return_value.all.return_value = []
         session_maker_mock.return_value.__enter__.return_value = session
 
-        response = client.get(
+        cookie_client = TestClient(
+            app, cookies={"x-session-id": "bdb62bb2-1fe5-4d14-92fd-60a041355aea"}
+        )
+        response = cookie_client.get(
             f"{settings.API_V1_STR}/user/bookmarks",
             headers={"X-API-Key": "test"},
-            cookies={"x-session-id": "bdb62bb2-1fe5-4d14-92fd-60a041355aea"},
         )
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.json(), {"bookmarks": []})
@@ -331,8 +333,7 @@ class UserApiTests(unittest.IsolatedAsyncioTestCase):
         response = client.post(
             f"{settings.API_V1_STR}/user/bookmarks/:document_id",
             params={"document_id": document_id},
-            headers={"X-API-Key": "test"},
-            cookies={"x-session-id": str(session_id)},
+            headers={"X-API-Key": "test", "X-Session-Id": str(session_id)},
         )
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.json(), {"added": document_id})
@@ -372,8 +373,11 @@ class UserApiTests(unittest.IsolatedAsyncioTestCase):
         response = client.post(
             f"{settings.API_V1_STR}/user/bookmarks/:document_id",
             params={"document_id": str(uuid.uuid4())},
-            headers={"X-API-Key": "test", "Authorization": "Bearer a.b.c"},
-            cookies={"x-session-id": str(uuid.uuid4())},
+            headers={
+                "X-API-Key": "test",
+                "Authorization": "Bearer a.b.c",
+                "X-Session-Id": str(uuid.uuid4()),
+            },
         )
 
         self.assertEqual(response.status_code, 401)
@@ -408,8 +412,7 @@ class UserApiTests(unittest.IsolatedAsyncioTestCase):
         response = client.post(
             f"{settings.API_V1_STR}/user/bookmarks/:document_id",
             params={"document_id": document_id},
-            headers={"X-API-Key": "test"},
-            cookies={"x-session-id": str(session_id)},
+            headers={"X-API-Key": "test", "X-Session-Id": str(session_id)},
         )
         self.assertEqual(response.status_code, 404)
         self.assertEqual(
@@ -439,8 +442,7 @@ class UserApiTests(unittest.IsolatedAsyncioTestCase):
         response = client.post(
             f"{settings.API_V1_STR}/user/institution-data",
             json={"institution": "Test University", "role": "Student"},
-            headers={"X-API-Key": "test"},
-            cookies={"x-session-id": str(session_id)},
+            headers={"X-API-Key": "test", "X-Session-Id": str(session_id)},
         )
         self.assertEqual(response.status_code, 404)
         self.assertEqual(
@@ -467,8 +469,7 @@ class UserApiTests(unittest.IsolatedAsyncioTestCase):
         response = client.post(
             f"{settings.API_V1_STR}/user/institution-data",
             json={"institution": "Test University", "role": "Student"},
-            headers={"X-API-Key": "test"},
-            cookies={"x-session-id": str(session_id)},
+            headers={"X-API-Key": "test", "X-Session-Id": str(session_id)},
         )
         self.assertEqual(response.status_code, 200)
         self.assertEqual(
