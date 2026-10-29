@@ -377,69 +377,6 @@
         "title": "CompetencyMappings",
         "type": "object"
       },
-      "Context": {
-        "properties": {
-          "history": {
-            "anyOf": [
-              {
-                "items": {
-                  "additionalProperties": true,
-                  "type": "object"
-                },
-                "type": "array"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "default": [],
-            "title": "History"
-          },
-          "lang": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Lang"
-          },
-          "query": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Query"
-          },
-          "sources": {
-            "default": [],
-            "items": {
-              "$ref": "#/components/schemas/EnhancedDocumentSlice"
-            },
-            "title": "Sources",
-            "type": "array"
-          },
-          "subject": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Subject"
-          }
-        },
-        "title": "Context",
-        "type": "object"
-      },
       "CorpusRead": {
         "properties": {
           "category": {
@@ -1323,22 +1260,6 @@
         ],
         "title": "QuestionType",
         "type": "string"
-      },
-      "ReformulatedQuestionsResponse": {
-        "properties": {
-          "NEW_QUESTIONS": {
-            "items": {
-              "type": "string"
-            },
-            "title": "New Questions",
-            "type": "array"
-          }
-        },
-        "required": [
-          "NEW_QUESTIONS"
-        ],
-        "title": "ReformulatedQuestionsResponse",
-        "type": "object"
       },
       "RegisterFormAnswerBody": {
         "properties": {
@@ -2902,68 +2823,6 @@
         ]
       }
     },
-    "/api/v1/qna/chat/answer": {
-      "post": {
-        "description": "This endpoint is used to get the answer to the user's query based on the provided context and history",
-        "operationId": "qna-q_and_a_ans",
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/Context"
-              }
-            }
-          },
-          "required": true
-        },
-        "responses": {
-          "200": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "additionalProperties": {
-                    "anyOf": [
-                      {
-                        "type": "string"
-                      },
-                      {
-                        "format": "uuid",
-                        "type": "string"
-                      },
-                      {
-                        "type": "null"
-                      }
-                    ]
-                  },
-                  "title": "Response Qna-Q And A Ans",
-                  "type": "object"
-                }
-              }
-            },
-            "description": "Successful Response"
-          },
-          "default": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorResponse"
-                }
-              }
-            },
-            "description": "Error"
-          }
-        },
-        "security": [
-          {
-            "APIKeyHeader": []
-          }
-        ],
-        "summary": "Chat Answer",
-        "tags": [
-          "qna"
-        ]
-      }
-    },
     "/api/v1/qna/chat/history": {
       "get": {
         "operationId": "qna-get_chat_history",
@@ -3030,93 +2889,6 @@
           }
         ],
         "summary": "Get Chat History",
-        "tags": [
-          "qna"
-        ]
-      }
-    },
-    "/api/v1/qna/reformulate/questions": {
-      "post": {
-        "description": "This endpoint formulates new questions based on the provided context and history. They can be use to suggest it to the user.",
-        "operationId": "qna-q_and_a_new_questions",
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/Context"
-              }
-            }
-          },
-          "required": true
-        },
-        "responses": {
-          "200": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ReformulatedQuestionsResponse"
-                }
-              }
-            },
-            "description": "Successful Response"
-          },
-          "default": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorResponse"
-                }
-              }
-            },
-            "description": "Error"
-          }
-        },
-        "security": [
-          {
-            "APIKeyHeader": []
-          }
-        ],
-        "summary": "Formulates new questions",
-        "tags": [
-          "qna"
-        ]
-      }
-    },
-    "/api/v1/qna/stream": {
-      "post": {
-        "description": "This endpoint is used to get the answer to the user's query based on the provided context and history. Streamed version",
-        "operationId": "qna-q_and_a_stream",
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/Context"
-              }
-            }
-          },
-          "required": true
-        },
-        "responses": {
-          "200": {
-            "description": "Successful Response"
-          },
-          "default": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorResponse"
-                }
-              }
-            },
-            "description": "Error"
-          }
-        },
-        "security": [
-          {
-            "APIKeyHeader": []
-          }
-        ],
-        "summary": "Chat Answer",
         "tags": [
           "qna"
         ]

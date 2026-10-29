@@ -173,28 +173,6 @@ class LLMProxy(ABC):
 
         return response.choices[0].message.content
 
-    async def az_completion_stream(
-        self,
-        messages: list,
-    ):
-        if self.client is None:
-            raise ValueError("Azure client is not initialized.")
-
-        response = await self.client.complete(
-            messages=messages, temperature=0.8, top_p=0.1, model=self.model, stream=True
-        )
-
-        return response
-
-    async def completion_stream(
-        self,
-        messages: list,
-    ):
-        if self.is_azure_model:
-            return await self.az_completion_stream(messages)
-
-        return await self.mistral_completion_stream(messages)
-
     async def mistral_completion(
         self,
         messages: list,
@@ -220,21 +198,3 @@ class LLMProxy(ABC):
         self._record_langsmith_usage(response)
 
         return response.choices[0].message.content
-
-    async def mistral_completion_stream(
-        self,
-        messages: list,
-        trace_context: Optional[dict[str, Any]] = None,
-        max_tokens: Optional[int] = 2048,
-    ):
-        if self.client is None:
-            raise ValueError("Mistral client is not initialized.")
-
-        response = await self.client.chat.stream_async(
-            messages=messages,
-            max_tokens=max_tokens,
-            temperature=0.8,
-            top_p=0.1,
-            model=self.model,
-        )
-        return response
