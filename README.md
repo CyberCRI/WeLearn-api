@@ -174,13 +174,30 @@ Run App:
 make run-poetry
 ```
 
-Run the CI checks (lint + tests) before every push:
+### Code style
+
+Everyone uses the same formatter and linter rules, enforced in CI:
+
+- **black** (formatting) and **isort** (import order): `pyproject.toml` `[tool.black]` and `.isort.cfg`, 88 columns, Python 3.12 target.
+- **flake8** (lint): `.flake8`.
+- **import-linter** (architecture rules): `pyproject.toml` `[tool.importlinter]`.
+- **Editors**: `.editorconfig` covers whitespace and indentation in every editor. VS Code users get format-on-save with the project's black and isort from `.vscode/settings.json`; install the extensions it recommends.
 
 ```bash
-make install-hooks   # once per clone; points git at .githooks/
+make lint                # format the code (rewrites files) and run the linters
+make lint-check-poetry   # check without rewriting, as CI does
 ```
 
-The `pre-push` hook runs `make ci-poetry`. Skip it for one push with `git push --no-verify`.
+Install the git hooks once per clone:
+
+```bash
+make install-hooks   # points git at .githooks/
+```
+
+- `pre-commit` runs the [pre-commit](https://pre-commit.com) hooks in `.pre-commit-config.yaml` on the staged files: black and isort (they fix files, re-stage and commit again), flake8, import-linter, and generic checks (whitespace, YAML/TOML/JSON validity, merge markers, large files, private keys). Run them on the whole repo with `poetry run pre-commit run --all-files`.
+- `pre-push` runs the full CI checks (`make ci-poetry`).
+
+Skip a hook once with `--no-verify`.
 
 For more details on available tasks, check the Makefile or run make to see the list of available commands.
 

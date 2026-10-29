@@ -607,11 +607,14 @@ class DocumentsByIdsTests(IsolatedAsyncioTestCase):
             self.assertEqual(payload["document_corpus"], "")
 
     def test_search_multi_single_query(self, *mocks):
-        with mock.patch(
-            "src.app.search.api.router.search_multi_inputs",
-        ) as search_multi, mock.patch.object(
-            SearchService, "search_handler", return_value=mocked_documents
-        ) as search_handler:
+        with (
+            mock.patch(
+                "src.app.search.api.router.search_multi_inputs",
+            ) as search_multi,
+            mock.patch.object(
+                SearchService, "search_handler", return_value=mocked_documents
+            ) as search_handler,
+        ):
             with TestClient(app) as _client:
                 _client.post(
                     f"{settings.API_V1_STR}/search/multiple_by_slices?nb_results=10",

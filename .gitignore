@@ -243,6 +243,8 @@ http-client.private.env.json
 # .env for security purpose
 .env
 .vscode/*
+!.vscode/settings.json
+!.vscode/extensions.json
 
 charts/
 test.yaml

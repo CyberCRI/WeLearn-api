@@ -35,6 +35,6 @@ jobs:
         password: ${{ secrets.registry-password }}
     steps:
       - name: linting and styling
-        run: make lint
+        run: make lint-check
       - name: unit tests
         run: make test
