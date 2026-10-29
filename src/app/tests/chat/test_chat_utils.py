@@ -172,6 +172,37 @@ class TestStreamAgentResponse(unittest.IsolatedAsyncioTestCase):
         _, kwargs = data_collection.register_chat_data.call_args
         self.assertEqual(kwargs["sources"], [{"id": "fallback-doc"}])
 
+    async def test_stream_error_emits_error_event_and_skips_registration(self):
+        async def failing_stream(**kwargs):
+            yield {"status": "streaming", "content": "partial"}
+            raise Exception("qdrant down")
+
+        data_collection = mock.Mock()
+        data_collection.register_chat_data = mock.AsyncMock()
+
+        with mock.patch.object(
+            chat_utils, "_stream_agent_with_memory", side_effect=failing_stream
+        ):
+            events = [
+                event
+                async for event in chat_utils._stream_agent_response(
+                    db_uri="postgresql://test",
+                    async_dict_row_factory=mock.Mock(),
+                    body=mock.Mock(query="q"),
+                    chatfactory=mock.Mock(),
+                    sp=mock.Mock(),
+                    background_tasks=mock.Mock(),
+                    data_collection=data_collection,
+                    session_id=None,
+                    thread_id=uuid.uuid4(),
+                )
+            ]
+
+        self.assertEqual(len(events), 2)
+        self.assertIn('"status": "error"', events[-1])
+        self.assertIn('"code": "CHAT_STREAM_ERROR"', events[-1])
+        data_collection.register_chat_data.assert_not_called()
+
 
 if __name__ == "__main__":
     unittest.main()
