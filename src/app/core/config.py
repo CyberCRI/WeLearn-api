@@ -79,6 +79,12 @@ class Settings(BaseSettings):
     KEYCLOAK_REALM: Optional[str] = None
     # if set, the token's "azp" claim must match this front-end client id
     KEYCLOAK_CLIENT_ID: Optional[str] = None
+    # sign-up: confidential client whose service account has the realm-management
+    # roles "view-users" and "manage-users"
+    KEYCLOAK_ADMIN_CLIENT_ID: Optional[str] = None
+    KEYCLOAK_ADMIN_CLIENT_SECRET: Optional[str] = None
+    # where the sign-up email link sends the user once done (needs KEYCLOAK_CLIENT_ID)
+    KEYCLOAK_SIGNUP_REDIRECT_URI: Optional[str] = None
 
     model_config = SettingsConfigDict(
         env_file=".env", extra="ignore", case_sensitive=True

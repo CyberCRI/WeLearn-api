@@ -251,17 +251,27 @@ class TestGetOrCreateUserFromKeycloakSync(unittest.TestCase):
         session.commit.assert_called_once()
 
     def test_creates_new_user_when_anonymous_already_linked(self, session_maker_mock):
+        """
+        An anonymous user already attached to another Keycloak account (e.g. a
+        different email) is not taken over: a new user is created.
+        """
         keycloak_id = uuid.uuid4()
+        anonymous_user_id = uuid.uuid4()
         session = self._session(
             session_maker_mock,
             self._result(first=None),
             self._result(scalar=None),
         )
 
-        get_or_create_user_from_keycloak_sync(keycloak_id, uuid.uuid4())
+        get_or_create_user_from_keycloak_sync(keycloak_id, anonymous_user_id, "web")
 
+        # the anonymous user is only looked up among users without a keycloak_id
+        anonymous_query = str(session.execute.call_args_list[1][0][0])
+        self.assertIn("inferred_user.keycloak_id IS NULL", anonymous_query)
         new_user: InferredUser = session.add.call_args[0][0]
         self.assertEqual(new_user.keycloak_id, keycloak_id)
+        self.assertNotEqual(new_user.id, anonymous_user_id)
+        self.assertEqual(new_user.origin_referrer, "web")
 
     def test_concurrent_creation(self, session_maker_mock):
         existing_id = uuid.uuid4()

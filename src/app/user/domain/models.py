@@ -1,7 +1,30 @@
+import re
 import uuid
 from datetime import datetime
 
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, field_validator
+
+# basic shape check; Keycloak validates the address itself
+EMAIL_PATTERN = re.compile(r"^[^@\s]+@[^@\s]+\.[^@\s]+$")
+
+
+class SignUpRequest(BaseModel):
+    email: str
+    first_name: str | None = None
+    last_name: str | None = None
+
+    @field_validator("email")
+    @classmethod
+    def normalize_email(cls, value: str) -> str:
+        value = value.strip().lower()
+        if not EMAIL_PATTERN.match(value):
+            raise ValueError("Invalid email address")
+        return value
+
+
+class SignUpResponse(BaseModel):
+    message: str
+    user_id: uuid.UUID
 
 
 class InstitutionData(BaseModel):
@@ -16,6 +39,7 @@ class InstitutionDataResponse(InstitutionData):
 class UserAndSessionResponse(BaseModel):
     message: str
     session_id: uuid.UUID
+    user_id: uuid.UUID
 
 
 class UserResponse(BaseModel):
