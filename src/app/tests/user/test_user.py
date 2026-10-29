@@ -36,8 +36,8 @@ class UserApiTests(unittest.IsolatedAsyncioTestCase):
         self, resolve_keycloak_mock, resolve_anonymous_mock, *mocks
     ):
         """Avec un token Keycloak, l'utilisateur est résolu via Keycloak"""
-        session_id = uuid.uuid4()
-        resolve_keycloak_mock.return_value = (uuid.uuid4(), session_id)
+        user_id, session_id = uuid.uuid4(), uuid.uuid4()
+        resolve_keycloak_mock.return_value = (user_id, session_id)
 
         response = client.post(
             f"{settings.API_V1_STR}/user/user_and_session",
@@ -46,6 +46,7 @@ class UserApiTests(unittest.IsolatedAsyncioTestCase):
 
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.json()["session_id"], str(session_id))
+        self.assertEqual(response.json()["user_id"], str(user_id))
         self.assertEqual(resolve_keycloak_mock.call_args.kwargs["token"], "a.b.c")
         resolve_anonymous_mock.assert_not_called()
 
@@ -55,7 +56,8 @@ class UserApiTests(unittest.IsolatedAsyncioTestCase):
         self, resolve_keycloak_mock, resolve_anonymous_mock, *mocks
     ):
         """Sans token, le flux anonyme est conservé"""
-        resolve_anonymous_mock.return_value = (uuid.uuid4(), uuid.uuid4())
+        user_id = uuid.uuid4()
+        resolve_anonymous_mock.return_value = (user_id, uuid.uuid4())
 
         response = client.post(
             f"{settings.API_V1_STR}/user/user_and_session",
@@ -63,6 +65,7 @@ class UserApiTests(unittest.IsolatedAsyncioTestCase):
         )
 
         self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.json()["user_id"], str(user_id))
         resolve_anonymous_mock.assert_called_once()
         resolve_keycloak_mock.assert_not_called()
 

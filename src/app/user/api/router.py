@@ -101,14 +101,14 @@ async def handle_user_and_session(
 
     try:
         if token:
-            _, session_uuid = await resolve_keycloak_user_and_session(
+            user_id, session_uuid = await resolve_keycloak_user_and_session(
                 token=token,
                 session_uuid=session_uuid,
                 host=host,
                 referer=referer,
             )
         else:
-            _, session_uuid = await resolve_user_and_session(
+            user_id, session_uuid = await resolve_user_and_session(
                 session_uuid=session_uuid,
                 host=host,
                 referer=referer,
@@ -135,7 +135,11 @@ async def handle_user_and_session(
         domain=settings.SESSION_COOKIE_DOMAIN,
     )
 
-    return {"message": "session created", "session_id": session_uuid}
+    return {
+        "message": "session created",
+        "session_id": session_uuid,
+        "user_id": user_id,
+    }
 
 
 @router.post(

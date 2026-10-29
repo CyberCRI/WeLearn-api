@@ -39,6 +39,7 @@ class InstitutionDataResponse(InstitutionData):
 class UserAndSessionResponse(BaseModel):
     message: str
     session_id: uuid.UUID
+    user_id: uuid.UUID
 
 
 class UserResponse(BaseModel):

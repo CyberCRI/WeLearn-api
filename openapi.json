@@ -2415,11 +2415,17 @@
             "format": "uuid",
             "title": "Session Id",
             "type": "string"
+          },
+          "user_id": {
+            "format": "uuid",
+            "title": "User Id",
+            "type": "string"
           }
         },
         "required": [
           "message",
-          "session_id"
+          "session_id",
+          "user_id"
         ],
         "title": "UserAndSessionResponse",
         "type": "object"
