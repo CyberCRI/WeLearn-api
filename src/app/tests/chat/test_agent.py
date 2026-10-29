@@ -49,6 +49,21 @@ class TestAgent(IsolatedAsyncioTestCase):
             self.assertEqual(content, "No relevant documents found.")
             self.assertEqual(docs, [])
 
+    async def test_get_resources_about_sustainability_search_error(self):
+        mock_service = mock.Mock()
+        mock_service.search_handler = AsyncMock(side_effect=Exception("qdrant down"))
+        config = {
+            "configurable": {
+                "sdg_filter": None,
+                "corpora": None,
+                "sp": mock_service,
+                "background_tasks": BackgroundTasks(),
+            }
+        }
+        content, docs = await _get_resources_about_sustainability("test query", config)
+        self.assertIn("temporarily unavailable", content)
+        self.assertEqual(docs, [])
+
     async def test_get_resources_about_sustainability_no_search_service(self):
         # config without 'sp' (SearchService)
         config = {

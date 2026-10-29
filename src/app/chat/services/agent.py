@@ -39,9 +39,18 @@ async def _get_resources_about_sustainability(
         logger.warning("No SearchService found.")
         return "No relevant documents found.", []
 
-    docs = await sp.search_handler(
-        background_tasks=background_tasks, qp=qp, without_vectors=True
-    )
+    try:
+        docs = await sp.search_handler(
+            background_tasks=background_tasks, qp=qp, without_vectors=True
+        )
+    except Exception as e:
+        # Fail soft so the agent can still answer instead of aborting the stream.
+        logger.error("Search failed in agent tool: %s", e)
+        return (
+            "The search service is temporarily unavailable. Tell the user, in "
+            "their language, that resources could not be retrieved right now.",
+            [],
+        )
     if not docs:
         logger.warning("No documents found for the query.")
         return "No relevant documents found.", []
