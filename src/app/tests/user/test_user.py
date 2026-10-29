@@ -8,7 +8,12 @@ from welearn_database.data.models import InferredUser, Session
 
 from src.app.core.config import settings
 from src.app.shared.domain.exceptions import UserNotFoundError
-from src.app.user.infra.keycloak import KeycloakTokenError, KeycloakUnavailableError
+from src.app.user.infra.keycloak import (
+    KeycloakConfigError,
+    KeycloakTokenError,
+    KeycloakUnavailableError,
+)
+from src.app.user.infra.keycloak_admin import KeycloakUserExistsError
 from src.main import app
 
 
@@ -481,3 +486,77 @@ class UserApiTests(unittest.IsolatedAsyncioTestCase):
         )
         resolve_user_and_session_mock.assert_called_once()
         run_in_threadpool_mock.assert_called_once()
+
+
+@mock.patch(
+    "src.app.shared.infra.security.check_api_key_sync",
+    new=mock.MagicMock(return_value=True),
+)
+@mock.patch("src.app.user.api.router.sign_up_user")
+class SignUpApiTests(unittest.TestCase):
+    url = f"{settings.API_V1_STR}/user/signup"
+
+    def test_signup_creates_user(self, sign_up_mock):
+        """Nouvel email -> 201, l'email est normalisé et la session transmise"""
+        user_id = uuid.uuid4()
+        session_id = uuid.uuid4()
+        sign_up_mock.return_value = user_id
+
+        response = client.post(
+            f"{self.url}?referer=welearn",
+            json={"email": "  Jane@Example.org ", "first_name": "Jane"},
+            headers={"X-API-Key": "test"},
+            cookies={"x-session-id": str(session_id)},
+        )
+
+        self.assertEqual(response.status_code, 201)
+        self.assertEqual(response.json()["user_id"], str(user_id))
+        sign_up_mock.assert_called_once_with(
+            email="jane@example.org",
+            first_name="Jane",
+            last_name=None,
+            session_uuid=session_id,
+            referer="welearn",
+        )
+
+    def test_signup_email_already_exists(self, sign_up_mock):
+        """Email déjà associé à un compte Keycloak -> 409"""
+        sign_up_mock.side_effect = KeycloakUserExistsError("exists")
+
+        response = client.post(
+            self.url, json={"email": "jane@example.org"}, headers={"X-API-Key": "test"}
+        )
+
+        self.assertEqual(response.status_code, 409)
+        self.assertEqual(response.json()["detail"]["code"], "EMAIL_ALREADY_EXISTS")
+
+    def test_signup_keycloak_unavailable(self, sign_up_mock):
+        """Keycloak injoignable -> 503"""
+        sign_up_mock.side_effect = KeycloakUnavailableError("timeout")
+
+        response = client.post(
+            self.url, json={"email": "jane@example.org"}, headers={"X-API-Key": "test"}
+        )
+
+        self.assertEqual(response.status_code, 503)
+        self.assertEqual(response.json()["detail"]["code"], "KEYCLOAK_UNAVAILABLE")
+
+    def test_signup_keycloak_not_configured(self, sign_up_mock):
+        """Client admin Keycloak non configuré -> 500"""
+        sign_up_mock.side_effect = KeycloakConfigError("missing")
+
+        response = client.post(
+            self.url, json={"email": "jane@example.org"}, headers={"X-API-Key": "test"}
+        )
+
+        self.assertEqual(response.status_code, 500)
+        self.assertEqual(response.json()["detail"]["code"], "SIGNUP_DISABLED")
+
+    def test_signup_invalid_email(self, sign_up_mock):
+        """Email invalide -> 422, Keycloak n'est pas appelé"""
+        response = client.post(
+            self.url, json={"email": "not-an-email"}, headers={"X-API-Key": "test"}
+        )
+
+        self.assertEqual(response.status_code, 422)
+        sign_up_mock.assert_not_called()

@@ -1784,6 +1784,60 @@
         "title": "SessionResponse",
         "type": "object"
       },
+      "SignUpRequest": {
+        "properties": {
+          "email": {
+            "title": "Email",
+            "type": "string"
+          },
+          "first_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "First Name"
+          },
+          "last_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Last Name"
+          }
+        },
+        "required": [
+          "email"
+        ],
+        "title": "SignUpRequest",
+        "type": "object"
+      },
+      "SignUpResponse": {
+        "properties": {
+          "message": {
+            "title": "Message",
+            "type": "string"
+          },
+          "user_id": {
+            "format": "uuid",
+            "title": "User Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "message",
+          "user_id"
+        ],
+        "title": "SignUpResponse",
+        "type": "object"
+      },
       "SparseVector": {
         "additionalProperties": false,
         "description": "Sparse vector structure",
@@ -4653,6 +4707,71 @@
           }
         ],
         "summary": "Create new session",
+        "tags": [
+          "user"
+        ]
+      }
+    },
+    "/api/v1/user/signup": {
+      "post": {
+        "description": "Create a Keycloak account and its WeLearn user. Keycloak emails a link to\nverify the email and set a password. 409 if the email has an account.",
+        "operationId": "user-sign_up",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "referer",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Referer"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SignUpRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SignUpResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Error"
+          }
+        },
+        "security": [
+          {
+            "APIKeyHeader": []
+          }
+        ],
+        "summary": "Sign up with Keycloak",
         "tags": [
           "user"
         ]
