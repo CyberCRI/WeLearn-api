@@ -5,10 +5,18 @@ from unittest.mock import patch
 
 from fastapi.testclient import TestClient
 from qdrant_client.http import models
+from sqlalchemy import create_engine
+from sqlalchemy.orm import Session
 from welearn_database.data.models import Corpus, WeLearnDocument
 
 from src.app.core.config import settings
-from src.app.search.domain.models import EnhancedSearchQuery
+from src.app.search.api.router import get_document_search_params, get_params
+from src.app.search.domain.models import (
+    DocumentSearchQuery,
+    EnhancedSearchQuery,
+    SearchQuery,
+)
+from src.app.search.infra.queries import get_visible_corpora_sync
 from src.app.search.services.search import SearchService, sort_using_mmr
 from src.app.shared.domain import collections
 from src.app.shared.domain.documents import (
@@ -155,6 +163,81 @@ mocked_documents = [
 long_query = "français with a very long sentence to test what you are saying and if the issue is the size of the string"  # noqa: E501
 
 
+class DefaultCorpusTests(IsolatedAsyncioTestCase):
+    def test_null_corpora_resolves_visible_names(self):
+        with patch(
+            "src.app.search.api.router.get_visible_corpora_sync",
+            return_value=("visible", "uncategorized"),
+        ) as visible_corpora:
+            for get_search_params, query_type in (
+                (get_params, SearchQuery),
+                (get_document_search_params, DocumentSearchQuery),
+            ):
+                with self.subTest(query_type=query_type):
+                    params = get_search_params(
+                        body=query_type(query="water", corpora=None),
+                        nb_results=30,
+                        subject=None,
+                        influence_factor=2,
+                        relevance_factor=1,
+                        concatenate=True,
+                    )
+                    self.assertEqual(params.corpora, ("visible", "uncategorized"))
+            self.assertEqual(visible_corpora.call_count, 2)
+
+    def test_explicit_corpora_is_preserved(self):
+        with patch(
+            "src.app.search.api.router.get_visible_corpora_sync"
+        ) as visible_corpora:
+            params = get_params(
+                body=SearchQuery(query="water", corpora=["hidden"]),
+                nb_results=30,
+                subject=None,
+                influence_factor=2,
+                relevance_factor=1,
+                concatenate=True,
+            )
+            self.assertEqual(params.corpora, ("hidden",))
+            visible_corpora.assert_not_called()
+
+    def test_visible_corpora_excludes_only_hidden_categories(self):
+        engine = create_engine(
+            "sqlite://",
+            execution_options={"schema_translate_map": {Corpus.__table__.schema: None}},
+        )
+        self.addCleanup(engine.dispose)
+        with engine.begin() as connection:
+            connection.exec_driver_sql(
+                "CREATE TABLE category (id INTEGER PRIMARY KEY, is_hidden BOOLEAN)"
+            )
+            connection.exec_driver_sql(
+                "CREATE TABLE corpus (source_name TEXT, category_id INTEGER)"
+            )
+            connection.exec_driver_sql(
+                "INSERT INTO category VALUES (1, TRUE), (2, FALSE), (3, NULL)"
+            )
+            connection.exec_driver_sql(
+                "INSERT INTO corpus VALUES "
+                "('hidden', 1), ('visible', 2), ('unset', 3), ('uncategorized', NULL)"
+            )
+        with Session(engine) as session, patch(
+            "src.app.search.infra.queries.session_maker", return_value=session
+        ):
+            self.assertCountEqual(
+                get_visible_corpora_sync(), ("visible", "unset", "uncategorized")
+            )
+
+    async def test_no_visible_corpora_does_not_search_all(self):
+        service = SearchService.__new__(SearchService)
+        with patch.object(service, "get_collection_by_language") as collection:
+            result = await service.search_handler(
+                background_tasks=mock.MagicMock(),
+                qp=EnhancedSearchQuery(query="water", corpora=()),
+            )
+            self.assertEqual(result, [])
+            collection.assert_not_called()
+
+
 @patch("src.app.shared.infra.db.session_maker")
 @mock.patch(
     "src.app.shared.infra.security.check_api_key_sync",
@@ -249,6 +332,10 @@ class SearchTests(IsolatedAsyncioTestCase):
     "src.app.shared.infra.security.check_api_key_sync",
     new=mock.MagicMock(return_value=True),
 )
+@patch(
+    "src.app.search.api.router.get_visible_corpora_sync",
+    new=mock.MagicMock(return_value=("visible",)),
+)
 class SearchTestsSlices(IsolatedAsyncioTestCase):
     @patch(
         f"{search_pipeline_path}.get_collection_by_language",
@@ -316,6 +403,14 @@ class SearchTestsSlices(IsolatedAsyncioTestCase):
 @patch(
     "src.app.shared.infra.security.check_api_key_sync",
     new=mock.MagicMock(return_value=True),
+)
+@patch(
+    "src.app.search.api.router.get_visible_corpora_sync",
+    new=mock.MagicMock(return_value=("visible",)),
+)
+@patch(
+    "src.app.data_collection.services.data_collection.DataCollection.get_campaign_state",
+    new=mock.MagicMock(return_value=False),
 )
 class SearchTestsAll(IsolatedAsyncioTestCase):
     @patch(
@@ -611,7 +706,10 @@ class DocumentsByIdsTests(IsolatedAsyncioTestCase):
             "src.app.search.api.router.search_multi_inputs",
         ) as search_multi, mock.patch.object(
             SearchService, "search_handler", return_value=mocked_documents
-        ) as search_handler:
+        ) as search_handler, mock.patch(
+            "src.app.search.api.router.get_visible_corpora_sync",
+            return_value=("visible",),
+        ):
             with TestClient(app) as _client:
                 _client.post(
                     f"{settings.API_V1_STR}/search/multiple_by_slices?nb_results=10",
@@ -624,7 +722,7 @@ class DocumentsByIdsTests(IsolatedAsyncioTestCase):
                     qp=EnhancedSearchQuery(
                         query=[long_query],
                         sdg_filter=None,
-                        corpora=None,
+                        corpora=("visible",),
                         subject=None,
                         nb_results=10,
                         influence_factor=2.0,
