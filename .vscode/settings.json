@@ -16,5 +16,16 @@
   "isort.importStrategy": "fromEnvironment",
   "flake8.importStrategy": "fromEnvironment",
   "files.insertFinalNewline": true,
-  "files.trimTrailingWhitespace": true
+  "files.trimTrailingWhitespace": true,
+  "workbench.colorCustomizations": {
+    "titleBar.activeBackground": "#0f6b5c",
+    "titleBar.activeForeground": "#ffffff",
+    "titleBar.inactiveBackground": "#0f6b5c99",
+    "titleBar.inactiveForeground": "#ffffffcc",
+    "activityBar.background": "#0f6b5c",
+    "activityBar.foreground": "#ffffff",
+    "activityBar.inactiveForeground": "#ffffff99",
+    "statusBar.background": "#0f6b5c",
+    "statusBar.foreground": "#ffffff"
+  }
 }
