@@ -34,7 +34,7 @@ torchvision = [
     {version = "0.24.1+cpu", source = "pytorch_cpu", markers = "sys_platform == 'linux'"},
     {version = "0.24.1", markers = "sys_platform == 'darwin'"},
 ]
-uvicorn = {extras = ["standard"], version = "^0.29.0"}
+uvicorn = {extras = ["standard"], version = "^0.31.1"}
 autogen-core = "^0.5.7"
 autogen-ext = "^0.5.7"
 autogen-agentchat = "^0.5.7"
@@ -46,7 +46,7 @@ langgraph-checkpoint-postgres = "^2.0.23"
 azure-ai-inference = "^1.0.0b9"
 azure-identity = "^1.25.0"
 psycopg = {extras = ["binary"], version = "^3.2.10"}
-welearn-database = "^1.5.5"
+welearn-database = "^1.5.6"
 bs4 = "^0.0.2"
 urllib3 = "^2.6.3"
 refinedoc = "^1.0.1"
