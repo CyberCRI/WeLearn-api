@@ -30,6 +30,16 @@ from src.app.shared.infra.db import session_maker
 main_corpus_dict: dict[UUID, Corpus | None] = {}
 
 
+def get_visible_corpora_sync() -> tuple[str, ...]:
+    stmt = (
+        select(Corpus.source_name)
+        .outerjoin(Category, Corpus.category_id == Category.id)
+        .where(Category.is_hidden.is_not(True))
+    )
+    with session_maker() as session:
+        return tuple(session.execute(stmt).scalars().all())
+
+
 def get_collections_info_sync():
     # Get active parent corpus
     stmt = (

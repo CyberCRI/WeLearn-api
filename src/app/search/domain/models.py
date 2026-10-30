@@ -28,7 +28,6 @@ class CorpusRead(BaseModel):
     name: str
     category: str | None
     is_active: bool
-    is_hidden: bool
 
 
 class SDGFilter(BaseModel):

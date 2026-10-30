@@ -26,6 +26,7 @@ from src.app.search.infra.queries import (
     get_collections_info_sync,
     get_documents_payload_by_ids_sync,
     get_nb_docs_sync,
+    get_visible_corpora_sync,
 )
 from src.app.search.services.search import SearchService, get_search_service
 from src.app.search.services.search_helpers import search_multi_inputs
@@ -86,6 +87,9 @@ def get_params(
     if not resp.query:
         e = EmptyQueryError()
         bad_request(message=e.message, msg_code=e.msg_code)
+
+    if body.corpora is None or body.corpora == []:
+        resp.corpora = get_visible_corpora_sync()
 
     return resp
 
