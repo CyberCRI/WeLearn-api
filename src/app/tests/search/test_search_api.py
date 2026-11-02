@@ -220,8 +220,9 @@ class DefaultCorpusTests(IsolatedAsyncioTestCase):
                 "INSERT INTO corpus VALUES "
                 "('hidden', 1), ('visible', 2), ('unset', 3), ('uncategorized', NULL)"
             )
-        with Session(engine) as session, patch(
-            "src.app.search.infra.queries.session_maker", return_value=session
+        with (
+            Session(engine) as session,
+            patch("src.app.search.infra.queries.session_maker", return_value=session),
         ):
             self.assertCountEqual(
                 get_visible_corpora_sync(), ("visible", "unset", "uncategorized")
@@ -702,13 +703,17 @@ class DocumentsByIdsTests(IsolatedAsyncioTestCase):
             self.assertEqual(payload["document_corpus"], "")
 
     def test_search_multi_single_query(self, *mocks):
-        with mock.patch(
-            "src.app.search.api.router.search_multi_inputs",
-        ) as search_multi, mock.patch.object(
-            SearchService, "search_handler", return_value=mocked_documents
-        ) as search_handler, mock.patch(
-            "src.app.search.api.router.get_visible_corpora_sync",
-            return_value=("visible",),
+        with (
+            mock.patch(
+                "src.app.search.api.router.search_multi_inputs",
+            ) as search_multi,
+            mock.patch.object(
+                SearchService, "search_handler", return_value=mocked_documents
+            ) as search_handler,
+            mock.patch(
+                "src.app.search.api.router.get_visible_corpora_sync",
+                return_value=("visible",),
+            ),
         ):
             with TestClient(app) as _client:
                 _client.post(
