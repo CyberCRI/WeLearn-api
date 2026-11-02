@@ -164,7 +164,7 @@ long_query = "français with a very long sentence to test what you are saying an
 
 
 class DefaultCorpusTests(IsolatedAsyncioTestCase):
-    def test_null_corpora_resolves_visible_names(self):
+    async def test_null_corpora_resolves_visible_names(self):
         with patch(
             "src.app.search.api.router.get_visible_corpora_sync",
             return_value=("visible", "uncategorized"),
@@ -174,7 +174,7 @@ class DefaultCorpusTests(IsolatedAsyncioTestCase):
                 (get_document_search_params, DocumentSearchQuery),
             ):
                 with self.subTest(query_type=query_type):
-                    params = get_search_params(
+                    params = await get_search_params(
                         body=query_type(query="water", corpora=None),
                         nb_results=30,
                         subject=None,
@@ -185,11 +185,11 @@ class DefaultCorpusTests(IsolatedAsyncioTestCase):
                     self.assertEqual(params.corpora, ("visible", "uncategorized"))
             self.assertEqual(visible_corpora.call_count, 2)
 
-    def test_explicit_corpora_is_preserved(self):
+    async def test_explicit_corpora_is_preserved(self):
         with patch(
             "src.app.search.api.router.get_visible_corpora_sync"
         ) as visible_corpora:
-            params = get_params(
+            params = await get_params(
                 body=SearchQuery(query="water", corpora=["hidden"]),
                 nb_results=30,
                 subject=None,
