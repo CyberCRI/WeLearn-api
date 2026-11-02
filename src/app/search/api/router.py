@@ -26,6 +26,7 @@ from src.app.search.infra.queries import (
     get_collections_info_sync,
     get_documents_payload_by_ids_sync,
     get_nb_docs_sync,
+    get_visible_corpora_sync,
 )
 from src.app.search.services.search import SearchService, get_search_service
 from src.app.search.services.search_helpers import search_multi_inputs
@@ -43,7 +44,7 @@ router = APIRouter()
 logger = logger_utils(__name__)
 
 
-def get_params(
+async def get_params(
     body: SearchQuery = Body(
         ...,
         description="Core search payload containing query text and optional corpus/language/SDG filters.",
@@ -87,10 +88,13 @@ def get_params(
         e = EmptyQueryError()
         bad_request(message=e.message, msg_code=e.msg_code)
 
+    if body.corpora is None or body.corpora == []:
+        resp.corpora = await run_in_threadpool(get_visible_corpora_sync)
+
     return resp
 
 
-def get_document_search_params(
+async def get_document_search_params(
     body: DocumentSearchQuery = Body(
         ...,
         description="Core search payload containing query text and optional corpus/language/SDG filters.",
@@ -101,7 +105,7 @@ def get_document_search_params(
     relevance_factor: float = Query(1),
     concatenate: bool = Query(True),
 ) -> EnhancedSearchQuery:
-    return get_params(
+    return await get_params(
         body=body,
         nb_results=nb_results,
         subject=subject,

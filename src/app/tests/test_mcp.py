@@ -92,6 +92,10 @@ def test_mcp_tools_forward_api_key(mcp_client, monkeypatch, tool_name, api_key):
     monkeypatch.setattr(
         "src.app.search.api.router.get_collections_info_sync", collections
     )
+    visible_corpora = Mock(return_value=("test-corpus",))
+    monkeypatch.setattr(
+        "src.app.search.api.router.get_visible_corpora_sync", visible_corpora
+    )
     document = EnhancedDocumentSlice(
         score=0.9,
         payload=EnhancedDocumentSlicePayloadModel(
@@ -151,8 +155,10 @@ def test_mcp_tools_forward_api_key(mcp_client, monkeypatch, tool_name, api_key):
             {"name": "test-corpus", "category": "test_category", "is_active": True}
         ]
     else:
+        visible_corpora.assert_called_once_with()
         search.assert_awaited_once()
         assert search.call_args.kwargs["qp"].query == "clean water access"
+        assert search.call_args.kwargs["qp"].corpora == ("test-corpus",)
         data_collection.register_search_data.assert_awaited_once()
         payload = json.loads(result["content"][0]["text"])
         assert payload["docs"][0]["payload"]["document_title"] == "Clean water access"
