@@ -67,43 +67,6 @@ class TestLLMProxy(unittest.IsolatedAsyncioTestCase):
             trace_context=None,
         )
 
-    async def test_completion_stream_routes_to_mistral(self):
-        messages = [{"role": "user", "content": "Hello"}]
-
-        with mock.patch.object(
-            self.proxy,
-            "mistral_completion_stream",
-            new=AsyncMock(return_value="mistral_stream"),
-        ) as mistral_completion_stream, mock.patch.object(
-            self.proxy,
-            "az_completion_stream",
-            new=AsyncMock(return_value="azure_stream"),
-        ) as az_completion_stream:
-            response = await self.proxy.completion_stream(messages=messages)
-
-        self.assertEqual(response, "mistral_stream")
-        mistral_completion_stream.assert_awaited_once_with(messages)
-        az_completion_stream.assert_not_awaited()
-
-    async def test_completion_stream_routes_to_azure(self):
-        self.proxy.is_azure_model = True
-        messages = [{"role": "user", "content": "Hello"}]
-
-        with mock.patch.object(
-            self.proxy,
-            "az_completion_stream",
-            new=AsyncMock(return_value="azure_stream"),
-        ) as az_completion_stream, mock.patch.object(
-            self.proxy,
-            "mistral_completion_stream",
-            new=AsyncMock(return_value="mistral_stream"),
-        ) as mistral_completion_stream:
-            response = await self.proxy.completion_stream(messages=messages)
-
-        self.assertEqual(response, "azure_stream")
-        az_completion_stream.assert_awaited_once_with(messages)
-        mistral_completion_stream.assert_not_awaited()
-
     async def test_mistral_completion_records_langsmith_usage_on_current_run(self):
         messages = [{"role": "user", "content": "Hello"}]
         run_tree = mock.Mock()

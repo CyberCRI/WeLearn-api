@@ -1,6 +1,6 @@
 import uuid
 
-from fastapi import APIRouter, HTTPException, Request, Response
+from fastapi import APIRouter, HTTPException, Request, Response, status
 from fastapi.concurrency import run_in_threadpool
 
 from src.app.shared.domain.constants import SESSION_COOKIE_NAME, SESSION_TTL_SECONDS
@@ -19,14 +19,18 @@ from src.app.user.domain.models import (
     InstitutionData,
     InstitutionDataResponse,
     SessionResponse,
+    SignUpRequest,
+    SignUpResponse,
     UserAndSessionResponse,
     UserResponse,
 )
 from src.app.user.infra.keycloak import (
+    KeycloakConfigError,
     KeycloakTokenError,
     KeycloakUnavailableError,
     extract_bearer_token,
 )
+from src.app.user.infra.keycloak_admin import KeycloakUserExistsError
 from src.app.user.infra.queries import (
     add_institution_data_to_user_sync,
     add_user_bookmark_sync,
@@ -40,6 +44,7 @@ from src.app.user.services.session import (
     resolve_keycloak_user_and_session,
     resolve_user_and_session,
 )
+from src.app.user.services.signup import sign_up_user
 
 router = APIRouter()
 logger = logger_utils(__name__)
@@ -96,14 +101,14 @@ async def handle_user_and_session(
 
     try:
         if token:
-            _, session_uuid = await resolve_keycloak_user_and_session(
+            user_id, session_uuid = await resolve_keycloak_user_and_session(
                 token=token,
                 session_uuid=session_uuid,
                 host=host,
                 referer=referer,
             )
         else:
-            _, session_uuid = await resolve_user_and_session(
+            user_id, session_uuid = await resolve_user_and_session(
                 session_uuid=session_uuid,
                 host=host,
                 referer=referer,
@@ -130,7 +135,56 @@ async def handle_user_and_session(
         domain=settings.SESSION_COOKIE_DOMAIN,
     )
 
-    return {"message": "session created", "session_id": session_uuid}
+    return {
+        "message": "session created",
+        "session_id": session_uuid,
+        "user_id": user_id,
+    }
+
+
+@router.post(
+    "/signup",
+    summary="Sign up with Keycloak",
+    status_code=status.HTTP_201_CREATED,
+    response_model=SignUpResponse,
+)
+async def sign_up(request: Request, data: SignUpRequest, referer: str | None = None):
+    """
+    Create a Keycloak account and its WeLearn user. Keycloak emails a link to
+    verify the email and set a password. 409 if the email has an account.
+    """
+    session_uuid = extract_session_cookie(request)
+
+    try:
+        user_id = await sign_up_user(
+            email=data.email,
+            first_name=data.first_name,
+            last_name=data.last_name,
+            session_uuid=session_uuid,
+            referer=referer,
+        )
+    except KeycloakUserExistsError:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail={
+                "message": "An account already exists for this email",
+                "code": "EMAIL_ALREADY_EXISTS",
+            },
+        )
+    except KeycloakUnavailableError as e:
+        logger.error("Keycloak unavailable: %s", e)
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail={"message": "Keycloak unavailable", "code": "KEYCLOAK_UNAVAILABLE"},
+        )
+    except KeycloakConfigError as e:
+        logger.error("Keycloak misconfigured: %s", e)
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail={"message": "Sign-up is not configured", "code": "SIGNUP_DISABLED"},
+        )
+
+    return {"message": "user created", "user_id": user_id}
 
 
 @router.post("/user", summary="Create new user", response_model=UserResponse)

@@ -9,9 +9,6 @@ from langchain_core.messages import AIMessage, HumanMessage, ToolMessage
 from langgraph.checkpoint.memory import InMemorySaver
 
 from src.app.core.config import settings
-from src.app.shared.domain.documents import EnhancedDocumentSlice as DocumentModel
-from src.app.shared.domain.documents import EnhancedDocumentSlicePayloadModel
-from src.app.shared.domain.exceptions import LanguageNotSupportedError
 from src.main import app
 
 client = TestClient(app)
@@ -53,197 +50,14 @@ def _extract_document_id(doc):
     return ""
 
 
-JSON_NO_HIST = {
-    "sources": source_example,
-    "query": "Bonjour?",
-}
-
-JSON = {
-    "sources": source_example,
-    "history": [
-        {
-            "role": "user",
-            "content": "How to promote sustainable agriculture?",
-        },
-        {
-            "role": "assistant",
-            "content": "here is my answer",
-        },
-    ],
-    "query": "here is my answer",
-}
-
-
 @mock.patch("src.app.data_collection.infra.queries.session_maker")
 @mock.patch(
     "src.app.shared.infra.security.check_api_key_sync",
     new=mock.MagicMock(return_value=True),
 )
-@mock.patch(
-    "src.app.chat.services.abst_chat.AbstractChat._detect_language",
-)
-@mock.patch("src.app.chat.services.abst_chat.AbstractChat.chat_message")
 class QnATests(unittest.IsolatedAsyncioTestCase):
     def setUp(self):
         backoff.on_exception = MagicMock()
-
-    async def test_chat(self, chat_mock, *mocks):
-        chat_mock.return_value = "ok"
-
-        with TestClient(app) as client:
-            response = client.post(
-                f"{settings.API_V1_STR}/qna/chat/answer",
-                json=JSON,
-                headers={"X-API-Key": "test", "origin": "test"},
-            )
-
-            response_json = response.json()
-            self.assertEqual(response.status_code, 200)
-            self.assertEqual(response_json["answer"], "ok")
-
-    async def test_chat_empty_history(self, chat_mock, *mocks):
-        chat_mock.return_value = "ok"
-
-        with TestClient(app) as client:
-            response = client.post(
-                f"{settings.API_V1_STR}/qna/chat/answer",
-                json=JSON_NO_HIST,
-                headers={"X-API-Key": "test", "origin": "test"},
-            )
-
-            chat_mock.assert_called_with(
-                query="Bonjour?",
-                history=[],
-                docs=[
-                    DocumentModel(
-                        score=0.636549,
-                        payload=EnhancedDocumentSlicePayloadModel(
-                            document_corpus="testCorpus",
-                            document_sub_corpus="testsubCorpus",
-                            document_desc="testDesc",
-                            document_details={
-                                "author": "testAuthor",
-                                "duration": 276,
-                                "readability": 42.61,
-                                "source": "au",
-                            },
-                            document_id=uuid.UUID(
-                                "12345678-1234-5678-1234-567812345678"
-                            ),
-                            document_lang="en",
-                            document_sdg=[11, 12, 13, 15, 2, 8],
-                            document_title="testTitle",
-                            document_url="testUrl",
-                            slice_content="testContent",
-                            slice_sdg=15,
-                        ),
-                    )
-                ],
-                subject=None,
-            )
-            response_json = response.json()
-            self.assertEqual(response.status_code, 200)
-            self.assertEqual(response_json["answer"], "ok")
-
-    async def test_chat_not_supported_lang(self, chat_mock, *mocks):
-        # mock raise LanguageNotSupportedError
-        chat_mock.side_effect = LanguageNotSupportedError
-        JSON_NO_HIST["query"] = "Bom dia?"
-
-        with TestClient(app) as client:
-            response = client.post(
-                f"{settings.API_V1_STR}/qna/chat/answer",
-                json=JSON_NO_HIST,
-                headers={"X-API-Key": "test", "origin": "test"},
-            )
-            self.assertEqual(response.status_code, 400)
-
-    def test_new_questions_empty_query(self, *mocks):
-        with TestClient(app) as client:
-            response = client.post(
-                f"{settings.API_V1_STR}/qna/reformulate/questions",
-                json={"history": [], "sources": [], "query": ""},
-                headers={"X-API-Key": "test"},
-            )
-            # self.assertEqual(response.status_code, 400)
-            self.assertEqual(
-                response.json(),
-                {
-                    "detail": {
-                        "message": "Empty query",
-                        "code": "EMPTY_QUERY",
-                    }
-                },
-            )
-
-    async def test_new_questions_ok(
-        self, mock_db_session, mock_chat_completion, mock__detect_language
-    ):
-        with mock.patch(
-            "src.app.chat.services.abst_chat.AbstractChat.get_new_questions",
-            return_value={"NEW_QUESTIONS": ["Your reformulated question"]},
-        ) as new_questions_mock:
-            mock__detect_language.return_value = {"ISO_CODE": "en"}
-
-            with TestClient(app) as client:
-                response = client.post(
-                    f"{settings.API_V1_STR}/qna/reformulate/questions",  # noqa: E501
-                    json={
-                        "history": [],
-                        "sources": [],
-                        "query": "bonjour une recherche en français",
-                    },
-                    headers={"X-API-Key": "test"},
-                )
-                self.assertEqual(response.status_code, 200)
-                self.assertEqual(new_questions_mock.call_count, 1)
-
-    async def test_stream(self, *mocks):
-        with mock.patch(
-            "src.app.chat.services.abst_chat.AbstractChat.chat_message",
-        ) as stream_mock:
-            with TestClient(app) as client:
-                response = client.post(
-                    f"{settings.API_V1_STR}/qna/stream",
-                    json=JSON,
-                    headers={"X-API-Key": "test"},
-                )
-
-                stream_mock.assert_called_with(
-                    streamed_ans=True,
-                    query="here is my answer",
-                    history=JSON["history"],
-                    docs=[
-                        DocumentModel(
-                            score=0.636549,
-                            payload=EnhancedDocumentSlicePayloadModel(
-                                document_corpus="testCorpus",
-                                document_sub_corpus="testsubCorpus",
-                                document_desc="testDesc",
-                                document_details={
-                                    "author": "testAuthor",
-                                    "duration": 276,
-                                    "readability": 42.61,
-                                    "source": "au",
-                                },
-                                document_id=uuid.UUID(
-                                    "12345678-1234-5678-1234-567812345678"
-                                ),
-                                document_lang="en",
-                                document_sdg=[11, 12, 13, 15, 2, 8],
-                                document_title="testTitle",
-                                document_url="testUrl",
-                                slice_content="testContent",
-                                slice_sdg=15,
-                            ),
-                        )
-                    ],
-                    subject=None,
-                )
-
-                self.assertIsNotNone(response)
-
-                self.assertEqual(response.status_code, 200)
 
     @mock.patch("psycopg.AsyncConnection.connect", new_callable=mock.AsyncMock)
     @mock.patch(

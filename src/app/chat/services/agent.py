@@ -13,6 +13,18 @@ from src.app.shared.utils.logger import logger as utils_logger
 
 logger = utils_logger(__name__)
 
+NO_DOCS_INSTRUCTION = (
+    "No documents were retrieved. Do not cite, number, link or mention any "
+    "document or source in your answer (no [[Doc N]] markers, no titles, no "
+    "URLs)."
+)
+NO_DOCUMENTS_FOUND = f"No relevant documents found. {NO_DOCS_INSTRUCTION}"
+SEARCH_UNAVAILABLE = (
+    "The search service is temporarily unavailable. Tell the user, in their "
+    "language, that resources could not be retrieved right now. "
+    f"{NO_DOCS_INSTRUCTION}"
+)
+
 
 async def _get_resources_about_sustainability(
     rag_query: str,
@@ -37,14 +49,19 @@ async def _get_resources_about_sustainability(
     background_tasks: BackgroundTasks = config["configurable"].get("background_tasks")
     if not sp:
         logger.warning("No SearchService found.")
-        return "No relevant documents found.", []
+        return NO_DOCUMENTS_FOUND, []
 
-    docs = await sp.search_handler(
-        background_tasks=background_tasks, qp=qp, without_vectors=True
-    )
+    try:
+        docs = await sp.search_handler(
+            background_tasks=background_tasks, qp=qp, without_vectors=True
+        )
+    except Exception as e:
+        # Fail soft so the agent can still answer instead of aborting the stream.
+        logger.error("Search failed in agent tool: %s", e)
+        return SEARCH_UNAVAILABLE, []
     if not docs:
         logger.warning("No documents found for the query.")
-        return "No relevant documents found.", []
+        return NO_DOCUMENTS_FOUND, []
     else:
         content = stringify_docs_content(docs[:7])  # Limit to first 7 documents
         return content, docs

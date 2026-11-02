@@ -1,27 +1,12 @@
-from unittest import TestCase, mock
+from unittest import TestCase
 
 import numpy
-from langdetect.language import Language
 
-from src.app.shared.domain.exceptions import LanguageNotSupportedError
 from src.app.shared.utils.embeddings import convert_embedding_bytes
 from src.app.shared.utils.json_parsing import extract_json_from_response
-from src.app.shared.utils.language import detect_language_from_entry
 
 
 class SharedHelpersTests(TestCase):
-    def test_detect_language_from_entry_no_lang(self):
-        with mock.patch("src.app.shared.utils.language.detect_langs", return_value=[]):
-            with self.assertRaises(LanguageNotSupportedError):
-                detect_language_from_entry("test")
-
-    def test_detect_language_from_entry(self):
-        with mock.patch(
-            "src.app.shared.utils.language.detect_langs",
-            return_value=[Language("en", 1.0)],
-        ):
-            self.assertEqual(detect_language_from_entry("test again"), "en")
-
     def test_extract_json_from_response(self):
         response = 'Here is the JSON: {"key": "value"}'
         expected = {"key": "value"}

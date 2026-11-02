@@ -530,26 +530,32 @@ class TestSyllabusOrchestrator(unittest.IsolatedAsyncioTestCase):
             calls.append("competencies")
             self.sut.state.competencies = SimpleNamespace(mappings=[])
 
-        with patch.object(
-            self.sut,
-            "phase_1_generate_description",
-            side_effect=description,
-        ), patch.object(
-            self.sut,
-            "phase_1_generate_objectives",
-            side_effect=objectives,
-        ), patch.object(
-            self.sut,
-            "phase_1_integrate_sustainability",
-            side_effect=sustainability,
-        ), patch.object(
-            self.sut,
-            "phase_1_generate_outcomes",
-            side_effect=outcomes,
-        ), patch.object(
-            self.sut,
-            "phase_1_map_competencies",
-            side_effect=competencies,
+        with (
+            patch.object(
+                self.sut,
+                "phase_1_generate_description",
+                side_effect=description,
+            ),
+            patch.object(
+                self.sut,
+                "phase_1_generate_objectives",
+                side_effect=objectives,
+            ),
+            patch.object(
+                self.sut,
+                "phase_1_integrate_sustainability",
+                side_effect=sustainability,
+            ),
+            patch.object(
+                self.sut,
+                "phase_1_generate_outcomes",
+                side_effect=outcomes,
+            ),
+            patch.object(
+                self.sut,
+                "phase_1_map_competencies",
+                side_effect=competencies,
+            ),
         ):
             result = await self.sut.run_phase_1("context")
 

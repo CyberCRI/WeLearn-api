@@ -98,7 +98,7 @@ function IntegrateSustainability(
         }
       ],
       "integration_strategy": "Overall narrative paragraph...",
-      "resources_used": [...]  // Copy from sdg_resources input 
+      "resources_used": [...]  // Copy from sdg_resources input
     }
     </output_format>
 

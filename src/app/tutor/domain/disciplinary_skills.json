@@ -137,11 +137,11 @@
                 "Examiner des problèmes relatifs aux enjeux sanitaires et sociaux en mobilisant des données sociales, sanitaires et démographiques, et de la statistique publique.",
                 "Réaliser un travail documentaire et/ou bibliographique sur un objet de recherche.",
                 "Analyser des problématiques sanitaires et/ou sociales au sein d’un collectif, en mettant en perspective les savoirs fondamentaux des disciplines de référence (santé publique, sociologie, démographie, économie, gestion, sciences de l'éducation, psychologie, droit, histoire, anthropologie, etc.).",
-                "Questionner les demandes de nature sanitaire et/ou sociale et traiter les faits sans parti pris ni jugement de valeur, en mobilisant des concepts et des méthodes.", 
+                "Questionner les demandes de nature sanitaire et/ou sociale et traiter les faits sans parti pris ni jugement de valeur, en mobilisant des concepts et des méthodes.",
                 "Proposer des diagnostics en prenant en compte la diversité des environnements, des institutions, des acteurs et des bénéficiaires de l’action sanitaire et sociale.",
                 "Participer à la mise en œuvre de techniques d'organisation et d'exécution de l’action sanitaire ou sociale, ainsi qu’à l’usage et au partage d’outils d'évaluation.",
                 "Participer au traitement des situations, des phénomènes sociaux, auprès de publics spécifiques en mettant en œuvre les méthodes d'enquête et d’intervention.",
-                "Réaliser un travail documentaire et/ou bibliographique à partir d’un cas ou d’une situation particulière.", 
+                "Réaliser un travail documentaire et/ou bibliographique à partir d’un cas ou d’une situation particulière.",
                 "Conseiller, en mobilisant les données issues de la recherche (qualitative, quantitative) et de la statistique publique."
             ]
         },
@@ -292,7 +292,7 @@
                 "Situer les apports de la psychologie dans le champ des Sciences humaines et sociales et des Sciences de la vie",
                 "Situer et articuler les apports des sous- disciplines de la psychologie pour l’analyse de l’activité humaine.",
                 "Situer et articuler les apports des grandes approches théoriques de la psychologie pour expliquer les activités et les états d'un individu ou d’un groupe dans une perspective plurielle",
-                "Rendre compte de la diversité des pratiques professionnelles des psychologues à travers notamment la connaissance des terrains.",                   
+                "Rendre compte de la diversité des pratiques professionnelles des psychologues à travers notamment la connaissance des terrains.",
                 "Rendre compte du caractère pluridisciplinaire des activités du psychologue",
                 "Caractériser et expliquer les aspects normaux et pathologiques du fonctionnement psychique et des activités d'un individu",
                 "Caractériser et expliquer les fonctionnements cognitif, affectif, conatif et neurocognitif normaux et pathologiques organisant les activités d'un individu",
@@ -527,7 +527,7 @@
                 "Accompagner l’apprenant ou le participant dans le développement de sa créativité et de son autonomie dans la découverte, l’apprentissage ou la pratique de la musique, en pratiquant un instrument polyphonique : accompagnement et improvisation sur des schèmes fondamentaux.",
                 "Réaliser, en s’appuyant sur un champ d’étude proposé, une recherche bibliographique critique, documentaire et sonore à partir de sources académiques et institutionnelles fiables et de référence, en lien avec les règlementations en vigueur et les politiques publiques.",
                 "Classer, référencer ou ajouter un ensemble de documents ou d’objets musicaux et sonores au sein d’un fonds documentaire ou d’une collection en décrivant les caractéristiques physiques et intellectuelles du document ou de l’objet et en se conformant aux règles de classification en vigueur.",
-                "Construire une problématique d’étude en mobilisant une réflexion théorique et critique portant sur les phénomènes musicaux (littérature, esthétique, philosophie de l’art, histoire de l’art, sociologie de l’art, ethnomusicologie, anthropologie, psychanalyse…), élaborer un plan en lien avec la problématique, rédiger selon les usages de la recherche académique.", 
+                "Construire une problématique d’étude en mobilisant une réflexion théorique et critique portant sur les phénomènes musicaux (littérature, esthétique, philosophie de l’art, histoire de l’art, sociologie de l’art, ethnomusicologie, anthropologie, psychanalyse…), élaborer un plan en lien avec la problématique, rédiger selon les usages de la recherche académique.",
                 "Étudier les phénomènes musicaux en mobilisant une culture artistique, les principales méthodes ainsi que la terminologie descriptive et critique développées en France et à l’étranger.",
                 "Présenter à l’oral la problématique, la méthode d’enquête et les résultats et discuter avec ses pairs sur les choix, les questions et les critiques soulevés par ce travail."
             ]
@@ -581,7 +581,7 @@
         {
             "code_rncp": 39173,
             "title": "Langues étrangères appliquées",
-            "skills": 
+            "skills":
             [
                 "Synthétiser et/ou rédiger des supports de communication variés en français et dans deux langues étrangères",
                 "S’approprier et mobiliser le vocabulaire d’un champ professionnel en langues étrangères",
@@ -600,7 +600,7 @@
         {
             "code_rncp": 40116,
             "title": "Informatique",
-            "skills": 
+            "skills":
             [
                 "Appliquer des approches raisonnées de résolution de problèmes complexes par décompositions et/ou approximations successives et mettre en œuvre des méthodes d’analyse pour concevoir des applications et algorithmes à partir d’un cahier des charges",
                 "Manipuler aisément plusieurs paradigmes algorithmiques (approches impérative, fonctionnelle, objet et multitâche).",
@@ -666,7 +666,7 @@
                 "Résoudre des équations (linéaires, algébriques, différentielles) de façon exacte.",
                 "Utiliser les bases du raisonnement probabiliste et mettre en œuvre une démarche statistique pour le traitement et l’interprétation des données.",
                 "Résoudre des équations (linéaires, algébriques, différentielles) par des méthodes numériques.",
-                "Écrire et mettre en œuvre des algorithmes de base de calcul scientifique.", 
+                "Écrire et mettre en œuvre des algorithmes de base de calcul scientifique.",
                 "Utiliser des logiciels de calcul formel et scientifique et des langages de programmation pour résoudre des problèmes mathématiques."
             ]
         },

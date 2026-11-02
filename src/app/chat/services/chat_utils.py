@@ -22,17 +22,6 @@ def _format_sse_event(data: str) -> str:
     return "".join(f"data: {line}\n" for line in lines) + "\n"
 
 
-async def _sse_wrap(stream: Any) -> AsyncGenerator[str, None]:
-    async for chunk in stream:
-        if isinstance(chunk, str):
-            data = chunk
-        elif isinstance(chunk, bytes):
-            data = chunk.decode("utf-8", errors="replace")
-        else:
-            data = json.dumps(jsonable_encoder(chunk))
-        yield _format_sse_event(data)
-
-
 def _resolve_thread_id(thread_id: UUID | None) -> UUID:
     if thread_id:
         return thread_id
@@ -134,6 +123,17 @@ def _build_final_stream_payload(
     }
 
 
+def _build_stream_error_payload(thread_id: UUID) -> dict[str, Any]:
+    return {
+        "status": "error",
+        "detail": {
+            "message": "An error occurred while generating the answer.",
+            "code": "CHAT_STREAM_ERROR",
+        },
+        "thread_id": str(thread_id),
+    }
+
+
 async def _register_stream_chat_data(
     *,
     data_collection: Any,
@@ -181,19 +181,26 @@ async def _stream_agent_response(
         trace_context=trace_context,
     )
 
-    async for chunk in stream:
-        if chunk.get("status") == "docs_final":
-            docs = chunk.get("docs")
-            continue
-        final_content, docs = _update_agent_stream_state(chunk, final_content, docs)
-        if chunk.get("status") == "streaming" and chunk.get("content"):
-            has_streamed_content = True
-        if chunk.get("status") == "stop":
-            continue
-        try:
-            yield _format_sse_event(_serialize_agent_stream_chunk(chunk))
-        except Exception as e:
-            logger.error("Error while yielding chunk: %s", e)
+    try:
+        async for chunk in stream:
+            if chunk.get("status") == "docs_final":
+                docs = chunk.get("docs")
+                continue
+            final_content, docs = _update_agent_stream_state(chunk, final_content, docs)
+            if chunk.get("status") == "streaming" and chunk.get("content"):
+                has_streamed_content = True
+            if chunk.get("status") == "stop":
+                continue
+            try:
+                yield _format_sse_event(_serialize_agent_stream_chunk(chunk))
+            except Exception as e:
+                logger.error("Error while yielding chunk: %s", e)
+    except Exception as e:
+        # The response has already started, so an HTTP error can no longer be
+        # sent: close the stream with an error event the client can display.
+        logger.error("Agent stream failed thread_id=%s error=%s", thread_id, e)
+        yield _format_sse_event(json.dumps(_build_stream_error_payload(thread_id)))
+        return
 
     final_content = linkify_missing_citations(final_content, docs)
 

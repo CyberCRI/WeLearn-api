@@ -4,32 +4,18 @@ from uuid import UUID
 
 import backoff
 import psycopg
-from fastapi import (
-    APIRouter,
-    BackgroundTasks,
-    Body,
-    Depends,
-    HTTPException,
-    Request,
-    status,
-)
+from fastapi import APIRouter, BackgroundTasks, Body, Depends, Request
 from fastapi.responses import StreamingResponse
 from langgraph.checkpoint.postgres.aio import AsyncPostgresSaver
 from openai import RateLimitError
 from psycopg.rows import AsyncRowFactory, DictRow, dict_row
-from pydantic import BaseModel
 
 from src.app.chat.domain import models
 from src.app.chat.services.abst_chat import get_chat_service
-from src.app.chat.services.chat_utils import (
-    _resolve_thread_id,
-    _sse_wrap,
-    _stream_agent_response,
-)
+from src.app.chat.services.chat_utils import _resolve_thread_id, _stream_agent_response
 from src.app.chat.services.helpers import latest_tool_docs, linkify_missing_citations
 from src.app.data_collection.services.data_collection import get_data_collection_service
 from src.app.search.services.search import SearchService, get_search_service
-from src.app.shared.domain.constants import subjects as subjectsDict
 from src.app.shared.domain.exceptions import (
     EmptyQueryError,
     LanguageNotSupportedError,
@@ -85,23 +71,6 @@ def _build_agent_trace_context(
     }
 
 
-def get_params(body: models.Context) -> models.ContextOut:
-    body.sources = body.sources[:7]
-
-    if not body.query or body.query == "":
-        e = EmptyQueryError()
-        return bad_request(message=e.message, msg_code=e.msg_code)
-
-    return models.ContextOut(
-        sources=body.sources,
-        history=body.history or [],
-        query=body.query,
-        subject=body.subject,
-        conversation_id=None,
-        lang=body.lang,
-    )
-
-
 def get_agent_params(
     body: Annotated[
         models.AgentContext,
@@ -120,145 +89,6 @@ def get_agent_params(
         corpora=body.corpora,
         sdg_filter=body.sdg_filter,
     )
-
-
-class Response(BaseModel):
-    greeting: str
-
-
-@router.post(
-    "/reformulate/questions",
-    summary="Formulates new questions",
-    description="This endpoint formulates new questions based on the provided context and history. They can be use to suggest it to the user.",
-    response_model=models.ReformulatedQuestionsResponse,
-)
-@backoff.on_exception(
-    wait_gen=backoff.expo,
-    exception=RateLimitError,
-    logger=logger,
-    max_tries=5,
-    max_time=180,
-    jitter=backoff.random_jitter,
-    factor=2,
-)
-async def q_and_a_new_questions(
-    body: models.ContextOut = Depends(get_params), chatfactory=Depends(get_chat_service)
-):
-    try:
-        new_questions = await chatfactory.get_new_questions(
-            query=body.query, history=body.history, lang=body.lang
-        )
-
-        return new_questions
-    except LanguageNotSupportedError as e:
-        bad_request(message=e.message, msg_code=e.msg_code)
-
-
-@router.post(
-    "/chat/answer",
-    summary="Chat Answer",
-    description="This endpoint is used to get the answer to the user's query based on the provided context and history",
-    response_model=dict[str, str | UUID | None],
-)
-@backoff.on_exception(
-    wait_gen=backoff.expo,
-    exception=RateLimitError,
-    logger=logger,
-    max_tries=5,
-    max_time=180,
-    jitter=backoff.random_jitter,
-    factor=2,
-)
-async def q_and_a_ans(
-    request: Request,
-    body: models.ContextOut = Depends(get_params),
-    chatfactory=Depends(get_chat_service),
-    data_collection=Depends(get_data_collection_service),
-) -> dict[str, str | UUID | None] | None:
-    """_summary_
-
-    Args:
-        body (models.Context): list of sources used for completion
-        query (str, optional): users prompt. Defaults to "How to promote sustainable
-        agriculture?".
-
-    Returns:
-        str: openai chat completion content
-    """
-
-    session_id = extract_session_cookie(request)
-
-    try:
-        content = await chatfactory.chat_message(
-            query=body.query,
-            history=body.history,
-            docs=body.sources,
-            subject=subjectsDict.get(body.subject, None),
-        )
-
-        conversation_id, message_id = await data_collection.register_chat_data(
-            session_id=session_id,
-            user_query=body.query,
-            conversation_id=body.conversation_id,
-            answer_content=content,
-            sources=body.sources,
-        )
-
-        return {
-            "message_id": message_id,
-            "answer": content,
-            "conversation_id": conversation_id,
-        }
-    except LanguageNotSupportedError as e:
-        bad_request(message=e.message, msg_code=e.msg_code)
-
-
-@router.post(
-    "/stream",
-    summary="Chat Answer",
-    description="This endpoint is used to get the answer to the user's query based on the provided context and history. Streamed version",
-    response_model=str,
-    response_class=StreamingResponse,
-)
-@backoff.on_exception(
-    wait_gen=backoff.expo,
-    exception=RateLimitError,
-    logger=logger,
-    max_tries=5,
-    max_time=180,
-    jitter=backoff.random_jitter,
-    factor=2,
-)
-async def q_and_a_stream(
-    body: models.ContextOut = Depends(get_params), chatfactory=Depends(get_chat_service)
-) -> StreamingResponse:  # type: ignore
-    try:
-        logger.info("q_and_a_stream subject=%s", body.subject)
-
-        content = await chatfactory.chat_message(
-            query=body.query,
-            history=body.history,
-            docs=body.sources,
-            subject=subjectsDict.get(body.subject, None),
-            streamed_ans=True,
-        )
-
-        return StreamingResponse(
-            content=_sse_wrap(content),
-            media_type="text/event-stream",
-            headers=SSE_HEADERS,
-        )
-    except LanguageNotSupportedError as e:
-        bad_request(message=e.message, msg_code=e.msg_code)
-    except Exception as e:
-        logger.error("Error while streaming the query: %s", e)
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail={
-                "message": "Something went wrong while streaming the query",
-                "code": "STREAM_ERROR",
-            },
-        )
 
 
 @router.get("/chat/history")

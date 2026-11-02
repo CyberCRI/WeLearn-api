@@ -1,5 +1,6 @@
 [flake8]
-extend-ignore = E203, E501
+# E203/E701: conflict with black's formatting; E501: black owns line length
+extend-ignore = E203, E501, E701
 exclude =
     ./fill_db.py,
     .venv,

@@ -1,4 +1,3 @@
-import types
 import unittest
 from unittest import mock
 
@@ -19,68 +18,6 @@ class TestAbstChatUtils(unittest.IsolatedAsyncioTestCase):
         ):
             result = await self.chat.json_formatter_agent("bad", "schema")
             self.assertEqual(result, {"key": "value"})
-
-    async def test_get_stream_chunks_async_and_sync(self):
-        # Create a mock chunk object with .choices attribute
-        class MockDelta:
-            def __init__(self, content):
-                self.content = content
-
-        class MockChoice:
-            def __init__(self, delta, finish_reason=None):
-                self.delta = delta
-                self.finish_reason = finish_reason
-
-        class MockChunk:
-            def __init__(self, content):
-                self.choices = [MockChoice(MockDelta(content))]
-
-        # Async generator
-        async def async_stream():
-            yield MockChunk("abc")
-
-        # Async path
-        chunks = []
-        async for part in self.chat.get_stream_chunks(async_stream()):
-            chunks.append(part)
-        self.assertIn("abc", chunks)
-
-        # Sync fallback path: force async for to raise, fallback to sync
-        def sync_stream():
-            yield MockChunk("abc")
-
-        with mock.patch.object(
-            self.chat, "_extract_stream_chunk", wraps=self.chat._extract_stream_chunk
-        ) as extract_mock:
-            sync_chunks = []
-            async for part in self.chat.get_stream_chunks(sync_stream()):
-                sync_chunks.append(part)
-
-            self.assertIn("abc", sync_chunks)
-            self.assertGreaterEqual(extract_mock.call_count, 1)
-
-    def test_extract_stream_chunk(self):
-        # With choices and delta content
-        chunk = types.SimpleNamespace(
-            choices=[
-                types.SimpleNamespace(
-                    delta=types.SimpleNamespace(content="abc"), finish_reason=None
-                )
-            ]
-        )
-        result = list(self.chat._extract_stream_chunk(chunk))
-        self.assertIn("abc", result)
-        # With finish_reason
-        chunk = types.SimpleNamespace(
-            choices=[
-                types.SimpleNamespace(
-                    delta=types.SimpleNamespace(content=None), finish_reason="stop"
-                )
-            ]
-        )
-        # Should not yield, just log
-        result = list(self.chat._extract_stream_chunk(chunk))
-        self.assertEqual(result, [])
 
     def test_extract_agent_chunk(self):
         # Not a dict

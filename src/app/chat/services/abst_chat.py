@@ -17,7 +17,7 @@ Functions:
 
 import uuid
 from abc import ABC
-from typing import Any, AsyncIterable, Dict, List, Optional, TypedDict, cast
+from typing import Any, AsyncIterable, List, Optional, TypedDict, cast
 
 from fastapi import BackgroundTasks, Depends, Request
 from langchain.agents import create_agent  # type: ignore
@@ -37,23 +37,15 @@ from langsmith import traceable
 
 from src.app.chat.services import prompts
 from src.app.chat.services.agent import get_resources_about_sustainability
-from src.app.chat.services.helpers import latest_tool_docs, stringify_docs_content
+from src.app.chat.services.helpers import latest_tool_docs
 from src.app.search.services.search import SearchService
-from src.app.shared.domain.documents import EnhancedDocumentSlice
-from src.app.shared.domain.exceptions import LanguageNotSupportedError
 from src.app.shared.infra.tracing import TRACE_RUN_TYPE_LLM, TraceComponent, TraceName
 from src.app.shared.utils.decorators import log_time_and_error
 from src.app.shared.utils.dependencies import get_settings
 from src.app.shared.utils.json_parsing import extract_json_from_response
-from src.app.shared.utils.language import detect_language_from_entry
-from src.app.shared.utils.logger import log_environmental_impacts
 from src.app.shared.utils.logger import logger as utils_logger
 
-# from ecologits import EcoLogits  # type: ignore
-
-
 logger = utils_logger(__name__)
-# EcoLogits.init(["openai", "mistralai"])
 
 
 class _PersistClearedToolUses(AgentMiddleware):
@@ -130,21 +122,6 @@ class AbstractChat(ABC):
         self.agent_executor = None
         self.chat_client = client
 
-    def _build_non_agent_trace_context(
-        self,
-        operation: str,
-        **extra: Any,
-    ) -> dict[str, Any]:
-        settings = get_settings()
-        trace_context: dict[str, Any] = {
-            "component": TraceComponent.CHAT_NON_AGENT.value,
-            "operation": operation,
-            "environment": settings.ENV,
-            "model": getattr(self.chat_client, "model", None),
-        }
-        trace_context.update(extra)
-        return trace_context
-
     @log_time_and_error
     @traceable(
         run_type=TRACE_RUN_TYPE_LLM,
@@ -169,105 +146,6 @@ class AbstractChat(ABC):
 
         json = extract_json_from_response(output)
         return json
-
-    @log_time_and_error
-    async def _detect_language(self, query: str) -> Dict[str, str]:
-        """
-        Detects the language of the query.
-
-        Args:
-            query (str): The user query.
-
-        Returns:
-            dict: The detected language.
-        """
-        try:
-            lang = detect_language_from_entry(query)
-            return {"ISO_CODE": lang}
-        except LanguageNotSupportedError:
-            logger.info(
-                "api_error=LANG_NOT_SUPPORTED using llm to check check_lang=%s", query
-            )
-            lang = await self._detect_lang_with_llm(query)
-            return lang
-
-    @log_time_and_error
-    @traceable(
-        run_type=TRACE_RUN_TYPE_LLM,
-        name=TraceName.DETECT_LANG_WITH_LLM.value,
-    )
-    async def _detect_lang_with_llm(self, query: str) -> Dict[str, str]:
-        """
-        Detects language using LLM.
-
-        Args:
-            query (str): The user query.
-
-        Returns:
-            dict: The detected language.
-        """
-        detected_lang = await self.chat_client.completion(
-            messages=[
-                {
-                    "role": "user",
-                    "content": prompts.CHECK_LANGUAGE_PROMPT.format(query=query),
-                }
-            ],
-            response_format={
-                "type": "json_object",
-            },
-        )
-
-        if isinstance(detected_lang, str):
-            parsed = extract_json_from_response(detected_lang)
-        elif isinstance(detected_lang, dict):
-            parsed = detected_lang
-        else:
-            raise ValueError("Invalid response from model")
-
-        if not isinstance(parsed, dict):
-            raise ValueError("Invalid response from model")
-
-        jsn: Dict[str, str] = {}
-        for key, value in parsed.items():
-            if not isinstance(key, str) or not isinstance(value, str):
-                raise ValueError("Invalid response from model")
-            jsn[key] = value
-
-        return jsn
-
-    async def get_stream_chunks(self, stream) -> AsyncIterable[str]:
-        """
-        Gets content from streamed response.
-
-        Args:
-            stream (Generator[dict]): The streamed chat response.
-
-        Yields:
-            str: The stream content.
-        """
-        try:
-            async for chunk in stream:
-                for part in self._extract_stream_chunk(chunk):
-                    yield part
-        except Exception:
-            try:
-                for chunk in stream:
-                    for part in self._extract_stream_chunk(chunk):
-                        yield part
-            except Exception as e:
-                logger.error("get_stream_chunks api_error=%s", e)
-                raise
-
-    def _extract_stream_chunk(self, chunk):
-        choices = getattr(chunk, "choices", None)
-        if choices:
-            delta_content = getattr(choices[0].delta, "content", None)
-            if delta_content:
-                yield delta_content
-            finish_reason = getattr(choices[0], "finish_reason", None)
-            if finish_reason:
-                log_environmental_impacts(chunk, logger)
 
     async def get_agent_chunks(self, stream) -> AsyncIterable[dict[str, Any]]:
         """
@@ -384,98 +262,6 @@ class AbstractChat(ABC):
             return "".join(text_parts)
 
         return ""
-
-    @log_time_and_error
-    async def get_new_questions(
-        self, query: str, history: List[Dict[str, str]], lang: Optional[str] = None
-    ) -> Dict[str, List[str]]:
-        """
-        Gets new questions from chat model based on history.
-
-        Args:
-            query (str): The user query.
-            history (list): The chat history.
-            lang (str | None): UI language ISO code (used for empty-chat case).
-
-        Returns:
-            dict: The new questions.
-        """
-        if not history and lang:
-            iso_code = lang
-        elif history:
-            combined = " ".join(m["content"] for m in history[-4:] if m.get("content"))
-            detected = await self._detect_language(combined[:500])
-            iso_code = detected.get("ISO_CODE", "en")
-        else:
-            detected = await self._detect_language(query)
-            iso_code = detected.get("ISO_CODE", "en")
-
-        res = await self.chat_client.completion(
-            messages=[
-                *history[-2:],
-                {
-                    "role": "user",
-                    "content": prompts.GENERATE_NEW_QUESTIONS.format(language=iso_code)
-                    + query,
-                },
-            ],
-        )
-
-        assert isinstance(res, str)
-
-        res_list: List[str] = [r.strip() for r in res.split("%%") if len(r.strip()) > 0]
-        return {"NEW_QUESTIONS": res_list}
-
-    @log_time_and_error
-    @traceable(
-        run_type=TRACE_RUN_TYPE_LLM,
-        name=TraceName.CHAT_MESSAGE.value,
-    )
-    async def chat_message(
-        self,
-        query: str,
-        history: List[Dict[str, str]],
-        docs: List[EnhancedDocumentSlice],
-        subject: str | None = None,
-        streamed_ans: bool = False,
-    ):
-        """
-        Sends a chat message.
-
-        Args:
-            query (str): The user query.
-            history (list): The chat history.
-            docs (list): List of documents.
-            subject (str): Subject.
-            streamed_ans (bool): Whether to stream the answer.
-
-        Returns:
-            str: The chat message content.
-        """
-
-        ISO_CODE = await self._detect_language(query)
-
-        messages = [
-            {
-                "role": "system",
-                "content": prompts.SYSTEM_PROMPT.format(cursus=subject or "General"),
-            },
-            *history,
-            {
-                "role": "user",
-                "content": prompts.SOURCED_ANSWER.format(
-                    documents=stringify_docs_content(docs),
-                    query=query,
-                    ISO_CODE=ISO_CODE,
-                ),
-            },
-        ]
-        if streamed_ans:
-            res = await self.chat_client.completion_stream(messages)
-            return self.get_stream_chunks(res)
-
-        res = await self.chat_client.completion(messages=messages)
-        return res
 
     async def _create_agent(
         self,
