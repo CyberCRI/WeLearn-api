@@ -8,13 +8,9 @@ package-mode = false
 
 [tool.poetry.dependencies]
 python = ">=3.12,<3.15"
-azure-core = "^1.38.0"
 backoff = "^2.2.1"
-ecologits = "^0.5.2"
 fastapi = "^0.117.1"
 jinja2 = "^3.1"
-langdetect = "^1.0.9"
-litellm = "^1.61.15"
 psycopg2-binary = "^2.9.10"
 pydantic = "^2.1.1"
 pydantic-settings = "^2.0.3"
@@ -30,34 +26,22 @@ torch = [
     {version = "2.9.1+cpu", source = "pytorch_cpu", markers = "sys_platform == 'linux'"},
     {version = "2.9.1", markers = "sys_platform == 'darwin'"},
 ]
-torchvision = [
-    {version = "0.24.1+cpu", source = "pytorch_cpu", markers = "sys_platform == 'linux'"},
-    {version = "0.24.1", markers = "sys_platform == 'darwin'"},
-]
 uvicorn = {extras = ["standard"], version = "^0.31.1"}
-autogen-core = "^0.5.7"
-autogen-ext = "^0.5.7"
-autogen-agentchat = "^0.5.7"
 pypdf = "^6.6.0"
 numpy = "^2.1.0"
 python-docx = "^1.1.2"
+langchain = "^1.2.18"
 langchain-core = "^1.3.2"
 langgraph-checkpoint-postgres = "^2.0.23"
-azure-ai-inference = "^1.0.0b9"
-azure-identity = "^1.25.0"
 psycopg = {extras = ["binary"], version = "^3.2.10"}
 welearn-database = "^1.5.6"
-bs4 = "^0.0.2"
 urllib3 = "^2.6.3"
 refinedoc = "^1.0.1"
-aiohttp = "^3.13.3"
 httpx = "^0.28.1"
 beautifulsoup4 = "^4.14.3"
 json-repair = "^0.55.0"
 langchain-mistralai = "^1.1.2"
-langchain-azure-ai = "^1.2.3"
 langgraph = "^1.1.10"
-mistralai = "^2.4.3"
 langsmith = "^0.10.11"
 pandas = { version = "^3.0.3", markers = "python_version >= '3.11'" }
 baml-py = "^0.226.1"

@@ -40,7 +40,10 @@ async def init_chat_model(settings) -> None:
 async def close_chat_model() -> None:
     global chat_model
     if chat_model is not None:
-        await chat_model.aclose()
+        # ChatMistralAI has no aclose(); close its underlying httpx client.
+        async_client = getattr(chat_model, "async_client", None)
+        if async_client is not None:
+            await async_client.aclose()
         chat_model = None
 
 

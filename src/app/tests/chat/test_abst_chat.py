@@ -14,8 +14,7 @@ from src.app.chat.services.abst_chat import (
 
 class TestAbstractChat(unittest.IsolatedAsyncioTestCase):
     def setUp(self):
-        mocked_client = mock.AsyncMock()
-        self.chat = AbstractChat(client=mocked_client)
+        self.chat = AbstractChat()
 
     @mock.patch("src.app.chat.services.abst_chat.ChatMistralAI")
     @mock.patch("src.app.chat.services.abst_chat.get_settings")

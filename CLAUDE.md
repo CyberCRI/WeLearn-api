@@ -36,8 +36,8 @@ FastAPI service for the WeLearn platform: semantic search over a Qdrant vector s
 - **Entry point:** `src/main.py` builds the app and registers the middleware (`MonitorRequestsMiddleware`, process-time header, CORS) and the exception handlers.
 - **API key:** `src/app/router.py` mounts every feature router under `settings.API_V1_STR` (`/api/v1`) with `Depends(get_user)`. Every API route therefore requires an `X-API-Key` header, which `shared/infra/security.py` checks against hashed keys in the DB. `/health` and `/` sit outside this router.
 - **Startup (`src/app/core/lifespan.py`):**
-  - creates the shared clients on `app.state`: `app.state.qdrant` (`AsyncQdrantClient`) and `app.state.llm` (`LLMProxy`, Mistral);
-  - initialises the tutor's `ChatMistralAI` model;
+  - creates the shared Qdrant client, `app.state.qdrant` (`AsyncQdrantClient`);
+  - initialises the shared `ChatMistralAI` model (`tutor/services/tutor.py::chat_model`), also used by the file summary extractor (`tutor/services/extractor.py`);
   - configures LangSmith tracing.
 - **API contract (`openapi.json`):**
   - The OpenAPI schema FastAPI generates is the single source of truth between this API and WeLearn-client. It is committed at the repo root, and the client generates its TypeScript types from it (`yarn gen:api` in WeLearn-client).
@@ -63,7 +63,7 @@ import-linter enforces three rules:
 - Only `src/app/router.py` may import a feature's `api` package.
 - Feature routers are independent of each other.
 
-Code that several features need goes in `shared/`. That includes domain exceptions, `documents.py` models, `infra/db.py` (`session_maker`), `llm_proxy.py`, and logger/decorator utils.
+Code that several features need goes in `shared/`. That includes domain exceptions, `documents.py` models, `infra/db.py` (`session_maker`), and logger/decorator utils.
 
 ### Key cross-cutting pieces
 
