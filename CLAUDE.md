@@ -16,7 +16,7 @@ The project uses Poetry. The virtualenv lives in `.venv/`, and Python is 3.12–
 poetry install                     # install deps (incl. dev group) — human approval required, see rules above
 make generate-baml-poetry          # regenerate src/app/baml_client from src/app/baml_src (required before running or testing)
 make run-poetry                    # generate BAML + uvicorn src.main:app --reload (port 8000)
-make test-poetry                   # generate BAML + full pytest run with coverage gate (--cov-fail-under=82)
+make test-poetry                   # generate BAML + full pytest run with coverage gate (--cov-fail-under=90)
 make lint                          # flake8, isort, black, lint-imports
 make openapi-poetry                # regenerate openapi.json (the API/client contract) — commit it with the code change
 ```
