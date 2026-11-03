@@ -36,11 +36,6 @@ app = FastAPI(
 # Middleware global monitoring
 app.add_middleware(MonitorRequestsMiddleware)
 
-# TODO: check this with JM
-# @app.on_event("shutdown")
-# async def shutdown_event():
-#     await chatfactory.aclose()
-
 
 @app.exception_handler(ResponseValidationError)
 async def validation_exception_handler(request: Request, exc: RequestValidationError):

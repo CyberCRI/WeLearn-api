@@ -19,7 +19,7 @@ import uuid
 from abc import ABC
 from typing import Any, AsyncIterable, List, Optional, TypedDict, cast
 
-from fastapi import BackgroundTasks, Depends, Request
+from fastapi import BackgroundTasks
 from langchain.agents import create_agent  # type: ignore
 from langchain.agents.middleware import (  # type: ignore
     ClearToolUsesEdit,
@@ -33,16 +33,13 @@ from langchain_core.runnables import RunnableConfig  # type: ignore
 from langchain_mistralai import ChatMistralAI
 from langgraph.checkpoint.postgres.aio import AsyncPostgresSaver  # type: ignore
 from langgraph.graph.message import REMOVE_ALL_MESSAGES  # type: ignore
-from langsmith import traceable
 
 from src.app.chat.services import prompts
 from src.app.chat.services.agent import get_resources_about_sustainability
 from src.app.chat.services.helpers import latest_tool_docs
 from src.app.search.services.search import SearchService
-from src.app.shared.infra.tracing import TRACE_RUN_TYPE_LLM, TraceComponent, TraceName
-from src.app.shared.utils.decorators import log_time_and_error
+from src.app.shared.infra.tracing import TraceComponent
 from src.app.shared.utils.dependencies import get_settings
-from src.app.shared.utils.json_parsing import extract_json_from_response
 from src.app.shared.utils.logger import logger as utils_logger
 
 logger = utils_logger(__name__)
@@ -108,41 +105,11 @@ class AbstractChat(ABC):
     """
     An abstract base class for chat services.
 
-    Args:
-        client: The LLM client (LLMProxy) used for completions.
+    Wraps the LangChain chat agent (ChatMistralAI + search tool).
     """
 
-    def __init__(
-        self,
-        client,
-    ):
+    def __init__(self):
         self.agent_executor = None
-        self.chat_client = client
-
-    @log_time_and_error
-    @traceable(
-        run_type=TRACE_RUN_TYPE_LLM,
-        name=TraceName.JSON_FORMATTER_AGENT.value,
-    )
-    async def json_formatter_agent(self, unformatted_input, expected_output):
-        output = await self.chat_client.completion(
-            messages=[
-                {
-                    "role": "system",
-                    "content": f"You are a json formatter agent that recieves from the user a content wrongly formatted and an expected json schema and replies with the input formatted in the correct way. Here is the expected schema :{expected_output}",
-                },
-                {
-                    "role": "user",
-                    "content": f"Reformat my input so it respects the expected output. Input : {unformatted_input}",
-                },
-            ],
-            response_format={
-                "type": "json_object",
-            },
-        )
-
-        json = extract_json_from_response(output)
-        return json
 
     async def get_agent_chunks(self, stream) -> AsyncIterable[dict[str, Any]]:
         """
@@ -410,51 +377,6 @@ class AbstractChat(ABC):
         state = await agent.aget_state(config)
         return latest_tool_docs(state.values.get("messages", []))
 
-    @traceable(
-        run_type=TRACE_RUN_TYPE_LLM,
-        name=TraceName.RUN_LLM_WITH_JSON_PARSING.value,
-    )
-    async def run_llm_with_json_parsing(
-        self,
-        messages: list[dict],
-        model_class,
-        fallback_formatter: str | None = None,
-    ):
-        raw = await self.chat_client.completion(messages=messages)
 
-        if not isinstance(raw, str):
-            raise ValueError("LLM response must be string")
-
-        try:
-            json_data = extract_json_from_response(raw)
-            if not isinstance(json_data, dict):
-                raise ValueError("Extracted JSON data is not a dictionary")
-            return model_class(**json_data)
-        except Exception:
-            if fallback_formatter:
-                return await self.json_formatter_agent(raw, fallback_formatter)
-            raise
-
-    @traceable(
-        run_type=TRACE_RUN_TYPE_LLM,
-        name=TraceName.SYLLABUS_FEEDBACK.value,
-    )
-    async def syllabus_feedback_completion(
-        self,
-        messages: list[dict],
-        max_tokens: int,
-    ) -> str:
-        result = await self.chat_client.completion(
-            messages=messages, max_tokens=max_tokens
-        )
-        if not isinstance(result, str):
-            raise ValueError("Syllabus feedback response is not a string")
-        return result
-
-
-async def get_llm_client(request: Request):
-    return request.app.state.llm
-
-
-async def get_chat_service(llm_client=Depends(get_llm_client)) -> AbstractChat:
-    return AbstractChat(client=llm_client)
+async def get_chat_service() -> AbstractChat:
+    return AbstractChat()

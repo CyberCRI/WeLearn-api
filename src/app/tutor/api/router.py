@@ -14,7 +14,6 @@ from fastapi import (
 )
 
 from src.app.baml_client.async_client import b, types
-from src.app.chat.services.abst_chat import get_chat_service
 from src.app.core.config import Settings
 from src.app.data_collection.services.data_collection import get_data_collection_service
 from src.app.search.domain.models import EnhancedSearchQuery
@@ -44,12 +43,8 @@ from src.app.tutor.domain.models import (
     TutorSyllabusRequest,
     UserInput,
 )
+from src.app.tutor.services.extractor import extract_files_summaries
 from src.app.tutor.services.orchestrator import SyllabusOrchestrator
-from src.app.tutor.services.prompts import (
-    extractor_system_prompt,
-    extractor_user_prompt,
-    summaries_schema,
-)
 from src.app.tutor.services.tutor import apply_feedback, tutor_manager
 
 logger = utils_logger(__name__)
@@ -83,33 +78,13 @@ def with_backoff():
 async def extract_files_content(
     files: Annotated[list[UploadFile], File()],
     response: Response,
-    chatfactory=Depends(get_chat_service),
     lang: str = "en",
 ) -> ExtractorOutputList | None:
     files_content = await get_files_content(files)
     files_content_str = ("__DOCUMENT_SEPARATOR__").join(files_content)
 
-    messages = [
-        {
-            "role": "system",
-            "content": extractor_system_prompt.format(
-                json_schema=summaries_schema, lang=lang
-            ),
-        },
-        {
-            "role": "user",
-            "content": extractor_user_prompt.format(documents=files_content_str),
-        },
-    ]
-
     try:
-        summaries_output = await chatfactory.run_llm_with_json_parsing(
-            messages,
-            ExtractorOutputList,
-            fallback_formatter="{extracts: [ 'summary': 'Summary', 'themes': [{'theme': 'Theme 1', 'reason': 'Reason for Theme 1'}, {'theme': 'Theme 2', 'reason': 'Reason for Theme 2'}, ...]}, { 'summary': 'Sumamry', 'themes': [{'theme': 'Theme 1', 'reason': 'Reason for Theme 1'}, {'theme': 'Theme 2', 'reason': 'Reason for Theme 2'}, ...]}] }",
-        )
-
-        return summaries_output
+        return await extract_files_summaries(files_content_str, lang)
 
     except Exception as e:
         logger.error(f"Error in extractor schema: {e}")

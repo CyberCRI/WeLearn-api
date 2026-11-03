@@ -6,18 +6,7 @@ from src.app.chat.services import abst_chat
 
 class TestAbstChatUtils(unittest.IsolatedAsyncioTestCase):
     def setUp(self):
-        self.chat = abst_chat.AbstractChat(client=mock.AsyncMock())
-
-    async def test_json_formatter_agent(self):
-        self.chat.chat_client.completion = mock.AsyncMock(
-            return_value='{"key": "value"}'
-        )
-        with mock.patch(
-            "src.app.shared.utils.json_parsing.extract_json_from_response",
-            return_value={"key": "value"},
-        ):
-            result = await self.chat.json_formatter_agent("bad", "schema")
-            self.assertEqual(result, {"key": "value"})
+        self.chat = abst_chat.AbstractChat()
 
     def test_extract_agent_chunk(self):
         # Not a dict
@@ -84,55 +73,6 @@ class TestAbstChatUtils(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(result["step"], "analyzing_resources")
         self.assertEqual(result["docs"], [{"id": "doc-1"}])
         self.assertNotIn("content", result)
-
-    async def test_run_llm_with_json_parsing_success(self):
-        self.chat.chat_client.completion = mock.AsyncMock(return_value='{"foo": "bar"}')
-        with mock.patch(
-            "src.app.shared.utils.json_parsing.extract_json_from_response",
-            return_value={"foo": "bar"},
-        ):
-
-            class Dummy:
-                def __init__(self, foo):
-                    self.foo = foo
-
-            result = await self.chat.run_llm_with_json_parsing([], Dummy)
-            self.assertIsInstance(result, Dummy)
-            self.assertEqual(result.foo, "bar")
-
-    async def test_run_llm_with_json_parsing_fallback(self):
-        self.chat.chat_client.completion = mock.AsyncMock(return_value="notjson")
-        with mock.patch(
-            "src.app.shared.utils.json_parsing.extract_json_from_response",
-            side_effect=Exception(),
-        ):
-            self.chat.json_formatter_agent = mock.AsyncMock(return_value={"foo": "bar"})
-
-            class Dummy:
-                def __init__(self, foo):
-                    self.foo = foo
-
-            result = await self.chat.run_llm_with_json_parsing(
-                [], Dummy, fallback_formatter="schema"
-            )
-            self.assertEqual(result, {"foo": "bar"})
-
-    async def test_run_llm_with_json_parsing_error(self):
-        self.chat.chat_client.completion = mock.AsyncMock(return_value="notjson")
-        with mock.patch(
-            "src.app.shared.utils.json_parsing.extract_json_from_response",
-            side_effect=Exception(),
-        ):
-            self.chat.json_formatter_agent = mock.AsyncMock(side_effect=Exception())
-
-            class Dummy:
-                def __init__(self, foo):
-                    self.foo = foo
-
-            with self.assertRaises(Exception):
-                await self.chat.run_llm_with_json_parsing(
-                    [], Dummy, fallback_formatter="schema"
-                )
 
 
 if __name__ == "__main__":

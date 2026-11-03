@@ -2,12 +2,10 @@ import uuid
 from typing import Annotated, Dict, cast
 from uuid import UUID
 
-import backoff
 import psycopg
 from fastapi import APIRouter, BackgroundTasks, Body, Depends, Request
 from fastapi.responses import StreamingResponse
 from langgraph.checkpoint.postgres.aio import AsyncPostgresSaver
-from openai import RateLimitError
 from psycopg.rows import AsyncRowFactory, DictRow, dict_row
 
 from src.app.chat.domain import models
@@ -120,15 +118,6 @@ async def get_chat_history(
     response_class=StreamingResponse,
     responses={200: {"content": {"text/event-stream": {"schema": {"type": "string"}}}}},
 )
-@backoff.on_exception(
-    wait_gen=backoff.expo,
-    exception=RateLimitError,
-    logger=logger,
-    max_tries=5,
-    max_time=180,
-    jitter=backoff.random_jitter,
-    factor=2,
-)
 async def agent_stream_response(
     request: Request,
     background_tasks: BackgroundTasks,
@@ -204,15 +193,6 @@ async def agent_stream_response(
             }
         }
     },
-)
-@backoff.on_exception(
-    wait_gen=backoff.expo,
-    exception=RateLimitError,
-    logger=logger,
-    max_tries=5,
-    max_time=180,
-    jitter=backoff.random_jitter,
-    factor=2,
 )
 async def agent_response(
     request: Request,
