@@ -30,23 +30,16 @@ class Settings(BaseSettings):
             "semver": "0.1.0",
         }
 
-    # AZURE ENV VARS
-    AZURE_MISTRAL_API_BASE: str
-    AZURE_MISTRAL_API_KEY: str
-
-    AZURE_APIM_API_KEY: str
-    AZURE_APIM_API_BASE: str
-
     # MISTRAL ENV VARS
     MISTRAL_API_KEY: str
     MISTRAL_LLM_MODEL_NAME: str
 
     # OPENAI_API FOR RAG METRICS (To be challenged)
-    AZURE_API_KEY: str
-    AZURE_API_BASE: str
-    AZURE_API_VERSION: str
+    # only rag-metrics.py uses them, so the API starts without them
+    AZURE_API_KEY: Optional[str] = None
+    AZURE_API_BASE: Optional[str] = None
+    AZURE_API_VERSION: Optional[str] = None
 
-    LLM_MODEL_NAME: str
     LLM_TEMPERATURE: float
     # old tutor: one structured LLM call instead of the 3-agent chain (False = revert)
     TUTOR_SINGLE_PASS: bool = True

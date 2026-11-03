@@ -41,6 +41,16 @@ with open("eval_questions&answers.csv") as f:
 # init chat client
 settings = get_settings()
 
+missing_azure_settings = [
+    name
+    for name in ("AZURE_API_KEY", "AZURE_API_BASE", "AZURE_API_VERSION")
+    if not getattr(settings, name)
+]
+if missing_azure_settings:
+    raise SystemExit(
+        f"rag-metrics.py needs {', '.join(missing_azure_settings)} in .env"
+    )
+
 chat = AbstractChat(
     model="azure/gpt-4o-mini",
     API_KEY=settings.AZURE_API_KEY,

@@ -93,7 +93,7 @@ Code that several features need goes in `shared/`. That includes domain exceptio
 - **Settings:**
   - Values come from `src/app/core/config.py::Settings` (pydantic-settings, reads `.env`).
   - Use `get_settings()` from `shared/utils/dependencies.py` rather than instantiating `Settings`.
-  - Several Azure fields are required at startup even though production uses Mistral only.
+  - `AZURE_API_KEY`, `AZURE_API_BASE` and `AZURE_API_VERSION` are optional: only `rag-metrics.py` uses them, and it exits with a clear message when they are missing. Production uses Mistral only.
 
 ### Gotchas
 
