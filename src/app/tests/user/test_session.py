@@ -25,21 +25,32 @@ class TestResolveUserAndSession(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(result_session_uuid, session_uuid)
         self.assertEqual(run_in_threadpool_mock.call_count, 2)
 
+    @patch("src.app.user.services.session.get_or_create_session_sync")
+    @patch("src.app.user.services.session.get_or_create_user_sync")
     @patch("src.app.user.services.session.get_user_from_session_id")
-    async def test_session_not_existing(self, get_user_from_session_id_mock):
-        """Should return user_id and session_uuid for existing user and session"""
-        session_uuid = uuid.uuid4()
-        host = "localhost"
-        referer = "test"
-        # First call: get_user_from_session_id returns user_id
-        # Second call: get_or_create_session_sync returns session_uuid
-        get_user_from_session_id_mock.side_effect = SessionNotFoundError(
-            "Session not found"
+    async def test_session_not_existing_creates_new_guest(
+        self, get_user_mock, get_or_create_user_mock, get_or_create_session_mock
+    ):
+        """An unknown session cookie is ignored: a new guest user and session are created"""
+        stale_session_uuid = uuid.uuid4()
+        new_user_id = uuid.uuid4()
+        new_session_uuid = uuid.uuid4()
+        get_user_mock.side_effect = SessionNotFoundError("Session not found")
+        get_or_create_user_mock.return_value = new_user_id
+        get_or_create_session_mock.return_value = new_session_uuid
+
+        result_user_id, result_session_uuid = await session.resolve_user_and_session(
+            stale_session_uuid, "localhost", "test"
         )
 
-        # expect resolve_user_and_session to raise SessionNotFoundError
-        with self.assertRaises(SessionNotFoundError):
-            await session.resolve_user_and_session(session_uuid, host, referer)
+        self.assertEqual(result_user_id, new_user_id)
+        self.assertEqual(result_session_uuid, new_session_uuid)
+        get_user_mock.assert_called_once_with(stale_session_uuid)
+        get_or_create_user_mock.assert_called_once_with(None, "test")
+        # the stale session id is not reused
+        get_or_create_session_mock.assert_called_once_with(
+            new_user_id, None, "localhost", "test"
+        )
 
     @patch("src.app.user.services.session.run_in_threadpool")
     async def test_new_user_and_session(self, run_in_threadpool_mock):
