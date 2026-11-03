@@ -33,8 +33,6 @@ resources:
 config:
   nonSensitive:
     CLIENT_ORIGINS_REGEX: '^{{ join "|" (values .Values.allowedHostsRegexes | sortAlpha ) }}$'
-    AZURE_API_BASE: "https://welearn-openai.openai.azure.com/openai/"
-    AZURE_API_VERSION: "2024-08-01-preview"
     LLM_TEMPERATURE: 0.2
     TUTOR_SINGLE_PASS: "true"
     MCP_ENABLED: "true"

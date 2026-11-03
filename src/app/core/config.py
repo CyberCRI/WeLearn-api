@@ -34,12 +34,6 @@ class Settings(BaseSettings):
     MISTRAL_API_KEY: str
     MISTRAL_LLM_MODEL_NAME: str
 
-    # OPENAI_API FOR RAG METRICS (To be challenged)
-    # only rag-metrics.py uses them, so the API starts without them
-    AZURE_API_KEY: Optional[str] = None
-    AZURE_API_BASE: Optional[str] = None
-    AZURE_API_VERSION: Optional[str] = None
-
     LLM_TEMPERATURE: float
     # old tutor: one structured LLM call instead of the 3-agent chain (False = revert)
     TUTOR_SINGLE_PASS: bool = True

@@ -108,11 +108,8 @@ class AbstractChat(ABC):
     """
     An abstract base class for chat services.
 
-    Attributes:
-        model (str): The model to be used for the chat service.
-        API_KEY (str): The API key for the chat service.
-        API_BASE (str): The API base URL for the chat service.
-        API_VERSION (str): The API version for the chat service.
+    Args:
+        client: The LLM client (LLMProxy) used for completions.
     """
 
     def __init__(
