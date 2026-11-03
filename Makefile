@@ -39,10 +39,10 @@ lint-check-poetry:
 	poetry run lint-imports
 
 test-poetry: generate-baml-poetry
-	poetry run pytest -s -v --cov=src --cov-report=term-missing --cov-fail-under=82 --cov-report=html
+	poetry run pytest -s -v --cov=src --cov-report=term-missing --cov-fail-under=90 --cov-report=html
 
 test: generate-baml
-	pytest -s -v --cov=src --cov-report=term-missing --cov-fail-under=82 --cov-report=html
+	pytest -s -v --cov=src --cov-report=term-missing --cov-fail-under=90 --cov-report=html
 
 # what the lint-and-test CI job runs; used by the pre-push hook
 ci-poetry: lint-check-poetry test-poetry
