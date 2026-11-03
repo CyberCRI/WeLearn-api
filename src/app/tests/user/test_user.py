@@ -7,7 +7,7 @@ from fastapi.testclient import TestClient
 from welearn_database.data.models import InferredUser, Session
 
 from src.app.core.config import settings
-from src.app.shared.domain.exceptions import UserNotFoundError
+from src.app.shared.domain.exceptions import SessionNotFoundError, UserNotFoundError
 from src.app.user.infra.keycloak import (
     KeycloakConfigError,
     KeycloakTokenError,
@@ -68,6 +68,28 @@ class UserApiTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(response.json()["user_id"], str(user_id))
         resolve_anonymous_mock.assert_called_once()
         resolve_keycloak_mock.assert_not_called()
+
+    @mock.patch("src.app.user.services.session.get_or_create_session_sync")
+    @mock.patch("src.app.user.services.session.get_or_create_user_sync")
+    @mock.patch("src.app.user.services.session.get_user_from_session_id")
+    async def test_user_and_session_unknown_session_creates_new_guest(
+        self, get_user_mock, get_or_create_user_mock, get_or_create_session_mock, *mocks
+    ):
+        """Unknown session id without a token -> new guest, not an error"""
+        new_user_id, new_session_id = uuid.uuid4(), uuid.uuid4()
+        get_user_mock.side_effect = SessionNotFoundError("Session not found")
+        get_or_create_user_mock.return_value = new_user_id
+        get_or_create_session_mock.return_value = new_session_id
+
+        response = client.post(
+            f"{settings.API_V1_STR}/user/user_and_session",
+            headers={"X-API-Key": "test", "X-Session-Id": str(uuid.uuid4())},
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.json()["user_id"], str(new_user_id))
+        self.assertEqual(response.json()["session_id"], str(new_session_id))
+        self.assertIn(str(new_session_id), response.headers["set-cookie"])
 
     @mock.patch("src.app.user.api.router.resolve_keycloak_user_and_session")
     async def test_user_and_session_invalid_token(self, resolve_keycloak_mock, *mocks):

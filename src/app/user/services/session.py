@@ -20,7 +20,12 @@ async def resolve_user_and_session(
     host: str,
     referer: Optional[str],
 ) -> tuple[UUID, UUID]:
-    user_id = await run_in_threadpool(get_user_from_session_id, session_uuid)
+    try:
+        user_id = await run_in_threadpool(get_user_from_session_id, session_uuid)
+    except SessionNotFoundError:
+        # unknown or purged session cookie: treat the request as a new guest
+        logger.info("Session %s not found, ignoring it", session_uuid)
+        user_id = None
 
     if not user_id:
         logger.info("No user found. Creating new user and session.")
