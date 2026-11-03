@@ -1,6 +1,6 @@
 import uuid
 from enum import Enum
-from typing import TypedDict
+from typing import Literal, TypedDict
 
 from pydantic import BaseModel, ConfigDict, Field
 
@@ -8,10 +8,39 @@ from src.app.search.domain.models import SDGFilter
 from src.app.shared.domain.documents import EnhancedDocumentSlice
 
 
+class Context(BaseModel):
+    sources: list[EnhancedDocumentSlice] = []
+    history: list[dict] | None = []
+    query: str | None = None
+    subject: str | None = Field(None)
+    lang: str | None = None
+
+
+class ContextOut(BaseModel):
+    sources: list[EnhancedDocumentSlice] = []
+    history: list[dict] = []
+    query: str
+    subject: str | None = Field(None)
+    conversation_id: uuid.UUID | None = Field(None)
+    lang: str | None = None
+
+
 class Role(Enum):
     USER = "user"
     SYSTEM = "system"
     ASSISTANT = "assistant"
+
+
+ROLES = Literal["user", "system", "assistant"]
+
+
+class Message(TypedDict):
+    role: str
+    content: str
+
+
+class ReformulatedQuestionsResponse(BaseModel):
+    NEW_QUESTIONS: list[str]
 
 
 class AgentContext(SDGFilter):
@@ -68,3 +97,11 @@ class AgentResponse(BaseModel):
     step: str | None = None
     docs: list[EnhancedDocumentSlice] | None = None
     thread_id: uuid.UUID | None = None
+
+
+class UserQueryMetadata(BaseModel):
+    conversation_id: uuid.UUID
+    message_id: uuid.UUID
+
+
+RESPONSE_TYPE = Literal["json_object", "text"]
