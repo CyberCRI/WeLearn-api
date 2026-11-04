@@ -4,7 +4,7 @@ from fastapi import APIRouter, HTTPException, Request, Response, status
 from fastapi.concurrency import run_in_threadpool
 
 from src.app.shared.domain.constants import SESSION_COOKIE_NAME, SESSION_TTL_SECONDS
-from src.app.shared.domain.exceptions import UserNotFoundError
+from src.app.shared.domain.exceptions import UserNotFoundError, WeLearnError
 from src.app.shared.utils.dependencies import get_settings
 from src.app.shared.utils.logger import logger as logger_utils
 from src.app.shared.utils.requests import (
@@ -121,6 +121,8 @@ async def handle_user_and_session(
         raise HTTPException(status_code=503, detail="Keycloak unavailable")
     except UserNotFoundError as e:
         raise HTTPException(status_code=404, detail=str(e))
+    except WeLearnError:
+        raise
     except Exception as e:
         logger.error(f"Error creating user and session: {e}")
         raise HTTPException(status_code=500, detail=str(e))
@@ -193,6 +195,8 @@ async def handle_user(user_id: uuid.UUID | None = None, referer: str | None = No
         user_id = await run_in_threadpool(get_or_create_user_sync, user_id, referer)
         return {"user_id": user_id}
 
+    except WeLearnError:
+        raise
     except Exception as e:
         logger.error(f"Error creating user: {e}")
         raise HTTPException(status_code=500, detail=str(e))
@@ -213,6 +217,8 @@ async def handle_session(
         return {"session_id": session_id}
     except UserNotFoundError as e:
         raise HTTPException(status_code=404, detail=str(e))
+    except WeLearnError:
+        raise
     except Exception as e:
         logger.error(f"Error creating session: {e}")
         raise HTTPException(status_code=500, detail=str(e))
@@ -229,6 +235,8 @@ async def get_user_bookmarks(request: Request):
         return {"bookmarks": bookmarks}
     except ValueError as e:
         raise HTTPException(status_code=404, detail=str(e))
+    except WeLearnError:
+        raise
     except Exception as e:
         logger.error(f"Error fetching bookmarks: {e}")
         raise HTTPException(status_code=500, detail=str(e))
@@ -247,6 +255,8 @@ async def delete_user_bookmarks(request: Request):
         return {"deleted": deleted_count}
     except ValueError as e:
         raise HTTPException(status_code=404, detail=str(e))
+    except WeLearnError:
+        raise
     except Exception as e:
         logger.error(f"Error deleting bookmarks: {e}")
         raise HTTPException(status_code=500, detail=str(e))
@@ -267,6 +277,8 @@ async def delete_user_bookmark(request: Request, document_id: uuid.UUID):
         return {"deleted": deleted_id}
     except ValueError as e:
         raise HTTPException(status_code=404, detail=str(e))
+    except WeLearnError:
+        raise
     except Exception as e:
         logger.error(f"Error deleting bookmark: {e}")
         raise HTTPException(status_code=500, detail=str(e))
@@ -285,6 +297,8 @@ async def add_user_bookmark(request: Request, document_id: uuid.UUID):
         return {"added": added_id}
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
+    except WeLearnError:
+        raise
     except Exception as e:
         logger.error(f"Error adding bookmark: {e}")
         raise HTTPException(status_code=500, detail=str(e))
@@ -318,6 +332,8 @@ async def add_institution_data_to_user(request: Request, data: InstitutionData):
         print(f"add_institution_data_to_user_sync response: {resp}")
     except ValueError as e:
         raise HTTPException(status_code=404, detail=str(e))
+    except WeLearnError:
+        raise
     except Exception as e:
         logger.error(f"Error adding institution data: {e}")
         raise HTTPException(status_code=500, detail=str(e))

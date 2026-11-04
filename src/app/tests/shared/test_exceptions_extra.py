@@ -1,5 +1,4 @@
 from unittest import TestCase
-from unittest.mock import MagicMock, patch
 
 from fastapi import HTTPException, Response, status
 
@@ -13,22 +12,59 @@ from src.app.shared.domain.exceptions import (
     SessionNotFoundError,
     SubjectNotFoundError,
     UserNotFoundError,
+    WeLearnError,
     handle_error,
 )
 
+EXPECTED = [
+    (SessionNotFoundError, status.HTTP_401_UNAUTHORIZED, "SESSION_NOT_FOUND"),
+    (UserNotFoundError, status.HTTP_404_NOT_FOUND, "USER_NOT_FOUND"),
+    (EmptyQueryError, status.HTTP_400_BAD_REQUEST, "EMPTY_QUERY"),
+    (LanguageNotSupportedError, status.HTTP_400_BAD_REQUEST, "LANG_NOT_SUPPORTED"),
+    (NoResultsError, status.HTTP_204_NO_CONTENT, "NO_RESULTS"),
+    (CollectionNotFoundError, status.HTTP_404_NOT_FOUND, "COLL_NOT_FOUND"),
+    (ModelNotFoundError, status.HTTP_404_NOT_FOUND, "MODEL_NOT_FOUND"),
+    (SubjectNotFoundError, status.HTTP_404_NOT_FOUND, "SUBJECT_NOT_FOUND"),
+    (PartialResponseResultError, status.HTTP_206_PARTIAL_CONTENT, "PARTIAL_RESULT"),
+]
+
 
 class DomainErrorDefaultsTests(TestCase):
-    def test_session_not_found_error(self):
+    def test_every_domain_error_is_a_welearn_exception(self):
+        for exc_class, expected_status, expected_code in EXPECTED:
+            with self.subTest(exc_class=exc_class.__name__):
+                err = exc_class()
+                self.assertIsInstance(err, Exception)
+                self.assertIsInstance(err, WeLearnError)
+                self.assertEqual(err.status_code, expected_status)
+                self.assertEqual(err.msg_code, expected_code)
+                self.assertEqual(
+                    err.detail, {"message": err.message, "code": expected_code}
+                )
+
+    def test_caught_by_except_exception(self):
+        try:
+            raise SessionNotFoundError()
+        except Exception as e:  # noqa: BLE001 - this is what the test checks
+            caught = e
+        self.assertIsInstance(caught, SessionNotFoundError)
+
+    def test_session_not_found_error_defaults(self):
         err = SessionNotFoundError()
         self.assertEqual(err.message, "Session not found")
         self.assertEqual(err.msg_code, "SESSION_NOT_FOUND")
-        self.assertNotIsInstance(err, Exception)
+        self.assertEqual(err.args, ("Session not found", "SESSION_NOT_FOUND"))
 
-    def test_user_not_found_error(self):
+    def test_user_not_found_error_custom(self):
         err = UserNotFoundError(message="custom", msg_code="CODE")
         self.assertEqual(err.message, "custom")
         self.assertEqual(err.msg_code, "CODE")
         self.assertEqual(err.args, ("custom", "CODE"))
+
+    def test_positional_message_keeps_default_code(self):
+        err = UserNotFoundError("User 42 does not exist")
+        self.assertEqual(err.message, "User 42 does not exist")
+        self.assertEqual(err.msg_code, "USER_NOT_FOUND")
 
 
 class HandleErrorTests(TestCase):
@@ -66,8 +102,11 @@ class HandleErrorTests(TestCase):
     def test_subject_not_found_raises_404(self):
         self._assert_http(SubjectNotFoundError(), status.HTTP_404_NOT_FOUND)
 
-    @patch("src.app.shared.domain.exceptions.logger")
-    def test_unknown_exception_is_only_logged(self, logger_mock: MagicMock):
+    def test_session_not_found_raises_401(self):
+        self._assert_http(SessionNotFoundError(), status.HTTP_401_UNAUTHORIZED)
+
+    def test_unknown_exception_is_re_raised(self):
         exc = ValueError("boom")
-        self.assertIsNone(handle_error(exc))
-        logger_mock.error.assert_called_once_with("Unhandled exception: %s", exc)
+        with self.assertRaises(ValueError) as ctx:
+            handle_error(exc)
+        self.assertIs(ctx.exception, exc)
