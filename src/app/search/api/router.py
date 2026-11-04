@@ -26,9 +26,12 @@ from src.app.search.infra.queries import (
     get_collections_info_sync,
     get_documents_payload_by_ids_sync,
     get_nb_docs_sync,
-    get_visible_corpora_sync,
 )
-from src.app.search.services.search import SearchService, get_search_service
+from src.app.search.services.search import (
+    SearchService,
+    get_search_service,
+    resolve_corpora,
+)
 from src.app.search.services.search_helpers import search_multi_inputs
 from src.app.shared.domain.documents import EnhancedDocumentSlice
 from src.app.shared.domain.exceptions import (
@@ -75,7 +78,6 @@ async def get_params(
     resp = EnhancedSearchQuery(
         query=body.query or "",
         nb_results=nb_results,
-        corpora=tuple(body.corpora) if body.corpora else None,
         lang=body.lang,
         subject=subject,
         influence_factor=influence_factor,
@@ -88,8 +90,7 @@ async def get_params(
         e = EmptyQueryError()
         bad_request(message=e.message, msg_code=e.msg_code)
 
-    if body.corpora is None or body.corpora == []:
-        resp.corpora = await run_in_threadpool(get_visible_corpora_sync)
+    resp.corpora = await resolve_corpora(body.corpora)
 
     return resp
 

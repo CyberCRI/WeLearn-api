@@ -1,7 +1,7 @@
 # src/app/search/services/search.py
 
 import time
-from typing import Tuple, cast
+from typing import Iterable, Tuple, cast
 
 import numpy as np
 import torch
@@ -26,6 +26,7 @@ from src.app.search.infra.queries import (
     get_corpus_and_sub_corpus_repartition,
     get_documents_according_slice_ids,
     get_subject,
+    get_visible_corpora_sync,
 )
 from src.app.search.services.data_quality import DataQualityChecker
 from src.app.shared.domain.collections import Collection
@@ -37,6 +38,17 @@ from src.app.shared.utils.embeddings import convert_embedding_bytes
 from src.app.shared.utils.logger import logger as logger_utils
 
 logger = logger_utils(__name__)
+
+
+async def resolve_corpora(requested: Iterable[str] | None) -> tuple[str, ...]:
+    """Return the corpora a search should run on.
+
+    No selection (None or empty) means every visible corpus. An explicit
+    selection is searched as given, hidden corpora included.
+    """
+    if requested:
+        return tuple(requested)
+    return tuple(await run_in_threadpool(get_visible_corpora_sync))
 
 
 async def get_qdrant(request: Request) -> AsyncQdrantClient:

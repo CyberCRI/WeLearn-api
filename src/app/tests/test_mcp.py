@@ -94,7 +94,7 @@ def test_mcp_tools_forward_api_key(mcp_client, monkeypatch, tool_name, api_key):
     )
     visible_corpora = Mock(return_value=("test-corpus",))
     monkeypatch.setattr(
-        "src.app.search.api.router.get_visible_corpora_sync", visible_corpora
+        "src.app.search.services.search.get_visible_corpora_sync", visible_corpora
     )
     document = EnhancedDocumentSlice(
         score=0.9,

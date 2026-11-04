@@ -11,6 +11,57 @@ from src.app.chat.services.agent import (
 
 
 class TestAgent(IsolatedAsyncioTestCase):
+    def setUp(self):
+        patcher = mock.patch(
+            "src.app.search.services.search.get_visible_corpora_sync",
+            return_value=("a", "b"),
+        )
+        self.mock_visible = patcher.start()
+        self.addCleanup(patcher.stop)
+
+    def _config(self, corpora):
+        mock_service = mock.Mock()
+        mock_service.search_handler = AsyncMock(return_value=[])
+        config = {
+            "configurable": {
+                "sdg_filter": None,
+                "corpora": corpora,
+                "sp": mock_service,
+                "background_tasks": BackgroundTasks(),
+            }
+        }
+        return config, mock_service
+
+    async def _searched_corpora(self, corpora):
+        config, mock_service = self._config(corpora)
+        content, docs = await _get_resources_about_sustainability("q", config)
+        self.assertEqual(content, NO_DOCUMENTS_FOUND)
+        self.assertEqual(docs, [])
+        return mock_service.search_handler.call_args.kwargs["qp"].corpora
+
+    async def test_no_corpora_selected_searches_all_visible(self):
+        self.assertEqual(await self._searched_corpora(None), ("a", "b"))
+
+    async def test_empty_corpora_searches_all_visible(self):
+        # the client sends [] when no source filter is selected
+        self.assertEqual(await self._searched_corpora(()), ("a", "b"))
+
+    async def test_mixed_corpora_are_searched_as_given(self):
+        self.assertEqual(await self._searched_corpora(("a", "hidden")), ("a", "hidden"))
+        self.mock_visible.assert_not_called()
+
+    async def test_only_hidden_corpora_are_searched_as_given(self):
+        self.assertEqual(await self._searched_corpora(("hidden",)), ("hidden",))
+        self.mock_visible.assert_not_called()
+
+    async def test_visible_corpora_lookup_failure(self):
+        self.mock_visible.side_effect = Exception("db down")
+        config, mock_service = self._config(None)
+        content, docs = await _get_resources_about_sustainability("q", config)
+        self.assertEqual(content, SEARCH_UNAVAILABLE)
+        self.assertEqual(docs, [])
+        mock_service.search_handler.assert_not_called()
+
     async def test_get_resources_about_sustainability_found(self):
         # Mock SearchService and its search_handler
         with mock.patch(

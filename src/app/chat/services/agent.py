@@ -6,7 +6,7 @@ from langchain_core.tools import tool
 
 from src.app.chat.services.helpers import stringify_docs_content
 from src.app.search.domain.models import EnhancedSearchQuery
-from src.app.search.services.search import SearchService
+from src.app.search.services.search import SearchService, resolve_corpora
 from src.app.shared.domain.documents import EnhancedDocumentSlice
 from src.app.shared.utils.decorators import log_time_and_error
 from src.app.shared.utils.logger import logger as utils_logger
@@ -40,11 +40,6 @@ async def _get_resources_about_sustainability(
         )
     tool_called[0] = True
 
-    qp = EnhancedSearchQuery(
-        query=rag_query,
-        sdg_filter=config["configurable"].get("sdg_filter"),
-        corpora=config["configurable"].get("corpora"),
-    )
     sp: SearchService = config["configurable"].get("sp")
     background_tasks: BackgroundTasks = config["configurable"].get("background_tasks")
     if not sp:
@@ -52,6 +47,12 @@ async def _get_resources_about_sustainability(
         return NO_DOCUMENTS_FOUND, []
 
     try:
+        corpora = await resolve_corpora(config["configurable"].get("corpora"))
+        qp = EnhancedSearchQuery(
+            query=rag_query,
+            sdg_filter=config["configurable"].get("sdg_filter"),
+            corpora=corpora,
+        )
         docs = await sp.search_handler(
             background_tasks=background_tasks, qp=qp, without_vectors=True
         )
