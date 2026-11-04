@@ -1,9 +1,7 @@
 import unittest
 import uuid
 from unittest import mock
-from unittest.mock import MagicMock
 
-import backoff
 from fastapi.testclient import TestClient
 from langchain_core.messages import AIMessage, HumanMessage, ToolMessage
 from langgraph.checkpoint.memory import InMemorySaver
@@ -56,9 +54,6 @@ def _extract_document_id(doc):
     new=mock.MagicMock(return_value=True),
 )
 class QnATests(unittest.IsolatedAsyncioTestCase):
-    def setUp(self):
-        backoff.on_exception = MagicMock()
-
     @mock.patch("psycopg.AsyncConnection.connect", new_callable=mock.AsyncMock)
     @mock.patch(
         "src.app.shared.infra.security.check_api_key_sync",

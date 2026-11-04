@@ -1,6 +1,5 @@
 from typing import Annotated
 
-import backoff
 from fastapi import (
     APIRouter,
     BackgroundTasks,
@@ -52,28 +51,6 @@ logger = utils_logger(__name__)
 router = APIRouter()
 
 
-def backoff_hdlr(details):
-    logger.info(
-        "Backing off {wait:0.1f} seconds after {tries} tries "
-        "calling function {target} with args {args} and kwargs "
-        "{kwargs}".format(**details)
-    )
-
-
-def with_backoff():
-    return backoff.on_exception(
-        wait_gen=backoff.expo,
-        exception=Exception,
-        logger=logger,
-        max_tries=3,
-        max_time=180,
-        jitter=backoff.random_jitter,
-        on_backoff=backoff_hdlr,
-        factor=2,
-    )
-
-
-@with_backoff()
 @router.post("/files/content")
 async def extract_files_content(
     files: Annotated[list[UploadFile], File()],
@@ -92,7 +69,6 @@ async def extract_files_content(
         raise e
 
 
-@with_backoff()
 @router.post("/mas_files/content")
 async def extract_files_content_baml(
     files: Annotated[list[UploadFile], File()],
@@ -121,7 +97,6 @@ async def extract_files_content_baml(
 
 
 @router.post("/search_extracts", response_model=TutorSearchResponse)
-@with_backoff()
 async def tutor_search_extract(
     summaries: SummariesList,
     background_tasks: BackgroundTasks,
@@ -296,7 +271,6 @@ async def baml_test(body: CourseDescriptionRequest) -> types.CourseDescription:
     return b_response
 
 
-@with_backoff()
 @router.post("/syllabus/learning_objectives")
 async def baml_learning_objectives(
     body: LearningObjectivesRequest,
@@ -322,7 +296,6 @@ async def baml_learning_objectives(
     return b_response
 
 
-@with_backoff()
 @router.post("/syllabus/sustainability_integration")
 async def integrate_sustainability(
     body: IntegrateSustainabilityRequest,
@@ -363,7 +336,6 @@ async def integrate_sustainability(
     return b_response
 
 
-@with_backoff()
 @router.post("/syllabus/learning_outcomes")
 async def baml_learning_outcomes(
     body: LearningOutcomesRequest,
@@ -397,7 +369,6 @@ async def baml_learning_outcomes(
     return b_response
 
 
-@with_backoff()
 @router.post("/syllabus/competency_map")
 async def generate_competency_map(
     body: CompetencyMappingRequest,
