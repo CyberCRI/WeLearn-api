@@ -1691,20 +1691,6 @@
         "title": "SessionPlan",
         "type": "object"
       },
-      "SessionResponse": {
-        "properties": {
-          "session_id": {
-            "format": "uuid",
-            "title": "Session Id",
-            "type": "string"
-          }
-        },
-        "required": [
-          "session_id"
-        ],
-        "title": "SessionResponse",
-        "type": "object"
-      },
       "SignUpRequest": {
         "properties": {
           "email": {
@@ -1741,20 +1727,15 @@
         "type": "object"
       },
       "SignUpResponse": {
+        "description": "Same answer whether the email is new or already has an account, so sign-up\ndoes not reveal which emails are registered.",
         "properties": {
           "message": {
             "title": "Message",
             "type": "string"
-          },
-          "user_id": {
-            "format": "uuid",
-            "title": "User Id",
-            "type": "string"
           }
         },
         "required": [
-          "message",
-          "user_id"
+          "message"
         ],
         "title": "SignUpResponse",
         "type": "object"
@@ -2349,20 +2330,6 @@
           "user_id"
         ],
         "title": "UserAndSessionResponse",
-        "type": "object"
-      },
-      "UserResponse": {
-        "properties": {
-          "user_id": {
-            "format": "uuid",
-            "title": "User Id",
-            "type": "string"
-          }
-        },
-        "required": [
-          "user_id"
-        ],
-        "title": "UserResponse",
         "type": "object"
       }
     },
@@ -4409,90 +4376,9 @@
         ]
       }
     },
-    "/api/v1/user/session": {
-      "post": {
-        "operationId": "user-handle_session",
-        "parameters": [
-          {
-            "in": "query",
-            "name": "user_id",
-            "required": true,
-            "schema": {
-              "format": "uuid",
-              "title": "User Id",
-              "type": "string"
-            }
-          },
-          {
-            "in": "query",
-            "name": "session_id",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
-                  "format": "uuid",
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "title": "Session Id"
-            }
-          },
-          {
-            "in": "query",
-            "name": "referer",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "title": "Referer"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/SessionResponse"
-                }
-              }
-            },
-            "description": "Successful Response"
-          },
-          "default": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorResponse"
-                }
-              }
-            },
-            "description": "Error"
-          }
-        },
-        "security": [
-          {
-            "APIKeyHeader": []
-          }
-        ],
-        "summary": "Create new session",
-        "tags": [
-          "user"
-        ]
-      }
-    },
     "/api/v1/user/signup": {
       "post": {
-        "description": "Create a Keycloak account and its WeLearn user. Keycloak emails a link to\nverify the email and set a password. 409 if the email has an account.",
+        "description": "Create a Keycloak account and its WeLearn user. Keycloak emails a link to\nverify the email and set a password. The answer is the same 202 whether the\nemail is new or already has an account, so it does not reveal which emails\nare registered.",
         "operationId": "user-sign_up",
         "parameters": [
           {
@@ -4523,7 +4409,7 @@
           "required": true
         },
         "responses": {
-          "201": {
+          "202": {
             "content": {
               "application/json": {
                 "schema": {
@@ -4532,6 +4418,36 @@
               }
             },
             "description": "Successful Response"
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Too many attempts (code RATE_LIMITED), see Retry-After"
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Sign-up is not configured (code SIGNUP_DISABLED)"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Keycloak unavailable (code KEYCLOAK_UNAVAILABLE)"
           },
           "default": {
             "content": {
@@ -4550,77 +4466,6 @@
           }
         ],
         "summary": "Sign up with Keycloak",
-        "tags": [
-          "user"
-        ]
-      }
-    },
-    "/api/v1/user/user": {
-      "post": {
-        "operationId": "user-handle_user",
-        "parameters": [
-          {
-            "in": "query",
-            "name": "user_id",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
-                  "format": "uuid",
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "title": "User Id"
-            }
-          },
-          {
-            "in": "query",
-            "name": "referer",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "title": "Referer"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/UserResponse"
-                }
-              }
-            },
-            "description": "Successful Response"
-          },
-          "default": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorResponse"
-                }
-              }
-            },
-            "description": "Error"
-          }
-        },
-        "security": [
-          {
-            "APIKeyHeader": []
-          }
-        ],
-        "summary": "Create new user",
         "tags": [
           "user"
         ]

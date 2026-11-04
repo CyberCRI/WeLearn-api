@@ -84,6 +84,29 @@ class TestResolveUserAndSession(unittest.IsolatedAsyncioTestCase):
             await session.resolve_user_and_session(session_uuid, host, referer)
             logger_info.assert_called()
 
+    @patch("src.app.user.services.session.get_or_create_session_sync")
+    @patch("src.app.user.services.session.get_user_for_session_renewal")
+    @patch("src.app.user.services.session.get_user_from_session_id")
+    async def test_lookup_is_strict_unless_renewal_is_asked(
+        self, strict_mock, renewal_mock, get_session_mock
+    ):
+        """Only renew_expired_guest=True uses the lookup that renews guest sessions"""
+        user_id, session_uuid = uuid.uuid4(), uuid.uuid4()
+        strict_mock.return_value = user_id
+        renewal_mock.return_value = user_id
+        get_session_mock.return_value = session_uuid
+
+        await session.resolve_user_and_session(session_uuid, "localhost", None)
+        strict_mock.assert_called_once_with(session_uuid)
+        renewal_mock.assert_not_called()
+
+        strict_mock.reset_mock()
+        await session.resolve_user_and_session(
+            session_uuid, "localhost", None, renew_expired_guest=True
+        )
+        renewal_mock.assert_called_once_with(session_uuid)
+        strict_mock.assert_not_called()
+
 
 class TestResolveKeycloakUserAndSession(unittest.IsolatedAsyncioTestCase):
     @patch("src.app.user.services.session.get_or_create_session_sync")

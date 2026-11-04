@@ -1,3 +1,4 @@
+import math
 import uuid
 
 from fastapi import APIRouter, HTTPException, Request, Response, status
@@ -5,6 +6,8 @@ from fastapi.concurrency import run_in_threadpool
 
 from src.app.shared.domain.constants import SESSION_COOKIE_NAME, SESSION_TTL_SECONDS
 from src.app.shared.domain.exceptions import UserNotFoundError, WeLearnError
+from src.app.shared.domain.responses import ErrorResponse
+from src.app.shared.infra.rate_limit import SlidingWindowRateLimiter, client_ip
 from src.app.shared.utils.dependencies import get_settings
 from src.app.shared.utils.logger import logger as logger_utils
 from src.app.shared.utils.requests import (
@@ -18,11 +21,9 @@ from src.app.user.domain.models import (
     BookmarksResponse,
     InstitutionData,
     InstitutionDataResponse,
-    SessionResponse,
     SignUpRequest,
     SignUpResponse,
     UserAndSessionResponse,
-    UserResponse,
 )
 from src.app.user.infra.keycloak import (
     KeycloakConfigError,
@@ -30,14 +31,11 @@ from src.app.user.infra.keycloak import (
     KeycloakUnavailableError,
     extract_bearer_token,
 )
-from src.app.user.infra.keycloak_admin import KeycloakUserExistsError
 from src.app.user.infra.queries import (
     add_institution_data_to_user_sync,
     add_user_bookmark_sync,
     delete_user_bookmark_sync,
     delete_user_bookmarks_sync,
-    get_or_create_session_sync,
-    get_or_create_user_sync,
     get_user_bookmarks_sync,
 )
 from src.app.user.services.session import (
@@ -49,6 +47,42 @@ from src.app.user.services.signup import sign_up_user
 router = APIRouter()
 logger = logger_utils(__name__)
 settings = get_settings()
+
+# Sign-up limits, per pod/process (see shared/infra/rate_limit.py). The IP may
+# be the ingress' address shared by every user (uvicorn runs without
+# --proxy-headers), so the per-IP limit is a loose flood ceiling; the per-email
+# one stops repeated sign-ups (and Keycloak emails) for one address.
+SIGNUP_RATE_WINDOW_SECONDS = 3600
+SIGNUP_RATE_LIMIT_PER_IP = 20
+SIGNUP_RATE_LIMIT_PER_EMAIL = 3
+SIGNUP_ACCEPTED_MESSAGE = (
+    "If no account exists yet for this email, you will receive an email "
+    "to confirm it and set your password."
+)
+
+signup_ip_limiter = SlidingWindowRateLimiter(
+    SIGNUP_RATE_LIMIT_PER_IP, SIGNUP_RATE_WINDOW_SECONDS
+)
+signup_email_limiter = SlidingWindowRateLimiter(
+    SIGNUP_RATE_LIMIT_PER_EMAIL, SIGNUP_RATE_WINDOW_SECONDS
+)
+
+
+def enforce_signup_rate_limit(request: Request, email: str) -> None:
+    """429 RATE_LIMITED, with Retry-After, past the per-IP or per-email limit."""
+    retry_after = signup_ip_limiter.hit(client_ip(request)) or (
+        signup_email_limiter.hit(email)
+    )
+    if retry_after:
+        logger.warning("Sign-up rate limited. retry_after=%.0fs", retry_after)
+        raise HTTPException(
+            status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+            detail={
+                "message": "Too many sign-up attempts, try again later",
+                "code": "RATE_LIMITED",
+            },
+            headers={"Retry-After": str(math.ceil(retry_after))},
+        )
 
 
 async def resolve_bookmark_user(request: Request) -> uuid.UUID:
@@ -112,6 +146,7 @@ async def handle_user_and_session(
                 session_uuid=session_uuid,
                 host=host,
                 referer=referer,
+                renew_expired_guest=True,
             )
     except KeycloakTokenError as e:
         logger.warning(f"Invalid keycloak token: {e}")
@@ -147,31 +182,40 @@ async def handle_user_and_session(
 @router.post(
     "/signup",
     summary="Sign up with Keycloak",
-    status_code=status.HTTP_201_CREATED,
+    status_code=status.HTTP_202_ACCEPTED,
     response_model=SignUpResponse,
+    responses={
+        429: {
+            "model": ErrorResponse,
+            "description": "Too many attempts (code RATE_LIMITED), see Retry-After",
+        },
+        500: {
+            "model": ErrorResponse,
+            "description": "Sign-up is not configured (code SIGNUP_DISABLED)",
+        },
+        503: {
+            "model": ErrorResponse,
+            "description": "Keycloak unavailable (code KEYCLOAK_UNAVAILABLE)",
+        },
+    },
 )
 async def sign_up(request: Request, data: SignUpRequest, referer: str | None = None):
     """
     Create a Keycloak account and its WeLearn user. Keycloak emails a link to
-    verify the email and set a password. 409 if the email has an account.
+    verify the email and set a password. The answer is the same 202 whether the
+    email is new or already has an account, so it does not reveal which emails
+    are registered.
     """
+    enforce_signup_rate_limit(request, data.email)
     session_uuid = extract_session_cookie(request)
 
     try:
-        user_id = await sign_up_user(
+        await sign_up_user(
             email=data.email,
             first_name=data.first_name,
             last_name=data.last_name,
             session_uuid=session_uuid,
             referer=referer,
-        )
-    except KeycloakUserExistsError:
-        raise HTTPException(
-            status_code=status.HTTP_409_CONFLICT,
-            detail={
-                "message": "An account already exists for this email",
-                "code": "EMAIL_ALREADY_EXISTS",
-            },
         )
     except KeycloakUnavailableError as e:
         logger.error("Keycloak unavailable: %s", e)
@@ -186,42 +230,7 @@ async def sign_up(request: Request, data: SignUpRequest, referer: str | None = N
             detail={"message": "Sign-up is not configured", "code": "SIGNUP_DISABLED"},
         )
 
-    return {"message": "user created", "user_id": user_id}
-
-
-@router.post("/user", summary="Create new user", response_model=UserResponse)
-async def handle_user(user_id: uuid.UUID | None = None, referer: str | None = None):
-    try:
-        user_id = await run_in_threadpool(get_or_create_user_sync, user_id, referer)
-        return {"user_id": user_id}
-
-    except WeLearnError:
-        raise
-    except Exception as e:
-        logger.error(f"Error creating user: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
-
-
-@router.post("/session", summary="Create new session", response_model=SessionResponse)
-async def handle_session(
-    user_id: uuid.UUID,
-    request: Request,
-    session_id: uuid.UUID | None = None,
-    referer: str | None = None,
-):
-    try:
-        host = extract_origin_from_request(request)
-        session_id = await run_in_threadpool(
-            get_or_create_session_sync, user_id, session_id, host, referer
-        )
-        return {"session_id": session_id}
-    except UserNotFoundError as e:
-        raise HTTPException(status_code=404, detail=str(e))
-    except WeLearnError:
-        raise
-    except Exception as e:
-        logger.error(f"Error creating session: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+    return {"message": SIGNUP_ACCEPTED_MESSAGE}
 
 
 @router.get(

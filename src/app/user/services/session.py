@@ -9,6 +9,7 @@ from src.app.user.infra.keycloak import get_or_create_keycloak_user
 from src.app.user.infra.queries import (
     get_or_create_session_sync,
     get_or_create_user_sync,
+    get_user_for_session_renewal,
     get_user_from_session_id,
 )
 
@@ -19,12 +20,26 @@ async def resolve_user_and_session(
     session_uuid: Optional[UUID],
     host: str,
     referer: Optional[str],
+    renew_expired_guest: bool = False,
 ) -> tuple[UUID, UUID]:
+    """
+    Resolve the user of the session cookie, or create a new guest.
+
+    Only a valid session resolves, unless `renew_expired_guest` (the
+    /user/user_and_session path, which sets the new cookie): an anonymous
+    user's expired session then resolves to the same user and is rotated into
+    a new session, so a guest keeps their user while the cookie lives.
+    """
+    lookup = (
+        get_user_for_session_renewal
+        if renew_expired_guest
+        else get_user_from_session_id
+    )
     try:
-        user_id = await run_in_threadpool(get_user_from_session_id, session_uuid)
+        user_id = await run_in_threadpool(lookup, session_uuid)
     except SessionNotFoundError:
-        # unknown or purged session cookie: treat the request as a new guest
-        logger.info("Session %s not found, ignoring it", session_uuid)
+        # unknown, purged or expired session cookie: treat the request as a new guest
+        logger.info("Session %s not found or expired, ignoring it", session_uuid)
         user_id = None
 
     if not user_id:
@@ -40,6 +55,7 @@ async def resolve_user_and_session(
             user_id,
             session_uuid,
         )
+        # a new session replaces an expired one
         session_uuid = await run_in_threadpool(
             get_or_create_session_sync, user_id, session_uuid, host, referer
         )
