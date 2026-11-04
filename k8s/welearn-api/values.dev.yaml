@@ -12,6 +12,9 @@ config:
     LANGSMITH_ENDPOINT: https://eu.api.smith.langchain.com
     ENV: development
 allowedHostsRegexes:
+  # The client's `yarn dev` (Vite, port 5173) calls the dev API by default.
+  localhost: |-
+    http:\/\/localhost:5173
   mainUrl: |-
     https:\/\/welearn\.k8s\.lp-i\.dev
 
