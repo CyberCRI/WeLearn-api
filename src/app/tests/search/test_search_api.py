@@ -441,6 +441,28 @@ class SearchTestsAll(IsolatedAsyncioTestCase):
             )
             self.assertEqual(response.status_code, 404)
 
+    @patch(
+        f"{search_pipeline_path}.search_handler",
+        new=mock.AsyncMock(side_effect=ModelNotFoundError()),
+    )
+    async def test_search_by_document_model_not_found_returns_404(self, *mocks):
+        # not caught by the router: mapped by the global WeLearnError handler
+        with TestClient(app) as client:
+            response = client.post(
+                f"{settings.API_V1_STR}/search/by_document?nb_results=10",
+                json={"query": "une phrase plus longue pour tester la recherche"},
+                headers={
+                    "X-API-Key": "test",
+                    "origin": "test.com",
+                    "Cookie": f"x-session-id={str(uuid.uuid4())}",
+                },
+            )
+            self.assertEqual(response.status_code, 404)
+            self.assertEqual(
+                response.json()["detail"],
+                {"message": "Model not found", "code": "MODEL_NOT_FOUND"},
+            )
+
     @patch(f"{search_pipeline_path}.search_handler", return_value=[])
     async def test_search_all_no_result(self, *mocks):
         with TestClient(app) as client:

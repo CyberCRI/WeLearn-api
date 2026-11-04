@@ -13,7 +13,11 @@ from src.app.chat.services.abst_chat import get_chat_service
 from src.app.core.config import settings
 from src.app.data_collection.services.data_collection import get_data_collection_service
 from src.app.search.services.search import get_search_service
-from src.app.shared.domain.exceptions import EmptyQueryError, LanguageNotSupportedError
+from src.app.shared.domain.exceptions import (
+    EmptyQueryError,
+    LanguageNotSupportedError,
+    SessionNotFoundError,
+)
 from src.main import app
 
 QNA_URL = f"{settings.API_V1_STR}/qna"
@@ -212,6 +216,20 @@ class ChatRouterTests(unittest.TestCase):
         self.assertEqual(
             logger_mock.error.call_args.args[0], "Error while registering chat data: %s"
         )
+
+    @mock.patch(f"{ROUTER}.logger")
+    def test_agent_answer_survives_stale_session_in_data_collection(self, logger_mock):
+        # a domain error is an Exception now, so the fail-soft block catches it
+        self.data_collection.register_chat_data.side_effect = SessionNotFoundError()
+
+        response = self.client.post(
+            f"{QNA_URL}/chat/agent", json={"query": "q"}, headers=HEADERS
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.json()["content"], "final answer")
+        self.assertIsNone(response.json().get("message_id"))
+        logger_mock.error.assert_called_once()
 
     def test_agent_language_not_supported_returns_400(self):
         self.chat.agent_message.side_effect = LanguageNotSupportedError()

@@ -32,154 +32,111 @@ def not_found(message: str, msg_code: str):
     )
 
 
-class SessionNotFoundError(BaseException):
-    """Raised when a session is not found"""
+class WeLearnError(Exception):
+    """
+    Base class of every domain error. Subclasses only set the class attributes;
+    the handler registered by `shared/api/errors.py` maps them to an HTTP
+    response with a `{"detail": {"message", "code"}}` body.
+    """
 
-    def __init__(
-        self,
-        message="Session not found",
-        msg_code="SESSION_NOT_FOUND",
-    ):
-        self.message = message
-        self.msg_code = msg_code
-        logger.error("SessionNotFoundError: %s, Code: %s", self.message, self.msg_code)
+    status_code: int = status.HTTP_500_INTERNAL_SERVER_ERROR
+    default_message: str = "Internal error"
+    default_code: str = "INTERNAL_ERROR"
+
+    def __init__(self, message: str | None = None, msg_code: str | None = None):
+        self.message = message if message is not None else self.default_message
+        self.msg_code = msg_code if msg_code is not None else self.default_code
         super().__init__(self.message, self.msg_code)
 
+    @property
+    def detail(self) -> dict[str, str]:
+        return {"message": self.message, "code": self.msg_code}
 
-class UserNotFoundError(BaseException):
+
+class SessionNotFoundError(WeLearnError):
+    """Raised when a session id does not match any session"""
+
+    status_code = status.HTTP_401_UNAUTHORIZED
+    default_message = "Session not found"
+    default_code = "SESSION_NOT_FOUND"
+
+
+class UserNotFoundError(WeLearnError):
     """Raised when a user is not found"""
 
-    def __init__(
-        self,
-        message="User not found",
-        msg_code="USER_NOT_FOUND",
-    ):
-        self.message = message
-        self.msg_code = msg_code
-        logger.error("UserNotFoundError: %s, Code: %s", self.message, self.msg_code)
-        super().__init__(self.message, self.msg_code)
+    status_code = status.HTTP_404_NOT_FOUND
+    default_message = "User not found"
+    default_code = "USER_NOT_FOUND"
 
 
-class EmptyQueryError(BaseException):
+class EmptyQueryError(WeLearnError):
+    """Raised when the query is empty"""
+
+    status_code = status.HTTP_400_BAD_REQUEST
+    default_message = "Empty query"
+    default_code = "EMPTY_QUERY"
+
+
+class LanguageNotSupportedError(WeLearnError):
     """Raised when an invalid language code is used"""
 
-    def __init__(
-        self,
-        message="Empty query",
-        msg_code="EMPTY_QUERY",
-    ):
-        self.message = message
-        self.msg_code = msg_code
-        logger.error("EmptyQueryError: %s, Code: %s", self.message, self.msg_code)
-        super().__init__(self.message, self.msg_code)
+    status_code = status.HTTP_400_BAD_REQUEST
+    default_message = "Language not supported"
+    default_code = "LANG_NOT_SUPPORTED"
 
 
-class LanguageNotSupportedError(BaseException):
-    """Raised when an invalid language code is used"""
-
-    def __init__(
-        self,
-        message="Language not supported",
-        msg_code="LANG_NOT_SUPPORTED",
-    ):
-        self.message = message
-        self.msg_code = msg_code
-        logger.error(
-            "LanguageNotSupportedError: %s, Code: %s", self.message, self.msg_code
-        )
-        super().__init__(self.message, self.msg_code)
-
-
-class NoResultsError(BaseException):
+class NoResultsError(WeLearnError):
     """Raised when no results are found"""
 
-    def __init__(
-        self,
-        message="No results found",
-        msg_code="NO_RESULTS",
-    ):
-        self.message = message
-        self.msg_code = msg_code
-        logger.info("NoResultsError: %s, Code: %s", self.message, self.msg_code)
-        super().__init__(self.message, self.msg_code)
+    status_code = status.HTTP_204_NO_CONTENT
+    default_message = "No results found"
+    default_code = "NO_RESULTS"
 
 
-class CollectionNotFoundError(BaseException):
-    """Raised when no results are found"""
+class CollectionNotFoundError(WeLearnError):
+    """Raised when no Qdrant collection matches the request"""
 
-    def __init__(
-        self,
-        message="Collection not found",
-        msg_code="COLL_NOT_FOUND",
-    ):
-        self.message = message
-        self.msg_code = msg_code
-        logger.error(
-            "CollectionNotFoundError: %s, Code: %s", self.message, self.msg_code
-        )
-        super().__init__(self.message, self.msg_code)
+    status_code = status.HTTP_404_NOT_FOUND
+    default_message = "Collection not found"
+    default_code = "COLL_NOT_FOUND"
 
 
-class ModelNotFoundError(BaseException):
-    """Raised when no results are found"""
+class ModelNotFoundError(WeLearnError):
+    """Raised when an embedding model cannot be loaded"""
 
-    def __init__(
-        self,
-        message="Model not found",
-        msg_code="MODEL_NOT_FOUND",
-    ):
-        self.message = message
-        self.msg_code = msg_code
-        logger.error("ModelNotFoundError: %s, Code: %s", self.message, self.msg_code)
-        super().__init__(self.message, self.msg_code)
+    status_code = status.HTTP_404_NOT_FOUND
+    default_message = "Model not found"
+    default_code = "MODEL_NOT_FOUND"
 
 
-class SubjectNotFoundError(BaseException):
-    """Raised when no results are found"""
+class SubjectNotFoundError(WeLearnError):
+    """Raised when a subject is not found"""
 
-    def __init__(
-        self,
-        message="Subject not found",
-        msg_code="SUBJECT_NOT_FOUND",
-    ):
-        self.message = message
-        self.msg_code = msg_code
-        logger.error("SubjectNotFoundError: %s, Code: %s", self.message, self.msg_code)
-        super().__init__(self.message, self.msg_code)
+    status_code = status.HTTP_404_NOT_FOUND
+    default_message = "Subject not found"
+    default_code = "SUBJECT_NOT_FOUND"
 
 
-class PartialResponseResultError(BaseException):
-    """Raised when no results are found"""
+class PartialResponseResultError(WeLearnError):
+    """Raised when only part of the results could be computed"""
 
-    def __init__(
-        self,
-        message="Partial response result",
-        msg_code="PARTIAL_RESULT",
-    ):
-        self.message = message
-        self.msg_code = msg_code
-        logger.warning(
-            "PartialResponseResultError: %s, Code: %s", self.message, self.msg_code
-        )
-        super().__init__(self.message, self.msg_code)
+    status_code = status.HTTP_206_PARTIAL_CONTENT
+    default_message = "Partial response result"
+    default_code = "PARTIAL_RESULT"
 
 
 def handle_error(exc: Exception, response: Response | None = None) -> None:
+    """
+    Turn a domain error into its HTTPException. A partial result only sets 206
+    on `response`. Any other exception is re-raised unchanged.
+    """
     if isinstance(exc, PartialResponseResultError):
         if response:
-            response.status_code = status.HTTP_206_PARTIAL_CONTENT
+            response.status_code = exc.status_code
         logger.warning(
             "Partial response result: %s, Code: %s", exc.message, exc.msg_code
         )
-    elif isinstance(exc, NoResultsError):
-        no_content(message=exc.message, msg_code=exc.msg_code)
-    elif isinstance(exc, LanguageNotSupportedError):
-        bad_request(message=exc.message, msg_code=exc.msg_code)
-    elif isinstance(exc, (CollectionNotFoundError, ModelNotFoundError)):
-        not_found(message=exc.message, msg_code=exc.msg_code)
-    elif isinstance(exc, EmptyQueryError):
-        bad_request(message=exc.message, msg_code=exc.msg_code)
-    elif isinstance(exc, SubjectNotFoundError):
-        not_found(message=exc.message, msg_code=exc.msg_code)
-    else:
-        logger.error("Unhandled exception: %s", exc)
+        return
+    if isinstance(exc, WeLearnError):
+        raise HTTPException(status_code=exc.status_code, detail=exc.detail) from exc
+    raise exc

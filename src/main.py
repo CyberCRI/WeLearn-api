@@ -16,6 +16,7 @@ from src.app.core.config import settings
 from src.app.core.lifespan import lifespan
 from src.app.router import api_router, api_tags_metadata
 from src.app.shared.api import health
+from src.app.shared.api.errors import register_exception_handlers
 from src.app.shared.api.monitor_requests import MonitorRequestsMiddleware
 from src.app.shared.api.openapi import generate_operation_id
 from src.app.shared.domain.responses import ERROR_RESPONSES
@@ -35,6 +36,8 @@ app = FastAPI(
 
 # Middleware global monitoring
 app.add_middleware(MonitorRequestsMiddleware)
+
+register_exception_handlers(app)
 
 
 @app.exception_handler(ResponseValidationError)
