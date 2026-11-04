@@ -49,18 +49,20 @@ class DataCollection:
             self.should_collect,
         )
 
-    def get_campaign_state(
-        self,
-    ):
-        """Returns True if a campaign is active, False otherwise."""
+    def get_campaign_state(self) -> bool:
+        """Return True if a data-collection campaign is active, False otherwise.
+
+        The state is cached as a bool for 6 hours. A missing or inactive campaign is
+        cached as False.
+        """
 
         now = datetime.now()
         if _cache["expires"] and now < _cache["expires"]:
-            return _cache["is_campaign_active"] is not None
+            return _cache["is_campaign_active"]
 
         campaign = get_current_data_collection_campaign()
 
-        _cache["is_campaign_active"] = campaign and campaign.is_active
+        _cache["is_campaign_active"] = bool(campaign and campaign.is_active)
         _cache["expires"] = now + timedelta(hours=6)
 
         return _cache["is_campaign_active"]

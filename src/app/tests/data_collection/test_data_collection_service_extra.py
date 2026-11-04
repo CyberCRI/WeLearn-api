@@ -111,6 +111,10 @@ class _ServiceTestBase(unittest.IsolatedAsyncioTestCase):
 
 
 class TestCampaignStateCache(unittest.TestCase):
+    def setUp(self):
+        _cache["is_campaign_active"] = None
+        _cache["expires"] = None
+
     def tearDown(self):
         _cache["is_campaign_active"] = None
         _cache["expires"] = None
@@ -118,8 +122,6 @@ class TestCampaignStateCache(unittest.TestCase):
     @patch(f"{MODULE}.get_current_data_collection_campaign")
     def test_campaign_state_is_cached(self, mock_campaign):
         mock_campaign.return_value = MagicMock(is_active=True)
-        _cache["is_campaign_active"] = None
-        _cache["expires"] = None
 
         first = DataCollection(origin="workshop.example.com")
         second = DataCollection(origin="workshop.example.com")
@@ -128,30 +130,59 @@ class TestCampaignStateCache(unittest.TestCase):
         self.assertTrue(second.should_collect)
         mock_campaign.assert_called_once()
 
+    @patch(f"{MODULE}.get_current_data_collection_campaign")
+    def test_active_campaign_returns_true_on_both_calls(self, mock_campaign):
+        mock_campaign.return_value = MagicMock(is_active=True)
+        # Skip __init__ so only the two explicit calls below hit the cache.
+        dc = DataCollection.__new__(DataCollection)
+
+        first = dc.get_campaign_state()
+        second = dc.get_campaign_state()
+
+        self.assertIs(first, True)
+        self.assertIs(second, True)
+        self.assertIs(_cache["is_campaign_active"], True)
+        mock_campaign.assert_called_once()
+
     @patch(f"{MODULE}.get_current_data_collection_campaign", return_value=None)
     def test_no_campaign_is_cached_as_inactive(self, mock_campaign):
-        _cache["is_campaign_active"] = None
-        _cache["expires"] = None
+        first = DataCollection(origin="workshop.example.com")
 
-        DataCollection(origin="workshop.example.com")
+        self.assertIs(_cache["is_campaign_active"], False)
+
         second = DataCollection(origin="workshop.example.com")
 
+        self.assertFalse(first.should_collect)
+        self.assertFalse(second.should_collect)
+        self.assertIs(second.get_campaign_state(), False)
+        mock_campaign.assert_called_once()
+
+    @patch(f"{MODULE}.get_current_data_collection_campaign")
+    def test_inactive_campaign_is_cached_as_inactive(self, mock_campaign):
+        # Regression (B-6): a cached False (campaign exists but is_active=False)
+        # used to read as True on the cache-hit path.
+        mock_campaign.return_value = MagicMock(is_active=False)
+
+        first = DataCollection(origin="workshop.example.com")
+        second = DataCollection(origin="workshop.example.com")
+
+        self.assertFalse(first.should_collect)
         self.assertFalse(second.should_collect)
         mock_campaign.assert_called_once()
 
-    @unittest.expectedFailure
     @patch(f"{MODULE}.get_current_data_collection_campaign")
-    def test_inactive_campaign_is_cached_as_inactive(self, mock_campaign):
-        # Known bug: the cached path returns `is_campaign_active is not None`,
-        # so a cached False (campaign exists but is_active=False) reads as True.
+    def test_inactive_campaign_cache_hit_returns_false(self, mock_campaign):
         mock_campaign.return_value = MagicMock(is_active=False)
-        _cache["is_campaign_active"] = None
-        _cache["expires"] = None
+        # Skip __init__ so only the two explicit calls below hit the cache.
+        dc = DataCollection.__new__(DataCollection)
 
-        DataCollection(origin="workshop.example.com")
-        second = DataCollection(origin="workshop.example.com")
+        first = dc.get_campaign_state()
+        second = dc.get_campaign_state()
 
-        self.assertFalse(second.should_collect)
+        self.assertIs(first, False)
+        self.assertIs(second, False)
+        self.assertIs(_cache["is_campaign_active"], False)
+        mock_campaign.assert_called_once()
 
 
 class TestDisabledCollection(_ServiceTestBase):
