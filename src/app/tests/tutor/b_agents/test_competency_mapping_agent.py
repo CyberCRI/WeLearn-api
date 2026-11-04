@@ -1,10 +1,19 @@
 import unittest
 from unittest.mock import AsyncMock, patch
 
+from baml_py.errors import BamlValidationError
+
 from src.app.baml_client.async_client import types
+from src.app.tutor.services.b_agents.base import AgentError
 from src.app.tutor.services.b_agents.competency_mapping_agent import (
     CompetencyMappingAgent,
 )
+
+SLEEP_PATH = "src.app.tutor.services.b_agents.base.asyncio.sleep"
+
+
+def validation_error() -> BamlValidationError:
+    return BamlValidationError("prompt", "Failed to parse", "{", "")
 
 
 class TestCompetencyMappingAgent(unittest.IsolatedAsyncioTestCase):
@@ -180,7 +189,7 @@ class TestCompetencyMappingAgent(unittest.IsolatedAsyncioTestCase):
         "src.app.tutor.services.b_agents.competency_mapping_agent.b.MapCompetencies",
         new_callable=AsyncMock,
     )
-    async def test_map_competencies_propagates_exception(
+    async def test_map_competencies_propagates_non_retryable_error(
         self,
         mock_map,
     ):
@@ -194,3 +203,25 @@ class TestCompetencyMappingAgent(unittest.IsolatedAsyncioTestCase):
                 outcomes=self.outcomes,
                 greencomp_framework=self.greencomp_framework,
             )
+
+        mock_map.assert_awaited_once()
+
+    @patch(
+        "src.app.tutor.services.b_agents.competency_mapping_agent.b.MapCompetencies",
+        new_callable=AsyncMock,
+    )
+    async def test_map_competencies_retries_output_errors_then_raises_agent_error(
+        self,
+        mock_map,
+    ):
+        mock_map.side_effect = [
+            validation_error() for _ in range(self.agent.max_retries)
+        ]
+
+        with patch(SLEEP_PATH, new_callable=AsyncMock), self.assertRaises(AgentError):
+            await self.agent.map_competencies(
+                outcomes=self.outcomes,
+                greencomp_framework=self.greencomp_framework,
+            )
+
+        self.assertEqual(mock_map.await_count, self.agent.max_retries)

@@ -1,11 +1,20 @@
 import unittest
 from unittest.mock import AsyncMock, patch
 
+from baml_py.errors import BamlValidationError
+
 from src.app.baml_client.async_client import types
 from src.app.baml_client.types import SessionMode
+from src.app.tutor.services.b_agents.base import AgentError
 from src.app.tutor.services.b_agents.sustainability_integration_agent import (
     SustainabilityIntegrationAgent,
 )
+
+SLEEP_PATH = "src.app.tutor.services.b_agents.base.asyncio.sleep"
+
+
+def validation_error() -> BamlValidationError:
+    return BamlValidationError("prompt", "Failed to parse", "{", "")
 
 
 class TestSustainabilityIntegrationAgent(unittest.IsolatedAsyncioTestCase):
@@ -301,7 +310,7 @@ class TestSustainabilityIntegrationAgent(unittest.IsolatedAsyncioTestCase):
         "src.app.tutor.services.b_agents.sustainability_integration_agent.b.IntegrateSustainability",
         new_callable=AsyncMock,
     )
-    async def test_integrate_propagates_exception(
+    async def test_integrate_propagates_non_retryable_error(
         self,
         mock_integrate,
     ):
@@ -318,3 +327,28 @@ class TestSustainabilityIntegrationAgent(unittest.IsolatedAsyncioTestCase):
                 metadata=self.metadata,
                 mode="mode_1",
             )
+
+        mock_integrate.assert_awaited_once()
+
+    @patch(
+        "src.app.tutor.services.b_agents.sustainability_integration_agent.b.IntegrateSustainability",
+        new_callable=AsyncMock,
+    )
+    async def test_integrate_retries_output_errors_then_raises_agent_error(
+        self,
+        mock_integrate,
+    ):
+        mock_integrate.side_effect = [
+            validation_error() for _ in range(self.agent.max_retries)
+        ]
+
+        with patch(SLEEP_PATH, new_callable=AsyncMock), self.assertRaises(AgentError):
+            await self.agent.integrate(
+                description=self.description,
+                objectives=self.objectives,
+                sdg_resources=self.sdg_resources,
+                metadata=self.metadata,
+                mode="mode_1",
+            )
+
+        self.assertEqual(mock_integrate.await_count, self.agent.max_retries)

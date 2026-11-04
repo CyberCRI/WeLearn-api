@@ -17,8 +17,7 @@ from src.app.tutor.domain.models import UserInput
 
 
 class FakeAgent:
-    def __init__(self, total_tokens=0):
-        self.total_tokens = total_tokens
+    pass
 
 
 class FakeCourseDescriptionAgent(FakeAgent):
@@ -279,30 +278,6 @@ class TestSyllabusOrchestrator(unittest.IsolatedAsyncioTestCase):
     def test_start_without_description_uses_empty_context(self):
         self.sut.start(self.make_user_input())
         self.assertEqual(self.sut._context_text, "")
-
-    # ------------------------------------------------------------------
-    # Token accounting
-    # ------------------------------------------------------------------
-
-    def test_get_total_tokens_sums_all_agents(self):
-        agents = [
-            self.sut.course_description_agent,
-            self.sut.learning_objectives_agent,
-            self.sut.sustainability_agent,
-            self.sut.learning_outcomes_agent,
-            self.sut.competency_mapping_agent,
-            self.sut.pedagogical_engineer_agent,
-            self.sut.activity_recommendation_agent,
-            self.sut.activity_guide_generator_agent,
-        ]
-
-        for index, agent in enumerate(agents, start=1):
-            agent.total_tokens = index * 10
-
-        self.assertEqual(
-            self.sut.get_total_tokens(),
-            sum(range(10, 90, 10)),
-        )
 
     # ------------------------------------------------------------------
     # Phase 1: individual phases
