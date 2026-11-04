@@ -166,7 +166,7 @@ long_query = "français with a very long sentence to test what you are saying an
 class DefaultCorpusTests(IsolatedAsyncioTestCase):
     async def test_null_corpora_resolves_visible_names(self):
         with patch(
-            "src.app.search.api.router.get_visible_corpora_sync",
+            "src.app.search.services.search.get_visible_corpora_sync",
             return_value=("visible", "uncategorized"),
         ) as visible_corpora:
             for get_search_params, query_type in (
@@ -187,7 +187,7 @@ class DefaultCorpusTests(IsolatedAsyncioTestCase):
 
     async def test_explicit_corpora_is_preserved(self):
         with patch(
-            "src.app.search.api.router.get_visible_corpora_sync"
+            "src.app.search.services.search.get_visible_corpora_sync"
         ) as visible_corpora:
             params = await get_params(
                 body=SearchQuery(query="water", corpora=["hidden"]),
@@ -334,7 +334,7 @@ class SearchTests(IsolatedAsyncioTestCase):
     new=mock.MagicMock(return_value=True),
 )
 @patch(
-    "src.app.search.api.router.get_visible_corpora_sync",
+    "src.app.search.services.search.get_visible_corpora_sync",
     new=mock.MagicMock(return_value=("visible",)),
 )
 class SearchTestsSlices(IsolatedAsyncioTestCase):
@@ -406,7 +406,7 @@ class SearchTestsSlices(IsolatedAsyncioTestCase):
     new=mock.MagicMock(return_value=True),
 )
 @patch(
-    "src.app.search.api.router.get_visible_corpora_sync",
+    "src.app.search.services.search.get_visible_corpora_sync",
     new=mock.MagicMock(return_value=("visible",)),
 )
 @patch(
@@ -711,7 +711,7 @@ class DocumentsByIdsTests(IsolatedAsyncioTestCase):
                 SearchService, "search_handler", return_value=mocked_documents
             ) as search_handler,
             mock.patch(
-                "src.app.search.api.router.get_visible_corpora_sync",
+                "src.app.search.services.search.get_visible_corpora_sync",
                 return_value=("visible",),
             ),
         ):

@@ -13,7 +13,7 @@ from src.app.chat.services.agent import (
 class TestAgent(IsolatedAsyncioTestCase):
     def setUp(self):
         patcher = mock.patch(
-            "src.app.chat.services.agent.get_visible_corpora_sync",
+            "src.app.search.services.search.get_visible_corpora_sync",
             return_value=("a", "b"),
         )
         self.mock_visible = patcher.start()
@@ -46,11 +46,13 @@ class TestAgent(IsolatedAsyncioTestCase):
         # the client sends [] when no source filter is selected
         self.assertEqual(await self._searched_corpora(()), ("a", "b"))
 
-    async def test_hidden_corpora_are_dropped(self):
-        self.assertEqual(await self._searched_corpora(("a", "hidden")), ("a",))
+    async def test_mixed_corpora_are_searched_as_given(self):
+        self.assertEqual(await self._searched_corpora(("a", "hidden")), ("a", "hidden"))
+        self.mock_visible.assert_not_called()
 
-    async def test_only_hidden_corpora_searches_nothing(self):
-        self.assertEqual(await self._searched_corpora(("hidden",)), ())
+    async def test_only_hidden_corpora_are_searched_as_given(self):
+        self.assertEqual(await self._searched_corpora(("hidden",)), ("hidden",))
+        self.mock_visible.assert_not_called()
 
     async def test_visible_corpora_lookup_failure(self):
         self.mock_visible.side_effect = Exception("db down")

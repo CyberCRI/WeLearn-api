@@ -1,14 +1,12 @@
-from typing import Iterable, List, Tuple
+from typing import List, Tuple
 
 from fastapi import BackgroundTasks
-from fastapi.concurrency import run_in_threadpool
 from langchain_core.runnables import RunnableConfig
 from langchain_core.tools import tool
 
 from src.app.chat.services.helpers import stringify_docs_content
 from src.app.search.domain.models import EnhancedSearchQuery
-from src.app.search.infra.queries import get_visible_corpora_sync
-from src.app.search.services.search import SearchService
+from src.app.search.services.search import SearchService, resolve_corpora
 from src.app.shared.domain.documents import EnhancedDocumentSlice
 from src.app.shared.utils.decorators import log_time_and_error
 from src.app.shared.utils.logger import logger as utils_logger
@@ -26,25 +24,6 @@ SEARCH_UNAVAILABLE = (
     "language, that resources could not be retrieved right now. "
     f"{NO_DOCS_INSTRUCTION}"
 )
-
-
-async def _resolve_visible_corpora(
-    requested: Iterable[str] | None,
-) -> tuple[str, ...]:
-    """Restrict the chat search to corpora that are visible in the database.
-
-    No selection means every visible corpus. A selection keeps only its visible
-    names, so an all-hidden selection yields () and the search returns nothing.
-    """
-    visible = await run_in_threadpool(get_visible_corpora_sync)
-    if not requested:
-        return tuple(visible)
-
-    kept = tuple(c for c in requested if c in visible)
-    dropped = [c for c in requested if c not in visible]
-    if dropped:
-        logger.debug("Dropping hidden or unknown corpora from chat search: %s", dropped)
-    return kept
 
 
 async def _get_resources_about_sustainability(
@@ -68,7 +47,7 @@ async def _get_resources_about_sustainability(
         return NO_DOCUMENTS_FOUND, []
 
     try:
-        corpora = await _resolve_visible_corpora(config["configurable"].get("corpora"))
+        corpora = await resolve_corpora(config["configurable"].get("corpora"))
         qp = EnhancedSearchQuery(
             query=rag_query,
             sdg_filter=config["configurable"].get("sdg_filter"),
