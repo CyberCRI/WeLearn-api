@@ -121,21 +121,55 @@ def get_or_create_session_sync(
 
 
 def get_user_from_session_id(session_id: uuid.UUID | None) -> uuid.UUID | None:
+    """
+    The user of a session that is still valid. An unknown or expired session
+    raises SessionNotFoundError: an old cookie must not act as a credential.
+    """
     if not session_id:
         return None
 
     with session_maker() as s:
-        session = s.execute(select(Session).where(Session.id == session_id)).first()
-        if session:
-            logger.info(
-                "Valid session. user_id=%s session_id=%s",
-                session[0].inferred_user_id,
-                session_id,
+        user_id = s.execute(
+            select(Session.inferred_user_id).where(
+                (Session.id == session_id) & (Session.end_at > datetime.now())
             )
-            return session[0].inferred_user_id
-        else:
-            raise SessionNotFoundError(f"Session with id {session_id} not found")
-    return None
+        ).scalar_one_or_none()
+    if user_id is None:
+        raise SessionNotFoundError(f"Session with id {session_id} not found")
+    logger.info("Valid session. user_id=%s session_id=%s", user_id, session_id)
+    return user_id
+
+
+def get_user_for_session_renewal(session_id: uuid.UUID | None) -> uuid.UUID | None:
+    """
+    Like get_user_from_session_id, but an expired session of an anonymous user
+    (no keycloak_id) still resolves, so it can be rotated into a new session:
+    the cookie outlives the 24h DB session and a guest must keep their user.
+    An expired session of a Keycloak-linked user does not: getting back to an
+    account takes a token. Only for the /user/user_and_session cookie path.
+    """
+    if not session_id:
+        return None
+
+    with session_maker() as s:
+        row = s.execute(
+            select(Session.inferred_user_id, Session.end_at, InferredUser.keycloak_id)
+            .join(InferredUser, InferredUser.id == Session.inferred_user_id)
+            .where(Session.id == session_id)
+        ).first()
+    if row is None:
+        raise SessionNotFoundError(f"Session with id {session_id} not found")
+    if row.end_at > datetime.now():
+        return row.inferred_user_id
+    if row.keycloak_id is None:
+        logger.info(
+            "Renewing expired guest session. user_id=%s session_id=%s",
+            row.inferred_user_id,
+            session_id,
+        )
+        return row.inferred_user_id
+    logger.info("Expired session of a keycloak user. session_id=%s", session_id)
+    raise SessionNotFoundError(f"Session with id {session_id} has expired")
 
 
 def get_user_bookmarks_sync(user_id: uuid.UUID) -> list[Bookmark]:

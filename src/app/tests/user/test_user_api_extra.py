@@ -66,25 +66,19 @@ class UserApiExtraTests(unittest.TestCase):
         self.assertEqual(
             self.resolve_user.call_args.kwargs["session_uuid"], self.session_id
         )
+        # the only path allowed to renew a guest's expired session
+        self.assertTrue(self.resolve_user.call_args.kwargs["renew_expired_guest"])
 
-    # ---- /session ----
+    def test_other_routes_do_not_renew_expired_sessions(self):
+        self._patch("get_user_bookmarks_sync", return_value=[])
+        self._patch("add_institution_data_to_user_sync")
 
-    def test_session_unexpected_error_returns_500(self):
-        get_or_create = self._patch(
-            "get_or_create_session_sync", side_effect=RuntimeError("boom")
-        )
+        client.get(f"{BASE}/bookmarks", headers=self.headers)
+        self._institution(self.headers)
 
-        response = client.post(
-            f"{BASE}/session",
-            params={"user_id": str(self.user_id)},
-            headers={"X-API-Key": "test", "origin": "https://welearn.example"},
-        )
-
-        self.assertEqual(response.status_code, 500)
-        self.assertEqual(response.json()["detail"], "boom")
-        get_or_create.assert_called_once_with(
-            self.user_id, None, "https://welearn.example", None
-        )
+        self.assertEqual(self.resolve_user.call_count, 2)
+        for call in self.resolve_user.call_args_list:
+            self.assertFalse(call.kwargs.get("renew_expired_guest", False))
 
     # ---- resolve_bookmark_user ----
 

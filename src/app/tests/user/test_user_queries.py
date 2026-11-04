@@ -194,3 +194,63 @@ class TestAddInstitutionData(UserQueriesTestBase):
             user = s.get(InferredUser, self.user_id)
             self.assertEqual(user.university_title, "LPI")
             self.assertEqual(user.role, "teacher")
+
+
+class TestSessionExpiry(UserQueriesTestBase):
+    def _add_session(self, end_at: datetime, user_id: uuid.UUID | None = None):
+        session_id = uuid.uuid4()
+        with self.s_maker() as s:
+            s.add(
+                Session(
+                    id=session_id,
+                    inferred_user_id=user_id or self.user_id,
+                    end_at=end_at,
+                )
+            )
+            s.commit()
+        return session_id
+
+    def _add_keycloak_user(self) -> uuid.UUID:
+        user_id = uuid.uuid4()
+        with self.s_maker() as s:
+            s.add(InferredUser(id=user_id, keycloak_id=uuid.uuid4()))
+            s.commit()
+        return user_id
+
+    def test_strict_lookup_rejects_expired_session(self):
+        expired = self._add_session(datetime.now() - timedelta(minutes=1))
+
+        with self.assertRaises(SessionNotFoundError):
+            queries.get_user_from_session_id(expired)
+
+    def test_strict_lookup_rejects_expired_keycloak_session(self):
+        user_id = self._add_keycloak_user()
+        expired = self._add_session(datetime.now() - timedelta(days=2), user_id)
+
+        with self.assertRaises(SessionNotFoundError):
+            queries.get_user_from_session_id(expired)
+
+    def test_renewal_lookup_none(self):
+        self.assertIsNone(queries.get_user_for_session_renewal(None))
+
+    def test_renewal_lookup_unknown_session_raises(self):
+        with self.assertRaises(SessionNotFoundError):
+            queries.get_user_for_session_renewal(uuid.uuid4())
+
+    def test_renewal_lookup_valid_session(self):
+        user_id = self._add_keycloak_user()
+        valid = self._add_session(datetime.now() + timedelta(hours=1), user_id)
+
+        self.assertEqual(queries.get_user_for_session_renewal(valid), user_id)
+
+    def test_renewal_lookup_expired_guest_session(self):
+        expired = self._add_session(datetime.now() - timedelta(days=30))
+
+        self.assertEqual(queries.get_user_for_session_renewal(expired), self.user_id)
+
+    def test_renewal_lookup_expired_keycloak_session_raises(self):
+        user_id = self._add_keycloak_user()
+        expired = self._add_session(datetime.now() - timedelta(minutes=1), user_id)
+
+        with self.assertRaises(SessionNotFoundError):
+            queries.get_user_for_session_renewal(expired)

@@ -5,7 +5,7 @@ from unittest.mock import AsyncMock, patch
 from src.app.shared.domain.exceptions import SessionNotFoundError
 from src.app.user.infra.keycloak import KeycloakUnavailableError
 from src.app.user.infra.keycloak_admin import KeycloakUserExistsError
-from src.app.user.services.signup import sign_up_user
+from src.app.user.services.signup import email_fingerprint, sign_up_user
 
 SIGNUP = "src.app.user.services.signup"
 
@@ -21,10 +21,28 @@ class TestSignUpUser(unittest.IsolatedAsyncioTestCase):
     ):
         find_mock.return_value = uuid.uuid4()
 
-        with self.assertRaises(KeycloakUserExistsError):
-            await sign_up_user("jane@example.org", None, None, uuid.uuid4(), None)
+        with self.assertLogs(level="INFO") as logs:
+            result = await sign_up_user(
+                "jane@example.org", None, None, uuid.uuid4(), None
+            )
 
+        self.assertIsNone(result)
         create_mock.assert_not_called()
+        session_mock.assert_not_called()
+        get_or_create_mock.assert_not_called()
+        email_mock.assert_not_called()
+        self.assertNotIn("jane@example.org", "\n".join(logs.output))
+        self.assertIn(email_fingerprint("jane@example.org"), "\n".join(logs.output))
+
+    async def test_account_created_concurrently(
+        self, find_mock, create_mock, session_mock, get_or_create_mock, email_mock
+    ):
+        find_mock.return_value = None
+        create_mock.side_effect = KeycloakUserExistsError("exists")
+
+        result = await sign_up_user("jane@example.org", None, None, None, None)
+
+        self.assertIsNone(result)
         get_or_create_mock.assert_not_called()
         email_mock.assert_not_called()
 

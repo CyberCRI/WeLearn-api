@@ -23,8 +23,12 @@ class SignUpRequest(BaseModel):
 
 
 class SignUpResponse(BaseModel):
+    """
+    Same answer whether the email is new or already has an account, so sign-up
+    does not reveal which emails are registered.
+    """
+
     message: str
-    user_id: uuid.UUID
 
 
 class InstitutionData(BaseModel):
@@ -40,14 +44,6 @@ class UserAndSessionResponse(BaseModel):
     message: str
     session_id: uuid.UUID
     user_id: uuid.UUID
-
-
-class UserResponse(BaseModel):
-    user_id: uuid.UUID
-
-
-class SessionResponse(BaseModel):
-    session_id: uuid.UUID
 
 
 class BookmarkRead(BaseModel):
