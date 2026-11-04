@@ -6,7 +6,7 @@ from pypdf import PdfReader
 
 from src.app.shared.domain.documents import EnhancedDocumentSlice
 from src.app.shared.infra.pdf_extractor import extract_txt_from_pdf_with_tika
-from src.app.shared.utils.decorators import log_time_and_error_sync
+from src.app.shared.utils.decorators import log_time_and_error
 from src.app.shared.utils.dependencies import get_settings
 
 settings = get_settings()
@@ -67,7 +67,7 @@ def extract_doc_info(documents: list[EnhancedDocumentSlice]) -> list[dict]:
     return result
 
 
-@log_time_and_error_sync
+@log_time_and_error
 async def get_files_content(files: list[UploadFile]) -> list[str]:
     files_content: list[str] = []
     tasks = [get_file_content(file) for file in files]

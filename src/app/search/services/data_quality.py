@@ -9,7 +9,7 @@ from src.app.search.infra.queries import (
     write_process_state,
 )
 from src.app.shared.domain.documents import FullContainer
-from src.app.shared.utils.decorators import log_time_and_error_sync
+from src.app.shared.utils.decorators import log_time_and_error
 from src.app.shared.utils.logger import logger as logger_utils
 
 logger = logger_utils(__name__)
@@ -24,7 +24,7 @@ class DataQualityChecker:
         """
         self.log_background_tasks: BackgroundTasks = log_background_task
 
-    @log_time_and_error_sync
+    @log_time_and_error
     def remove_duplicates(
         self,
         containers_to_check: list[FullContainer],

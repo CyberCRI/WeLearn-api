@@ -3,7 +3,7 @@ from typing import Any, Optional
 
 from welearn_database.data.models import WeLearnDocument
 
-from src.app.shared.utils.decorators import log_time_and_error_sync
+from src.app.shared.utils.decorators import log_time_and_error
 from src.app.shared.utils.logger import logger as utils_logger
 
 logger = utils_logger(__name__)
@@ -49,7 +49,7 @@ def compute_authors_for_ris(authors: list[dict[str, Any]]) -> list[str]:
     return ret
 
 
-@log_time_and_error_sync
+@log_time_and_error
 def welearn_document_to_ris(doc: WeLearnDocument) -> str:
     details = doc.details or {}
 

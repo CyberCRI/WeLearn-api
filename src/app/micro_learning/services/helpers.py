@@ -5,7 +5,7 @@ from welearn_database.data.models import EmbeddingModel
 from src.app.shared.domain.collections import Collection
 from src.app.shared.domain.documents import JourneySectionType
 from src.app.shared.infra.queries import get_embeddings_model_id_according_name
-from src.app.shared.utils.decorators import log_time_and_error_sync
+from src.app.shared.utils.decorators import log_time_and_error
 
 
 def choose_readability_according_journey_section_type(
@@ -38,7 +38,7 @@ def choose_readability_according_journey_section_type(
     return readability_range
 
 
-@log_time_and_error_sync
+@log_time_and_error
 async def collection_and_model_id_according_lang(
     lang: str | None, sp
 ) -> tuple[Collection, list[EmbeddingModel]]:

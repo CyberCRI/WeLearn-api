@@ -33,7 +33,7 @@ from src.app.shared.domain.collections import Collection
 from src.app.shared.domain.documents import EnhancedDocumentSlice, FullContainer
 from src.app.shared.domain.exceptions import CollectionNotFoundError, ModelNotFoundError
 from src.app.shared.infra.queries import get_embeddings_model_id_according_name
-from src.app.shared.utils.decorators import log_time_and_error, log_time_and_error_sync
+from src.app.shared.utils.decorators import log_time_and_error
 from src.app.shared.utils.embeddings import convert_embedding_bytes
 from src.app.shared.utils.logger import logger as logger_utils
 
@@ -123,12 +123,12 @@ class SearchService:
 
         return self._get_info_from_collection_name(collection)
 
-    @log_time_and_error_sync
+    @log_time_and_error
     def _get_info_from_collection_name(self, collection_name: str) -> Collection:
         lang, model = collection_name.replace(self.col_prefix, "").split("_")
         return Collection(lang=lang, model=model, name=collection_name)
 
-    @log_time_and_error_sync
+    @log_time_and_error
     async def get_query_embed(
         self,
         model: str,
@@ -153,7 +153,7 @@ class SearchService:
 
         return embedding
 
-    @log_time_and_error_sync
+    @log_time_and_error
     def _get_model(self, curr_model: str) -> dict:
         if curr_model in self.model:
             return self.model[curr_model]
@@ -181,7 +181,7 @@ class SearchService:
             raise ModelNotFoundError()
         return self.model[curr_model]
 
-    @log_time_and_error_sync
+    @log_time_and_error
     def _split_input_seq_len(self, seq_len: int, input: str) -> list[str]:
         if not seq_len:
             raise ValueError("Sequence length value is not valid")
@@ -204,7 +204,7 @@ class SearchService:
 
         return inputs
 
-    @log_time_and_error_sync
+    @log_time_and_error
     def _compute_embeddings(self, model, tokenizer, inputs: list[str]) -> np.ndarray:
         with torch.no_grad():
             tokenized_inputs = tokenizer(
@@ -215,7 +215,7 @@ class SearchService:
             embeddings = torch.nn.functional.normalize(embeddings, dim=1).numpy()
         return embeddings
 
-    @log_time_and_error_sync
+    @log_time_and_error
     async def _embed_query(self, search_input: str, curr_model: str) -> np.ndarray:
         logger.debug("Creating embeddings model=%s", curr_model)
         time_start = time.time()
@@ -418,7 +418,7 @@ class SearchService:
         return resp.points
 
 
-@log_time_and_error_sync
+@log_time_and_error
 def sort_using_mmr(
     containers: list[FullContainer],
     theta: float = 1.0,
@@ -456,7 +456,7 @@ async def get_search_service(
     return SearchService(qdrant)
 
 
-@log_time_and_error_sync
+@log_time_and_error
 def concatenate_same_doc_id_slices(
     qdrant_results: list[EnhancedDocumentSlice],
 ) -> list[EnhancedDocumentSlice]:
@@ -499,7 +499,7 @@ def concatenate_same_doc_id_slices(
     return new_results
 
 
-@log_time_and_error_sync
+@log_time_and_error
 def get_subject_vector(subject: str | None, model_name: str) -> np.ndarray | None:
     """
     Get the subject vector from the database.
