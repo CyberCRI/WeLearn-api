@@ -538,6 +538,54 @@ class TestBamlStepEndpoints(TutorApiTestCase):
         self.assertEqual(kwargs["mode"], "mode_1")
         self.assertEqual(kwargs["output_language"], "en")
 
+    @patch(f"{ROUTER}.b.IntegrateSustainability", new_callable=AsyncMock)
+    def test_sustainability_integration_with_resources(self, mock_integrate):
+        resources = [
+            {
+                "text": "Wetlands store carbon.",
+                "corpus": "ipcc",
+                "description": "Report on wetlands",
+                "sdg": [13, 15],
+                "url": "https://example.org/wetlands",
+                "title": "Wetlands and climate",
+                "relevance_score": 0.87,
+            },
+            {
+                "text": "Clean water access.",
+                "corpus": "unesco",
+                "description": "Water report",
+                "sdg": [6],
+                "url": "https://example.org/water",
+                "title": "Water for all",
+                "relevance_score": None,
+            },
+        ]
+        expected_resources = [types.Document(**res) for res in resources]
+        mock_integrate.return_value = types.SustainabilityIntegration(
+            connections=[],
+            integration_strategy="strategy",
+            resources_used=expected_resources[:1],
+        )
+
+        response = self.client.post(
+            f"{BASE}/syllabus/sustainability_integration",
+            json={
+                "description": "desc",
+                "objectives": OBJECTIVES,
+                "course_metadata": COURSE_METADATA,
+                "sdg_resources": resources,
+                "mode": "mode_1",
+            },
+            headers=HEADERS,
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.json()["resources_used"], resources[:1])
+        mock_integrate.assert_awaited_once()
+        self.assertEqual(
+            mock_integrate.await_args.kwargs["sdg_resources"], expected_resources
+        )
+
     @patch(f"{ROUTER}.b.GenerateLearningOutcomes", new_callable=AsyncMock)
     def test_learning_outcomes(self, mock_generate):
         mock_generate.return_value = types.LearningOutcomes(

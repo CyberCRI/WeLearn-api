@@ -355,14 +355,7 @@ async def integrate_sustainability(
             ]
         ),
         metadata=metadata,
-        sdg_resources=[
-            types.Document(
-                text=res.text,
-                metadata=res.metadata,
-                relevance_score=res.relevance_score if res.relevance_score else None,
-            )
-            for res in body.sdg_resources
-        ],
+        sdg_resources=body.sdg_resources,
         mode=body.mode,
         output_language=body.course_metadata.output_language,
     )
