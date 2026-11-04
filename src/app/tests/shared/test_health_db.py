@@ -1,72 +1,68 @@
-import json
-from types import SimpleNamespace
 from unittest import TestCase
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import MagicMock, patch
 
 from fastapi.testclient import TestClient
+from sqlalchemy.exc import OperationalError
 
-from src.app.shared.utils.dependencies import get_settings
 from src.main import app
 
-FAKE_SETTINGS = SimpleNamespace(
-    DATABASE_HEALTHCHECK_URL="http://db-health.local", HTTPX_TIMEOUT=3
-)
 
-
-def _client_returning(response):
-    """Build an httpx.AsyncClient replacement whose get() returns `response`."""
-    http_client = MagicMock()
-    http_client.get = AsyncMock(return_value=response)
+def _session_maker_with(session):
+    """Build a `session_maker` replacement whose context manager yields `session`."""
     ctx = MagicMock()
-    ctx.__aenter__ = AsyncMock(return_value=http_client)
-    ctx.__aexit__ = AsyncMock(return_value=False)
-    return MagicMock(return_value=ctx), http_client
+    ctx.__enter__.return_value = session
+    ctx.__exit__.return_value = False
+    return MagicMock(return_value=ctx)
 
 
 class DbHealthTests(TestCase):
-    """/health/db reads DATABASE_HEALTHCHECK_URL and HTTPX_TIMEOUT from settings.
-
-    Those keys are not declared on `Settings`, so the settings dependency is
-    overridden here to exercise the endpoint logic itself.
-    """
+    """/health/db runs `SELECT 1` against Postgres through `session_maker`."""
 
     def setUp(self):
-        app.dependency_overrides[get_settings] = lambda: FAKE_SETTINGS
         self.client = TestClient(app)
 
-    def tearDown(self):
-        app.dependency_overrides.pop(get_settings, None)
+    def test_db_health_ok_when_select_succeeds(self):
+        session = MagicMock()
+        maker = _session_maker_with(session)
 
-    def test_db_health_returns_remote_status(self):
-        rep = MagicMock()
-        rep.json.return_value = {"status": "OK"}
-        async_client_cls, http_client = _client_returning(rep)
-
-        with patch("src.app.shared.api.health.httpx.AsyncClient", async_client_cls):
+        with patch("src.app.shared.api.health.session_maker", maker):
             response = self.client.get("/health/db")
 
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.json(), {"status": "OK"})
-        http_client.get.assert_awaited_once_with(
-            "http://db-health.local/health", timeout=3
+        maker.assert_called_once_with()
+        session.execute.assert_called_once()
+        self.assertEqual(str(session.execute.call_args.args[0]), "SELECT 1")
+
+    def test_db_health_needs_no_api_key(self):
+        maker = _session_maker_with(MagicMock())
+
+        with patch("src.app.shared.api.health.session_maker", maker):
+            response = self.client.get("/health/db", headers={})
+
+        self.assertEqual(response.status_code, 200)
+
+    def test_db_health_503_when_database_unreachable(self):
+        session = MagicMock()
+        session.execute.side_effect = OperationalError(
+            "SELECT 1", {}, Exception("password=secret host unreachable")
         )
+        maker = _session_maker_with(session)
 
-    def test_db_health_forwards_degraded_status(self):
-        rep = MagicMock()
-        rep.json.return_value = {"status": "DEGRADED"}
-        async_client_cls, _ = _client_returning(rep)
-
-        with patch("src.app.shared.api.health.httpx.AsyncClient", async_client_cls):
+        with patch("src.app.shared.api.health.session_maker", maker):
             response = self.client.get("/health/db")
 
-        self.assertEqual(response.json(), {"status": "DEGRADED"})
+        self.assertEqual(response.status_code, 503)
+        detail = response.json()["detail"]
+        self.assertEqual(detail["code"], "DATABASE_UNAVAILABLE")
+        self.assertNotIn("secret", response.text)
 
-    def test_db_health_invalid_json_returns_403(self):
-        rep = MagicMock()
-        rep.json.side_effect = json.JSONDecodeError("bad", "doc", 0)
-        async_client_cls, _ = _client_returning(rep)
+    def test_db_health_503_when_connection_fails_with_os_error(self):
+        maker = MagicMock(side_effect=OSError("connection refused"))
 
-        with patch("src.app.shared.api.health.httpx.AsyncClient", async_client_cls):
+        with patch("src.app.shared.api.health.session_maker", maker):
             response = self.client.get("/health/db")
 
-        self.assertEqual(response.status_code, 403)
+        self.assertEqual(response.status_code, 503)
+        self.assertEqual(response.json()["detail"]["code"], "DATABASE_UNAVAILABLE")
+        self.assertNotIn("connection refused", response.text)
