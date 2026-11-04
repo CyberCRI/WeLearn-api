@@ -161,10 +161,10 @@ class UserApiExtraTests(unittest.TestCase):
 
         self.assertEqual(response.status_code, 500)
 
-    # ---- DELETE /bookmarks/:document_id ----
+    # ---- DELETE /bookmarks/{document_id} ----
 
     def _bookmark_url(self):
-        return f"{BASE}/bookmarks/:document_id"
+        return f"{BASE}/bookmarks/{self.document_id}"
 
     def test_delete_bookmark_returns_document_id(self):
         delete_one = self._patch(
@@ -173,7 +173,6 @@ class UserApiExtraTests(unittest.TestCase):
 
         response = client.delete(
             self._bookmark_url(),
-            params={"document_id": str(self.document_id)},
             headers=self.headers,
         )
 
@@ -186,7 +185,6 @@ class UserApiExtraTests(unittest.TestCase):
 
         response = client.delete(
             self._bookmark_url(),
-            params={"document_id": str(self.document_id)},
             headers=self.headers,
         )
 
@@ -198,20 +196,18 @@ class UserApiExtraTests(unittest.TestCase):
 
         response = client.delete(
             self._bookmark_url(),
-            params={"document_id": str(self.document_id)},
             headers=self.headers,
         )
 
         self.assertEqual(response.status_code, 500)
 
-    # ---- POST /bookmarks/:document_id ----
+    # ---- POST /bookmarks/{document_id} ----
 
     def test_add_bookmark_value_error_returns_400(self):
         self._patch("add_user_bookmark_sync", side_effect=ValueError("exists"))
 
         response = client.post(
             self._bookmark_url(),
-            params={"document_id": str(self.document_id)},
             headers=self.headers,
         )
 
@@ -223,11 +219,62 @@ class UserApiExtraTests(unittest.TestCase):
 
         response = client.post(
             self._bookmark_url(),
-            params={"document_id": str(self.document_id)},
             headers=self.headers,
         )
 
         self.assertEqual(response.status_code, 500)
+
+    def test_add_bookmark_returns_document_id(self):
+        add_one = self._patch("add_user_bookmark_sync", return_value=self.document_id)
+
+        response = client.post(self._bookmark_url(), headers=self.headers)
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.json(), {"added": str(self.document_id)})
+        add_one.assert_called_once_with(self.user_id, self.document_id)
+
+    def test_bookmark_non_uuid_path_returns_422(self):
+        add_one = self._patch("add_user_bookmark_sync")
+        delete_one = self._patch("delete_user_bookmark_sync")
+
+        for method in (client.post, client.delete):
+            with self.subTest(method=method.__name__):
+                response = method(f"{BASE}/bookmarks/not-a-uuid", headers=self.headers)
+
+                self.assertEqual(response.status_code, 422)
+                self.assertEqual(response.json()["detail"][0]["loc"][0], "path")
+        add_one.assert_not_called()
+        delete_one.assert_not_called()
+
+    # ---- legacy /bookmarks/:document_id?document_id=... (deprecated) ----
+
+    def test_legacy_add_bookmark_reads_document_id_from_query(self):
+        add_one = self._patch("add_user_bookmark_sync", return_value=self.document_id)
+
+        response = client.post(
+            f"{BASE}/bookmarks/:document_id",
+            params={"document_id": str(self.document_id)},
+            headers=self.headers,
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.json(), {"added": str(self.document_id)})
+        add_one.assert_called_once_with(self.user_id, self.document_id)
+
+    def test_legacy_delete_bookmark_reads_document_id_from_query(self):
+        delete_one = self._patch(
+            "delete_user_bookmark_sync", return_value=self.document_id
+        )
+
+        response = client.delete(
+            f"{BASE}/bookmarks/:document_id",
+            params={"document_id": str(self.document_id)},
+            headers=self.headers,
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.json(), {"deleted": str(self.document_id)})
+        delete_one.assert_called_once_with(self.user_id, self.document_id)
 
     # ---- POST /institution-data ----
 
