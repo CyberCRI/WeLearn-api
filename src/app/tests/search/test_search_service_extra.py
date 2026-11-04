@@ -232,15 +232,11 @@ class EmbedQueryTests(ModelCacheMixin, IsolatedAsyncioTestCase):
         self.assertIs(result, embedding)
 
     async def test_get_query_embed_with_subject_flavors_embedding(self):
+        # B-1: real ndarray subject vector, flavored_with_subject not mocked
         embedding = np.array([0.1, 0.2])
-        subject_vector = [1.0, 1.0]
-        with (
-            mock.patch.object(
-                self.service, "_embed_query", mock.AsyncMock(return_value=embedding)
-            ),
-            mock.patch.object(
-                SearchService, "flavored_with_subject", return_value="flavored"
-            ) as flavored,
+        subject_vector = np.array([1.0, -1.0], dtype=np.float32)
+        with mock.patch.object(
+            self.service, "_embed_query", mock.AsyncMock(return_value=embedding)
         ):
             result = await self.service.get_query_embed(
                 model="m",
@@ -249,10 +245,8 @@ class EmbedQueryTests(ModelCacheMixin, IsolatedAsyncioTestCase):
                 subject_influence_factor=3.0,
             )
 
-        flavored.assert_called_once_with(
-            sdg_emb=embedding, subject_emb=subject_vector, discipline_factor=3.0
-        )
-        self.assertEqual(result, "flavored")
+        self.assertIsInstance(result, np.ndarray)
+        np.testing.assert_allclose(result, [3.1, -2.8], rtol=1e-6)
 
 
 class QdrantSearchTests(ModelCacheMixin, IsolatedAsyncioTestCase):
@@ -398,7 +392,8 @@ class SearchHandlerTests(ModelCacheMixin, IsolatedAsyncioTestCase):
 
         self.patches = {
             "subject_vector": mock.patch(
-                f"{SEARCH_MODULE}.get_subject_vector", return_value=[0.5, 0.5]
+                f"{SEARCH_MODULE}.get_subject_vector",
+                return_value=np.array([0.5, 0.5]),
             ),
             "docs": mock.patch(
                 f"{SEARCH_MODULE}.get_documents_according_slice_ids",
@@ -459,12 +454,12 @@ class SearchHandlerTests(ModelCacheMixin, IsolatedAsyncioTestCase):
 
         self.mocks["collection"].assert_awaited_once_with(lang="mul")
         self.mocks["subject_vector"].assert_called_once_with("maths", "m")
-        self.mocks["embed"].assert_awaited_once_with(
-            model="m",
-            query="water",
-            subject_vector=[0.5, 0.5],
-            subject_influence_factor=3,
-        )
+        self.mocks["embed"].assert_awaited_once()
+        embed_kwargs = self.mocks["embed"].await_args.kwargs
+        self.assertEqual(embed_kwargs["model"], "m")
+        self.assertEqual(embed_kwargs["query"], "water")
+        self.assertEqual(embed_kwargs["subject_influence_factor"], 3)
+        np.testing.assert_array_equal(embed_kwargs["subject_vector"], [0.5, 0.5])
         search_kwargs = self.mocks["search"].call_args.kwargs
         self.assertEqual(search_kwargs["collection_info"], "collection_welearn_mul_m")
         self.assertEqual(search_kwargs["nb_results"], 12)
@@ -487,6 +482,37 @@ class SearchHandlerTests(ModelCacheMixin, IsolatedAsyncioTestCase):
         self.assertEqual(first.payload.document_sub_corpus, "sub")
         self.assertEqual(first.payload.document_sdg, [4, 13])
         self.assertEqual(result[1].payload.document_sdg, [])
+
+    async def test_subject_flavors_query_embedding_end_to_end(self):
+        # B-1: only the DB and the embedding model are mocked, so the subject
+        # vector goes through get_subject_vector, get_query_embed and
+        # flavored_with_subject for real
+        self.patches["subject_vector"].stop()
+        self.patches["embed"].stop()
+        subject = np.array([1.0, -1.0], dtype=np.float32)
+        with (
+            mock.patch(
+                f"{SEARCH_MODULE}.get_embeddings_model_id_according_name",
+                return_value=[SimpleNamespace(id=uuid.uuid4())],
+            ),
+            mock.patch(
+                f"{SEARCH_MODULE}.get_subject",
+                return_value=SimpleNamespace(embedding=subject.tobytes()),
+            ),
+            mock.patch.object(
+                self.service,
+                "_embed_query",
+                mock.AsyncMock(return_value=np.array([0.1, 0.2])),
+            ),
+        ):
+            result = await self.service.search_handler(
+                background_tasks=mock.MagicMock(), qp=self._query()
+            )
+
+        embedding = self.mocks["search"].call_args.kwargs["embedding"]
+        self.assertIsInstance(embedding, np.ndarray)
+        np.testing.assert_allclose(embedding, [3.1, -2.8], rtol=1e-6)
+        self.assertEqual(len(result), 2)
 
     async def test_by_document_uses_grouped_search_and_document_sdg(self):
         result = await self.service.search_handler(
@@ -601,8 +627,9 @@ class GetSubjectVectorTests(TestCase):
 
         result = get_subject_vector("maths", "m")
 
-        self.assertIsInstance(result, list)
-        self.assertEqual(result, [0.25, -1.5, 3.0])
+        # an ndarray, not a list: flavored_with_subject computes `factor * vector`
+        self.assertIsInstance(result, np.ndarray)
+        np.testing.assert_array_equal(result, vector)
 
 
 class GetQdrantTests(IsolatedAsyncioTestCase):

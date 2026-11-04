@@ -89,7 +89,7 @@ class SearchService:
     @staticmethod
     def flavored_with_subject(
         sdg_emb: ndarray, subject_emb: ndarray, discipline_factor: int | float = 2
-    ):
+    ) -> ndarray:
         embedding = sdg_emb + (discipline_factor * subject_emb)
 
         return embedding
@@ -133,12 +133,13 @@ class SearchService:
         self,
         model: str,
         query: str,
-        subject_vector: list[float] | None = None,
+        subject_vector: np.ndarray | None = None,
         subject_influence_factor: float = 1.0,
     ) -> np.ndarray:
         embedding = await self._embed_query(query, model)
 
-        if subject_vector:
+        # `if subject_vector:` would raise on an ndarray (ambiguous truth value)
+        if subject_vector is not None:
             embedding = self.flavored_with_subject(
                 sdg_emb=embedding,
                 subject_emb=subject_vector,
@@ -499,13 +500,14 @@ def concatenate_same_doc_id_slices(
 
 
 @log_time_and_error_sync
-def get_subject_vector(subject: str | None, model_name: str) -> list[float] | None:
+def get_subject_vector(subject: str | None, model_name: str) -> np.ndarray | None:
     """
     Get the subject vector from the database.
     Args:
         subject: The subject to get. If None, return None.
 
-    Returns: The subject vector as a list of floats, or None if not found.
+    Returns: The subject vector as an ndarray, or None if not found. It must stay
+    an ndarray: `flavored_with_subject` scales it with `factor * vector`.
 
     """
     if not subject:
@@ -523,5 +525,4 @@ def get_subject_vector(subject: str | None, model_name: str) -> list[float] | No
     if not subject_from_db:
         return None
 
-    embedding = convert_embedding_bytes(subject_from_db.embedding)
-    return embedding.tolist()
+    return convert_embedding_bytes(subject_from_db.embedding)
