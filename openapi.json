@@ -4704,7 +4704,7 @@
     },
     "/health/db": {
       "get": {
-        "description": "## Perform a Health Check\nEndpoint to perform a healthcheck on. This endpoint can primarily be used Docker\nto ensure a robust container orchestration and management is in place. Other\nservices which rely on proper functioning of the API service will not deploy if this\nendpoint returns any other HTTP status code except 200 (OK).\nReturns:\n    HealthCheck: Returns a JSON response with the health status",
+        "description": "## Perform a Database Health Check\nRuns `SELECT 1` against Postgres. Returns 200 (OK) when the database answers,\n503 (Service Unavailable) with code `DATABASE_UNAVAILABLE` otherwise.\nReturns:\n    HealthCheck: Returns a JSON response with the health status",
         "operationId": "healthcheck-get_db_health",
         "responses": {
           "200": {
@@ -4716,11 +4716,20 @@
               }
             },
             "description": "Return HTTP Status Code 200 (OK)"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Database unavailable"
           }
         },
-        "summary": "Perform a Health Check",
+        "summary": "Perform a Database Health Check",
         "tags": [
-          "healthcheck",
           "healthcheck"
         ]
       }
