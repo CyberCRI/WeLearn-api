@@ -77,28 +77,6 @@ class SyllabusOrchestrator:
 
         logger.info("Orchestrator initialized")
 
-    def get_total_tokens(self) -> int:
-        """
-        Get total token usage across all agents
-
-        Returns:
-            Total estimated tokens used
-        """
-        agents = [
-            self.course_description_agent,
-            self.learning_objectives_agent,
-            self.sustainability_agent,
-            self.learning_outcomes_agent,
-            self.competency_mapping_agent,
-            self.pedagogical_engineer_agent,
-            self.activity_recommendation_agent,
-            self.activity_guide_generator_agent,
-        ]
-
-        total = sum(agent.total_tokens for agent in agents)
-        logger.debug(f"Total tokens across all agents: {total}")
-        return total
-
     # ========================================
     # Phase 0: Input & Intent Clarification
     # ========================================

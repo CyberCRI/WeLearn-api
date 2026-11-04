@@ -2,17 +2,34 @@
 Base agent class with retry logic and error handling
 """
 
+import asyncio
 import logging
 import time
-from typing import Any, Callable, Dict, TypeVar
+from typing import Any, Awaitable, Callable, Dict, TypeVar
+
+from baml_py.errors import BamlClientFinishReasonError, BamlValidationError
 
 logger = logging.getLogger(__name__)
 
 T = TypeVar("T")
 
+# Errors worth re-running the whole BAML function for: the request succeeded but the
+# LLM output could not be parsed into the expected type, or was cut short. A new
+# sampling usually fixes it.
+#
+# Transport errors (connection errors, timeouts, HTTP 429/5xx) are deliberately NOT
+# listed: the `MistralSmall` client in `src/app/baml_src/clients.baml` already retries
+# them with its `retry_policy`. Retrying them here too would multiply the attempts
+# (3 HTTP calls x max_retries), each one bounded by a long request timeout. They reach
+# the caller unchanged once BAML gives up, like any other non-transient error.
+RETRYABLE_ERRORS: tuple[type[BaseException], ...] = (
+    BamlValidationError,
+    BamlClientFinishReasonError,
+)
+
 
 class AgentError(Exception):
-    """Custom exception for agent errors"""
+    """Raised when an agent still fails after all its retry attempts"""
 
     pass
 
@@ -20,121 +37,79 @@ class AgentError(Exception):
 class BaseAgent:
     """Base class for all agents with common functionality"""
 
-    def __init__(self, name: str, max_retries: int = 3):
+    def __init__(self, name: str, max_retries: int = 2):
         """
         Initialize agent
 
         Args:
             name: Agent name for logging
-            max_retries: Maximum number of retry attempts
+            max_retries: Maximum number of attempts for output (parse) failures
         """
         self.name = name
         self.max_retries = max_retries
         self.logger = logging.getLogger(f"agent.{name}")
-        self.total_tokens = 0  # Track total tokens used by this agent
-        self.call_count = 0  # Track number of calls
 
-    def with_retry(self, func: Callable[..., T], *args, **kwargs) -> T:
+    async def with_retry(self, func: Callable[..., Awaitable[T]], *args, **kwargs) -> T:
         """
-        Execute function with retry logic and token tracking
+        Await ``func(*args, **kwargs)``, retrying on LLM output failures.
+
+        Two retry layers exist, with distinct jobs:
+
+        - the BAML client (``retry_policy`` in ``clients.baml``) retries the HTTP
+          request itself: connection errors, timeouts, 429 and 5xx (BAML does not
+          filter by status, so other 4xx are retried there too);
+        - this method re-runs the whole call only when the LLM answered but its
+          output was unusable (``RETRYABLE_ERRORS``), up to ``max_retries`` attempts
+          with exponential backoff (1s, 2s, ...) that does not block the event loop.
+
+        Any other exception (transport errors already retried by BAML, HTTP 4xx,
+        programming errors) propagates immediately and unchanged.
 
         Args:
-            func: Function to execute
+            func: Async function to execute
             *args, **kwargs: Arguments to pass to function
 
         Returns:
             Function result
 
         Raises:
-            AgentError: If all retries fail
+            AgentError: If every attempt failed with a retryable error
         """
-        attempt = 1
-        last_error = None
+        last_error: BaseException | None = None
 
-        while attempt <= self.max_retries:
+        for attempt in range(1, self.max_retries + 1):
+            start_time = time.monotonic()
             try:
-                start_time = time.time()
-                self.logger.info(f"Attempt {attempt}/{self.max_retries}")
-
-                result = func(*args, **kwargs)
-
-                duration = time.time() - start_time
-                self.logger.info(f"Success in {duration:.2f}s")
-
-                # Estimate token usage (rough approximation)
-                # BAML doesn't expose token counts directly, so we estimatebased on input/output sizes
-                # 1 token ≈ 4 characters for English text
-                estimated_tokens = self._estimate_tokens(args, kwargs, result)
-                self.total_tokens += estimated_tokens
-                self.call_count += 1
-
-                self.logger.info(f"Estimated tokens for this call: {estimated_tokens}")
-                self.logger.info(
-                    f"Total tokens used by {self.name}: {self.total_tokens}"
-                )
-
-                return result
-
-            except Exception as e:
+                result = await func(*args, **kwargs)
+            except RETRYABLE_ERRORS as e:
                 last_error = e
-                duration = time.time() - start_time
-
                 self.logger.warning(
-                    f"Attempt {attempt}/{self.max_retries} failed after {duration:.2f}s: {str(e)}"
+                    "Attempt %s/%s failed after %.2fs: %s",
+                    attempt,
+                    self.max_retries,
+                    time.monotonic() - start_time,
+                    type(e).__name__,
                 )
-
                 if attempt < self.max_retries:
-                    # Exponential backoff
                     wait_time = 2 ** (attempt - 1)
-                    self.logger.info(f"Retrying in {wait_time}s...")
-                    time.sleep(wait_time)
+                    self.logger.info("Retrying in %ss...", wait_time)
+                    await asyncio.sleep(wait_time)
+                continue
 
-                attempt += 1
+            self.logger.info(
+                "Success on attempt %s/%s in %.2fs",
+                attempt,
+                self.max_retries,
+                time.monotonic() - start_time,
+            )
+            return result
 
-        # All retries failed
         error_msg = (
-            f"{self.name} failed after {self.max_retries} attempts: {str(last_error)}"
+            f"{self.name} failed after {self.max_retries} attempts: "
+            f"{type(last_error).__name__}"
         )
         self.logger.error(error_msg)
         raise AgentError(error_msg) from last_error
-
-    def _estimate_tokens(self, args, kwargs, result) -> int:
-        """
-        Estimate token usage based on input/output sizes
-
-        Rough approximation: 1 token ≈ 4 characters
-
-        Args:
-            args: Function args
-            kwargs: Function kwargs
-            result: Function result
-
-        Returns:
-            Estimated token count
-        """
-
-        def count_chars(obj):
-            """Recursively count characters in an object"""
-            if isinstance(obj, str):
-                return len(obj)
-            elif isinstance(obj, (list, tuple)):
-                return sum(count_chars(item) for item in obj)
-            elif isinstance(obj, dict):
-                return sum(count_chars(v) for v in obj.values())
-            elif hasattr(obj, "__dict__"):
-                return count_chars(obj.__dict__)
-            else:
-                return len(str(obj))
-
-        input_chars = sum(count_chars(arg) for arg in args)
-        input_chars += sum(count_chars(v) for v in kwargs.values())
-        output_chars = count_chars(result)
-
-        # Total chars / 4 ≈ tokens
-        # Multiply by 1.5 to account for prompt structure, formatting, etc. --> TODO:NOT SURE ABOUT THIS
-        estimated = int((input_chars + output_chars) / 4 * 1.5)
-
-        return estimated
 
     def log_call(
         self,

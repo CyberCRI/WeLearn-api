@@ -1,11 +1,20 @@
 import unittest
 from unittest.mock import AsyncMock, patch
 
+from baml_py.errors import BamlValidationError
+
 from src.app.baml_client.async_client import types
 from src.app.baml_client.types import SessionMode
+from src.app.tutor.services.b_agents.base import AgentError
 from src.app.tutor.services.b_agents.pedagogical_engineer_agent import (
     PedagogicalEngineerAgent,
 )
+
+SLEEP_PATH = "src.app.tutor.services.b_agents.base.asyncio.sleep"
+
+
+def validation_error() -> BamlValidationError:
+    return BamlValidationError("prompt", "Failed to parse", "{", "")
 
 
 class TestPedagogicalEngineerAgent(unittest.IsolatedAsyncioTestCase):
@@ -250,7 +259,7 @@ class TestPedagogicalEngineerAgent(unittest.IsolatedAsyncioTestCase):
         "src.app.tutor.services.b_agents.pedagogical_engineer_agent.b.ValidatePedagogicalFramework",
         new_callable=AsyncMock,
     )
-    async def test_validate_propagates_exception(
+    async def test_validate_propagates_non_retryable_error(
         self,
         mock_validate,
     ):
@@ -268,3 +277,29 @@ class TestPedagogicalEngineerAgent(unittest.IsolatedAsyncioTestCase):
                 sustainability_map=self.sustainability_map,
                 metadata=self.metadata,
             )
+
+        mock_validate.assert_awaited_once()
+
+    @patch(
+        "src.app.tutor.services.b_agents.pedagogical_engineer_agent.b.ValidatePedagogicalFramework",
+        new_callable=AsyncMock,
+    )
+    async def test_validate_retries_output_errors_then_raises_agent_error(
+        self,
+        mock_validate,
+    ):
+        mock_validate.side_effect = [
+            validation_error() for _ in range(self.agent.max_retries)
+        ]
+
+        with patch(SLEEP_PATH, new_callable=AsyncMock), self.assertRaises(AgentError):
+            await self.agent.validate(
+                description=self.description,
+                objectives=self.objectives,
+                outcomes=self.outcomes,
+                competencies=self.competencies,
+                sustainability_map=self.sustainability_map,
+                metadata=self.metadata,
+            )
+
+        self.assertEqual(mock_validate.await_count, self.agent.max_retries)

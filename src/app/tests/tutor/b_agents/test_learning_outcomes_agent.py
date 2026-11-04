@@ -1,11 +1,20 @@
 import unittest
 from unittest.mock import AsyncMock, patch
 
+from baml_py.errors import BamlValidationError
+
 from src.app.baml_client.async_client import types
 from src.app.baml_client.types import SessionMode
+from src.app.tutor.services.b_agents.base import AgentError
 from src.app.tutor.services.b_agents.learning_outcomes_agent import (
     LearningOutcomesAgent,
 )
+
+SLEEP_PATH = "src.app.tutor.services.b_agents.base.asyncio.sleep"
+
+
+def validation_error() -> BamlValidationError:
+    return BamlValidationError("prompt", "Failed to parse", "{", "")
 
 
 class TestLearningOutcomesAgent(unittest.IsolatedAsyncioTestCase):
@@ -226,7 +235,7 @@ class TestLearningOutcomesAgent(unittest.IsolatedAsyncioTestCase):
         "src.app.tutor.services.b_agents.learning_outcomes_agent.b.GenerateLearningOutcomes",
         new_callable=AsyncMock,
     )
-    async def test_generate_propagates_exception(
+    async def test_generate_propagates_non_retryable_error(
         self,
         mock_generate,
     ):
@@ -241,3 +250,26 @@ class TestLearningOutcomesAgent(unittest.IsolatedAsyncioTestCase):
                 sustainability_map=self.sustainability_map,
                 metadata=self.metadata,
             )
+
+        mock_generate.assert_awaited_once()
+
+    @patch(
+        "src.app.tutor.services.b_agents.learning_outcomes_agent.b.GenerateLearningOutcomes",
+        new_callable=AsyncMock,
+    )
+    async def test_generate_retries_output_errors_then_raises_agent_error(
+        self,
+        mock_generate,
+    ):
+        mock_generate.side_effect = [
+            validation_error() for _ in range(self.agent.max_retries)
+        ]
+
+        with patch(SLEEP_PATH, new_callable=AsyncMock), self.assertRaises(AgentError):
+            await self.agent.generate(
+                objectives=self.objectives,
+                sustainability_map=self.sustainability_map,
+                metadata=self.metadata,
+            )
+
+        self.assertEqual(mock_generate.await_count, self.agent.max_retries)
