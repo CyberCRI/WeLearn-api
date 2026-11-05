@@ -51,9 +51,10 @@ shareName: ml-models
 
 runOnGpu: false # Schedule on the GPU node pool to lower its cost
 
-allowedHostsRegexes:
-  localhost: |-
-    http:\/\/localhost:5173
+# CORS origins allowed with credentials, joined into CLIENT_ORIGINS_REGEX.
+# Helm deep-merges maps, so any key here would reach every environment
+# (including prod). Keep this empty: each values.<env>.yaml lists its own origins.
+allowedHostsRegexes: {}
 
 rateLimiting:
   enabled: false
