@@ -497,11 +497,10 @@ class TestBamlStepEndpoints(TutorApiTestCase):
             response.json(),
             {"objectives": [{"number": 1, "text": "Obj", "bloom_level": None}]},
         )
-        # user_description is not forwarded to this step
         mock_generate.assert_awaited_once_with(
             description="desc",
             mode="mode_2",
-            metadata=self.expected_metadata(),
+            metadata=self.expected_metadata(user_description="x"),
             context_text="ctx",
             output_language="en",
         )
@@ -701,6 +700,132 @@ class TestBamlStepEndpoints(TutorApiTestCase):
         self.assertEqual(response.status_code, 422)
 
 
+class TestBamlStepPassThrough(TutorApiTestCase):
+    """Regression for J-2: the step endpoints used to rebuild CourseMetadata and
+    LearningObjectives field by field, and several copies dropped
+    user_description. The request models already hold the BAML types, so they
+    must reach BAML unchanged."""
+
+    METADATA = {**COURSE_METADATA, "user_description": "Focus on wetlands"}
+    SUSTAINABILITY_MAP = {
+        "connections": [],
+        "integration_strategy": "strategy",
+        "resources_used": [],
+    }
+
+    def assert_metadata_forwarded(self, metadata):
+        self.assertEqual(metadata, types.CourseMetadata(**self.METADATA))
+        self.assertEqual(metadata.user_description, "Focus on wetlands")
+
+    def assert_objectives_forwarded(self, objectives):
+        self.assertEqual(objectives, types.LearningObjectives(**OBJECTIVES))
+        self.assertEqual(
+            [obj.bloom_level for obj in objectives.objectives], ["understand", None]
+        )
+
+    @patch(f"{ROUTER}.b.GenerateLearningObjectives", new_callable=AsyncMock)
+    def test_learning_objectives_forwards_user_description(self, mock_generate):
+        mock_generate.return_value = types.LearningObjectives(objectives=[])
+
+        response = self.client.post(
+            f"{BASE}/syllabus/learning_objectives",
+            json={
+                "description": "desc",
+                "course_metadata": self.METADATA,
+                "mode": "mode_1",
+                "context_text": "",
+            },
+            headers=HEADERS,
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assert_metadata_forwarded(mock_generate.await_args.kwargs["metadata"])
+
+    @patch(f"{ROUTER}.b.IntegrateSustainability", new_callable=AsyncMock)
+    def test_sustainability_forwards_user_description_and_objectives(
+        self, mock_integrate
+    ):
+        mock_integrate.return_value = types.SustainabilityIntegration(
+            **self.SUSTAINABILITY_MAP
+        )
+
+        response = self.client.post(
+            f"{BASE}/syllabus/sustainability_integration",
+            json={
+                "description": "desc",
+                "objectives": OBJECTIVES,
+                "course_metadata": self.METADATA,
+                "sdg_resources": [],
+                "mode": "mode_1",
+            },
+            headers=HEADERS,
+        )
+
+        self.assertEqual(response.status_code, 200)
+        kwargs = mock_integrate.await_args.kwargs
+        self.assert_metadata_forwarded(kwargs["metadata"])
+        self.assert_objectives_forwarded(kwargs["objectives"])
+
+    @patch(f"{ROUTER}.b.GenerateLearningOutcomes", new_callable=AsyncMock)
+    def test_learning_outcomes_forwards_user_description_and_objectives(
+        self, mock_generate
+    ):
+        mock_generate.return_value = types.LearningOutcomes(outcomes=[])
+
+        response = self.client.post(
+            f"{BASE}/syllabus/learning_outcomes",
+            json={
+                "description": "desc",
+                "objectives": OBJECTIVES,
+                "course_metadata": self.METADATA,
+                "sustainability_map": self.SUSTAINABILITY_MAP,
+            },
+            headers=HEADERS,
+        )
+
+        self.assertEqual(response.status_code, 200)
+        kwargs = mock_generate.await_args.kwargs
+        self.assert_metadata_forwarded(kwargs["metadata"])
+        self.assert_objectives_forwarded(kwargs["objectives"])
+
+    @patch(f"{ROUTER}.SyllabusOrchestrator")
+    def test_generate_forwards_user_description_in_metadata(
+        self, mock_orchestrator_cls
+    ):
+        orchestrator = mock_orchestrator_cls.return_value
+        orchestrator.run = AsyncMock(return_value={})
+
+        response = self.client.post(
+            f"{BASE}/api/generate",
+            json={"mode": "mode_1", "course_metadata": self.METADATA},
+            headers=HEADERS,
+        )
+
+        self.assertEqual(response.status_code, 200)
+        user_input = orchestrator.run.await_args.args[0]
+        self.assert_metadata_forwarded(user_input.metadata)
+        self.assertEqual(user_input.provided_description, "Focus on wetlands")
+
+    @patch(f"{ROUTER}.SyllabusOrchestrator")
+    def test_generate_empty_user_description_is_not_provided(
+        self, mock_orchestrator_cls
+    ):
+        orchestrator = mock_orchestrator_cls.return_value
+        orchestrator.run = AsyncMock(return_value={})
+
+        response = self.client.post(
+            f"{BASE}/api/generate",
+            json={
+                "mode": "mode_1",
+                "course_metadata": {**COURSE_METADATA, "user_description": ""},
+            },
+            headers=HEADERS,
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertIsNone(orchestrator.run.await_args.args[0].provided_description)
+
+
 class TestGenerateSyllabus(TutorApiTestCase):
     URL = f"{BASE}/api/generate"
 
@@ -746,7 +871,7 @@ class TestGenerateSyllabus(TutorApiTestCase):
         self.assertIsInstance(user_input, UserInput)
         self.assertEqual(user_input.mode, "mode_1")
         self.assertEqual(user_input.provided_description, "notes")
-        self.assertIsNone(user_input.metadata.user_description)
+        self.assertEqual(user_input.metadata.user_description, "notes")
         self.assertEqual(user_input.metadata.topic, "Ecology")
         self.assertEqual(
             orchestrator.run.await_args.kwargs, {"context_text": "some context"}
