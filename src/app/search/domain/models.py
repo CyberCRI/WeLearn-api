@@ -7,7 +7,7 @@ from qdrant_client.http.models import Range, ScoredPoint
 from qdrant_client.models import FieldCondition, Filter, MatchAny
 
 from src.app.shared.domain.documents import EnhancedDocumentSlice
-from src.app.shared.utils.decorators import log_time_and_error_sync
+from src.app.shared.utils.decorators import log_time_and_error
 from src.app.shared.utils.logger import logger as logger_utils
 
 logger = logger_utils(__name__)
@@ -148,7 +148,7 @@ class SearchFilters:
         for filter_item in self.filters:
             self.dict_filters[filter_item.key] = filter_item.value
 
-    @log_time_and_error_sync
+    @log_time_and_error
     def build_filters(self) -> Filter | None:
         if not self.filters:
             return None

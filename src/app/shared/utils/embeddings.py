@@ -2,10 +2,10 @@ from functools import cache
 
 import numpy
 
-from src.app.shared.utils.decorators import log_time_and_error_sync
+from src.app.shared.utils.decorators import log_time_and_error
 
 
-@log_time_and_error_sync
+@log_time_and_error
 @cache
 def convert_embedding_bytes(
     embeddings_byte: bytes, dtype=numpy.float32
