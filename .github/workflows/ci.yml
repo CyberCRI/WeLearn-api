@@ -12,7 +12,15 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  # runs on the source, without registry credentials: Dependabot PRs get test results too
+  lint-and-test:
+    uses: ./.github/workflows/lint-and-test.yml
+
+  # the image is only built and pushed once every check passed
   build-docker:
+    needs: lint-and-test
+    # Dependabot runs only get Dependabot secrets: no registry or submodule access
+    if: github.actor != 'dependabot[bot]'
     uses: CyberCRI/github-workflows/.github/workflows/build-push.yaml@main
     with:
       registry-name: ${{ vars.DOCKER_PROD_REGISTRY }}
@@ -25,18 +33,6 @@ jobs:
       submodules-app-installation-id: ${{ secrets.INFRA_BOT_APP_INSTALLATION_ID }}
       registry-username: ${{ secrets.DOCKER_PROD_USERNAME }}
       registry-password: ${{ secrets.DOCKER_PROD_PASSWORD }}
-
-  lint-and-test:
-    uses: ./.github/workflows/lint-and-test.yml
-    with:
-      registry-name: ${{ vars.DOCKER_PROD_REGISTRY }}
-      image-name: welearn-api
-      image-tag: ${{ github.sha }}
-    secrets:
-      registry-username: ${{ secrets.DOCKER_PROD_USERNAME }}
-      registry-password: ${{ secrets.DOCKER_PROD_PASSWORD }}
-    needs:
-      - build-docker
 
   tag-deploy:
     needs:
