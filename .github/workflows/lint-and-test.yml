@@ -1,40 +1,41 @@
 name: Tests
 
+# Lint and tests on the source, in a plain Python container: no image, no registry
+# credentials and no private submodule needed. It runs before the image is built
+# (see ci.yml), and it also works for Dependabot PRs, which only get Dependabot secrets.
 on:
   workflow_call:
-    inputs:
-      registry-name:
-        type: string
-        required: true
-        description: 'The name of the registry to push to'
-      image-name:
-        type: string
-        required: true
-        description: 'The name of the image to push'
-      image-tag:
-        type: string
-        required: true
-        description: 'The tag of the image to push'
-    secrets:
-      registry-username:
-        required: true
-        description: 'The username on the registry'
-      registry-password:
-        required: true
-        description: 'The password on the registry'
+
 jobs:
   test:
-    defaults:
-      run:
-        working-directory: /app
     runs-on: wla-lint-and-test-runner
-    container:
-      image: ${{ inputs.registry-name }}/${{ inputs.image-name }}:${{ inputs.image-tag }}
-      credentials:
-        username: ${{ secrets.registry-username }}
-        password: ${{ secrets.registry-password }}
+    # same Python as the Dockerfile
+    container: python:3.14-slim
+    permissions:
+      contents: read
+    env:
+      POETRY_VERSION: 2.5.1
+      POETRY_CACHE_DIR: /tmp/poetry-cache
+      POETRY_NO_INTERACTION: 1
     steps:
-      - name: linting and styling
-        run: make lint-check
-      - name: unit tests
-        run: make test
+      - name: Install system packages
+        run: apt-get update && apt-get install -y --no-install-recommends make git
+
+      # devops-toolbox (private submodule) is only used by the image entrypoint
+      - uses: actions/checkout@v4
+
+      - name: Cache Poetry packages and virtualenv
+        uses: actions/cache@v4
+        with:
+          path: /tmp/poetry-cache
+          key: poetry-${{ runner.os }}-py3.14-${{ hashFiles('poetry.lock') }}
+
+      - name: Install dependencies
+        run: |
+          pip install --no-cache-dir "poetry==${POETRY_VERSION}"
+          poetry install --with dev --without metrics --no-root
+
+      # the same checks as the pre-push hook: lint-check-poetry + test-poetry (BAML
+      # generation, coverage gate)
+      - name: Lint and tests
+        run: make ci-poetry
