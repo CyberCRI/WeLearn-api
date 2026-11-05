@@ -1,7 +1,9 @@
+import time
 import uuid
 from unittest import TestCase
 from unittest.mock import AsyncMock, MagicMock, patch
 
+from fastapi import HTTPException
 from fastapi.testclient import TestClient
 
 from src.app.baml_client.async_client import types
@@ -13,7 +15,6 @@ from src.app.shared.domain.documents import (
     EnhancedDocumentSlicePayloadModel,
 )
 from src.app.shared.domain.exceptions import NoResultsError
-from src.app.tutor.api import router as tutor_router
 from src.app.tutor.domain.models import SyllabusResponseAgent, UserInput
 from src.main import app
 
@@ -88,25 +89,6 @@ class TutorApiTestCase(TestCase):
 
         self.client = TestClient(app)
         self.safe_client = TestClient(app, raise_server_exceptions=False)
-
-
-class TestBackoffHandler(TestCase):
-    def test_backoff_hdlr_logs_details(self):
-        with patch(f"{ROUTER}.logger") as mock_logger:
-            tutor_router.backoff_hdlr(
-                {
-                    "wait": 1.234,
-                    "tries": 2,
-                    "target": "fn",
-                    "args": (1,),
-                    "kwargs": {"a": 1},
-                }
-            )
-
-        mock_logger.info.assert_called_once_with(
-            "Backing off 1.2 seconds after 2 tries calling function fn "
-            "with args (1,) and kwargs {'a': 1}"
-        )
 
 
 class TestMasFilesContent(TutorApiTestCase):
@@ -270,8 +252,35 @@ class TestSearchExtracts(TutorApiTestCase):
         self.assertEqual(
             response.json(), {"extracts": [], "nb_results": 0, "documents": []}
         )
-        # NoResultsError is a BaseException: backoff does not retry it
         mock_search.assert_awaited_once()
+
+    @patch(f"{ROUTER}.search_multi_inputs", new_callable=AsyncMock)
+    def test_client_error_is_not_retried(self, mock_search):
+        mock_search.side_effect = HTTPException(status_code=400, detail="bad")
+
+        start = time.monotonic()
+        response = self.client.post(
+            self.URL, json={"summaries": ["climate"]}, headers=HEADERS
+        )
+        elapsed = time.monotonic() - start
+
+        self.assertEqual(response.status_code, 400)
+        mock_search.assert_awaited_once()
+        self.assertLess(elapsed, 1.0)
+
+    @patch(f"{ROUTER}.search_multi_inputs", new_callable=AsyncMock)
+    def test_unexpected_error_is_not_retried(self, mock_search):
+        mock_search.side_effect = ValueError("boom")
+
+        start = time.monotonic()
+        response = self.safe_client.post(
+            self.URL, json={"summaries": ["climate"]}, headers=HEADERS
+        )
+        elapsed = time.monotonic() - start
+
+        self.assertEqual(response.status_code, 500)
+        mock_search.assert_awaited_once()
+        self.assertLess(elapsed, 1.0)
 
     def test_invalid_body(self):
         response = self.client.post(
