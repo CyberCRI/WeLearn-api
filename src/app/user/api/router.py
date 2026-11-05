@@ -271,10 +271,28 @@ async def delete_user_bookmarks(request: Request):
         raise HTTPException(status_code=500, detail=str(e))
 
 
+# Each bookmark operation has two routes sharing one handler:
+# - `/bookmarks/{document_id}`, the document id in the path;
+# - the legacy `/bookmarks/:document_id?document_id=...`, Express-style syntax
+#   that FastAPI registers as a literal `:document_id` segment, the id being
+#   read from the query. Deprecated, with its own `name` (hence operation id).
+#   Remove it once the deployed WeLearn-client calls `/bookmarks/{document_id}`.
+# The legacy decorator must stay the inner one: it is then registered first,
+# otherwise `{document_id}` would match the literal `:document_id` and 422.
+LEGACY_BOOKMARK_PATH = "/bookmarks/:document_id"
+
+
 @router.delete(
-    "/bookmarks/:document_id",
+    "/bookmarks/{document_id}",
     summary="Delete a user bookmark",
     response_model=BookmarkDeletedResponse,
+)
+@router.delete(
+    LEGACY_BOOKMARK_PATH,
+    summary="Delete a user bookmark (deprecated, use /bookmarks/{document_id})",
+    response_model=BookmarkDeletedResponse,
+    deprecated=True,
+    name="delete_user_bookmark_legacy",
 )
 async def delete_user_bookmark(request: Request, document_id: uuid.UUID):
     user_id = await resolve_bookmark_user(request)
@@ -294,9 +312,16 @@ async def delete_user_bookmark(request: Request, document_id: uuid.UUID):
 
 
 @router.post(
-    "/bookmarks/:document_id",
+    "/bookmarks/{document_id}",
     summary="Add user bookmark",
     response_model=BookmarkAddedResponse,
+)
+@router.post(
+    LEGACY_BOOKMARK_PATH,
+    summary="Add user bookmark (deprecated, use /bookmarks/{document_id})",
+    response_model=BookmarkAddedResponse,
+    deprecated=True,
+    name="add_user_bookmark_legacy",
 )
 async def add_user_bookmark(request: Request, document_id: uuid.UUID):
     user_id = await resolve_bookmark_user(request)

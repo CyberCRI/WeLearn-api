@@ -4238,10 +4238,106 @@
     },
     "/api/v1/user/bookmarks/:document_id": {
       "delete": {
-        "operationId": "user-delete_user_bookmark",
+        "deprecated": true,
+        "operationId": "user-delete_user_bookmark_legacy",
         "parameters": [
           {
             "in": "query",
+            "name": "document_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Document Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BookmarkDeletedResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Error"
+          }
+        },
+        "security": [
+          {
+            "APIKeyHeader": []
+          }
+        ],
+        "summary": "Delete a user bookmark (deprecated, use /bookmarks/{document_id})",
+        "tags": [
+          "user"
+        ]
+      },
+      "post": {
+        "deprecated": true,
+        "operationId": "user-add_user_bookmark_legacy",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "document_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Document Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BookmarkAddedResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Error"
+          }
+        },
+        "security": [
+          {
+            "APIKeyHeader": []
+          }
+        ],
+        "summary": "Add user bookmark (deprecated, use /bookmarks/{document_id})",
+        "tags": [
+          "user"
+        ]
+      }
+    },
+    "/api/v1/user/bookmarks/{document_id}": {
+      "delete": {
+        "operationId": "user-delete_user_bookmark",
+        "parameters": [
+          {
+            "in": "path",
             "name": "document_id",
             "required": true,
             "schema": {
@@ -4287,7 +4383,7 @@
         "operationId": "user-add_user_bookmark",
         "parameters": [
           {
-            "in": "query",
+            "in": "path",
             "name": "document_id",
             "required": true,
             "schema": {

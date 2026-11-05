@@ -163,8 +163,7 @@ class UserApiTests(unittest.IsolatedAsyncioTestCase):
         run_in_threadpool_mock.return_value = document_id
 
         response = client.post(
-            f"{settings.API_V1_STR}/user/bookmarks/:document_id",
-            params={"document_id": document_id},
+            f"{settings.API_V1_STR}/user/bookmarks/{document_id}",
             headers={"X-API-Key": "test", "X-Session-Id": str(session_id)},
         )
         self.assertEqual(response.status_code, 200)
@@ -203,8 +202,7 @@ class UserApiTests(unittest.IsolatedAsyncioTestCase):
         resolve_keycloak_mock.side_effect = KeycloakTokenError("expired")
 
         response = client.post(
-            f"{settings.API_V1_STR}/user/bookmarks/:document_id",
-            params={"document_id": str(uuid.uuid4())},
+            f"{settings.API_V1_STR}/user/bookmarks/{uuid.uuid4()}",
             headers={
                 "X-API-Key": "test",
                 "Authorization": "Bearer a.b.c",
@@ -242,8 +240,7 @@ class UserApiTests(unittest.IsolatedAsyncioTestCase):
         run_in_threadpool_mock.return_value = document_id
 
         response = client.post(
-            f"{settings.API_V1_STR}/user/bookmarks/:document_id",
-            params={"document_id": document_id},
+            f"{settings.API_V1_STR}/user/bookmarks/{document_id}",
             headers={"X-API-Key": "test", "X-Session-Id": str(session_id)},
         )
         self.assertEqual(response.status_code, 404)
