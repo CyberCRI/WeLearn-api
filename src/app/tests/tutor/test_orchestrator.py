@@ -1,7 +1,7 @@
 """Unit tests for src.app.tutor.orchestrator.
 
 Run from the project root:
-    python -m unittest -v unittest.py
+    poetry run pytest src/app/tests/tutor/test_orchestrator.py
 
 The tests mock every agent constructed by SyllabusOrchestrator, so no LLM/API
 calls are made.
@@ -613,15 +613,18 @@ class TestSyllabusOrchestrator(unittest.IsolatedAsyncioTestCase):
         ):
             self.assertIn(key, result)
 
-    async def test_run_raises_when_phase_1_fails(self):
-        with patch.object(
-            self.sut,
-            "run_phase_1",
-            new=AsyncMock(return_value=False),
-        ):
-            with self.assertRaises(Exception):
-                await self.sut.run(self.make_user_input())
+    async def test_run_propagates_phase_1_agent_error(self):
+        self.description_agent.generate.side_effect = RuntimeError("LLM down")
+
+        with self.assertRaisesRegex(RuntimeError, "LLM down"):
+            await self.sut.run(self.make_user_input())
+
+        self.assertEqual(
+            self.sut.state.current_phase,
+            orch.Phase.DESCRIPTION,
+        )
+        self.objectives_agent.generate.assert_not_awaited()
 
     def test_get_output_before_start_raises(self):
-        with self.assertRaises(Exception):
+        with self.assertRaisesRegex(Exception, "orchestration not started"):
             self.sut.get_output()

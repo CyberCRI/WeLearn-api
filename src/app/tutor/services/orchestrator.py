@@ -474,9 +474,8 @@ class SyllabusOrchestrator:
         if isinstance(context_text, types.FileSummary):
             context_text = f"description: {context_text.description}, summary: {context_text.summary}"
 
-        # Phase 1
-        if not await self.run_phase_1(context_text):
-            raise Exception("Phase 1 failed")
+        # Phase 1 (an agent failure propagates as an exception)
+        await self.run_phase_1(context_text)
 
         # Phase 2
         # self.phase_2_distribute_sessions()
