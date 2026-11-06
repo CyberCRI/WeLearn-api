@@ -112,15 +112,27 @@ async def _stream_agent_with_memory(
 def _build_final_stream_payload(
     *,
     final_content: str,
+    streamed_content: str,
+    has_streamed_content: bool,
     docs: Any,
     thread_id: UUID,
 ) -> dict[str, Any]:
-    return {
+    payload: dict[str, Any] = {
         "content": final_content,
         "status": "stop",
         "docs": docs,
         "thread_id": thread_id,
     }
+
+    if has_streamed_content:
+        # the client appends every `content` it receives, so the streamed text
+        # is not sent again there; when linkification changed it, the whole
+        # answer goes in `final_content` for the client to replace it with
+        payload["content"] = ""
+        if final_content != streamed_content:
+            payload["final_content"] = final_content
+
+    return payload
 
 
 def _build_stream_error_payload(thread_id: UUID) -> dict[str, Any]:
@@ -202,16 +214,16 @@ async def _stream_agent_response(
         yield _format_sse_event(json.dumps(_build_stream_error_payload(thread_id)))
         return
 
+    streamed_content = final_content
     final_content = linkify_missing_citations(final_content, docs)
 
     final_payload = _build_final_stream_payload(
         final_content=final_content,
+        streamed_content=streamed_content,
+        has_streamed_content=has_streamed_content,
         docs=docs,
         thread_id=thread_id,
     )
-
-    if has_streamed_content:
-        final_payload = {**final_payload, "content": ""}
 
     try:
         message_id = await _register_stream_chat_data(

@@ -1,3 +1,4 @@
+import json
 import unittest
 import uuid
 from unittest import mock
@@ -171,6 +172,77 @@ class TestStreamAgentResponse(unittest.IsolatedAsyncioTestCase):
         data_collection.register_chat_data.assert_called_once()
         _, kwargs = data_collection.register_chat_data.call_args
         self.assertEqual(kwargs["sources"], [{"id": "fallback-doc"}])
+
+    async def _final_event(self, fake_stream):
+        data_collection = mock.Mock()
+        data_collection.register_chat_data = mock.AsyncMock(
+            return_value=(None, uuid.uuid4())
+        )
+
+        with mock.patch.object(
+            chat_utils, "_stream_agent_with_memory", side_effect=fake_stream
+        ):
+            events = [
+                event
+                async for event in chat_utils._stream_agent_response(
+                    db_uri="postgresql://test",
+                    async_dict_row_factory=mock.Mock(),
+                    body=mock.Mock(query="q"),
+                    chatfactory=mock.Mock(),
+                    sp=mock.Mock(),
+                    background_tasks=mock.Mock(),
+                    data_collection=data_collection,
+                    session_id=None,
+                    thread_id=uuid.uuid4(),
+                )
+            ]
+
+        raw = events[-1]
+        payload = json.loads(
+            "".join(line[len("data: ") :] for line in raw.splitlines() if line)
+        )
+        return payload, data_collection
+
+    async def test_final_event_carries_linkified_content_when_streamed(self):
+        docs = [{"document_url": "https://example.org/doc1"}]
+
+        async def fake_stream(**kwargs):
+            yield {"status": "processing", "docs": docs}
+            yield {"status": "streaming", "content": "Clean water "}
+            yield {"status": "streaming", "content": "matters [Doc 1]."}
+            yield {"status": "stop", "content": ""}
+
+        payload, data_collection = await self._final_event(fake_stream)
+
+        expected = "Clean water matters [[Doc 1]](https://example.org/doc1)."
+        self.assertEqual(payload["status"], "stop")
+        # content stays empty so a client appending chunks does not duplicate it
+        self.assertEqual(payload["content"], "")
+        self.assertEqual(payload["final_content"], expected)
+        _, kwargs = data_collection.register_chat_data.call_args
+        self.assertEqual(kwargs["answer_content"], expected)
+
+    async def test_final_event_omits_final_content_when_nothing_to_linkify(self):
+        async def fake_stream(**kwargs):
+            yield {"status": "streaming", "content": "No citation here."}
+            yield {"status": "stop", "content": ""}
+
+        payload, _ = await self._final_event(fake_stream)
+
+        self.assertEqual(payload["content"], "")
+        self.assertNotIn("final_content", payload)
+
+    async def test_final_event_sends_linkified_content_when_nothing_streamed(self):
+        docs = [{"document_url": "https://example.org/doc1"}]
+
+        async def fake_stream(**kwargs):
+            yield {"status": "processing", "docs": docs}
+            yield {"status": "stop", "content": "See [Doc 1]."}
+
+        payload, _ = await self._final_event(fake_stream)
+
+        self.assertEqual(payload["content"], "See [[Doc 1]](https://example.org/doc1).")
+        self.assertNotIn("final_content", payload)
 
     async def test_stream_error_emits_error_event_and_skips_registration(self):
         async def failing_stream(**kwargs):
