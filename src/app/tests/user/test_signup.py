@@ -39,10 +39,21 @@ class TestSignUpUser(unittest.IsolatedAsyncioTestCase):
         result = await sign_up_user("jane@example.org", "Jane", "Doe", None, "welearn")
 
         self.assertEqual(result, user_id)
-        create_mock.assert_awaited_once_with("jane@example.org", "Jane", "Doe")
+        create_mock.assert_awaited_once_with("jane@example.org", "Jane", "Doe", None)
         session_mock.assert_not_called()
         get_or_create_mock.assert_called_once_with(keycloak_id, None, "welearn")
         email_mock.assert_awaited_once_with(keycloak_id)
+
+    async def test_locale_is_passed_to_keycloak(
+        self, find_mock, create_mock, session_mock, get_or_create_mock, email_mock
+    ):
+        find_mock.return_value = None
+        create_mock.return_value = uuid.uuid4()
+        get_or_create_mock.return_value = uuid.uuid4()
+
+        await sign_up_user("jane@example.org", "Jane", "Doe", None, None, locale="fr")
+
+        create_mock.assert_awaited_once_with("jane@example.org", "Jane", "Doe", "fr")
 
     async def test_links_anonymous_user_from_session(
         self, find_mock, create_mock, session_mock, get_or_create_mock, email_mock

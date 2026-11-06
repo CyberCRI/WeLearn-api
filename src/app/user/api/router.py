@@ -162,6 +162,7 @@ async def sign_up(request: Request, data: SignUpRequest, referer: str | None = N
             last_name=data.last_name,
             session_uuid=session_uuid,
             referer=referer,
+            locale=data.locale,
         )
     except KeycloakUserExistsError:
         raise HTTPException(

@@ -26,16 +26,18 @@ async def sign_up_user(
     last_name: Optional[str],
     session_uuid: Optional[UUID],
     referer: Optional[str],
+    locale: Optional[str] = None,
 ) -> UUID:
     """
     Create a Keycloak account for the email and the WeLearn user matching it.
-    Keycloak emails the user a link to verify the email and set a password.
+    Keycloak emails the user a link to verify the email and set a password,
+    in the locale when there is one (else the realm default).
     Raises KeycloakUserExistsError if the email already has an account.
     """
     if await find_user_id_by_email(email):
         raise KeycloakUserExistsError(f"Keycloak user already exists for {email}")
 
-    keycloak_id = await create_user(email, first_name, last_name)
+    keycloak_id = await create_user(email, first_name, last_name, locale)
     logger.info("Created keycloak user. keycloak_id=%s", keycloak_id)
 
     anonymous_user_id = None

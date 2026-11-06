@@ -521,7 +521,31 @@ class SignUpApiTests(unittest.TestCase):
             last_name=None,
             session_uuid=session_id,
             referer="welearn",
+            locale=None,
         )
+
+    def test_signup_locale_is_normalized(self, sign_up_mock):
+        """Locale -> langue supportée par le realm, sinon ignorée (pas de 422)"""
+        cases = [
+            ("fr", "fr"),
+            ("FR-fr", "fr"),
+            ("en_GB", "en"),
+            ("de", None),
+            ("", None),
+        ]
+        sign_up_mock.return_value = uuid.uuid4()
+        for given, expected in cases:
+            sign_up_mock.reset_mock()
+            response = client.post(
+                self.url,
+                json={
+                    "email": f"locale-{given or 'empty'}@example.org",
+                    "locale": given,
+                },
+                headers={"X-API-Key": "test"},
+            )
+            self.assertEqual(response.status_code, 201, given)
+            self.assertEqual(sign_up_mock.call_args.kwargs["locale"], expected, given)
 
     def test_signup_email_already_exists(self, sign_up_mock):
         """Email déjà associé à un compte Keycloak -> 409"""
