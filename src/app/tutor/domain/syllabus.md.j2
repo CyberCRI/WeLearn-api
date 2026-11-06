@@ -1,6 +1,8 @@
 {# Layout of the syllabus rendered by src/app/tutor/services/syllabus.py.
    Selection rules (limits, GreenComp priority) stay in Python; refs() drops out-of-range numbers.
-   Keep headings as "## {{ h.<key> }}": detect_syllabus_lang/split_references parse them. #}
+   Keep headings as "## {{ h.<key> }}": detect_syllabus_lang/split_references parse them.
+   No autoescape (markdown output): reference titles go through | text, urls are checked
+   by safe_url() in render_references. #}
 {% macro syllabus(h, title, description, objectives, outcomes, competencies, assessment, schedule) %}
 {% set n_lo = outcomes | length %}
 # {{ title }}
@@ -51,7 +53,7 @@
 ## {{ h.references }}
 
 {% for r in resources %}
-- {{ r.title }} <a href="{{ r.url }}" target="_blank">[{{ h.link }}]</a>
+- {{ r.title | text }} <a href="{{ r.url }}" target="_blank">[{{ h.link }}]</a>
 {% else %}
 {{ h.no_references }}
 {% endfor %}

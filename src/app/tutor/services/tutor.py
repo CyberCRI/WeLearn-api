@@ -141,12 +141,13 @@ async def tutor_manager(
 async def apply_feedback(
     body: SyllabusFeedback, settings: Settings, trace_context: dict | None = None
 ) -> str:
-    """Apply the teacher's feedback to the syllabus body; references are kept verbatim."""
+    """Apply the teacher's feedback to the syllabus body; references are rebuilt."""
     if chat_model is None:
         raise RuntimeError(
             "Chat model not initialized. Call init_chat_model() at startup."
         )
     syllabus_body, references = split_references(body.syllabus[0].content)
+    lang = detect_syllabus_lang(syllabus_body)
     # same tags/metadata as generation; the client sends no lang here, so it is
     # read from the syllabus's own headings
     tags = ["welearn", "tutor", "syllabus"]
@@ -159,11 +160,18 @@ async def apply_feedback(
         trace_metadata={
             "component": "tutor_syllabus",
             "environment": settings.ENV,
-            "language": detect_syllabus_lang(syllabus_body),
+            "language": lang,
             **(trace_context or {}),
         },
     )
     new_body = trim_chatter(
         await agent.apply(syllabus_body, body.feedback, body.extracts)
     )
-    return f"{new_body}\n\n{references}" if references else new_body
+    if not references:
+        return new_body
+    # the client's references are never re-emitted (they could hold any html or url):
+    # rebuilt from the selected documents, like at generation
+    references = render_references(
+        extract_doc_info(body.documents), lang if lang != "unknown" else body.lang
+    )
+    return f"{new_body}\n\n{references}"
