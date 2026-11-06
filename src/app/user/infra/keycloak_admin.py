@@ -106,9 +106,15 @@ async def find_user_id_by_email(email: str) -> uuid.UUID | None:
 
 
 async def create_user(
-    email: str, first_name: str | None = None, last_name: str | None = None
+    email: str,
+    first_name: str | None = None,
+    last_name: str | None = None,
+    locale: str | None = None,
 ) -> uuid.UUID:
-    """Create an enabled user with no password; raises if the email is taken."""
+    """
+    Create an enabled user with no password; raises if the email is taken.
+    The locale attribute is the language Keycloak sends the user's emails in.
+    """
     base_url = get_admin_base_url()
     payload = {
         "username": email,
@@ -121,6 +127,8 @@ async def create_user(
         payload["firstName"] = first_name
     if last_name:
         payload["lastName"] = last_name
+    if locale:
+        payload["attributes"] = {"locale": [locale]}
 
     async with _http_client() as client:
         token = await get_admin_token(client)

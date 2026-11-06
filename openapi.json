@@ -1718,6 +1718,17 @@
               }
             ],
             "title": "Last Name"
+          },
+          "locale": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Locale"
           }
         },
         "required": [
