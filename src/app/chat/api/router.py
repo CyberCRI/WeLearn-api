@@ -30,13 +30,8 @@ router = APIRouter()
 settings = get_settings()
 
 
-DB_URI = "postgresql://{user}:{password}@{host}:{port}/{database}".format(
-    user=settings.PG_USER,
-    password=settings.PG_PASSWORD,
-    host=settings.PG_HOST,
-    port=settings.PG_PORT,
-    database=settings.PG_DATABASE,
-)
+# libpq key=value string, not a URL, so special characters in the password are safe
+DB_URI = settings.postgres_conninfo()
 
 # psycopg exposes dict_row with a BaseCursor annotation, while AsyncConnection.connect
 # expects an async row factory type. Runtime is valid; cast keeps static typing happy.
