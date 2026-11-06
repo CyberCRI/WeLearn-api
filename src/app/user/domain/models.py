@@ -6,12 +6,26 @@ from pydantic import BaseModel, ConfigDict, field_validator
 
 # basic shape check; Keycloak validates the address itself
 EMAIL_PATTERN = re.compile(r"^[^@\s]+@[^@\s]+\.[^@\s]+$")
+# the locales of the Keycloak realm (supportedLocales)
+SIGNUP_LOCALES = ("en", "fr")
 
 
 class SignUpRequest(BaseModel):
     email: str
     first_name: str | None = None
     last_name: str | None = None
+    # language of the sign-up page, Keycloak sends its emails in it
+    locale: str | None = None
+
+    @field_validator("locale")
+    @classmethod
+    def normalize_locale(cls, value: str | None) -> str | None:
+        # "fr-FR" -> "fr". an unsupported locale is dropped rather than refused:
+        # Keycloak then uses the realm default, the sign-up itself still works
+        if not value:
+            return None
+        language = re.split(r"[-_]", value.strip().lower())[0]
+        return language if language in SIGNUP_LOCALES else None
 
     @field_validator("email")
     @classmethod

@@ -85,9 +85,24 @@ class TestKeycloakAdmin(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(payload["firstName"], "Jane")
         self.assertNotIn("lastName", payload)
         self.assertNotIn("credentials", payload)
+        self.assertNotIn("attributes", payload)
         self.assertEqual(
             payload["requiredActions"], ["VERIFY_EMAIL", "UPDATE_PASSWORD"]
         )
+
+    async def test_create_user_with_locale(self):
+        """Keycloak sends the user's emails in their locale attribute"""
+        user_id = uuid.uuid4()
+        fake = self._fake(
+            lambda r: httpx.Response(
+                201, headers={"Location": f"{ADMIN_URL}/users/{user_id}"}
+            )
+        )
+
+        await create_user("jane@example.org", locale="fr")
+
+        payload = json.loads(fake.requests[0].content)
+        self.assertEqual(payload["attributes"], {"locale": ["fr"]})
 
     async def test_create_user_conflict(self):
         self._fake(lambda r: httpx.Response(409, json={"errorMessage": "exists"}))

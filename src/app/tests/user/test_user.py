@@ -341,7 +341,30 @@ class SignUpApiTests(unittest.TestCase):
             last_name=None,
             session_uuid=session_id,
             referer="welearn",
+            locale=None,
         )
+
+    def test_signup_locale_is_normalized(self, sign_up_mock):
+        """Locale -> langue supportée par le realm, sinon ignorée (pas de 422)"""
+        cases = [
+            ("fr", "fr"),
+            ("FR-fr", "fr"),
+            ("en_GB", "en"),
+            ("de", None),
+            ("", None),
+        ]
+        for given, expected in cases:
+            sign_up_mock.reset_mock()
+            response = client.post(
+                self.url,
+                json={
+                    "email": f"locale-{given or 'empty'}@example.org",
+                    "locale": given,
+                },
+                headers={"X-API-Key": "test"},
+            )
+            self.assertEqual(response.status_code, 202, given)
+            self.assertEqual(sign_up_mock.call_args.kwargs["locale"], expected, given)
 
     def test_signup_existing_email_gets_the_same_answer(self, sign_up_mock):
         """Email déjà inscrit -> même 202 et même corps qu'un nouvel email"""
