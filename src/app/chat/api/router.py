@@ -12,6 +12,11 @@ from src.app.chat.domain import models
 from src.app.chat.services.abst_chat import get_chat_service
 from src.app.chat.services.chat_utils import _resolve_thread_id, _stream_agent_response
 from src.app.chat.services.helpers import latest_tool_docs, linkify_missing_citations
+from src.app.chat.services.thread_access import (
+    check_thread_access,
+    ensure_thread_access,
+    resolve_caller_user_id,
+)
 from src.app.data_collection.services.data_collection import get_data_collection_service
 from src.app.search.services.search import SearchService, get_search_service
 from src.app.shared.domain.exceptions import (
@@ -19,6 +24,7 @@ from src.app.shared.domain.exceptions import (
     LanguageNotSupportedError,
     bad_request,
 )
+from src.app.shared.domain.responses import ErrorResponse
 from src.app.shared.utils.dependencies import get_settings
 from src.app.shared.utils.logger import logger as utils_logger
 from src.app.shared.utils.requests import extract_session_cookie
@@ -36,6 +42,13 @@ DB_URI = settings.postgres_conninfo()
 # psycopg exposes dict_row with a BaseCursor annotation, while AsyncConnection.connect
 # expects an async row factory type. Runtime is valid; cast keeps static typing happy.
 ASYNC_DICT_ROW_FACTORY = cast(AsyncRowFactory[DictRow], dict_row)
+
+THREAD_NOT_FOUND_RESPONSE = {
+    404: {
+        "model": ErrorResponse,
+        "description": "Thread not found or owned by another user (code THREAD_NOT_FOUND)",
+    },
+}
 
 SSE_HEADERS = {
     "Cache-Control": "no-cache",
@@ -84,12 +97,14 @@ def get_agent_params(
     )
 
 
-@router.get("/chat/history")
+@router.get("/chat/history", responses=THREAD_NOT_FOUND_RESPONSE)
 async def get_chat_history(
+    request: Request,
     thread_id: UUID,
     chatfactory=Depends(get_chat_service),
 ) -> list[Dict[str, str | list[Dict[str, str]] | None]]:
     if thread_id:
+        user_id = await resolve_caller_user_id(request)
         async with await psycopg.AsyncConnection[DictRow].connect(
             DB_URI,
             autocommit=True,
@@ -100,6 +115,7 @@ async def get_chat_history(
             await conn.commit()
 
             memory = AsyncPostgresSaver(conn)
+            await ensure_thread_access(memory, thread_id, user_id)
             res = await chatfactory.agent_get_history(
                 thread_id=thread_id, memory=memory
             )
@@ -111,7 +127,10 @@ async def get_chat_history(
     summary="Agent Response Stream",
     description="This endpoint streams an agent response to the user's message and ends with the full response payload.",
     response_class=StreamingResponse,
-    responses={200: {"content": {"text/event-stream": {"schema": {"type": "string"}}}}},
+    responses={
+        200: {"content": {"text/event-stream": {"schema": {"type": "string"}}}},
+        **THREAD_NOT_FOUND_RESPONSE,
+    },
 )
 async def agent_stream_response(
     request: Request,
@@ -134,6 +153,16 @@ async def agent_stream_response(
         if body.query is None:
             raise EmptyQueryError()
 
+        user_id = await resolve_caller_user_id(request)
+        if body.thread_id:
+            # checked before the response starts, so a 404 can still be sent
+            await check_thread_access(
+                db_uri=DB_URI,
+                async_dict_row_factory=ASYNC_DICT_ROW_FACTORY,
+                thread_id=thread_id,
+                user_id=user_id,
+            )
+
         return StreamingResponse(
             content=_stream_agent_response(
                 db_uri=DB_URI,
@@ -146,6 +175,7 @@ async def agent_stream_response(
                 session_id=session_id,
                 thread_id=thread_id,
                 trace_context=trace_context,
+                owner_user_id=user_id,
             ),
             media_type="text/event-stream",
             headers=SSE_HEADERS,
@@ -161,6 +191,7 @@ async def agent_stream_response(
     summary="Agent Response",
     description="This endpoint is used to get an agent response to the user's message",
     response_model=models.AgentResponse,
+    responses=THREAD_NOT_FOUND_RESPONSE,
     openapi_extra={
         "requestBody": {
             "content": {
@@ -216,6 +247,8 @@ async def agent_response(
         if body.query is None:
             raise EmptyQueryError()
 
+        user_id = await resolve_caller_user_id(request)
+
         if thread_id:
             async with await psycopg.AsyncConnection[DictRow].connect(
                 DB_URI,
@@ -227,6 +260,8 @@ async def agent_response(
                 await conn.commit()
 
                 memory = AsyncPostgresSaver(conn)
+                if body.thread_id:
+                    await ensure_thread_access(memory, thread_id, user_id)
 
                 res = await chatfactory.agent_message(
                     query=body.query,
@@ -237,6 +272,7 @@ async def agent_response(
                     sp=sp,
                     background_tasks=background_tasks,
                     trace_context=trace_context,
+                    owner_user_id=user_id,
                 )
         else:
             res = await chatfactory.agent_message(

@@ -37,6 +37,7 @@ from langgraph.graph.message import REMOVE_ALL_MESSAGES  # type: ignore
 from src.app.chat.services import prompts
 from src.app.chat.services.agent import get_resources_about_sustainability
 from src.app.chat.services.helpers import latest_tool_docs
+from src.app.chat.services.thread_access import OWNER_METADATA_KEY
 from src.app.search.services.search import SearchService
 from src.app.shared.infra.tracing import TraceComponent
 from src.app.shared.utils.dependencies import get_settings
@@ -280,6 +281,7 @@ class AbstractChat(ABC):
         background_tasks: BackgroundTasks | None = None,
         streamed_ans: bool = False,
         trace_context: Optional[dict[str, Any]] = None,
+        owner_user_id: Optional[uuid.UUID] = None,
     ):
         """
         Sends a chat message handled by an agent.
@@ -293,6 +295,8 @@ class AbstractChat(ABC):
             sp (SearchService | None): The search service to use for retrieving resources.
             background_tasks (BackgroundTasks | None): The background tasks to use for the search.
             streamed_ans (bool): Whether to stream the answer.
+            owner_user_id (uuid.UUID | None): The caller's user, written as the
+                thread owner in every checkpoint of this run.
 
         Returns:
             str: The chat message content.
@@ -312,6 +316,10 @@ class AbstractChat(ABC):
 
         if trace_context:
             metadata.update(trace_context)
+
+        if owner_user_id:
+            # run config metadata is copied into the checkpoint metadata
+            metadata[OWNER_METADATA_KEY] = str(owner_user_id)
 
         tags = ["welearn", "chat", "agent"]
         endpoint = metadata.get("endpoint")

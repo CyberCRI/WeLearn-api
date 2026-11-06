@@ -69,6 +69,18 @@ class UserNotFoundError(WeLearnError):
     default_code = "USER_NOT_FOUND"
 
 
+class ThreadNotFoundError(WeLearnError):
+    """
+    Raised when a chat thread is not accessible to the caller. A thread owned
+    by another user gets the same answer as a missing one, so its existence
+    does not leak.
+    """
+
+    status_code = status.HTTP_404_NOT_FOUND
+    default_message = "Thread not found"
+    default_code = "THREAD_NOT_FOUND"
+
+
 class EmptyQueryError(WeLearnError):
     """Raised when the query is empty"""
 

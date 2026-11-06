@@ -5,6 +5,7 @@ from unittest import mock
 from fastapi import BackgroundTasks, HTTPException
 from fastapi.testclient import TestClient
 from langchain_core.messages import AIMessage, HumanMessage
+from langgraph.checkpoint.base import CheckpointTuple
 from starlette.requests import Request
 
 from src.app.chat.api import router as chat_router
@@ -23,6 +24,27 @@ from src.main import app
 QNA_URL = f"{settings.API_V1_STR}/qna"
 HEADERS = {"X-API-Key": "test"}
 ROUTER = "src.app.chat.api.router"
+THREAD_ACCESS = "src.app.chat.services.thread_access"
+
+USER_A, SESSION_A = uuid.uuid4(), uuid.uuid4()
+USER_B, SESSION_B = uuid.uuid4(), uuid.uuid4()
+SESSION_USERS = {SESSION_A: USER_A, SESSION_B: USER_B}
+HEADERS_A = {**HEADERS, "X-Session-Id": str(SESSION_A)}
+HEADERS_B = {**HEADERS, "X-Session-Id": str(SESSION_B)}
+
+
+def _user_of_session(session_id):
+    if session_id not in SESSION_USERS:
+        raise SessionNotFoundError()
+    return SESSION_USERS[session_id]
+
+
+def _checkpoint(metadata) -> CheckpointTuple:
+    return CheckpointTuple(
+        config={"configurable": {"thread_id": "t"}},
+        checkpoint=mock.MagicMock(),
+        metadata=metadata,
+    )
 
 
 def _fake_connect():
@@ -77,6 +99,23 @@ class ChatRouterTests(unittest.TestCase):
         patches[0].start()
         for p in patches:
             self.addCleanup(p.stop)
+        # no checkpoint by default: every thread is a new one
+        self.saver = self.saver_cls.return_value
+        self.saver.aget_tuple = mock.AsyncMock(return_value=None)
+        for target, kwargs in (
+            (f"{THREAD_ACCESS}.AsyncPostgresSaver", {"return_value": self.saver}),
+            (
+                "src.app.chat.services.chat_utils.AsyncPostgresSaver",
+                {"return_value": self.saver},
+            ),
+            (
+                f"{THREAD_ACCESS}.get_user_from_session_id",
+                {"side_effect": _user_of_session},
+            ),
+        ):
+            patcher = mock.patch(target, **kwargs)
+            patcher.start()
+            self.addCleanup(patcher.stop)
         self.client = TestClient(app)
 
     def tearDown(self):
@@ -242,6 +281,179 @@ class ChatRouterTests(unittest.TestCase):
         self.assertEqual(response.status_code, 400)
         self.assertEqual(response.json()["detail"]["code"], "LANG_NOT_SUPPORTED")
         self.data_collection.register_chat_data.assert_not_awaited()
+
+    # --- thread ownership -------------------------------------------------
+
+    def _thread_owned_by(self, user_id):
+        self.saver.aget_tuple.return_value = _checkpoint(
+            {"source": "loop", "step": 1, "owner_user_id": str(user_id)}
+        )
+
+    def _legacy_thread(self):
+        self.saver.aget_tuple.return_value = _checkpoint({"source": "loop", "step": 1})
+
+    def _get_history(self, thread_id, headers):
+        return self.client.get(
+            f"{QNA_URL}/chat/history",
+            params={"thread_id": str(thread_id)},
+            headers=headers,
+        )
+
+    def _post_agent(self, path, thread_id, headers):
+        return self.client.post(
+            f"{QNA_URL}/chat/{path}",
+            json={"query": "q", "thread_id": str(thread_id)},
+            headers=headers,
+        )
+
+    def _assert_thread_not_found(self, response):
+        self.assertEqual(response.status_code, 404)
+        self.assertEqual(response.json()["detail"]["code"], "THREAD_NOT_FOUND")
+
+    def test_history_of_another_users_thread_returns_404(self):
+        thread_id = uuid.uuid4()
+        self._thread_owned_by(USER_A)
+
+        response = self._get_history(thread_id, HEADERS_B)
+
+        self._assert_thread_not_found(response)
+        self.saver.aget_tuple.assert_awaited_once_with(
+            {"configurable": {"thread_id": str(thread_id)}}
+        )
+        self.chat.agent_get_history.assert_not_awaited()
+
+    def test_history_of_own_thread_is_returned(self):
+        self._thread_owned_by(USER_A)
+        self.chat.agent_get_history.return_value = [{"role": "user", "content": "hi"}]
+
+        response = self._get_history(uuid.uuid4(), HEADERS_A)
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.json(), [{"role": "user", "content": "hi"}])
+
+    def test_history_of_legacy_thread_without_owner_is_returned(self):
+        self._legacy_thread()
+        self.chat.agent_get_history.return_value = []
+
+        response = self._get_history(uuid.uuid4(), HEADERS_B)
+
+        self.assertEqual(response.status_code, 200)
+        self.chat.agent_get_history.assert_awaited_once()
+
+    def test_history_of_owned_thread_without_session_returns_404(self):
+        self._thread_owned_by(USER_A)
+
+        response = self._get_history(uuid.uuid4(), HEADERS)
+
+        self._assert_thread_not_found(response)
+
+    def test_history_of_owned_thread_with_unknown_session_returns_404(self):
+        self._thread_owned_by(USER_A)
+
+        response = self._get_history(
+            uuid.uuid4(), {**HEADERS, "X-Session-Id": str(uuid.uuid4())}
+        )
+
+        self._assert_thread_not_found(response)
+
+    def test_agent_on_another_users_thread_returns_404(self):
+        self._thread_owned_by(USER_A)
+
+        response = self._post_agent("agent", uuid.uuid4(), HEADERS_B)
+
+        self._assert_thread_not_found(response)
+        self.chat.agent_message.assert_not_awaited()
+        self.data_collection.register_chat_data.assert_not_awaited()
+
+    def test_agent_on_own_thread_writes_owner(self):
+        thread_id = uuid.uuid4()
+        self._thread_owned_by(USER_A)
+
+        response = self._post_agent("agent", thread_id, HEADERS_A)
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.json()["thread_id"], str(thread_id))
+        kwargs = self.chat.agent_message.await_args.kwargs
+        self.assertEqual(kwargs["owner_user_id"], USER_A)
+
+    def test_agent_on_legacy_thread_claims_it(self):
+        self._legacy_thread()
+
+        response = self._post_agent("agent", uuid.uuid4(), HEADERS_B)
+
+        self.assertEqual(response.status_code, 200)
+        kwargs = self.chat.agent_message.await_args.kwargs
+        self.assertEqual(kwargs["owner_user_id"], USER_B)
+
+    def test_agent_new_thread_skips_check_and_writes_owner(self):
+        response = self.client.post(
+            f"{QNA_URL}/chat/agent", json={"query": "q"}, headers=HEADERS_A
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.saver.aget_tuple.assert_not_awaited()
+        kwargs = self.chat.agent_message.await_args.kwargs
+        self.assertEqual(kwargs["owner_user_id"], USER_A)
+
+    def test_agent_stream_on_another_users_thread_returns_404(self):
+        self._thread_owned_by(USER_A)
+
+        response = self._post_agent("agent_stream", uuid.uuid4(), HEADERS_B)
+
+        self._assert_thread_not_found(response)
+        self.chat.agent_message.assert_not_awaited()
+
+    def test_agent_stream_on_own_thread_streams_and_writes_owner(self):
+        thread_id = uuid.uuid4()
+        self._thread_owned_by(USER_A)
+
+        async def _stream():
+            yield {"status": "streaming", "content": "answer"}
+
+        self.chat.agent_message = mock.AsyncMock(return_value=_stream())
+        self.chat.agent_get_latest_docs = mock.AsyncMock(return_value=None)
+
+        response = self._post_agent("agent_stream", thread_id, HEADERS_A)
+
+        self.assertEqual(response.status_code, 200)
+        self.assertIn('"content": "answer"', response.text)
+        self.assertIn(str(thread_id), response.text)
+        self.saver.aget_tuple.assert_awaited_once_with(
+            {"configurable": {"thread_id": str(thread_id)}}
+        )
+        kwargs = self.chat.agent_message.await_args.kwargs
+        self.assertEqual(kwargs["owner_user_id"], USER_A)
+
+    def test_agent_stream_on_legacy_thread_is_allowed(self):
+        self._legacy_thread()
+
+        async def _stream():
+            yield {"status": "streaming", "content": "answer"}
+
+        self.chat.agent_message = mock.AsyncMock(return_value=_stream())
+        self.chat.agent_get_latest_docs = mock.AsyncMock(return_value=None)
+
+        response = self._post_agent("agent_stream", uuid.uuid4(), HEADERS_B)
+
+        self.assertEqual(response.status_code, 200)
+        kwargs = self.chat.agent_message.await_args.kwargs
+        self.assertEqual(kwargs["owner_user_id"], USER_B)
+
+    def test_agent_stream_new_thread_skips_check(self):
+        async def _stream():
+            yield {"status": "streaming", "content": "answer"}
+
+        self.chat.agent_message = mock.AsyncMock(return_value=_stream())
+        self.chat.agent_get_latest_docs = mock.AsyncMock(return_value=None)
+
+        response = self.client.post(
+            f"{QNA_URL}/chat/agent_stream", json={"query": "q"}, headers=HEADERS
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.saver.aget_tuple.assert_not_awaited()
+        kwargs = self.chat.agent_message.await_args.kwargs
+        self.assertIsNone(kwargs["owner_user_id"])
 
 
 class ChatRouterDirectCallTests(unittest.IsolatedAsyncioTestCase):

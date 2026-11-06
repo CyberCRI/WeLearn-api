@@ -2793,6 +2793,16 @@
             },
             "description": "Successful Response"
           },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Thread not found or owned by another user (code THREAD_NOT_FOUND)"
+          },
           "default": {
             "content": {
               "application/json": {
@@ -2840,6 +2850,16 @@
               }
             },
             "description": "Successful Response"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Thread not found or owned by another user (code THREAD_NOT_FOUND)"
           },
           "default": {
             "content": {
@@ -2911,6 +2931,16 @@
               }
             },
             "description": "Successful Response"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Thread not found or owned by another user (code THREAD_NOT_FOUND)"
           },
           "default": {
             "content": {
