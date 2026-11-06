@@ -2,6 +2,7 @@ import os
 from typing import Optional
 
 from dotenv import load_dotenv
+from psycopg.conninfo import make_conninfo
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 load_dotenv()
@@ -67,6 +68,22 @@ class Settings(BaseSettings):
     PG_PORT: Optional[str] = None
     PG_DATABASE: str
     PG_DRIVER: str
+
+    def postgres_conninfo(self) -> str:
+        """libpq key=value connection string for psycopg 3 (the chat checkpointer).
+
+        Not a postgresql:// URL: there the password would need URL-escaping, and a
+        password with "%" or "#" breaks the connection (B-12). make_conninfo quotes
+        the values and leaves out the ones that are not set.
+        """
+        return make_conninfo(
+            "",
+            host=self.PG_HOST,
+            port=self.PG_PORT,
+            dbname=self.PG_DATABASE,
+            user=self.PG_USER,
+            password=self.PG_PASSWORD,
+        )
 
     QDRANT_HOST: str
     QDRANT_PORT: int

@@ -33,6 +33,14 @@ async def _sse_wrap(stream: Any) -> AsyncGenerator[str, None]:
         yield _format_sse_event(data)
 
 
+def _describe_stream_error(error: Exception) -> str:
+    # psycopg error messages can quote the connection string, password included,
+    # so database errors are logged by type only (C-9)
+    if isinstance(error, psycopg.Error):
+        return f"{type(error).__name__} (database error, details not logged)"
+    return str(error)
+
+
 def _resolve_thread_id(thread_id: UUID | None) -> UUID:
     if thread_id:
         return thread_id
@@ -209,7 +217,11 @@ async def _stream_agent_response(
     except Exception as e:
         # The response has already started, so an HTTP error can no longer be
         # sent: close the stream with an error event the client can display.
-        logger.error("Agent stream failed thread_id=%s error=%s", thread_id, e)
+        logger.error(
+            "Agent stream failed thread_id=%s error=%s",
+            thread_id,
+            _describe_stream_error(e),
+        )
         yield _format_sse_event(json.dumps(_build_stream_error_payload(thread_id)))
         return
 

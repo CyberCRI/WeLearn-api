@@ -2,6 +2,8 @@ import unittest
 import uuid
 from unittest import mock
 
+import psycopg
+
 from src.app.chat.services import chat_utils
 
 
@@ -202,6 +204,44 @@ class TestStreamAgentResponse(unittest.IsolatedAsyncioTestCase):
         self.assertIn('"status": "error"', events[-1])
         self.assertIn('"code": "CHAT_STREAM_ERROR"', events[-1])
         data_collection.register_chat_data.assert_not_called()
+
+    async def test_stream_database_error_is_logged_without_its_message(self):
+        secret = "s3cr%Og-password"
+
+        async def failing_stream(**kwargs):
+            raise psycopg.ProgrammingError(f'invalid percent-encoded token: "{secret}"')
+            yield  # pragma: no cover - makes this an async generator
+
+        with (
+            mock.patch.object(
+                chat_utils, "_stream_agent_with_memory", side_effect=failing_stream
+            ),
+            mock.patch.object(chat_utils, "logger") as logger,
+        ):
+            events = [
+                event
+                async for event in chat_utils._stream_agent_response(
+                    db_uri="dbname=test",
+                    async_dict_row_factory=mock.Mock(),
+                    body=mock.Mock(query="q"),
+                    chatfactory=mock.Mock(),
+                    sp=mock.Mock(),
+                    background_tasks=mock.Mock(),
+                    data_collection=mock.Mock(),
+                    session_id=None,
+                    thread_id=uuid.uuid4(),
+                )
+            ]
+
+        self.assertIn('"code": "CHAT_STREAM_ERROR"', events[-1])
+        logged = " ".join(str(arg) for arg in logger.error.call_args.args)
+        self.assertIn("ProgrammingError", logged)
+        self.assertNotIn(secret, logged)
+
+    def test_describe_stream_error_keeps_non_database_messages(self):
+        self.assertEqual(
+            chat_utils._describe_stream_error(Exception("qdrant down")), "qdrant down"
+        )
 
 
 if __name__ == "__main__":
