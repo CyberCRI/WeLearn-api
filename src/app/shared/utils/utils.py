@@ -69,12 +69,10 @@ def extract_doc_info(documents: list[EnhancedDocumentSlice]) -> list[dict]:
 
 @log_time_and_error
 async def get_files_content(files: list[UploadFile]) -> list[str]:
-    files_content: list[str] = []
-    tasks = [get_file_content(file) for file in files]
-
-    for coroutine in asyncio.as_completed(tasks):
-        content = await coroutine
-        files_content.append(content)
+    # gather keeps the upload order, so the joined text follows the files as sent
+    files_content: list[str] = list(
+        await asyncio.gather(*(get_file_content(file) for file in files))
+    )
 
     if len(files_content) == 0:
         raise HTTPException(status_code=400, detail="added files are empty")

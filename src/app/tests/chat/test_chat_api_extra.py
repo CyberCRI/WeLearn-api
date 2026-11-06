@@ -164,6 +164,7 @@ class ChatRouterTests(unittest.TestCase):
         self.assertEqual(response.status_code, 200)
         body = response.json()
         self.assertEqual(body["content"], "final answer")
+        self.assertEqual(body["message_id"], str(self.message_id))
         generated = uuid.UUID(body["thread_id"])
 
         kwargs = self.chat.agent_message.await_args.kwargs

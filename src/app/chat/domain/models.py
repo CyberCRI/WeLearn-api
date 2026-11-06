@@ -68,3 +68,7 @@ class AgentResponse(BaseModel):
     step: str | None = None
     docs: list[EnhancedDocumentSlice] | None = None
     thread_id: uuid.UUID | None = None
+    message_id: uuid.UUID | None = Field(
+        default=None,
+        description="Id of the stored answer, null when data collection did not record it.",
+    )

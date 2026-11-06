@@ -1,3 +1,4 @@
+import asyncio
 import uuid
 from io import BytesIO
 from types import SimpleNamespace
@@ -79,7 +80,21 @@ class GetFilesContentTests(IsolatedAsyncioTestCase):
             _upload(b"second file", "text/plain", "b.txt"),
         ]
         result = await get_files_content(files)
-        self.assertEqual(sorted(result), ["first file", "second file"])
+        self.assertEqual(result, ["first file", "second file"])
+
+    async def test_keeps_upload_order_when_files_finish_out_of_order(self):
+        delays = {"first": 0.05, "second": 0.0, "third": 0.02}
+
+        async def slow_content(file):
+            await asyncio.sleep(delays[file])
+            return file
+
+        with patch(
+            "src.app.shared.utils.utils.get_file_content", side_effect=slow_content
+        ):
+            result = await get_files_content(["first", "second", "third"])
+
+        self.assertEqual(result, ["first", "second", "third"])
 
     async def test_no_files_raises_400(self):
         with self.assertRaises(HTTPException) as ctx:

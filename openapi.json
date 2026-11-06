@@ -133,6 +133,19 @@
             ],
             "title": "Docs"
           },
+          "message_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Id of the stored answer, null when data collection did not record it.",
+            "title": "Message Id"
+          },
           "status": {
             "anyOf": [
               {
