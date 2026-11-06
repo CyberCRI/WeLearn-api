@@ -48,6 +48,9 @@ def _extract_document_id(doc):
     return ""
 
 
+# thread ownership is covered in test_chat_api_extra.py and test_thread_access.py
+@mock.patch("src.app.chat.api.router.ensure_thread_access", new=mock.AsyncMock())
+@mock.patch("src.app.chat.api.router.check_thread_access", new=mock.AsyncMock())
 @mock.patch("src.app.data_collection.infra.queries.session_maker")
 @mock.patch(
     "src.app.shared.infra.security.check_api_key_sync",

@@ -73,6 +73,7 @@ async def _stream_agent_with_memory(
     background_tasks: BackgroundTasks,
     thread_id: UUID,
     trace_context: models.TraceContext | None = None,
+    owner_user_id: UUID | None = None,
 ) -> AsyncGenerator[dict[str, Any], None]:
     async with await psycopg.AsyncConnection[DictRow].connect(
         db_uri,
@@ -94,6 +95,7 @@ async def _stream_agent_with_memory(
             background_tasks=background_tasks,
             streamed_ans=True,
             trace_context=trace_context,
+            owner_user_id=owner_user_id,
         )
 
         docs_found = False
@@ -165,6 +167,7 @@ async def _stream_agent_response(
     session_id: UUID | None,
     thread_id: UUID,
     trace_context: models.TraceContext | None = None,
+    owner_user_id: UUID | None = None,
 ) -> AsyncGenerator[str, None]:
     final_content = ""
     docs = None
@@ -179,6 +182,7 @@ async def _stream_agent_response(
         background_tasks=background_tasks,
         thread_id=thread_id,
         trace_context=trace_context,
+        owner_user_id=owner_user_id,
     )
 
     try:
