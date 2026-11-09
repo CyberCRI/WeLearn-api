@@ -6,6 +6,7 @@ from fastapi import (
     Depends,
     File,
     HTTPException,
+    Query,
     Request,
     Response,
     UploadFile,
@@ -19,12 +20,12 @@ from src.app.search.domain.models import EnhancedSearchQuery
 from src.app.search.services.search import SearchService, get_search_service
 from src.app.search.services.search_helpers import search_multi_inputs
 from src.app.shared.domain.exceptions import NoResultsError
-from src.app.shared.domain.responses import MessageResponse
+from src.app.shared.domain.responses import ErrorResponse, MessageResponse
 from src.app.shared.utils.db_errors import describe_error
 from src.app.shared.utils.dependencies import get_settings
 from src.app.shared.utils.logger import logger as utils_logger
 from src.app.shared.utils.requests import extract_session_cookie
-from src.app.shared.utils.utils import get_files_content
+from src.app.shared.utils.utils import check_upload_limits, get_files_content
 from src.app.tutor.domain.models import (
     CompetencyMappingRequest,
     CourseDescriptionRequest,
@@ -32,6 +33,7 @@ from src.app.tutor.domain.models import (
     IntegrateSustainabilityRequest,
     LearningObjectivesRequest,
     LearningOutcomesRequest,
+    MasFileLang,
     SummariesList,
     SyllabusFeedback,
     SyllabusGenerationRequest,
@@ -39,11 +41,12 @@ from src.app.tutor.domain.models import (
     SyllabusResponse,
     SyllabusResponseAgent,
     SyllabusUserUpdate,
+    TutorLang,
     TutorSearchResponse,
     TutorSyllabusRequest,
     UserInput,
 )
-from src.app.tutor.services.extractor import extract_files_summaries
+from src.app.tutor.services.extractor import extract_files_summaries, truncate_documents
 from src.app.tutor.services.orchestrator import SyllabusOrchestrator
 from src.app.tutor.services.tutor import apply_feedback, tutor_manager
 
@@ -51,15 +54,37 @@ logger = utils_logger(__name__)
 
 router = APIRouter()
 
+# upload limits of the file extraction routes; the client allows 3 files of 5 MB
+MAX_UPLOAD_FILES = 5
+MAX_UPLOAD_FILE_SIZE = 10 * 1024 * 1024
+DOCUMENT_SEPARATOR = "__DOCUMENT_SEPARATOR__"
 
-@router.post("/files/content")
+UPLOAD_ERROR_RESPONSES: dict[int | str, dict] = {
+    400: {
+        "model": ErrorResponse,
+        "description": "Too many files (code TOO_MANY_FILES) or unreadable file",
+    },
+    413: {
+        "model": ErrorResponse,
+        "description": "A file is too large (code FILE_TOO_LARGE)",
+    },
+}
+
+
+async def _read_documents(files: list[UploadFile]) -> str:
+    """Check the upload limits, extract each file's text and fit it to the prompt."""
+    await check_upload_limits(files, MAX_UPLOAD_FILES, MAX_UPLOAD_FILE_SIZE)
+    files_content = await get_files_content(files)
+    return DOCUMENT_SEPARATOR.join(truncate_documents(files_content))
+
+
+@router.post("/files/content", responses=UPLOAD_ERROR_RESPONSES)
 async def extract_files_content(
     files: Annotated[list[UploadFile], File()],
     response: Response,
-    lang: str = "en",
+    lang: TutorLang = "en",
 ) -> ExtractorOutputList | None:
-    files_content = await get_files_content(files)
-    files_content_str = ("__DOCUMENT_SEPARATOR__").join(files_content)
+    files_content_str = await _read_documents(files)
 
     try:
         return await extract_files_summaries(files_content_str, lang)
@@ -70,15 +95,14 @@ async def extract_files_content(
         raise e
 
 
-@router.post("/mas_files/content")
+@router.post("/mas_files/content", responses=UPLOAD_ERROR_RESPONSES)
 async def extract_files_content_baml(
     files: Annotated[list[UploadFile], File()],
     response: Response,
-    lang: str = "en",
+    lang: MasFileLang = "en",
     mode: str = "mode_1",
 ) -> types.FileSummary | None:
-    files_content = await get_files_content(files)
-    files_content_str = ("__DOCUMENT_SEPARATOR__").join(files_content)
+    files_content_str = await _read_documents(files)
 
     mode_map = {"mode_1": "article", "mode_2": "syllabus", "mode_3": None}
 
@@ -103,7 +127,7 @@ async def tutor_search_extract(
     background_tasks: BackgroundTasks,
     response: Response,
     sp: SearchService = Depends(get_search_service),
-    nb_results: int = 15,
+    nb_results: int = Query(15, ge=1, le=100),
 ):
     try:
         qp = EnhancedSearchQuery(
@@ -153,7 +177,7 @@ async def tutor_search_extract(
 async def create_syllabus(
     request: Request,
     body: TutorSyllabusRequest,
-    lang: str = "en",
+    lang: TutorLang = "en",
     data_collection=Depends(get_data_collection_service),
     settings: Settings = Depends(get_settings),
 ) -> SyllabusResponse:

@@ -5,7 +5,7 @@ from pydantic import BaseModel
 from src.app.shared.infra.tracing import TraceName
 from src.app.shared.utils.dependencies import get_settings
 from src.app.shared.utils.logger import logger as utils_logger
-from src.app.tutor.domain.models import ExtractorOutput, ExtractorOutputList
+from src.app.tutor.domain.models import ExtractorOutput, ExtractorOutputList, TutorLang
 from src.app.tutor.services import tutor
 from src.app.tutor.services.prompts import (
     extractor_system_prompt,
@@ -14,6 +14,9 @@ from src.app.tutor.services.prompts import (
 )
 
 logger = utils_logger(__name__)
+
+# total characters of uploaded text sent to the LLM (~40k tokens)
+MAX_DOCUMENTS_CHARS = 150_000
 
 
 # Strictly typed LLM output: the public `ExtractorOutput.themes` is `list[Dict]`,
@@ -38,7 +41,36 @@ async def _get_model() -> ChatMistralAI:
     return tutor.chat_model  # type: ignore[return-value]
 
 
-def build_extractor_messages(documents: str, lang: str) -> list[tuple[str, str]]:
+def truncate_documents(contents: list[str], max_chars: int | None = None) -> list[str]:
+    """
+    Fit the documents' text into `max_chars` (default MAX_DOCUMENTS_CHARS).
+    Documents shorter than an even share keep their whole text; the budget they
+    leave goes to the longer ones, which are cut at the end.
+    """
+    if max_chars is None:
+        max_chars = MAX_DOCUMENTS_CHARS
+    budgets = [0] * len(contents)
+    remaining = max_chars
+    by_length = sorted(range(len(contents)), key=lambda i: len(contents[i]))
+    for rank, index in enumerate(by_length):
+        share = remaining // (len(contents) - rank)
+        budgets[index] = min(len(contents[index]), share)
+        remaining -= budgets[index]
+
+    truncated = [content[:budget] for content, budget in zip(contents, budgets)]
+
+    total = sum(len(content) for content in contents)
+    if total > max_chars:
+        logger.warning(
+            "tutor_documents_truncated nb_documents=%s total_chars=%s max_chars=%s",
+            len(contents),
+            total,
+            max_chars,
+        )
+    return truncated
+
+
+def build_extractor_messages(documents: str, lang: TutorLang) -> list[tuple[str, str]]:
     return [
         (
             "system",
@@ -49,7 +81,9 @@ def build_extractor_messages(documents: str, lang: str) -> list[tuple[str, str]]
 
 
 @traceable(name=TraceName.FILES_SUMMARY_EXTRACTOR.value)
-async def extract_files_summaries(documents: str, lang: str) -> ExtractorOutputList:
+async def extract_files_summaries(
+    documents: str, lang: TutorLang
+) -> ExtractorOutputList:
     """Summarize each document and extract its main themes."""
     model = await _get_model()
     structured = model.with_structured_output(_Extracts)

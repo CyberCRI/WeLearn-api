@@ -12,6 +12,9 @@ from src.app.shared.utils.logger import logger as logger_utils
 
 logger = logger_utils(__name__)
 
+# most queries one request may search in parallel (multi-input search)
+MAX_SEARCH_INPUTS = 10
+
 
 class SearchOutput(BaseModel):
     search_message_id: Optional[uuid.UUID] = Field(
@@ -104,6 +107,7 @@ class EnhancedSearchQuery(SDGFilter):
     nb_results: int = Field(
         default=30,
         ge=1,
+        le=100,
         description="Maximum number of results to return.",
     )
     subject: str | None = Field(
@@ -112,10 +116,14 @@ class EnhancedSearchQuery(SDGFilter):
     )
     influence_factor: float = Field(
         default=2,
+        ge=0,
+        le=10,
         description="Subject influence factor for embedding flavoring.",
     )
     relevance_factor: float = Field(
         default=1,
+        ge=0,
+        le=1,
         description="Relevance scaling factor used in ranking.",
     )
     concatenate: bool = Field(

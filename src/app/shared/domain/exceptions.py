@@ -166,6 +166,30 @@ class PartialResponseResultError(WeLearnError):
     default_code = "PARTIAL_RESULT"
 
 
+class TooManyFilesError(WeLearnError):
+    """Raised when a request uploads more files than the route accepts"""
+
+    status_code = status.HTTP_400_BAD_REQUEST
+    default_message = "Too many files"
+    default_code = "TOO_MANY_FILES"
+
+
+class FileTooLargeError(WeLearnError):
+    """Raised when an uploaded file is larger than the route accepts"""
+
+    status_code = status.HTTP_413_REQUEST_ENTITY_TOO_LARGE
+    default_message = "File too large"
+    default_code = "FILE_TOO_LARGE"
+
+
+class TooManyQueriesError(WeLearnError):
+    """Raised when a request asks for more parallel searches than allowed"""
+
+    status_code = status.HTTP_400_BAD_REQUEST
+    default_message = "Too many queries"
+    default_code = "TOO_MANY_QUERIES"
+
+
 def handle_error(exc: Exception, response: Response | None = None) -> None:
     """
     Turn a domain error into its HTTPException. A partial result only sets 206

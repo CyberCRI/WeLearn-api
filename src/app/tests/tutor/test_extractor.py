@@ -131,3 +131,39 @@ class TestFilesContentRoute(unittest.TestCase):
             },
         )
         extract.assert_awaited_once_with("doc A__DOCUMENT_SEPARATOR__doc B", "fr")
+
+
+class TestTruncateDocuments(unittest.TestCase):
+    def test_short_documents_are_unchanged(self):
+        contents = ["short", "text"]
+
+        with self.assertNoLogs(extractor.logger, "WARNING"):
+            result = extractor.truncate_documents(contents, max_chars=100)
+
+        self.assertEqual(result, contents)
+
+    def test_long_documents_share_the_budget(self):
+        with self.assertLogs(extractor.logger, "WARNING") as logs:
+            result = extractor.truncate_documents(["a" * 50, "b" * 50], max_chars=20)
+
+        self.assertEqual(result, ["a" * 10, "b" * 10])
+        self.assertIn("tutor_documents_truncated", logs.output[0])
+        self.assertIn("total_chars=100", logs.output[0])
+
+    def test_short_document_leaves_its_budget_to_the_long_one(self):
+        with self.assertLogs(extractor.logger, "WARNING"):
+            result = extractor.truncate_documents(["a" * 100, "bb"], max_chars=20)
+
+        self.assertEqual(result, ["a" * 18, "bb"])
+        self.assertEqual(sum(len(r) for r in result), 20)
+
+    def test_default_budget(self):
+        doc = "x" * (extractor.MAX_DOCUMENTS_CHARS + 1)
+
+        with self.assertLogs(extractor.logger, "WARNING"):
+            result = extractor.truncate_documents([doc])
+
+        self.assertEqual(len(result[0]), extractor.MAX_DOCUMENTS_CHARS)
+
+    def test_no_documents(self):
+        self.assertEqual(extractor.truncate_documents([], max_chars=10), [])
