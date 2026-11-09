@@ -2010,7 +2010,7 @@
         "type": "object"
       },
       "SyllabusGenerationResponse": {
-        "description": "`/tutor/api/generate` output. The orchestrator stores the BAML outputs as\nis, so the sections use the BAML types, not the models above.",
+        "description": "`/tutor/api/generate` output: the BAML outputs the orchestrator stores.",
         "properties": {
           "competencies": {
             "anyOf": [
