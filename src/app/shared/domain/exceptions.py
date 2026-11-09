@@ -1,3 +1,5 @@
+from typing import NoReturn
+
 from fastapi import HTTPException, Response, status
 
 from src.app.shared.utils.logger import logger as logger_utils
@@ -5,7 +7,7 @@ from src.app.shared.utils.logger import logger as logger_utils
 logger = logger_utils(__name__)
 
 
-def bad_request(message: str, msg_code: str):
+def bad_request(message: str, msg_code: str) -> NoReturn:
     """400 Bad Request"""
     logger.error("400 Bad Request: %s, Code: %s", message, msg_code)
     raise HTTPException(
@@ -14,7 +16,7 @@ def bad_request(message: str, msg_code: str):
     )
 
 
-def no_content(message: str, msg_code: str):
+def no_content(message: str, msg_code: str) -> NoReturn:
     """204 No Content"""
     logger.info("204 No Content: %s, Code: %s", message, msg_code)
     raise HTTPException(
@@ -23,7 +25,7 @@ def no_content(message: str, msg_code: str):
     )
 
 
-def not_found(message: str, msg_code: str):
+def not_found(message: str, msg_code: str) -> NoReturn:
     """404 Not Found"""
     logger.error("404 Not Found: %s, Code: %s", message, msg_code)
     raise HTTPException(
@@ -103,6 +105,22 @@ class NoResultsError(WeLearnError):
     status_code = status.HTTP_204_NO_CONTENT
     default_message = "No results found"
     default_code = "NO_RESULTS"
+
+
+class BookmarkNotFoundError(WeLearnError):
+    """Raised when a user has no bookmark for a document"""
+
+    status_code = status.HTTP_404_NOT_FOUND
+    default_message = "Bookmark not found"
+    default_code = "BOOKMARK_NOT_FOUND"
+
+
+class BookmarkAlreadyExistsError(WeLearnError):
+    """Raised when a user bookmarks a document twice"""
+
+    status_code = status.HTTP_400_BAD_REQUEST
+    default_message = "Bookmark already exists"
+    default_code = "BOOKMARK_ALREADY_EXISTS"
 
 
 class CollectionNotFoundError(WeLearnError):
