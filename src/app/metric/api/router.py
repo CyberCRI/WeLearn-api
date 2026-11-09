@@ -9,6 +9,7 @@ from src.app.metric.domain.models import (
     RowCorpusQtyDocInfo,
 )
 from src.app.metric.infra.queries import get_document_qty_table_info_sync
+from src.app.shared.domain.responses import ErrorResponse
 from src.app.shared.utils.db_errors import describe_error
 from src.app.shared.utils.dependencies import get_settings
 from src.app.shared.utils.logger import logger as utils_logger
@@ -21,7 +22,15 @@ router = APIRouter()
 settings = get_settings()
 
 
-@router.get("/nb_docs_info_per_corpus")
+@router.get(
+    "/nb_docs_info_per_corpus",
+    responses={
+        503: {
+            "model": ErrorResponse,
+            "description": "Metric views not populated yet (code METRICS_NOT_READY)",
+        },
+    },
+)
 async def get_nb_docs_info_per_corpus(
     response: Response,
 ) -> list[RowCorpusQtyDocInfo]:
