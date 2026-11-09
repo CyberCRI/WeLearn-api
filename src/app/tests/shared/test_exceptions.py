@@ -6,6 +6,7 @@ from src.app.shared.domain.exceptions import (
     CollectionNotFoundError,
     EmptyQueryError,
     LanguageNotSupportedError,
+    MetricsNotReadyError,
     ModelNotFoundError,
     NoResultsError,
     PartialResponseResultError,
@@ -67,6 +68,12 @@ class ExceptionsTests(unittest.TestCase):
         error = PartialResponseResultError()
         self.assertEqual(error.message, "Partial response result")
         self.assertEqual(error.msg_code, "PARTIAL_RESULT")
+
+    def test_metrics_not_ready_error(self):
+        error = MetricsNotReadyError()
+        self.assertEqual(error.message, "Metrics are not available yet")
+        self.assertEqual(error.msg_code, "METRICS_NOT_READY")
+        self.assertEqual(error.status_code, 503)
 
     def test_subject_not_found_error(self):
         error = SubjectNotFoundError()

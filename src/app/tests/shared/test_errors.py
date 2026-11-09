@@ -8,6 +8,7 @@ from src.app.shared.domain.exceptions import (
     CollectionNotFoundError,
     EmptyQueryError,
     LanguageNotSupportedError,
+    MetricsNotReadyError,
     ModelNotFoundError,
     NoResultsError,
     SessionNotFoundError,
@@ -24,6 +25,7 @@ JSON_ERRORS = [
     CollectionNotFoundError,
     ModelNotFoundError,
     SubjectNotFoundError,
+    MetricsNotReadyError,
 ]
 
 

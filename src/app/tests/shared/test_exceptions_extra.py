@@ -6,6 +6,7 @@ from src.app.shared.domain.exceptions import (
     CollectionNotFoundError,
     EmptyQueryError,
     LanguageNotSupportedError,
+    MetricsNotReadyError,
     ModelNotFoundError,
     NoResultsError,
     PartialResponseResultError,
@@ -26,6 +27,7 @@ EXPECTED = [
     (ModelNotFoundError, status.HTTP_404_NOT_FOUND, "MODEL_NOT_FOUND"),
     (SubjectNotFoundError, status.HTTP_404_NOT_FOUND, "SUBJECT_NOT_FOUND"),
     (PartialResponseResultError, status.HTTP_206_PARTIAL_CONTENT, "PARTIAL_RESULT"),
+    (MetricsNotReadyError, status.HTTP_503_SERVICE_UNAVAILABLE, "METRICS_NOT_READY"),
 ]
 
 
@@ -104,6 +106,9 @@ class HandleErrorTests(TestCase):
 
     def test_session_not_found_raises_401(self):
         self._assert_http(SessionNotFoundError(), status.HTTP_401_UNAUTHORIZED)
+
+    def test_metrics_not_ready_raises_503(self):
+        self._assert_http(MetricsNotReadyError(), status.HTTP_503_SERVICE_UNAVAILABLE)
 
     def test_unknown_exception_is_re_raised(self):
         exc = ValueError("boom")

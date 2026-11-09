@@ -129,6 +129,17 @@ class SubjectNotFoundError(WeLearnError):
     default_code = "SUBJECT_NOT_FOUND"
 
 
+class MetricsNotReadyError(WeLearnError):
+    """
+    Raised when a metric reads a materialized view that has never been
+    refreshed (created `WITH NO DATA`, or after a migration or restore).
+    """
+
+    status_code = status.HTTP_503_SERVICE_UNAVAILABLE
+    default_message = "Metrics are not available yet"
+    default_code = "METRICS_NOT_READY"
+
+
 class PartialResponseResultError(WeLearnError):
     """Raised when only part of the results could be computed"""
 
