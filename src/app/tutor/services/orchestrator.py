@@ -2,23 +2,12 @@
 Syllabus Orchestrator - Coordinates all agents and phases
 """
 
-import json
 import logging
 from enum import Enum
 from typing import List, Optional
 
 from src.app.baml_client import types
-from src.app.tutor.domain.models import (
-    CompetencyMappings,
-    CourseDescription,
-    LearningObjectives,
-    LearningOutcomes,
-    OrchestratorState,
-    SessionPlan,
-    SustainabilityIntegration,
-    SyllabusOutput,
-    UserInput,
-)
+from src.app.tutor.domain.models import OrchestratorState, UserInput
 from src.app.tutor.services.tools import distribute_objectives
 
 from .b_agents import (
@@ -157,7 +146,7 @@ class SyllabusOrchestrator:
 
     async def phase_1_generate_description(
         self, context_text: str
-    ) -> CourseDescription:
+    ) -> types.CourseDescription:
         """
         Phase 1.1: Generate course description
 
@@ -184,7 +173,7 @@ class SyllabusOrchestrator:
 
     async def phase_1_generate_objectives(
         self, context_text: str
-    ) -> LearningObjectives:
+    ) -> types.LearningObjectives:
         """
         Phase 1.2: Generate learning objectives
 
@@ -210,7 +199,7 @@ class SyllabusOrchestrator:
 
         return objectives
 
-    async def phase_1_integrate_sustainability(self) -> SustainabilityIntegration:
+    async def phase_1_integrate_sustainability(self) -> types.SustainabilityIntegration:
         """
         Phase 1.3: Integrate sustainability
 
@@ -274,7 +263,7 @@ class SyllabusOrchestrator:
 
         return sustainability
 
-    async def phase_1_generate_outcomes(self) -> LearningOutcomes:
+    async def phase_1_generate_outcomes(self) -> types.LearningOutcomes:
         """
         Phase 1.4: Generate learning outcomes
 
@@ -296,7 +285,7 @@ class SyllabusOrchestrator:
 
         return outcomes
 
-    async def phase_1_map_competencies(self) -> CompetencyMappings:
+    async def phase_1_map_competencies(self) -> types.CompetencyMappings:
         """
         Phase 1.5: Map GreenComp competencies
 
@@ -421,7 +410,7 @@ class SyllabusOrchestrator:
     # Phase 2: Session Planning
     # ========================================
 
-    def phase_2_distribute_sessions(self) -> List[SessionPlan]:
+    def phase_2_distribute_sessions(self) -> List[types.SessionPlan]:
         """
         Phase 2: Distribute objectives across sessions (deterministic)
 
@@ -450,7 +439,6 @@ class SyllabusOrchestrator:
         context_text: Optional[types.FileSummary | str] = None,
         document_filenames: Optional[List[str]] = None,
     ):
-        # -> SyllabusOutput:
         """
         Run complete orchestration
 
@@ -489,7 +477,6 @@ class SyllabusOrchestrator:
 
         return self.get_output()
 
-    # def get_output(self) -> SyllabusOutput
     def get_output(self):
         """Get final syllabus output"""
         if not self.state:
@@ -505,21 +492,6 @@ class SyllabusOrchestrator:
         }
 
         return data
-
-        print(
-            "Final output data:",
-            json.dumps(data, default=lambda o: o.__dict__, indent=2),
-        )
-
-        return SyllabusOutput(
-            description=self.state.description,
-            objectives=self.state.objectives,
-            outcomes=self.state.outcomes,
-            competencies=self.state.competencies,
-            sustainability=self.state.sustainability_integration,
-            sessions=self.state.sessions,
-            # activities=self.state.activities,
-        )
 
     # ========================================
     # Checkpoint-Based Orchestration

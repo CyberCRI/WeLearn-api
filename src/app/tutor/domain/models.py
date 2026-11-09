@@ -168,15 +168,6 @@ class TaskResponse:
     result: str
 
 
-# create enum sessionmode with values PRESENTIEL, DISTANCIEL, HYBRIDE
-
-
-class SessionMode(str, Enum):
-    PRESENTIEL = "PRESENTIEL"
-    DISTANCIEL = "DISTANCIEL"
-    HYBRIDE = "HYBRIDE"
-
-
 class CourseDescriptionRequest(BaseModel):
     mode: str
     course_metadata: types.CourseMetadata
@@ -204,32 +195,6 @@ class LearningOutcomesRequest(BaseModel):
     sustainability_map: types.SustainabilityIntegration
 
 
-class Document(BaseModel):
-    text: str
-    metadata: Dict[str, Any]
-    relevance_score: float | None = None
-    url: Optional[str] = None  # Link to resource
-
-
-class CourseDescription(BaseModel):
-    text: str
-    word_count: int
-
-
-class SustainabilityConnection(BaseModel):
-    objective_number: int
-    sdg_themes: List[str]
-    connection_explanation: str
-    key_resources: List[types.Document]
-
-
-class SustainabilityIntegration(BaseModel):
-    connections: List[SustainabilityConnection]
-    suggested_objectives: list[types.LearningObjective] | None = None
-    integration_strategy: str
-    resources_used: List[types.Document]
-
-
 class IntegrateSustainabilityRequest(BaseModel):
     description: str
     objectives: types.LearningObjectives
@@ -238,79 +203,10 @@ class IntegrateSustainabilityRequest(BaseModel):
     mode: str
 
 
-class LearningOutcome(BaseModel):
-    number: int
-    text: str
-    related_objectives: List[int]
-    assessment_method: str
-
-
-class LearningOutcomes(BaseModel):
-    outcomes: List[LearningOutcome]
-
-
 class CompetencyMappingRequest(BaseModel):
-    outcomes: List[LearningOutcome]
+    outcomes: List[types.LearningOutcome]
     output_language: str
     framework: Optional[Dict[str, str]] = None
-
-
-class CompetencyMapping(BaseModel):
-    outcome_number: int
-    greencomp_competencies: List[str]
-    rationale: str
-
-
-class CompetencyMappings(BaseModel):
-    mappings: List[CompetencyMapping]
-
-
-class ValidationReport(BaseModel):
-    passed: bool
-    issues: List[str]
-    suggestions: List[str]
-    severity: str
-
-
-class SessionPlan(BaseModel):
-    session_number: int
-    objectives: List[int]
-    type: str
-    mode: SessionMode
-    duration: float
-    class_size: int
-
-
-class ActivityTemplate(BaseModel):
-    id: str
-    name: str
-    description: str
-    compatible_types: List[str]
-    compatible_modes: List[SessionMode]
-    min_duration: float
-    max_duration: float
-    min_size: int
-    max_size: int
-    estimated_duration: float
-
-
-class ActivityGuide(BaseModel):
-    activity_name: str
-    description: str
-    learning_objectives: List[int]
-    steps: List[str]
-    teacher_role: str
-    student_role: str
-    resources_needed: List[str]
-    timing_breakdown: Dict[str, float]
-    evaluation_method: str
-    sustainability_integration: str
-
-
-class ActivityRecommendations(BaseModel):
-    session_number: int
-    recommended_activities: List[ActivityTemplate]
-    rationale: str
 
 
 class CourseLevel(str, Enum):
@@ -319,35 +215,6 @@ class CourseLevel(str, Enum):
     L3 = "L3"
     M1 = "M1"
     M2 = "M2"
-
-
-# Core Models
-class CourseMetadata(BaseModel):
-    """Course metadata provided by user"""
-
-    discipline: str
-    topic: str
-    level: str  # Free-form to allow flexibility
-    num_sessions: int
-    num_objectives: Optional[int] = None  # Target number of objectives
-    session_duration: float
-    session_type: str  # Free-form (CM, TD, TP, Séminaire, etc.)
-    session_mode: SessionMode
-    class_size: int
-    output_language: str = "Français"  # Default to French
-
-
-class LearningObjective(BaseModel):
-    """Single learning objective (teacher-centered: what will be taught/covered)"""
-
-    number: int
-    text: str
-
-
-class LearningObjectives(BaseModel):
-    """Collection of learning objectives"""
-
-    objectives: List[LearningObjective]
 
 
 class ValidationIssue(BaseModel):
@@ -365,29 +232,17 @@ class OrchestratorState(BaseModel):
     rag_resources: Optional[List[types.Document]] = None
     provided_objectives: Optional[List[str]] = None
 
-    description: Optional[CourseDescription] = None
-    objectives: Optional[LearningObjectives] = None
-    sustainability_integration: Optional[SustainabilityIntegration] = None
-    outcomes: Optional[LearningOutcomes] = None
-    competencies: Optional[CompetencyMappings] = None
-    sessions: Optional[List[SessionPlan]] = None
-    activities: Optional[Dict[int, List[ActivityGuide]]] = None
+    description: Optional[types.CourseDescription] = None
+    objectives: Optional[types.LearningObjectives] = None
+    sustainability_integration: Optional[types.SustainabilityIntegration] = None
+    outcomes: Optional[types.LearningOutcomes] = None
+    competencies: Optional[types.CompetencyMappings] = None
+    sessions: Optional[List[types.SessionPlan]] = None
+    activities: Optional[Dict[int, List[types.ActivityGuide]]] = None
 
     retrieved_resources: List[types.Document] = []
-    validation_history: List[ValidationReport] = []
+    validation_history: List[types.ValidationReport] = []
     current_phase: str = "input"
-
-
-class SyllabusOutput(BaseModel):
-    """Final complete syllabus output"""
-
-    description: Optional[CourseDescription] = None
-    objectives: Optional[LearningObjectives] = None
-    outcomes: Optional[LearningOutcomes] = None
-    competencies: Optional[CompetencyMappings] = None
-    sustainability: Optional[SustainabilityIntegration] = None
-    sessions: Optional[List[SessionPlan]] = None
-    # activities: Optional[Dict[int, List[ActivityGuide]]] = None
 
 
 class SyllabusValidation(BaseModel):
@@ -399,8 +254,7 @@ class SyllabusValidation(BaseModel):
 
 class SyllabusGenerationResponse(BaseModel):
     """
-    `/tutor/api/generate` output. The orchestrator stores the BAML outputs as
-    is, so the sections use the BAML types, not the models above.
+    `/tutor/api/generate` output: the BAML outputs the orchestrator stores.
     """
 
     status: Literal["success", "error"]
