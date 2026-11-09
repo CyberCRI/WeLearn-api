@@ -15,7 +15,14 @@ from src.app.tutor.domain.models import (
     MessageWithResources,
     SyllabusResponseAgent,
 )
-from src.app.tutor.services.syllabus import COUNTS_GUIDE, GREENCOMP_NAMES_GUIDE
+from src.app.tutor.services.syllabus import (
+    COUNTS_GUIDE,
+    DATA_BLOCKS_RULE,
+    GREENCOMP_NAMES_GUIDE,
+    format_resources,
+    format_summaries,
+    format_themes,
+)
 
 logger = utils_logger(__name__)
 
@@ -108,7 +115,8 @@ class UniversityTeacherAgent(TutorChatAgent):
                 "Competencies: Define transferable skills that the students will gain after this course."
                 "Assessment Methods: Propose methods to evaluate student progress."
                 "Course Schedule: Create a week-by-week breakdown with key topics and associated learning outcomes."
-                "References: Include all sources that you use to construct the syllabus."
+                "References: Include all sources that you use to construct the syllabus. "
+                f"{DATA_BLOCKS_RULE}"
             ),
             expected_output=f"You must follow this template :\n {TEMPLATES['template0']} and translate it into the target language: {lang}.",
         )
@@ -127,8 +135,8 @@ class UniversityTeacherAgent(TutorChatAgent):
             if skills
             else ""
         )
-        contents = "summary :".join(message.summary)
-        themes = ",".join([theme["theme"] for theme in message.themes])
+        contents = format_summaries(message.summary)
+        themes = format_themes(message.themes)
         prompt = (
             "Using the content in TEXT CONTENTS, you generate a syllabus that is engaging "
             "and coherent in relation to the THEMES extracted from these contents. "
@@ -167,6 +175,7 @@ class SDGExpertAgent(TutorChatAgent):
                 "Competencies Developed: If relevant, integrate sustainability competencies."
                 "Course Schedule: Introduce sustainability-related themes into weekly topics where appropriate."
                 "References: NEVER delete, summarize, or modify any references already present in the syllabus. Only append this section with any additional sources that you use to construct the syllabus. "
+                f"{DATA_BLOCKS_RULE}"
             ),
             expected_output=(
                 f"1. The revised syllabus, ready for the pedagogical engineer's review. You must follow this template :\n {TEMPLATES['template0']} and translate it into the target language: {lang}.."
@@ -187,7 +196,7 @@ class SDGExpertAgent(TutorChatAgent):
         lang: str,
     ) -> SyllabusResponseAgent:
         prompt = (
-            f"Use these WeLearn documents: {resources} to integrate sustainability in this syllabus: {syllabus.content}. "
+            f"Use these WeLearn documents:\n{format_resources(resources)}\n\nto integrate sustainability in this syllabus: {syllabus.content}. "
             "You do not need to use ALL the information in the WeLearn documents, but ensure that sustainability integration "
             "is done in a way that is relevant and thematically linked to the discipline and the topics of the syllabus, that "
             "they are deeply embedded in the course content, and aligned with both the discipline and the broader educational goals. "
@@ -286,6 +295,7 @@ class FeedbackAgent(TutorChatAgent):
                 "debates, peer instruction, workshops); teacher input stays short. "
                 "7. Never comment on your changes or design choices inside the syllabus. "
                 "8. The references section is handled separately: do not write any references or links. "
+                f"9. {DATA_BLOCKS_RULE} "
                 f"Here is the GreenComp framework for reference: {greencomp_competencies}"
             ),
             expected_output="Only the revised syllabus in markdown, starting with its title heading. No backticks, explanations, notes or comments before or after it.",
@@ -300,14 +310,14 @@ class FeedbackAgent(TutorChatAgent):
     async def apply(
         self, syllabus: str, feedback: str, extracts: list[ExtractorOutput]
     ) -> str:
-        summaries = "\n".join(extract.summary for extract in extracts)
-        themes = ", ".join(
-            theme["theme"] for extract in extracts for theme in extract.themes
+        summaries = format_summaries([extract.summary for extract in extracts])
+        themes = format_themes(
+            [theme for extract in extracts for theme in extract.themes]
         )
         prompt = (
             f"SYLLABUS:\n{syllabus}\n\n"
             f"TEACHER'S FEEDBACK:\n{feedback}\n\n"
             f"Context - summaries of the teacher's documents:\n{summaries}\n\n"
-            f"Context - themes: {themes}"
+            f"Context - themes:\n{themes}"
         )
         return await self.run(prompt)
