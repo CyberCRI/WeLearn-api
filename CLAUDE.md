@@ -96,7 +96,7 @@ Code that several features need goes in `shared/`. That includes domain exceptio
 
 ### Gotchas
 
-- **Domain exceptions bypass `except Exception`.** The exceptions in `shared/domain/exceptions.py` currently subclass `BaseException`, not `Exception`, so `except Exception` does not catch them. Catch them explicitly.
+- **Let domain errors propagate.** The exceptions in `shared/domain/exceptions.py` subclass `WeLearnError(Exception)`, and the handler in `shared/api/errors.py` maps them to their status and `{"detail": {"message", "code"}}`. Raise them from services or queries and don't re-map them in routers. A generic `except Exception` catches them too, so put `except WeLearnError: raise` and `except HTTPException: raise` before one, and never return `str(e)` in a 500.
 - **Mock the API key in route tests.** Most tests are `unittest.TestCase` classes using `TestClient(app)`. API tests must patch `src.app.shared.infra.security.check_api_key_sync` (e.g. `MagicMock(return_value=True)`) and send `X-API-Key`.
 - **Patch where a name is used.** Patch DB queries at the module that imports them, e.g. `src.app.user.api.router.get_user_bookmarks_sync`, not where they are defined.
 - **Tutor files missing from coverage.** `.coveragerc` omits `tutor/services/tutor.py` and `tutor/services/agents.py`.

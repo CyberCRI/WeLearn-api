@@ -19,11 +19,7 @@ from src.app.chat.services.thread_access import (
 )
 from src.app.data_collection.services.data_collection import get_data_collection_service
 from src.app.search.services.search import SearchService, get_search_service
-from src.app.shared.domain.exceptions import (
-    EmptyQueryError,
-    LanguageNotSupportedError,
-    bad_request,
-)
+from src.app.shared.domain.exceptions import EmptyQueryError, bad_request
 from src.app.shared.domain.responses import ErrorResponse
 from src.app.shared.utils.dependencies import get_settings
 from src.app.shared.utils.logger import logger as utils_logger
@@ -87,7 +83,7 @@ def get_agent_params(
 ) -> models.AgentContext:
     if not body.query or body.query == "":
         e = EmptyQueryError()
-        return bad_request(message=e.message, msg_code=e.msg_code)
+        bad_request(message=e.message, msg_code=e.msg_code)
 
     return models.AgentContext(
         query=body.query,
@@ -140,49 +136,45 @@ async def agent_stream_response(
     sp: SearchService = Depends(get_search_service),
     data_collection=Depends(get_data_collection_service),
 ) -> StreamingResponse:
-    try:
-        session_id = extract_session_cookie(request)
-        thread_id = _resolve_thread_id(body.thread_id)
-        trace_context = _build_agent_trace_context(
-            endpoint="/api/v1/qna/chat/agent_stream",
+    session_id = extract_session_cookie(request)
+    thread_id = _resolve_thread_id(body.thread_id)
+    trace_context = _build_agent_trace_context(
+        endpoint="/api/v1/qna/chat/agent_stream",
+        session_id=session_id,
+        thread_id=thread_id,
+        body=body,
+    )
+
+    if body.query is None:
+        raise EmptyQueryError()
+
+    user_id = await resolve_caller_user_id(request)
+    if body.thread_id:
+        # checked before the response starts, so a 404 can still be sent
+        await check_thread_access(
+            db_uri=DB_URI,
+            async_dict_row_factory=ASYNC_DICT_ROW_FACTORY,
+            thread_id=thread_id,
+            user_id=user_id,
+        )
+
+    return StreamingResponse(
+        content=_stream_agent_response(
+            db_uri=DB_URI,
+            async_dict_row_factory=ASYNC_DICT_ROW_FACTORY,
+            body=body,
+            chatfactory=chatfactory,
+            sp=sp,
+            background_tasks=background_tasks,
+            data_collection=data_collection,
             session_id=session_id,
             thread_id=thread_id,
-            body=body,
-        )
-
-        if body.query is None:
-            raise EmptyQueryError()
-
-        user_id = await resolve_caller_user_id(request)
-        if body.thread_id:
-            # checked before the response starts, so a 404 can still be sent
-            await check_thread_access(
-                db_uri=DB_URI,
-                async_dict_row_factory=ASYNC_DICT_ROW_FACTORY,
-                thread_id=thread_id,
-                user_id=user_id,
-            )
-
-        return StreamingResponse(
-            content=_stream_agent_response(
-                db_uri=DB_URI,
-                async_dict_row_factory=ASYNC_DICT_ROW_FACTORY,
-                body=body,
-                chatfactory=chatfactory,
-                sp=sp,
-                background_tasks=background_tasks,
-                data_collection=data_collection,
-                session_id=session_id,
-                thread_id=thread_id,
-                trace_context=trace_context,
-                owner_user_id=user_id,
-            ),
-            media_type="text/event-stream",
-            headers=SSE_HEADERS,
-        )
-    except LanguageNotSupportedError as e:
-        bad_request(message=e.message, msg_code=e.msg_code)
-        raise
+            trace_context=trace_context,
+            owner_user_id=user_id,
+        ),
+        media_type="text/event-stream",
+        headers=SSE_HEADERS,
+    )
 
 
 @router.post(
@@ -228,91 +220,88 @@ async def agent_response(
     sp: SearchService = Depends(get_search_service),
     data_collection=Depends(get_data_collection_service),
 ):
-    try:
-        session_id = extract_session_cookie(request)
+    session_id = extract_session_cookie(request)
 
-        thread_id = body.thread_id if body.thread_id else None
+    thread_id = body.thread_id if body.thread_id else None
 
-        if not thread_id:
-            logger.info("No thread_id provided. Generating new thread_id.")
-            thread_id = uuid.uuid4()
+    if not thread_id:
+        logger.info("No thread_id provided. Generating new thread_id.")
+        thread_id = uuid.uuid4()
 
-        trace_context = _build_agent_trace_context(
-            endpoint="/api/v1/qna/chat/agent",
-            session_id=session_id,
-            thread_id=thread_id,
-            body=body,
-        )
+    trace_context = _build_agent_trace_context(
+        endpoint="/api/v1/qna/chat/agent",
+        session_id=session_id,
+        thread_id=thread_id,
+        body=body,
+    )
 
-        if body.query is None:
-            raise EmptyQueryError()
+    if body.query is None:
+        raise EmptyQueryError()
 
-        user_id = await resolve_caller_user_id(request)
+    user_id = await resolve_caller_user_id(request)
 
-        if thread_id:
-            async with await psycopg.AsyncConnection[DictRow].connect(
-                DB_URI,
-                autocommit=True,
-                prepare_threshold=0,
-                row_factory=ASYNC_DICT_ROW_FACTORY,
-            ) as conn:
-                await conn.execute("SET SEARCH_PATH to agent_related")
-                await conn.commit()
+    if thread_id:
+        async with await psycopg.AsyncConnection[DictRow].connect(
+            DB_URI,
+            autocommit=True,
+            prepare_threshold=0,
+            row_factory=ASYNC_DICT_ROW_FACTORY,
+        ) as conn:
+            await conn.execute("SET SEARCH_PATH to agent_related")
+            await conn.commit()
 
-                memory = AsyncPostgresSaver(conn)
-                if body.thread_id:
-                    await ensure_thread_access(memory, thread_id, user_id)
+            memory = AsyncPostgresSaver(conn)
+            if body.thread_id:
+                await ensure_thread_access(memory, thread_id, user_id)
 
-                res = await chatfactory.agent_message(
-                    query=body.query,
-                    memory=memory,
-                    thread_id=thread_id,
-                    corpora=body.corpora,
-                    sdg_filter=body.sdg_filter,
-                    sp=sp,
-                    background_tasks=background_tasks,
-                    trace_context=trace_context,
-                    owner_user_id=user_id,
-                )
-        else:
             res = await chatfactory.agent_message(
                 query=body.query,
+                memory=memory,
+                thread_id=thread_id,
                 corpora=body.corpora,
                 sdg_filter=body.sdg_filter,
                 sp=sp,
+                background_tasks=background_tasks,
                 trace_context=trace_context,
+                owner_user_id=user_id,
             )
+    else:
+        res = await chatfactory.agent_message(
+            query=body.query,
+            corpora=body.corpora,
+            sdg_filter=body.sdg_filter,
+            sp=sp,
+            trace_context=trace_context,
+        )
 
-        docs = latest_tool_docs(res["messages"])
-        content = linkify_missing_citations(
-            cast(str, res["messages"][-1].content), docs or []
+    docs = latest_tool_docs(res["messages"])
+    content = linkify_missing_citations(
+        cast(str, res["messages"][-1].content), docs or []
+    )
+
+    agent_ans = {
+        "content": content,
+        "docs": docs,
+        "thread_id": thread_id,
+    }
+
+    try:
+        _, message_id = await data_collection.register_chat_data(
+            session_id=session_id,
+            user_query=body.query,
+            conversation_id=thread_id,
+            answer_content=content,
+            sources=docs,
         )
 
         agent_ans = {
-            "content": content,
-            "docs": docs,
+            **agent_ans,
+            "message_id": message_id,
             "thread_id": thread_id,
         }
 
-        try:
-            _, message_id = await data_collection.register_chat_data(
-                session_id=session_id,
-                user_query=body.query,
-                conversation_id=thread_id,
-                answer_content=content,
-                sources=docs,
-            )
-
-            agent_ans = {
-                **agent_ans,
-                "message_id": message_id,
-                "thread_id": thread_id,
-            }
-
-            return agent_ans
-        except Exception as e:
-            logger.error("Error while registering chat data: %s", e)
-
         return agent_ans
-    except LanguageNotSupportedError as e:
-        bad_request(message=e.message, msg_code=e.msg_code)
+    except Exception as e:
+        logger.error("Error while registering chat data: %s", e)
+
+    return agent_ans

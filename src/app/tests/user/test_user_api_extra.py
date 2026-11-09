@@ -7,7 +7,11 @@ from unittest import mock
 from fastapi.testclient import TestClient
 
 from src.app.core.config import settings
-from src.app.shared.domain.exceptions import UserNotFoundError
+from src.app.shared.domain.exceptions import (
+    BookmarkAlreadyExistsError,
+    BookmarkNotFoundError,
+    UserNotFoundError,
+)
 from src.app.user.infra.keycloak import KeycloakUnavailableError
 from src.main import app
 
@@ -15,6 +19,8 @@ ROUTER = "src.app.user.api.router"
 BASE = f"{settings.API_V1_STR}/user"
 
 client = TestClient(app)
+# unhandled errors reach Starlette's 500 handler instead of being re-raised
+safe_client = TestClient(app, raise_server_exceptions=False)
 
 
 @mock.patch(
@@ -39,6 +45,15 @@ class UserApiExtraTests(unittest.TestCase):
         self.addCleanup(patcher.stop)
         return m
 
+    def assert_domain_error(self, response, status_code, code):
+        self.assertEqual(response.status_code, status_code)
+        self.assertEqual(response.json()["detail"]["code"], code)
+
+    def assert_generic_500(self, response, leaked):
+        """A 500 that does not echo the exception text (A-2)."""
+        self.assertEqual(response.status_code, 500)
+        self.assertNotIn(leaked, response.text)
+
     # ---- /user_and_session ----
 
     def test_user_and_session_user_not_found_returns_404(self):
@@ -46,16 +61,15 @@ class UserApiExtraTests(unittest.TestCase):
 
         response = client.post(f"{BASE}/user_and_session", headers=self.headers)
 
-        self.assertEqual(response.status_code, 404)
-        self.assertIn("no such user", response.json()["detail"])
+        self.assert_domain_error(response, 404, "USER_NOT_FOUND")
+        self.assertEqual(response.json()["detail"]["message"], "no such user")
 
-    def test_user_and_session_unexpected_error_returns_500(self):
+    def test_user_and_session_unexpected_error_returns_generic_500(self):
         self.resolve_user.side_effect = RuntimeError("db down")
 
-        response = client.post(f"{BASE}/user_and_session", headers=self.headers)
+        response = safe_client.post(f"{BASE}/user_and_session", headers=self.headers)
 
-        self.assertEqual(response.status_code, 500)
-        self.assertEqual(response.json()["detail"], "db down")
+        self.assert_generic_500(response, "db down")
 
     def test_user_and_session_sets_session_cookie(self):
         response = client.post(f"{BASE}/user_and_session", headers=self.headers)
@@ -119,21 +133,22 @@ class UserApiExtraTests(unittest.TestCase):
         self.assertEqual(body[0]["document_id"], str(self.document_id))
         get_bookmarks.assert_called_once_with(self.user_id)
 
-    def test_get_bookmarks_value_error_returns_404(self):
-        self._patch("get_user_bookmarks_sync", side_effect=ValueError("no user"))
+    def test_get_bookmarks_user_not_found_returns_404(self):
+        self._patch("get_user_bookmarks_sync", side_effect=UserNotFoundError())
 
         response = client.get(f"{BASE}/bookmarks", headers=self.headers)
 
-        self.assertEqual(response.status_code, 404)
-        self.assertEqual(response.json()["detail"], "no user")
+        self.assert_domain_error(response, 404, "USER_NOT_FOUND")
 
-    def test_get_bookmarks_unexpected_error_returns_500(self):
-        self._patch("get_user_bookmarks_sync", side_effect=RuntimeError("boom"))
+    def test_get_bookmarks_unexpected_error_returns_generic_500(self):
+        self._patch(
+            "get_user_bookmarks_sync",
+            side_effect=RuntimeError('relation "bookmark" does not exist'),
+        )
 
-        response = client.get(f"{BASE}/bookmarks", headers=self.headers)
+        response = safe_client.get(f"{BASE}/bookmarks", headers=self.headers)
 
-        self.assertEqual(response.status_code, 500)
-        self.assertEqual(response.json()["detail"], "boom")
+        self.assert_generic_500(response, "bookmark")
 
     # ---- DELETE /bookmarks ----
 
@@ -146,20 +161,19 @@ class UserApiExtraTests(unittest.TestCase):
         self.assertEqual(response.json(), {"deleted": 3})
         delete_all.assert_called_once_with(self.user_id)
 
-    def test_delete_bookmarks_value_error_returns_404(self):
-        self._patch("delete_user_bookmarks_sync", side_effect=ValueError("no user"))
+    def test_delete_bookmarks_user_not_found_returns_404(self):
+        self._patch("delete_user_bookmarks_sync", side_effect=UserNotFoundError())
 
         response = client.delete(f"{BASE}/bookmarks", headers=self.headers)
 
-        self.assertEqual(response.status_code, 404)
-        self.assertEqual(response.json()["detail"], "no user")
+        self.assert_domain_error(response, 404, "USER_NOT_FOUND")
 
-    def test_delete_bookmarks_unexpected_error_returns_500(self):
+    def test_delete_bookmarks_unexpected_error_returns_generic_500(self):
         self._patch("delete_user_bookmarks_sync", side_effect=RuntimeError("boom"))
 
-        response = client.delete(f"{BASE}/bookmarks", headers=self.headers)
+        response = safe_client.delete(f"{BASE}/bookmarks", headers=self.headers)
 
-        self.assertEqual(response.status_code, 500)
+        self.assert_generic_500(response, "boom")
 
     # ---- DELETE /bookmarks/{document_id} ----
 
@@ -180,49 +194,52 @@ class UserApiExtraTests(unittest.TestCase):
         self.assertEqual(response.json(), {"deleted": str(self.document_id)})
         delete_one.assert_called_once_with(self.user_id, self.document_id)
 
-    def test_delete_bookmark_value_error_returns_404(self):
-        self._patch("delete_user_bookmark_sync", side_effect=ValueError("missing"))
+    def test_delete_bookmark_user_not_found_returns_404(self):
+        self._patch("delete_user_bookmark_sync", side_effect=UserNotFoundError())
 
-        response = client.delete(
-            self._bookmark_url(),
-            headers=self.headers,
-        )
+        response = client.delete(self._bookmark_url(), headers=self.headers)
 
-        self.assertEqual(response.status_code, 404)
-        self.assertEqual(response.json()["detail"], "missing")
+        self.assert_domain_error(response, 404, "USER_NOT_FOUND")
 
-    def test_delete_bookmark_unexpected_error_returns_500(self):
+    def test_delete_bookmark_missing_returns_404(self):
+        self._patch("delete_user_bookmark_sync", side_effect=BookmarkNotFoundError())
+
+        response = client.delete(self._bookmark_url(), headers=self.headers)
+
+        self.assert_domain_error(response, 404, "BOOKMARK_NOT_FOUND")
+
+    def test_delete_bookmark_unexpected_error_returns_generic_500(self):
         self._patch("delete_user_bookmark_sync", side_effect=RuntimeError("boom"))
 
-        response = client.delete(
-            self._bookmark_url(),
-            headers=self.headers,
-        )
+        response = safe_client.delete(self._bookmark_url(), headers=self.headers)
 
-        self.assertEqual(response.status_code, 500)
+        self.assert_generic_500(response, "boom")
 
     # ---- POST /bookmarks/{document_id} ----
 
-    def test_add_bookmark_value_error_returns_400(self):
-        self._patch("add_user_bookmark_sync", side_effect=ValueError("exists"))
+    def test_add_bookmark_user_not_found_returns_404(self):
+        self._patch("add_user_bookmark_sync", side_effect=UserNotFoundError())
 
-        response = client.post(
-            self._bookmark_url(),
-            headers=self.headers,
+        response = client.post(self._bookmark_url(), headers=self.headers)
+
+        self.assert_domain_error(response, 404, "USER_NOT_FOUND")
+
+    def test_add_bookmark_duplicate_returns_400(self):
+        self._patch("add_user_bookmark_sync", side_effect=BookmarkAlreadyExistsError())
+
+        response = client.post(self._bookmark_url(), headers=self.headers)
+
+        self.assert_domain_error(response, 400, "BOOKMARK_ALREADY_EXISTS")
+
+    def test_add_bookmark_unexpected_error_returns_generic_500(self):
+        self._patch(
+            "add_user_bookmark_sync",
+            side_effect=RuntimeError('violates unique constraint "bookmark_pkey"'),
         )
 
-        self.assertEqual(response.status_code, 400)
-        self.assertEqual(response.json()["detail"], "exists")
+        response = safe_client.post(self._bookmark_url(), headers=self.headers)
 
-    def test_add_bookmark_unexpected_error_returns_500(self):
-        self._patch("add_user_bookmark_sync", side_effect=RuntimeError("boom"))
-
-        response = client.post(
-            self._bookmark_url(),
-            headers=self.headers,
-        )
-
-        self.assertEqual(response.status_code, 500)
+        self.assert_generic_500(response, "bookmark_pkey")
 
     def test_add_bookmark_returns_document_id(self):
         add_one = self._patch("add_user_bookmark_sync", return_value=self.document_id)
@@ -294,20 +311,25 @@ class UserApiExtraTests(unittest.TestCase):
         self.resolve_user.assert_not_called()
         add_data.assert_not_called()
 
-    def test_institution_data_value_error_returns_404(self):
-        self._patch("add_institution_data_to_user_sync", side_effect=ValueError("no"))
-
-        response = self._institution(self.headers)
-
-        self.assertEqual(response.status_code, 404)
-        self.assertEqual(response.json()["detail"], "no")
-
-    def test_institution_data_unexpected_error_returns_500(self):
-        add_data = self._patch(
-            "add_institution_data_to_user_sync", side_effect=RuntimeError("boom")
+    def test_institution_data_user_not_found_returns_404(self):
+        self._patch(
+            "add_institution_data_to_user_sync", side_effect=UserNotFoundError()
         )
 
         response = self._institution(self.headers)
 
-        self.assertEqual(response.status_code, 500)
+        self.assert_domain_error(response, 404, "USER_NOT_FOUND")
+
+    def test_institution_data_unexpected_error_returns_generic_500(self):
+        add_data = self._patch(
+            "add_institution_data_to_user_sync", side_effect=RuntimeError("boom")
+        )
+
+        response = safe_client.post(
+            f"{BASE}/institution-data",
+            json={"institution": "LPI", "role": "teacher"},
+            headers=self.headers,
+        )
+
+        self.assert_generic_500(response, "boom")
         add_data.assert_called_once_with(self.user_id, "LPI", "teacher")

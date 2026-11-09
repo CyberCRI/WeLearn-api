@@ -5,7 +5,12 @@ from unittest.mock import patch
 
 from welearn_database.data.models import Bookmark, InferredUser, Session
 
-from src.app.shared.domain.exceptions import SessionNotFoundError, UserNotFoundError
+from src.app.shared.domain.exceptions import (
+    BookmarkAlreadyExistsError,
+    BookmarkNotFoundError,
+    SessionNotFoundError,
+    UserNotFoundError,
+)
 from src.app.tests.data_collection.sqlite_db import make_sqlite_session_maker
 from src.app.user.infra import queries
 
@@ -94,7 +99,7 @@ class TestGetOrCreateSession(UserQueriesTestBase):
 
 class TestGetUserBookmarks(UserQueriesTestBase):
     def test_unknown_user_raises(self):
-        with self.assertRaises(ValueError):
+        with self.assertRaises(UserNotFoundError):
             queries.get_user_bookmarks_sync(uuid.uuid4())
 
     def test_returns_only_user_bookmarks(self):
@@ -115,7 +120,7 @@ class TestGetUserBookmarks(UserQueriesTestBase):
 
 class TestDeleteUserBookmarks(UserQueriesTestBase):
     def test_unknown_user_raises(self):
-        with self.assertRaises(ValueError):
+        with self.assertRaises(UserNotFoundError):
             queries.delete_user_bookmarks_sync(uuid.uuid4())
 
     def test_deletes_all_user_bookmarks_and_returns_count(self):
@@ -136,13 +141,13 @@ class TestDeleteUserBookmarks(UserQueriesTestBase):
 
 class TestDeleteUserBookmark(UserQueriesTestBase):
     def test_unknown_user_raises(self):
-        with self.assertRaises(ValueError):
+        with self.assertRaises(UserNotFoundError):
             queries.delete_user_bookmark_sync(uuid.uuid4(), uuid.uuid4())
 
     def test_missing_bookmark_raises(self):
-        with self.assertRaises(ValueError) as ctx:
+        with self.assertRaises(BookmarkNotFoundError) as ctx:
             queries.delete_user_bookmark_sync(self.user_id, uuid.uuid4())
-        self.assertIn("does not exist", str(ctx.exception))
+        self.assertIn("does not exist", ctx.exception.message)
 
     def test_deletes_only_the_given_bookmark(self):
         doc_a, doc_b = uuid.uuid4(), uuid.uuid4()
@@ -157,7 +162,7 @@ class TestDeleteUserBookmark(UserQueriesTestBase):
 
 class TestAddUserBookmark(UserQueriesTestBase):
     def test_unknown_user_raises(self):
-        with self.assertRaises(ValueError):
+        with self.assertRaises(UserNotFoundError):
             queries.add_user_bookmark_sync(uuid.uuid4(), uuid.uuid4())
 
     def test_adds_bookmark(self):
@@ -172,16 +177,16 @@ class TestAddUserBookmark(UserQueriesTestBase):
         doc_id = uuid.uuid4()
         self._add_bookmark(doc_id)
 
-        with self.assertRaises(ValueError) as ctx:
+        with self.assertRaises(BookmarkAlreadyExistsError) as ctx:
             queries.add_user_bookmark_sync(self.user_id, doc_id)
 
-        self.assertIn("already exists", str(ctx.exception))
+        self.assertIn("already exists", ctx.exception.message)
         self.assertEqual(len(self._bookmarks()), 1)
 
 
 class TestAddInstitutionData(UserQueriesTestBase):
     def test_unknown_user_raises(self):
-        with self.assertRaises(ValueError):
+        with self.assertRaises(UserNotFoundError):
             queries.add_institution_data_to_user_sync(uuid.uuid4(), "LPI", "teacher")
 
     def test_updates_user(self):
