@@ -1,3 +1,4 @@
+import os
 import uuid
 from types import SimpleNamespace
 from unittest import IsolatedAsyncioTestCase, TestCase, mock
@@ -121,10 +122,11 @@ class GetModelTests(ModelCacheMixin, TestCase):
             self.assertIs(self.service._get_model("cached-model"), cached)
             auto_model.from_pretrained.assert_not_called()
 
+    @mock.patch(f"{SEARCH_MODULE}.os.path.isdir", return_value=True)
     @mock.patch(f"{SEARCH_MODULE}.AutoTokenizer")
     @mock.patch(f"{SEARCH_MODULE}.AutoModel")
     def test_loads_model_and_tokenizer_and_caches_them(
-        self, auto_model, auto_tokenizer
+        self, auto_model, auto_tokenizer, _isdir
     ):
         tokenizer = mock.MagicMock(model_max_length=256)
         auto_tokenizer.from_pretrained.return_value = tokenizer
@@ -142,15 +144,52 @@ class GetModelTests(ModelCacheMixin, TestCase):
         )
         self.assertIs(SearchService.model["my-model"], result)
 
-    @mock.patch(f"{SEARCH_MODULE}.AutoTokenizer")
+    @mock.patch(f"{SEARCH_MODULE}.os.path.isdir", return_value=False)
     @mock.patch(f"{SEARCH_MODULE}.AutoModel")
-    def test_missing_model_raises_model_not_found(self, auto_model, auto_tokenizer):
-        auto_model.from_pretrained.side_effect = ValueError("no such model")
-
-        with self.assertRaises(ModelNotFoundError):
+    def test_missing_model_dir_logs_the_resolved_path(self, auto_model, _isdir):
+        with (
+            self.assertLogs(SEARCH_MODULE, level="ERROR") as logs,
+            self.assertRaises(ModelNotFoundError) as ctx,
+        ):
             self.service._get_model("missing")
 
+        auto_model.from_pretrained.assert_not_called()
         self.assertNotIn("missing", SearchService.model)
+        # the client sees the model name, never the filesystem path
+        self.assertEqual(
+            ctx.exception.message, "Embedding model 'missing' is not available"
+        )
+        self.assertEqual(ctx.exception.msg_code, "MODEL_NOT_FOUND")
+        log = "\n".join(logs.output)
+        self.assertIn(os.path.abspath("../models/embedding/missing/"), log)
+        self.assertIn(f"cwd={os.getcwd()}", log)
+        self.assertIn("reason=directory not found", log)
+
+    @mock.patch(f"{SEARCH_MODULE}.os.path.isdir", return_value=True)
+    @mock.patch(f"{SEARCH_MODULE}.AutoTokenizer")
+    @mock.patch(f"{SEARCH_MODULE}.AutoModel")
+    def test_load_failure_raises_model_not_found_with_reason(
+        self, auto_model, auto_tokenizer, _isdir
+    ):
+        for error in (OSError("no config.json"), ValueError("bad repo id")):
+            with self.subTest(error=type(error).__name__):
+                auto_model.from_pretrained.side_effect = error
+
+                with (
+                    self.assertLogs(SEARCH_MODULE, level="ERROR") as logs,
+                    self.assertRaises(ModelNotFoundError) as ctx,
+                ):
+                    self.service._get_model("broken")
+
+                self.assertNotIn("broken", SearchService.model)
+                self.assertIs(ctx.exception.__cause__, error)
+                self.assertEqual(
+                    ctx.exception.message,
+                    "Embedding model 'broken' could not be loaded",
+                )
+                log = "\n".join(logs.output)
+                self.assertIn(os.path.abspath("../models/embedding/broken/"), log)
+                self.assertIn(f"reason={type(error).__name__}: {error}", log)
 
 
 class ComputeEmbeddingsTests(ModelCacheMixin, TestCase):

@@ -1,5 +1,6 @@
 # src/app/search/services/search.py
 
+import os
 import time
 from typing import Iterable, Tuple, cast
 
@@ -157,10 +158,21 @@ class SearchService:
     def _get_model(self, curr_model: str) -> dict:
         if curr_model in self.model:
             return self.model[curr_model]
+        # TODO: path should be an env variable
+        model_path = f"../models/embedding/{curr_model}/"
+        if not os.path.isdir(model_path):
+            # the path is relative to the working directory: log both resolved
+            logger.error(
+                "api_error=MODEL_NOT_FOUND model=%s path=%s cwd=%s "
+                "reason=directory not found",
+                curr_model,
+                os.path.abspath(model_path),
+                os.getcwd(),
+            )
+            # no path in the message: it is returned to the client
+            raise ModelNotFoundError(f"Embedding model '{curr_model}' is not available")
         try:
             time_start = time.time()
-            # TODO: path should be an env variable
-            model_path = f"../models/embedding/{curr_model}/"
             model = AutoModel.from_pretrained(model_path)
             tokenizer = AutoTokenizer.from_pretrained(model_path)
             model.eval()
@@ -176,9 +188,17 @@ class SearchService:
                 round(time_end - time_start, 2),
                 curr_model,
             )
-        except ValueError:
-            logger.error("api_error=MODEL_NOT_FOUND model=%s", curr_model)
-            raise ModelNotFoundError()
+        except (OSError, ValueError) as e:
+            logger.error(
+                "api_error=MODEL_NOT_FOUND model=%s path=%s reason=%s: %s",
+                curr_model,
+                os.path.abspath(model_path),
+                type(e).__name__,
+                e,
+            )
+            raise ModelNotFoundError(
+                f"Embedding model '{curr_model}' could not be loaded"
+            ) from e
         return self.model[curr_model]
 
     @log_time_and_error
