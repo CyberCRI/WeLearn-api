@@ -40,6 +40,7 @@ from src.app.chat.services.helpers import latest_tool_docs
 from src.app.chat.services.thread_access import OWNER_METADATA_KEY
 from src.app.search.services.search import SearchService
 from src.app.shared.infra.tracing import TraceComponent
+from src.app.shared.utils.db_errors import describe_error
 from src.app.shared.utils.dependencies import get_settings
 from src.app.shared.utils.logger import logger as utils_logger
 
@@ -127,7 +128,7 @@ class AbstractChat(ABC):
                 for part in self._extract_agent_chunk(chunk):
                     yield part
         except Exception as e:
-            logger.error("get_agent_chunks api_error=%s", e)
+            logger.error("get_agent_chunks api_error=%s", describe_error(e))
             raise
 
     def _extract_agent_chunk(self, chunk):

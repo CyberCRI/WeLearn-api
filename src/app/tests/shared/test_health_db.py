@@ -4,6 +4,7 @@ from unittest.mock import MagicMock, patch
 from fastapi.testclient import TestClient
 from sqlalchemy.exc import OperationalError
 
+from src.app.tests.shared.log_helpers import format_records
 from src.main import app
 
 
@@ -49,13 +50,17 @@ class DbHealthTests(TestCase):
         )
         maker = _session_maker_with(session)
 
-        with patch("src.app.shared.api.health.session_maker", maker):
+        with (
+            patch("src.app.shared.api.health.session_maker", maker),
+            self.assertLogs("src.app.shared.api.health", "ERROR") as logs,
+        ):
             response = self.client.get("/health/db")
 
         self.assertEqual(response.status_code, 503)
         detail = response.json()["detail"]
         self.assertEqual(detail["code"], "DATABASE_UNAVAILABLE")
         self.assertNotIn("secret", response.text)
+        self.assertNotIn("secret", format_records(logs.records))
 
     def test_db_health_503_when_connection_fails_with_os_error(self):
         maker = MagicMock(side_effect=OSError("connection refused"))

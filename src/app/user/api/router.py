@@ -8,6 +8,7 @@ from src.app.shared.domain.constants import SESSION_COOKIE_NAME, SESSION_TTL_SEC
 from src.app.shared.domain.exceptions import UserNotFoundError, WeLearnError
 from src.app.shared.domain.responses import ErrorResponse
 from src.app.shared.infra.rate_limit import SlidingWindowRateLimiter, client_ip
+from src.app.shared.utils.db_errors import DB_ERRORS
 from src.app.shared.utils.dependencies import get_settings
 from src.app.shared.utils.logger import logger as logger_utils
 from src.app.shared.utils.requests import (
@@ -156,7 +157,8 @@ async def handle_user_and_session(
         raise HTTPException(status_code=503, detail="Keycloak unavailable")
     except UserNotFoundError as e:
         raise HTTPException(status_code=404, detail=str(e))
-    except WeLearnError:
+    except (WeLearnError, *DB_ERRORS):
+        # mapped by the global handlers, a DB error without its message (C-9)
         raise
     except Exception as e:
         logger.error(f"Error creating user and session: {e}")
@@ -245,7 +247,8 @@ async def get_user_bookmarks(request: Request):
         return {"bookmarks": bookmarks}
     except ValueError as e:
         raise HTTPException(status_code=404, detail=str(e))
-    except WeLearnError:
+    except (WeLearnError, *DB_ERRORS):
+        # mapped by the global handlers, a DB error without its message (C-9)
         raise
     except Exception as e:
         logger.error(f"Error fetching bookmarks: {e}")
@@ -265,7 +268,8 @@ async def delete_user_bookmarks(request: Request):
         return {"deleted": deleted_count}
     except ValueError as e:
         raise HTTPException(status_code=404, detail=str(e))
-    except WeLearnError:
+    except (WeLearnError, *DB_ERRORS):
+        # mapped by the global handlers, a DB error without its message (C-9)
         raise
     except Exception as e:
         logger.error(f"Error deleting bookmarks: {e}")
@@ -305,7 +309,8 @@ async def delete_user_bookmark(request: Request, document_id: uuid.UUID):
         return {"deleted": deleted_id}
     except ValueError as e:
         raise HTTPException(status_code=404, detail=str(e))
-    except WeLearnError:
+    except (WeLearnError, *DB_ERRORS):
+        # mapped by the global handlers, a DB error without its message (C-9)
         raise
     except Exception as e:
         logger.error(f"Error deleting bookmark: {e}")
@@ -332,7 +337,8 @@ async def add_user_bookmark(request: Request, document_id: uuid.UUID):
         return {"added": added_id}
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
-    except WeLearnError:
+    except (WeLearnError, *DB_ERRORS):
+        # mapped by the global handlers, a DB error without its message (C-9)
         raise
     except Exception as e:
         logger.error(f"Error adding bookmark: {e}")
@@ -367,7 +373,8 @@ async def add_institution_data_to_user(request: Request, data: InstitutionData):
         print(f"add_institution_data_to_user_sync response: {resp}")
     except ValueError as e:
         raise HTTPException(status_code=404, detail=str(e))
-    except WeLearnError:
+    except (WeLearnError, *DB_ERRORS):
+        # mapped by the global handlers, a DB error without its message (C-9)
         raise
     except Exception as e:
         logger.error(f"Error adding institution data: {e}")

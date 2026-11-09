@@ -310,10 +310,31 @@ class TestStreamAgentResponse(unittest.IsolatedAsyncioTestCase):
         self.assertIn("ProgrammingError", logged)
         self.assertNotIn(secret, logged)
 
-    def test_describe_stream_error_keeps_non_database_messages(self):
-        self.assertEqual(
-            chat_utils._describe_stream_error(Exception("qdrant down")), "qdrant down"
-        )
+    async def test_stream_keeps_non_database_error_messages(self):
+        async def failing_stream(**kwargs):
+            raise RuntimeError("qdrant down")
+            yield  # pragma: no cover - makes this an async generator
+
+        with (
+            mock.patch.object(
+                chat_utils, "_stream_agent_with_memory", side_effect=failing_stream
+            ),
+            mock.patch.object(chat_utils, "logger") as logger,
+        ):
+            async for _ in chat_utils._stream_agent_response(
+                db_uri="dbname=test",
+                async_dict_row_factory=mock.Mock(),
+                body=mock.Mock(query="q"),
+                chatfactory=mock.Mock(),
+                sp=mock.Mock(),
+                background_tasks=mock.Mock(),
+                data_collection=mock.Mock(),
+                session_id=None,
+                thread_id=uuid.uuid4(),
+            ):
+                pass
+
+        self.assertIn("qdrant down", logger.error.call_args.args)
 
 
 if __name__ == "__main__":

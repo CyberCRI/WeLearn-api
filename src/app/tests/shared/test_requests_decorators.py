@@ -115,7 +115,8 @@ class LogTimeAndErrorAsyncTests(IsolatedAsyncioTestCase):
 
         logger_mock.error.assert_called_once()
         self.assertEqual(logger_mock.error.call_args.args[1], "failing")
-        self.assertIs(logger_mock.error.call_args.args[2], ctx.exception)
+        # non-database errors are logged with their message (see db_errors)
+        self.assertEqual(logger_mock.error.call_args.args[2], str(ctx.exception))
         logger_mock.info.assert_not_called()
 
     async def test_wrapper_is_a_coroutine_function_and_keeps_metadata(self, _):
@@ -170,7 +171,8 @@ class LogTimeAndErrorSyncTests(TestCase):
 
         logger_mock.error.assert_called_once()
         self.assertEqual(logger_mock.error.call_args.args[1], "failing")
-        self.assertIs(logger_mock.error.call_args.args[2], ctx.exception)
+        # non-database errors are logged with their message (see db_errors)
+        self.assertEqual(logger_mock.error.call_args.args[2], str(ctx.exception))
         logger_mock.info.assert_not_called()
 
     def test_wrapper_stays_sync_and_keeps_metadata(self, _):

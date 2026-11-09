@@ -2,6 +2,7 @@ import functools
 import inspect
 import time
 
+from src.app.shared.utils.db_errors import describe_error
 from src.app.shared.utils.logger import logger as utils_logger
 
 logger = utils_logger(__name__)
@@ -26,7 +27,7 @@ def _log_success(func, kwargs: dict, start_time: float) -> None:
 
 
 def _log_error(func, error: Exception) -> None:
-    logger.error("method=%s api_error=%s", func.__name__, error)
+    logger.error("method=%s api_error=%s", func.__name__, describe_error(error))
 
 
 def log_time_and_error(func):

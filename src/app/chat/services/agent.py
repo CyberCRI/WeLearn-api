@@ -8,6 +8,7 @@ from src.app.chat.services.helpers import stringify_docs_content
 from src.app.search.domain.models import EnhancedSearchQuery
 from src.app.search.services.search import SearchService, resolve_corpora
 from src.app.shared.domain.documents import EnhancedDocumentSlice
+from src.app.shared.utils.db_errors import describe_error
 from src.app.shared.utils.decorators import log_time_and_error
 from src.app.shared.utils.logger import logger as utils_logger
 
@@ -58,7 +59,7 @@ async def _get_resources_about_sustainability(
         )
     except Exception as e:
         # Fail soft so the agent can still answer instead of aborting the stream.
-        logger.error("Search failed in agent tool: %s", e)
+        logger.error("Search failed in agent tool: %s", describe_error(e))
         return SEARCH_UNAVAILABLE, []
     if not docs:
         logger.warning("No documents found for the query.")

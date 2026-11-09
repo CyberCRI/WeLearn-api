@@ -1,5 +1,6 @@
 # /src/app/main.py
 
+import logging
 import time
 
 from fastapi import Depends, FastAPI, Request, Response, status
@@ -21,9 +22,14 @@ from src.app.shared.api.monitor_requests import MonitorRequestsMiddleware
 from src.app.shared.api.openapi import generate_operation_id
 from src.app.shared.domain.responses import ERROR_RESPONSES
 from src.app.shared.infra.security import get_user
+from src.app.shared.utils.db_errors import install_db_error_redaction
 from src.app.shared.utils.logger import logger as utils_logger
 
 logger = utils_logger(__name__)
+
+# uvicorn logs the traceback of any exception no handler caught ("Exception in
+# ASGI application"): keep a database error message out of it (C-9)
+install_db_error_redaction(logging.getLogger("uvicorn.error"))
 
 app = FastAPI(
     openapi_tags=api_tags_metadata,

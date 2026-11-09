@@ -3,6 +3,7 @@ from fastapi.concurrency import run_in_threadpool
 from starlette.middleware.base import BaseHTTPMiddleware
 
 from src.app.shared.infra.queries import register_endpoint
+from src.app.shared.utils.db_errors import describe_error
 from src.app.shared.utils.logger import logger as logger_utils
 from src.app.shared.utils.requests import extract_session_cookie
 
@@ -22,7 +23,11 @@ class MonitorRequestsMiddleware(BaseHTTPMiddleware):
                         http_code=200,
                     )
                 except Exception as e:
-                    logger.error(f"Failed to register endpoint {request.url.path}: {e}")
+                    logger.error(
+                        "Failed to register endpoint %s: %s",
+                        request.url.path,
+                        describe_error(e),
+                    )
             else:
                 logger.warning(
                     f"No X-Session-ID cookie provided for {request.url.path}"

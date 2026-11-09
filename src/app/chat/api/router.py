@@ -25,6 +25,7 @@ from src.app.shared.domain.exceptions import (
     bad_request,
 )
 from src.app.shared.domain.responses import ErrorResponse
+from src.app.shared.utils.db_errors import describe_error
 from src.app.shared.utils.dependencies import get_settings
 from src.app.shared.utils.logger import logger as utils_logger
 from src.app.shared.utils.requests import extract_session_cookie
@@ -311,7 +312,7 @@ async def agent_response(
 
             return agent_ans
         except Exception as e:
-            logger.error("Error while registering chat data: %s", e)
+            logger.error("Error while registering chat data: %s", describe_error(e))
 
         return agent_ans
     except LanguageNotSupportedError as e:
