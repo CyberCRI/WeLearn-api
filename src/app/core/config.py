@@ -81,8 +81,12 @@ class Settings(BaseSettings):
     # KEYCLOAK (front-end login; tokens are verified against the realm's JWKS)
     KEYCLOAK_URL: Optional[str] = None  # e.g. https://auth.example.org
     KEYCLOAK_REALM: Optional[str] = None
-    # if set, the token's "azp" claim must match this front-end client id
+    # front-end client id: the token's "azp" claim must match it. Optional so the
+    # app starts without Keycloak, but then bearer tokens are rejected with a 503
     KEYCLOAK_CLIENT_ID: Optional[str] = None
+    # if set, the token's "aud" claim must contain it (needs an audience mapper
+    # in Keycloak; access tokens' default "aud" is "account")
+    KEYCLOAK_AUDIENCE: Optional[str] = None
     # sign-up: confidential client whose service account has the realm-management
     # roles "view-users" and "manage-users"
     KEYCLOAK_ADMIN_CLIENT_ID: Optional[str] = None

@@ -7,11 +7,19 @@ from fastapi.testclient import TestClient
 
 from src.app.core.config import settings
 from src.app.shared.domain.exceptions import SessionNotFoundError, UserNotFoundError
+from src.app.tests.user.test_keycloak import (
+    CLIENT_ID,
+    KEYCLOAK_REALM,
+    KEYCLOAK_URL,
+    PRIVATE_KEY,
+    make_token,
+)
 from src.app.user.api.router import (
     SIGNUP_ACCEPTED_MESSAGE,
     SIGNUP_RATE_LIMIT_PER_EMAIL,
     SIGNUP_RATE_LIMIT_PER_IP,
 )
+from src.app.user.infra import keycloak
 from src.app.user.infra.keycloak import (
     KeycloakConfigError,
     KeycloakTokenError,
@@ -113,6 +121,77 @@ class UserApiTests(unittest.IsolatedAsyncioTestCase):
         )
 
         self.assertEqual(response.status_code, 503)
+
+    @mock.patch.object(keycloak.settings, "KEYCLOAK_AUDIENCE", None)
+    @mock.patch.object(keycloak.settings, "KEYCLOAK_CLIENT_ID", CLIENT_ID)
+    @mock.patch.object(keycloak.settings, "KEYCLOAK_REALM", KEYCLOAK_REALM)
+    @mock.patch.object(keycloak.settings, "KEYCLOAK_URL", KEYCLOAK_URL)
+    @mock.patch.object(keycloak, "get_or_create_user_from_keycloak_sync")
+    @mock.patch.object(keycloak, "get_jwks_client")
+    async def test_bearer_token_for_another_client(
+        self, get_jwks_client_mock, get_or_create_mock, *mocks
+    ):
+        """Token émis pour un autre client du realm (azp) -> 401"""
+        get_jwks_client_mock.return_value.get_signing_key_from_jwt.return_value = (
+            MagicMock(key=PRIVATE_KEY.public_key())
+        )
+
+        response = client.post(
+            f"{settings.API_V1_STR}/user/user_and_session",
+            headers={
+                "X-API-Key": "test",
+                "Authorization": f"Bearer {make_token(azp='another-client')}",
+            },
+        )
+
+        self.assertEqual(response.status_code, 401)
+        get_or_create_mock.assert_not_called()
+
+    @mock.patch.object(keycloak.settings, "KEYCLOAK_CLIENT_ID", None)
+    @mock.patch.object(keycloak.settings, "KEYCLOAK_REALM", "welearn")
+    @mock.patch.object(keycloak.settings, "KEYCLOAK_URL", "https://auth.example.org")
+    @mock.patch.object(keycloak, "_config_error_logged", False)
+    @mock.patch.object(keycloak, "get_jwks_client")
+    @mock.patch.object(keycloak, "logger")
+    async def test_bearer_token_keycloak_not_configured(
+        self, logger_mock, get_jwks_client_mock, *mocks
+    ):
+        """Token sans KEYCLOAK_CLIENT_ID configuré -> 503 AUTH_NOT_CONFIGURED, loggé une fois"""
+        headers = {"X-API-Key": "test", "Authorization": "Bearer a.b.c"}
+
+        responses = [
+            client.post(
+                f"{settings.API_V1_STR}/user/user_and_session", headers=headers
+            ),
+            client.get(f"{settings.API_V1_STR}/user/bookmarks", headers=headers),
+            client.post(
+                f"{settings.API_V1_STR}/user/bookmarks/{uuid.uuid4()}", headers=headers
+            ),
+        ]
+
+        for response in responses:
+            self.assertEqual(response.status_code, 503)
+            self.assertEqual(response.json()["detail"]["code"], "AUTH_NOT_CONFIGURED")
+        logger_mock.error.assert_called_once()
+        get_jwks_client_mock.assert_not_called()
+
+    @mock.patch.object(keycloak.settings, "KEYCLOAK_CLIENT_ID", None)
+    @mock.patch.object(keycloak.settings, "KEYCLOAK_URL", None)
+    @mock.patch("src.app.user.api.router.resolve_user_and_session")
+    async def test_no_bearer_token_keycloak_not_configured(
+        self, resolve_anonymous_mock, *mocks
+    ):
+        """Sans token, l'absence de config Keycloak n'a pas d'effet"""
+        user_id = uuid.uuid4()
+        resolve_anonymous_mock.return_value = (user_id, uuid.uuid4())
+
+        response = client.post(
+            f"{settings.API_V1_STR}/user/user_and_session",
+            headers={"X-API-Key": "test"},
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.json()["user_id"], str(user_id))
 
     @mock.patch("src.app.user.infra.queries.session_maker")
     async def test_get_user_bookmarks_user_not_found(self, session_maker_mock, *mocks):
