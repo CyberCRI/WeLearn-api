@@ -1,4 +1,10 @@
 name: Build image and push to registry
+
+# Lint and tests run on every push. The image is built and deployed (<ref>_deploy tag) only for:
+#   - main and tags (releases);
+#   - a branch whose open PR carries the `preview` label. Adding the label triggers this
+#     workflow through workflow_dispatch (see preview.yml), and later pushes redeploy;
+#   - a manual run (workflow_dispatch) on any branch.
 on:
   push:
     branches:
@@ -6,6 +12,7 @@ on:
     tags:
       - "**"
       - "!**_deploy"
+  workflow_dispatch:
 
 concurrency:
   group: ${{ github.ref }}
@@ -16,11 +23,37 @@ jobs:
   lint-and-test:
     uses: ./.github/workflows/lint-and-test.yml
 
+  # decides whether this ref gets an image and a deploy tag
+  deploy-target:
+    runs-on: ubuntu-latest
+    permissions:
+      pull-requests: read
+    outputs:
+      deploy: ${{ steps.check.outputs.deploy }}
+    steps:
+      - id: check
+        env:
+          GH_TOKEN: ${{ github.token }}
+          EVENT: ${{ github.event_name }}
+          REF_TYPE: ${{ github.ref_type }}
+          REF_NAME: ${{ github.ref_name }}
+        run: |
+          if [ "$EVENT" = "workflow_dispatch" ] || [ "$REF_TYPE" = "tag" ] || [ "$REF_NAME" = "main" ]; then
+            deploy=true
+          else
+            previews=$(gh pr list --repo "$GITHUB_REPOSITORY" --head "$REF_NAME" --state open \
+              --label preview --json number --jq length)
+            if [ "$previews" -gt 0 ]; then deploy=true; else deploy=false; fi
+          fi
+          echo "deploy=$deploy" | tee -a "$GITHUB_OUTPUT"
+
   # the image is only built and pushed once every check passed
   build-docker:
-    needs: lint-and-test
+    needs:
+      - lint-and-test
+      - deploy-target
     # Dependabot runs only get Dependabot secrets: no registry or submodule access
-    if: github.actor != 'dependabot[bot]'
+    if: needs.deploy-target.outputs.deploy == 'true' && github.actor != 'dependabot[bot]'
     uses: CyberCRI/github-workflows/.github/workflows/build-push.yaml@main
     with:
       registry-name: ${{ vars.DOCKER_PROD_REGISTRY }}
