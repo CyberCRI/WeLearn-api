@@ -1,6 +1,7 @@
 import logging
 import unittest
 import uuid
+from itertools import islice
 from unittest import TestCase, mock
 
 import psycopg
@@ -13,6 +14,7 @@ from src.app.shared.api.errors import register_exception_handlers
 from src.app.shared.utils import db_errors
 from src.app.shared.utils.db_errors import (
     DbErrorRedactionFilter,
+    _exception_chain,
     describe_error,
     install_db_error_redaction,
     involves_db_error,
@@ -67,6 +69,41 @@ class DescribeErrorTests(TestCase):
     def test_other_errors_keep_their_message(self):
         self.assertEqual(describe_error(ValueError("qdrant down")), "qdrant down")
         self.assertFalse(involves_db_error(ValueError("qdrant down")))
+
+
+class ExceptionChainTests(TestCase):
+    """A cyclic chain must not make the walk (run in every log filter) loop forever."""
+
+    @staticmethod
+    def _context_cycle() -> tuple[BaseException, BaseException]:
+        a, b = RuntimeError("a"), ValueError("b")
+        a.__context__ = b
+        b.__context__ = a
+        return a, b
+
+    def test_cyclic_chain_yields_each_exception_once(self):
+        a, b = self._context_cycle()
+
+        # islice bounds the walk: without the cycle guard this fails instead of hanging
+        self.assertEqual(list(islice(_exception_chain(a), 10)), [a, b])
+
+    def test_cyclic_chain_without_db_error_is_not_a_db_error(self):
+        a, _ = self._context_cycle()
+
+        self.assertFalse(involves_db_error(a))
+        self.assertEqual(describe_error(a), "a")
+
+    def test_cyclic_chain_through_cause_with_db_error_is_detected(self):
+        a = RuntimeError("a")
+        db = psycopg.OperationalError(CONNINFO)
+        c = ValueError("c")
+        a.__cause__ = db
+        db.__cause__ = c
+        c.__cause__ = a
+
+        self.assertEqual(list(islice(_exception_chain(a), 10)), [a, db, c])
+        self.assertTrue(involves_db_error(a))
+        self.assertNotIn(SECRET, describe_error(a))
 
 
 class RedactionFilterTests(TestCase):
