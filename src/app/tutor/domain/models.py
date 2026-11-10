@@ -6,11 +6,18 @@ from typing import Any, Dict, List, Literal, Optional
 from pydantic import BaseModel, Field
 
 from src.app.baml_client import types
+from src.app.search.domain.models import MAX_SEARCH_INPUTS
 from src.app.shared.domain.documents import EnhancedDocumentSlice
+
+# languages the tutor writes in; the value goes into the system prompts
+TutorLang = Literal["en", "fr"]
+# the MAS tutor client sends the language name, as in `output_language`
+MasFileLang = Literal["en", "fr", "english", "french"]
 
 
 class SummariesList(BaseModel):
-    summaries: list[str]
+    # each summary is one parallel search
+    summaries: list[str] = Field(max_length=MAX_SEARCH_INPUTS)
 
 
 class ExtractorOutput(BaseModel):
@@ -50,7 +57,7 @@ class SyllabusResponse(BaseModel):
 
 class SyllabusFeedback(SyllabusResponse):
     feedback: str
-    lang: str = "en"
+    lang: TutorLang = "en"
 
 
 class SyllabusUserUpdate(BaseModel):

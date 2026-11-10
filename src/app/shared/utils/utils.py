@@ -5,11 +5,15 @@ from fastapi import HTTPException, UploadFile
 from pypdf import PdfReader
 
 from src.app.shared.domain.documents import EnhancedDocumentSlice
+from src.app.shared.domain.exceptions import FileTooLargeError, TooManyFilesError
 from src.app.shared.infra.pdf_extractor import extract_txt_from_pdf_with_tika
 from src.app.shared.utils.decorators import log_time_and_error
 from src.app.shared.utils.dependencies import get_settings
 
 settings = get_settings()
+
+# chunk size used to measure an upload whose size Starlette did not record
+UPLOAD_READ_CHUNK_SIZE = 1024 * 1024
 
 
 def build_system_message(
@@ -65,6 +69,42 @@ def extract_doc_info(documents: list[EnhancedDocumentSlice]) -> list[dict]:
             }
         )
     return result
+
+
+async def _upload_size(file: UploadFile, limit: int) -> int:
+    """
+    Size of an upload in bytes. Starlette records it while parsing the form;
+    otherwise read the file in chunks, stopping as soon as it passes `limit`.
+    """
+    if file.size is not None:
+        return file.size
+
+    size = 0
+    await file.seek(0)
+    while chunk := await file.read(UPLOAD_READ_CHUNK_SIZE):
+        size += len(chunk)
+        if size > limit:
+            break
+    await file.seek(0)
+    return size
+
+
+async def check_upload_limits(
+    files: list[UploadFile], max_files: int, max_file_size: int
+) -> None:
+    """
+    Reject an upload before any extraction: more than `max_files` files
+    (TooManyFilesError, 400) or a file over `max_file_size` bytes
+    (FileTooLargeError, 413).
+    """
+    if len(files) > max_files:
+        raise TooManyFilesError(f"At most {max_files} files can be uploaded at once")
+
+    for file in files:
+        if await _upload_size(file, max_file_size) > max_file_size:
+            raise FileTooLargeError(
+                f"Each file must be at most {max_file_size // (1024 * 1024)} MB"
+            )
 
 
 @log_time_and_error

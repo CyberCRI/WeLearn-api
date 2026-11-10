@@ -1,4 +1,6 @@
 # src/app/search/api/router.py
+from typing import Annotated
+from uuid import UUID
 
 from fastapi import APIRouter, BackgroundTasks, Body, Depends, Query, Request, Response
 from fastapi.concurrency import run_in_threadpool
@@ -24,7 +26,7 @@ from src.app.search.services.search import (
     resolve_corpora,
 )
 from src.app.search.services.search_helpers import search_multi_inputs
-from src.app.shared.domain.documents import EnhancedDocumentSlice
+from src.app.shared.domain.documents import MAX_DOCUMENTS_IDS, EnhancedDocumentSlice
 from src.app.shared.domain.exceptions import EmptyQueryError, bad_request
 from src.app.shared.utils.logger import logger as logger_utils
 from src.app.shared.utils.requests import extract_session_cookie
@@ -50,11 +52,15 @@ async def get_params(
     ),
     influence_factor: float = Query(
         2,
+        ge=0,
+        le=10,
         description="Weight applied to subject influence during flavored embedding.",
     ),
     relevance_factor: float = Query(
         1,
-        description="Weight applied to base relevance scoring.",
+        ge=0,
+        le=1,
+        description="Weight applied to base relevance scoring, from 0 (diversity only) to 1 (relevance only).",
     ),
     concatenate: bool = Query(
         True,
@@ -88,8 +94,8 @@ async def get_document_search_params(
     ),
     nb_results: int = Query(30, ge=1, le=100),
     subject: str | None = Query(None),
-    influence_factor: float = Query(2),
-    relevance_factor: float = Query(1),
+    influence_factor: float = Query(2, ge=0, le=10),
+    relevance_factor: float = Query(1, ge=0, le=1),
     concatenate: bool = Query(True),
 ) -> EnhancedSearchQuery:
     return await get_params(
@@ -141,7 +147,7 @@ async def search_doc_by_collection(
     response: Response,
     query: str,
     collection: str = "conversation",
-    nb_results: int = 10,
+    nb_results: int = Query(10, ge=1, le=100),
     sdg_filter: SDGFilter | None = None,
     sp: SearchService = Depends(get_search_service),
 ):
@@ -287,7 +293,9 @@ async def search_all(
     description="Get documents payload by list of document ids",
 )
 async def get_documents_payload_by_ids(
-    documents_ids: list[str],
+    documents_ids: Annotated[list[UUID], Body(max_length=MAX_DOCUMENTS_IDS)],
 ) -> list[EnhancedDocumentSlice]:
-    docs = await run_in_threadpool(get_documents_payload_by_ids_sync, documents_ids)
+    docs = await run_in_threadpool(
+        get_documents_payload_by_ids_sync, [str(u) for u in documents_ids]
+    )
     return docs

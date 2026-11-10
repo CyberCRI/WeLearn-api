@@ -602,6 +602,7 @@
               "format": "uuid",
               "type": "string"
             },
+            "maxItems": 500,
             "title": "Documents Ids",
             "type": "array"
           }
@@ -1798,6 +1799,7 @@
             "items": {
               "type": "string"
             },
+            "maxItems": 10,
             "title": "Summaries",
             "type": "array"
           }
@@ -1907,6 +1909,10 @@
           },
           "lang": {
             "default": "en",
+            "enum": [
+              "en",
+              "fr"
+            ],
             "title": "Lang",
             "type": "string"
           },
@@ -3024,6 +3030,8 @@
             "required": false,
             "schema": {
               "default": 2,
+              "maximum": 10,
+              "minimum": 0,
               "title": "Influence Factor",
               "type": "number"
             }
@@ -3034,6 +3042,8 @@
             "required": false,
             "schema": {
               "default": 1,
+              "maximum": 1,
+              "minimum": 0,
               "title": "Relevance Factor",
               "type": "number"
             }
@@ -3155,18 +3165,22 @@
             "schema": {
               "default": 2,
               "description": "Weight applied to subject influence during flavored embedding.",
+              "maximum": 10,
+              "minimum": 0,
               "title": "Influence Factor",
               "type": "number"
             }
           },
           {
-            "description": "Weight applied to base relevance scoring.",
+            "description": "Weight applied to base relevance scoring, from 0 (diversity only) to 1 (relevance only).",
             "in": "query",
             "name": "relevance_factor",
             "required": false,
             "schema": {
               "default": 1,
-              "description": "Weight applied to base relevance scoring.",
+              "description": "Weight applied to base relevance scoring, from 0 (diversity only) to 1 (relevance only).",
+              "maximum": 1,
+              "minimum": 0,
               "title": "Relevance Factor",
               "type": "number"
             }
@@ -3311,6 +3325,8 @@
             "required": false,
             "schema": {
               "default": 10,
+              "maximum": 100,
+              "minimum": 1,
               "title": "Nb Results",
               "type": "integer"
             }
@@ -3389,8 +3405,10 @@
             "application/json": {
               "schema": {
                 "items": {
+                  "format": "uuid",
                   "type": "string"
                 },
+                "maxItems": 500,
                 "title": "Documents Ids",
                 "type": "array"
               }
@@ -3480,18 +3498,22 @@
             "schema": {
               "default": 2,
               "description": "Weight applied to subject influence during flavored embedding.",
+              "maximum": 10,
+              "minimum": 0,
               "title": "Influence Factor",
               "type": "number"
             }
           },
           {
-            "description": "Weight applied to base relevance scoring.",
+            "description": "Weight applied to base relevance scoring, from 0 (diversity only) to 1 (relevance only).",
             "in": "query",
             "name": "relevance_factor",
             "required": false,
             "schema": {
               "default": 1,
-              "description": "Weight applied to base relevance scoring.",
+              "description": "Weight applied to base relevance scoring, from 0 (diversity only) to 1 (relevance only).",
+              "maximum": 1,
+              "minimum": 0,
               "title": "Relevance Factor",
               "type": "number"
             }
@@ -3660,6 +3682,10 @@
             "required": false,
             "schema": {
               "default": "en",
+              "enum": [
+                "en",
+                "fr"
+              ],
               "title": "Lang",
               "type": "string"
             }
@@ -3694,6 +3720,26 @@
             },
             "description": "Successful Response"
           },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Too many files (code TOO_MANY_FILES) or unreadable file"
+          },
+          "413": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "A file is too large (code FILE_TOO_LARGE)"
+          },
           "default": {
             "content": {
               "application/json": {
@@ -3726,6 +3772,12 @@
             "required": false,
             "schema": {
               "default": "en",
+              "enum": [
+                "en",
+                "fr",
+                "english",
+                "french"
+              ],
               "title": "Lang",
               "type": "string"
             }
@@ -3770,6 +3822,26 @@
             },
             "description": "Successful Response"
           },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Too many files (code TOO_MANY_FILES) or unreadable file"
+          },
+          "413": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "A file is too large (code FILE_TOO_LARGE)"
+          },
           "default": {
             "content": {
               "application/json": {
@@ -3802,6 +3874,8 @@
             "required": false,
             "schema": {
               "default": 15,
+              "maximum": 100,
+              "minimum": 1,
               "title": "Nb Results",
               "type": "integer"
             }
@@ -3860,6 +3934,10 @@
             "required": false,
             "schema": {
               "default": "en",
+              "enum": [
+                "en",
+                "fr"
+              ],
               "title": "Lang",
               "type": "string"
             }

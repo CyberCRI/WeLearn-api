@@ -10,6 +10,9 @@ from welearn_database.data.models import Corpus, DocumentSlice, Sdg, WeLearnDocu
 
 from src.app.shared.domain.collections import CorpusRelation
 
+# most document ids one request may look up (bookmarks, bibliography export)
+MAX_DOCUMENTS_IDS = 500
+
 
 class Collection_schema(BaseModel):
     corpus: str

@@ -13,9 +13,11 @@ from src.app.shared.domain.documents import (
     EnhancedDocumentSlice,
     EnhancedDocumentSlicePayloadModel,
 )
+from src.app.shared.domain.exceptions import FileTooLargeError, TooManyFilesError
 from src.app.shared.utils.utils import (
     _extract_docx_content,
     _extract_pdf_content,
+    check_upload_limits,
     extract_doc_info,
     get_files_content,
 )
@@ -158,3 +160,52 @@ class ExtractorsTests(IsolatedAsyncioTestCase):
         result = await _extract_docx_content(file)
 
         self.assertEqual(result, "Hello\nWorld")
+
+
+class UploadLimitsTests(IsolatedAsyncioTestCase):
+    async def test_accepts_files_within_limits(self):
+        files = [_upload(b"12345", "text/plain"), _upload(b"1", "text/plain")]
+        for file in files:
+            file.size = len(file.file.getvalue())
+
+        await check_upload_limits(files, max_files=2, max_file_size=5)
+
+    async def test_too_many_files(self):
+        files = [_upload(b"x", "text/plain") for _ in range(3)]
+
+        with self.assertRaises(TooManyFilesError) as ctx:
+            await check_upload_limits(files, max_files=2, max_file_size=5)
+
+        self.assertEqual(ctx.exception.status_code, 400)
+        self.assertEqual(ctx.exception.msg_code, "TOO_MANY_FILES")
+
+    async def test_file_too_large_uses_recorded_size(self):
+        file = _upload(b"", "text/plain")
+        file.size = 6
+
+        with self.assertRaises(FileTooLargeError) as ctx:
+            await check_upload_limits([file], max_files=2, max_file_size=5)
+
+        self.assertEqual(ctx.exception.status_code, 413)
+        self.assertEqual(ctx.exception.msg_code, "FILE_TOO_LARGE")
+
+    async def test_unknown_size_is_measured_in_chunks(self):
+        file = _upload(b"x" * 10, "text/plain")
+        self.assertIsNone(file.size)
+
+        with patch("src.app.shared.utils.utils.UPLOAD_READ_CHUNK_SIZE", 3):
+            with patch.object(file, "read", wraps=file.read) as read:
+                with self.assertRaises(FileTooLargeError):
+                    await check_upload_limits([file], max_files=1, max_file_size=5)
+
+        # stops at the first chunk past the limit instead of reading it all
+        self.assertEqual(read.await_count, 2)
+        # the file is rewound for the extraction that follows
+        self.assertEqual(file.file.tell(), 0)
+
+    async def test_unknown_size_within_limit_is_rewound(self):
+        file = _upload(b"abc", "text/plain")
+
+        await check_upload_limits([file], max_files=1, max_file_size=5)
+
+        self.assertEqual(await file.read(), b"abc")
