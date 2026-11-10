@@ -1,0 +1,54 @@
+name: Preview environment
+
+# The `preview` label on a PR deploys its branch like main: image + <branch>_deploy tag.
+#   - label added: run ci.yml on the branch (workflow_dispatch, so it builds the branch
+#     head, not the PR merge commit). Later pushes redeploy by themselves (ci.yml checks
+#     the label).
+#   - label removed, or PR closed: delete <branch>_deploy. delete-ref.yml also deletes it
+#     when the branch is deleted.
+# PRs from forks are ignored: they get no secrets and no write token.
+on:
+  pull_request:
+    types: [labeled, unlabeled, closed]
+
+concurrency:
+  group: preview-${{ github.event.pull_request.number }}
+
+jobs:
+  deploy:
+    if: >-
+      github.event.action == 'labeled' &&
+      github.event.label.name == 'preview' &&
+      github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: ubuntu-latest
+    permissions:
+      actions: write
+    steps:
+      - name: Run the build and deploy workflow on the branch
+        env:
+          GH_TOKEN: ${{ github.token }}
+          BRANCH: ${{ github.head_ref }}
+        run: gh workflow run ci.yml --repo "$GITHUB_REPOSITORY" --ref "$BRANCH"
+
+  teardown:
+    if: >-
+      github.event.pull_request.head.repo.full_name == github.repository && (
+        (github.event.action == 'unlabeled' && github.event.label.name == 'preview') ||
+        (github.event.action == 'closed' && contains(github.event.pull_request.labels.*.name, 'preview'))
+      )
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Delete the deploy tag
+        env:
+          GH_TOKEN: ${{ github.token }}
+          BRANCH: ${{ github.head_ref }}
+        run: |
+          tag="tags/${BRANCH}_deploy"
+          if gh api "repos/$GITHUB_REPOSITORY/git/ref/$tag" --silent 2>/dev/null; then
+            gh api -X DELETE "repos/$GITHUB_REPOSITORY/git/refs/$tag"
+            echo "Deleted $tag"
+          else
+            echo "No $tag, nothing to delete"
+          fi
