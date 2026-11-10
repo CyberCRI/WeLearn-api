@@ -7,7 +7,12 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.sql import select
 from welearn_database.data.models import Bookmark, InferredUser, Session
 
-from src.app.shared.domain.exceptions import SessionNotFoundError, UserNotFoundError
+from src.app.shared.domain.exceptions import (
+    BookmarkAlreadyExistsError,
+    BookmarkNotFoundError,
+    SessionNotFoundError,
+    UserNotFoundError,
+)
 from src.app.shared.infra.db import session_maker
 from src.app.shared.utils.logger import logger as logger_utils
 
@@ -178,7 +183,7 @@ def get_user_bookmarks_sync(user_id: uuid.UUID) -> list[Bookmark]:
             select(InferredUser.id).where(InferredUser.id == user_id)
         ).first()
         if not user:
-            raise ValueError(f"User {user_id} does not exist")
+            raise UserNotFoundError(f"User {user_id} does not exist")
         bookmarks = s.execute(
             select(Bookmark).where(Bookmark.inferred_user_id == user_id)
         ).all()
@@ -191,7 +196,7 @@ def delete_user_bookmarks_sync(user_id: uuid.UUID) -> int:
             select(InferredUser.id).where(InferredUser.id == user_id)
         ).first()
         if not user:
-            raise ValueError(f"User {user_id} does not exist")
+            raise UserNotFoundError(f"User {user_id} does not exist")
         deleted = (
             s.query(Bookmark).filter(Bookmark.inferred_user_id == user_id).delete()
         )
@@ -205,7 +210,7 @@ def delete_user_bookmark_sync(user_id: uuid.UUID, document_id: uuid.UUID) -> uui
             select(InferredUser.id).where(InferredUser.id == user_id)
         ).first()
         if not user:
-            raise ValueError(f"User {user_id} does not exist")
+            raise UserNotFoundError(f"User {user_id} does not exist")
         bookmark = s.execute(
             select(Bookmark).where(
                 (Bookmark.inferred_user_id == user_id)
@@ -213,7 +218,7 @@ def delete_user_bookmark_sync(user_id: uuid.UUID, document_id: uuid.UUID) -> uui
             )
         ).first()
         if not bookmark:
-            raise ValueError(
+            raise BookmarkNotFoundError(
                 f"Bookmark {document_id} for user {user_id} does not exist"
             )
         s.delete(bookmark[0])
@@ -227,7 +232,7 @@ def add_user_bookmark_sync(user_id: uuid.UUID, document_id: uuid.UUID) -> uuid.U
             select(InferredUser.id).where(InferredUser.id == user_id)
         ).first()
         if not user:
-            raise ValueError(f"User {user_id} does not exist")
+            raise UserNotFoundError(f"User {user_id} does not exist")
         bookmark = s.execute(
             select(Bookmark).where(
                 (Bookmark.inferred_user_id == user_id)
@@ -235,7 +240,7 @@ def add_user_bookmark_sync(user_id: uuid.UUID, document_id: uuid.UUID) -> uuid.U
             )
         ).first()
         if bookmark:
-            raise ValueError(
+            raise BookmarkAlreadyExistsError(
                 f"Bookmark {document_id} for user {user_id} already exists"
             )
         new_bookmark = Bookmark(document_id=document_id, inferred_user_id=user_id)
@@ -250,7 +255,7 @@ def add_institution_data_to_user_sync(
     with session_maker() as s:
         user = s.execute(select(InferredUser).where(InferredUser.id == user_id)).first()
         if not user:
-            raise ValueError(f"User {user_id} does not exist")
+            raise UserNotFoundError(f"User {user_id} does not exist")
         user = user[0]
         user.university_title = institution
         user.role = role

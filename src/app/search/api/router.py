@@ -1,15 +1,6 @@
 # src/app/search/api/router.py
 
-from fastapi import (
-    APIRouter,
-    BackgroundTasks,
-    Body,
-    Depends,
-    HTTPException,
-    Query,
-    Request,
-    Response,
-)
+from fastapi import APIRouter, BackgroundTasks, Body, Depends, Query, Request, Response
 from fastapi.concurrency import run_in_threadpool
 
 from src.app.data_collection.services.data_collection import get_data_collection_service
@@ -34,12 +25,7 @@ from src.app.search.services.search import (
 )
 from src.app.search.services.search_helpers import search_multi_inputs
 from src.app.shared.domain.documents import EnhancedDocumentSlice
-from src.app.shared.domain.exceptions import (
-    CollectionNotFoundError,
-    EmptyQueryError,
-    ModelNotFoundError,
-    bad_request,
-)
+from src.app.shared.domain.exceptions import EmptyQueryError, bad_request
 from src.app.shared.utils.logger import logger as logger_utils
 from src.app.shared.utils.requests import extract_session_cookie
 
@@ -161,7 +147,7 @@ async def search_doc_by_collection(
 ):
     if not query:
         e = EmptyQueryError()
-        return bad_request(message=e.message, msg_code=e.msg_code)
+        bad_request(message=e.message, msg_code=e.msg_code)
 
     qp = EnhancedSearchQuery(
         query=query,
@@ -170,21 +156,15 @@ async def search_doc_by_collection(
         sdg_filter=sdg_filter.sdg_filter if sdg_filter else None,
     )
 
-    try:
-        res = await sp.search_handler(
-            qp=qp, method=SearchMethods.BY_DOCUMENT, background_tasks=background_tasks
-        )
+    res = await sp.search_handler(
+        qp=qp, method=SearchMethods.BY_DOCUMENT, background_tasks=background_tasks
+    )
 
-        if not res:
-            response.status_code = 206
-            return []
+    if not res:
+        response.status_code = 206
+        return []
 
-        return res
-    except (CollectionNotFoundError, ModelNotFoundError) as e:
-        raise HTTPException(
-            status_code=404,
-            detail={"message": e.message, "code": e.msg_code},
-        )
+    return res
 
 
 @router.post(
@@ -199,22 +179,16 @@ async def search_all_slices_by_lang(
     qp: EnhancedSearchQuery = Depends(get_params),
     sp: SearchService = Depends(get_search_service),
 ):
-    try:
-        res = await sp.search_handler(
-            qp=qp, method=SearchMethods.BY_SLICES, background_tasks=background_tasks
-        )
+    res = await sp.search_handler(
+        qp=qp, method=SearchMethods.BY_SLICES, background_tasks=background_tasks
+    )
 
-        if not res:
-            logger.debug("No results found")
-            response.status_code = 204
-            return []
+    if not res:
+        logger.debug("No results found")
+        response.status_code = 204
+        return []
 
-        return res
-    except CollectionNotFoundError as e:
-        raise HTTPException(
-            status_code=404,
-            detail={"message": e.message, "code": e.msg_code},
-        )
+    return res
 
 
 @router.post(
@@ -279,25 +253,19 @@ async def search_all(
     sp: SearchService = Depends(get_search_service),
     data_collection=Depends(get_data_collection_service),
 ):
-    try:
-        session_id = extract_session_cookie(request)
+    session_id = extract_session_cookie(request)
 
-        res = await sp.search_handler(
-            qp=qp,
-            method=SearchMethods.BY_DOCUMENT,
-            background_tasks=background_tasks,
-            without_vectors=True,
-        )
+    res = await sp.search_handler(
+        qp=qp,
+        method=SearchMethods.BY_DOCUMENT,
+        background_tasks=background_tasks,
+        without_vectors=True,
+    )
 
-        if not res:
-            logger.error("No results found")
-            response.status_code = 204
-            return SearchOutput(search_message_id=None, docs=[])
-    except CollectionNotFoundError as e:
-        raise HTTPException(
-            status_code=404,
-            detail={"message": e.message, "code": e.msg_code},
-        )
+    if not res:
+        logger.error("No results found")
+        response.status_code = 204
+        return SearchOutput(search_message_id=None, docs=[])
 
     response.status_code = 200
 
