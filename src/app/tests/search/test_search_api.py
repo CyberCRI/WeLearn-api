@@ -10,6 +10,7 @@ from sqlalchemy.orm import Session
 from welearn_database.data.models import Corpus, WeLearnDocument
 
 from src.app.core.config import settings
+from src.app.data_collection.services.data_collection import get_data_collection_service
 from src.app.search.api.router import get_document_search_params, get_params
 from src.app.search.domain.models import (
     DocumentSearchQuery,
@@ -17,7 +18,11 @@ from src.app.search.domain.models import (
     SearchQuery,
 )
 from src.app.search.infra.queries import get_visible_corpora_sync
-from src.app.search.services.search import SearchService, sort_using_mmr
+from src.app.search.services.search import (
+    SearchService,
+    get_search_service,
+    sort_using_mmr,
+)
 from src.app.shared.domain import collections
 from src.app.shared.domain.documents import (
     EnhancedDocumentSlice,
@@ -758,3 +763,51 @@ class DocumentsByIdsTests(IsolatedAsyncioTestCase):
                     background_tasks=mock.ANY,
                     callback_function=search_handler,  # noqa: E501
                 )
+
+
+@mock.patch(
+    "src.app.shared.infra.security.check_api_key_sync",
+    new=mock.MagicMock(return_value=True),
+)
+@patch(
+    "src.app.search.api.router.resolve_corpora",
+    new=mock.AsyncMock(return_value=("conversation",)),
+)
+class SearchNotFoundMappingTests(IsolatedAsyncioTestCase):
+    """
+    The routers no longer map these errors by hand (J-6): the global
+    WeLearnError handler keeps the same 404 and {"message", "code"} body.
+    """
+
+    ROUTES = (
+        ("/search/collections/conversation?query=q", None),
+        ("/search/by_slices", {"query": "q"}),
+        ("/search/by_document", {"query": "q"}),
+    )
+
+    def setUp(self):
+        self.sp = mock.MagicMock()
+        self.sp.search_handler = mock.AsyncMock()
+        app.dependency_overrides[get_search_service] = lambda: self.sp
+        app.dependency_overrides[get_data_collection_service] = lambda: mock.MagicMock()
+        self.addCleanup(app.dependency_overrides.clear)
+
+    def test_not_found_errors_return_404_with_code(self, *mocks):
+        for error, code in (
+            (CollectionNotFoundError(), "COLL_NOT_FOUND"),
+            (ModelNotFoundError(), "MODEL_NOT_FOUND"),
+        ):
+            self.sp.search_handler.side_effect = error
+            for path, body in self.ROUTES:
+                with self.subTest(path=path, code=code):
+                    response = client.post(
+                        f"{settings.API_V1_STR}{path}",
+                        json=body,
+                        headers={"X-API-Key": "test"},
+                    )
+
+                    self.assertEqual(response.status_code, 404)
+                    self.assertEqual(
+                        response.json(),
+                        {"detail": {"message": error.message, "code": code}},
+                    )

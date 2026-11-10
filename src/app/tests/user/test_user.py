@@ -245,7 +245,8 @@ class UserApiTests(unittest.IsolatedAsyncioTestCase):
         )
         self.assertEqual(response.status_code, 404)
         self.assertEqual(
-            response.json(), {"detail": "('User not found', 'USER_NOT_FOUND')"}
+            response.json(),
+            {"detail": {"message": "User not found", "code": "USER_NOT_FOUND"}},
         )
         resolve_user_and_session_mock.assert_called_once()
         run_in_threadpool_mock.assert_not_called()
@@ -275,7 +276,8 @@ class UserApiTests(unittest.IsolatedAsyncioTestCase):
         )
         self.assertEqual(response.status_code, 404)
         self.assertEqual(
-            response.json(), {"detail": "('User not found', 'USER_NOT_FOUND')"}
+            response.json(),
+            {"detail": {"message": "User not found", "code": "USER_NOT_FOUND"}},
         )
         resolve_user_and_session_mock.assert_called_once()
         run_in_threadpool_mock.assert_not_called()

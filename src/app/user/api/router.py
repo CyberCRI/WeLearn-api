@@ -5,10 +5,8 @@ from fastapi import APIRouter, HTTPException, Request, Response, status
 from fastapi.concurrency import run_in_threadpool
 
 from src.app.shared.domain.constants import SESSION_COOKIE_NAME, SESSION_TTL_SECONDS
-from src.app.shared.domain.exceptions import UserNotFoundError, WeLearnError
 from src.app.shared.domain.responses import ErrorResponse
 from src.app.shared.infra.rate_limit import SlidingWindowRateLimiter, client_ip
-from src.app.shared.utils.db_errors import DB_ERRORS
 from src.app.shared.utils.dependencies import get_settings
 from src.app.shared.utils.logger import logger as logger_utils
 from src.app.shared.utils.requests import (
@@ -117,8 +115,6 @@ async def resolve_bookmark_user(request: Request) -> uuid.UUID:
     except KeycloakUnavailableError as e:
         logger.error(f"Keycloak unavailable: {e}")
         raise HTTPException(status_code=503, detail="Keycloak unavailable")
-    except UserNotFoundError as e:
-        raise HTTPException(status_code=404, detail=str(e))
     return user_id
 
 
@@ -155,14 +151,6 @@ async def handle_user_and_session(
     except KeycloakUnavailableError as e:
         logger.error(f"Keycloak unavailable: {e}")
         raise HTTPException(status_code=503, detail="Keycloak unavailable")
-    except UserNotFoundError as e:
-        raise HTTPException(status_code=404, detail=str(e))
-    except (WeLearnError, *DB_ERRORS):
-        # mapped by the global handlers, a DB error without its message (C-9)
-        raise
-    except Exception as e:
-        logger.error(f"Error creating user and session: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
 
     response.set_cookie(
         key=SESSION_COOKIE_NAME,
@@ -242,17 +230,8 @@ async def sign_up(request: Request, data: SignUpRequest, referer: str | None = N
 async def get_user_bookmarks(request: Request):
     user_id = await resolve_bookmark_user(request)
 
-    try:
-        bookmarks = await run_in_threadpool(get_user_bookmarks_sync, user_id)
-        return {"bookmarks": bookmarks}
-    except ValueError as e:
-        raise HTTPException(status_code=404, detail=str(e))
-    except (WeLearnError, *DB_ERRORS):
-        # mapped by the global handlers, a DB error without its message (C-9)
-        raise
-    except Exception as e:
-        logger.error(f"Error fetching bookmarks: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+    bookmarks = await run_in_threadpool(get_user_bookmarks_sync, user_id)
+    return {"bookmarks": bookmarks}
 
 
 @router.delete(
@@ -263,17 +242,8 @@ async def get_user_bookmarks(request: Request):
 async def delete_user_bookmarks(request: Request):
     user_id = await resolve_bookmark_user(request)
 
-    try:
-        deleted_count = await run_in_threadpool(delete_user_bookmarks_sync, user_id)
-        return {"deleted": deleted_count}
-    except ValueError as e:
-        raise HTTPException(status_code=404, detail=str(e))
-    except (WeLearnError, *DB_ERRORS):
-        # mapped by the global handlers, a DB error without its message (C-9)
-        raise
-    except Exception as e:
-        logger.error(f"Error deleting bookmarks: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+    deleted_count = await run_in_threadpool(delete_user_bookmarks_sync, user_id)
+    return {"deleted": deleted_count}
 
 
 # Each bookmark operation has two routes sharing one handler:
@@ -302,19 +272,10 @@ LEGACY_BOOKMARK_PATH = "/bookmarks/:document_id"
 async def delete_user_bookmark(request: Request, document_id: uuid.UUID):
     user_id = await resolve_bookmark_user(request)
 
-    try:
-        deleted_id = await run_in_threadpool(
-            delete_user_bookmark_sync, user_id, document_id
-        )
-        return {"deleted": deleted_id}
-    except ValueError as e:
-        raise HTTPException(status_code=404, detail=str(e))
-    except (WeLearnError, *DB_ERRORS):
-        # mapped by the global handlers, a DB error without its message (C-9)
-        raise
-    except Exception as e:
-        logger.error(f"Error deleting bookmark: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+    deleted_id = await run_in_threadpool(
+        delete_user_bookmark_sync, user_id, document_id
+    )
+    return {"deleted": deleted_id}
 
 
 @router.post(
@@ -332,17 +293,8 @@ async def delete_user_bookmark(request: Request, document_id: uuid.UUID):
 async def add_user_bookmark(request: Request, document_id: uuid.UUID):
     user_id = await resolve_bookmark_user(request)
 
-    try:
-        added_id = await run_in_threadpool(add_user_bookmark_sync, user_id, document_id)
-        return {"added": added_id}
-    except ValueError as e:
-        raise HTTPException(status_code=400, detail=str(e))
-    except (WeLearnError, *DB_ERRORS):
-        # mapped by the global handlers, a DB error without its message (C-9)
-        raise
-    except Exception as e:
-        logger.error(f"Error adding bookmark: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+    added_id = await run_in_threadpool(add_user_bookmark_sync, user_id, document_id)
+    return {"added": added_id}
 
 
 @router.post(
@@ -356,29 +308,14 @@ async def add_institution_data_to_user(request: Request, data: InstitutionData):
         raise HTTPException(status_code=401, detail="Session cookie is missing")
     host = extract_origin_from_request(request)
 
-    try:
-        user_id, _ = await resolve_user_and_session(
-            session_uuid=session_uuid,
-            host=host,
-            referer=None,
-        )
-    except UserNotFoundError as e:
-        raise HTTPException(status_code=404, detail=str(e))
-
-    try:
-        resp = await run_in_threadpool(
-            add_institution_data_to_user_sync, user_id, data.institution, data.role
-        )
-
-        print(f"add_institution_data_to_user_sync response: {resp}")
-    except ValueError as e:
-        raise HTTPException(status_code=404, detail=str(e))
-    except (WeLearnError, *DB_ERRORS):
-        # mapped by the global handlers, a DB error without its message (C-9)
-        raise
-    except Exception as e:
-        logger.error(f"Error adding institution data: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+    user_id, _ = await resolve_user_and_session(
+        session_uuid=session_uuid,
+        host=host,
+        referer=None,
+    )
+    await run_in_threadpool(
+        add_institution_data_to_user_sync, user_id, data.institution, data.role
+    )
 
     return {
         "message": "Institution data added to user",
