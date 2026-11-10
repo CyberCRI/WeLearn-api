@@ -20,6 +20,7 @@ from src.app.search.services.search import SearchService, get_search_service
 from src.app.search.services.search_helpers import search_multi_inputs
 from src.app.shared.domain.exceptions import NoResultsError
 from src.app.shared.domain.responses import MessageResponse
+from src.app.shared.utils.db_errors import describe_error
 from src.app.shared.utils.dependencies import get_settings
 from src.app.shared.utils.logger import logger as utils_logger
 from src.app.shared.utils.requests import extract_session_cookie
@@ -229,7 +230,7 @@ async def handle_syllabus_feedback(
         )
 
     except Exception as e:
-        logger.error(f"Error in chat schema: {e}")
+        logger.error("Error in chat schema: %s", describe_error(e))
         raise e
 
 
@@ -359,13 +360,14 @@ async def generate_syllabus(body: SyllabusGenerationRequest):
             **output,
         }
     except Exception as e:
-        logger.error(f"Error generating syllabus: {e}")
+        error = describe_error(e)
+        logger.error("Error generating syllabus: %s", error)
         return {
             "status": "error",
-            "message": str(e),
+            "message": error,
             "validation": {
                 "passed": False,
-                "major_issues": [str(e)],
+                "major_issues": [error],
                 "minor_issues": [],
                 "suggestions": [],
             },

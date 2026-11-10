@@ -10,6 +10,7 @@ from src.app.metric.domain.models import (
 )
 from src.app.metric.infra.queries import get_document_qty_table_info_sync
 from src.app.shared.domain.responses import ErrorResponse
+from src.app.shared.utils.db_errors import describe_error
 from src.app.shared.utils.dependencies import get_settings
 from src.app.shared.utils.logger import logger as utils_logger
 from src.app.shared.utils.requests import extract_session_cookie
@@ -100,6 +101,6 @@ async def register_form_data(
 
         return "form data registered"
     except Exception as e:
-        logger.error("error while registering form data", e)
+        logger.error("error while registering form data: %s", describe_error(e))
         response.status_code = 500
         return "an error occured when registering the form data"

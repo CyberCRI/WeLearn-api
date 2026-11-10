@@ -3,6 +3,8 @@ import os
 
 from dotenv import load_dotenv
 
+from src.app.shared.utils.db_errors import install_db_error_redaction
+
 load_dotenv()
 RUN_ENV: str | None = os.getenv("RUN_ENV", None)
 
@@ -44,6 +46,9 @@ def logger(name: str) -> logging.Logger:
 
     # Add handlers to the log
     log.addHandler(console_handler)
+
+    # database errors are logged by type only, their message can hold the DSN (C-9)
+    install_db_error_redaction(log)
 
     if RUN_ENV == "test":
         logging.disable(logging.CRITICAL)

@@ -21,6 +21,7 @@ from src.app.data_collection.services.data_collection import get_data_collection
 from src.app.search.services.search import SearchService, get_search_service
 from src.app.shared.domain.exceptions import EmptyQueryError, bad_request
 from src.app.shared.domain.responses import ErrorResponse
+from src.app.shared.utils.db_errors import describe_error
 from src.app.shared.utils.dependencies import get_settings
 from src.app.shared.utils.logger import logger as utils_logger
 from src.app.shared.utils.requests import extract_session_cookie
@@ -302,6 +303,6 @@ async def agent_response(
 
         return agent_ans
     except Exception as e:
-        logger.error("Error while registering chat data: %s", e)
+        logger.error("Error while registering chat data: %s", describe_error(e))
 
     return agent_ans

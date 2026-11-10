@@ -5,6 +5,7 @@ from types import SimpleNamespace
 from unittest import mock
 
 from fastapi.testclient import TestClient
+from sqlalchemy.exc import OperationalError
 
 from src.app.core.config import settings
 from src.app.shared.domain.exceptions import (
@@ -12,11 +13,13 @@ from src.app.shared.domain.exceptions import (
     BookmarkNotFoundError,
     UserNotFoundError,
 )
+from src.app.tests.shared.log_helpers import format_records
 from src.app.user.infra.keycloak import KeycloakUnavailableError
 from src.main import app
 
 ROUTER = "src.app.user.api.router"
 BASE = f"{settings.API_V1_STR}/user"
+SECRET = "S3cr3t%#"
 
 client = TestClient(app)
 # unhandled errors reach Starlette's 500 handler instead of being re-raised
@@ -149,6 +152,21 @@ class UserApiExtraTests(unittest.TestCase):
         response = safe_client.get(f"{BASE}/bookmarks", headers=self.headers)
 
         self.assert_generic_500(response, "bookmark")
+
+    def test_bookmarks_database_error_returns_generic_503(self):
+        # the global handler answers, not the route's str(e) 500 (C-9)
+        self._patch(
+            "get_user_bookmarks_sync",
+            side_effect=OperationalError("SELECT", {}, Exception(f"password={SECRET}")),
+        )
+
+        with self.assertLogs(level="DEBUG") as logs:
+            response = client.get(f"{BASE}/bookmarks", headers=self.headers)
+
+        self.assertEqual(response.status_code, 503)
+        self.assertEqual(response.json()["detail"]["code"], "DATABASE_UNAVAILABLE")
+        self.assertNotIn(SECRET, response.text)
+        self.assertNotIn(SECRET, format_records(logs.records))
 
     # ---- DELETE /bookmarks ----
 

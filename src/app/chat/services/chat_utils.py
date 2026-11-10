@@ -12,6 +12,7 @@ from psycopg.rows import AsyncRowFactory, DictRow
 from src.app.chat.domain import models
 from src.app.chat.services.helpers import linkify_missing_citations
 from src.app.search.services.search import SearchService
+from src.app.shared.utils.db_errors import describe_error
 from src.app.shared.utils.logger import logger as utils_logger
 
 logger = utils_logger(__name__)
@@ -20,14 +21,6 @@ logger = utils_logger(__name__)
 def _format_sse_event(data: str) -> str:
     lines = data.splitlines()
     return "".join(f"data: {line}\n" for line in lines) + "\n"
-
-
-def _describe_stream_error(error: Exception) -> str:
-    # psycopg error messages can quote the connection string, password included,
-    # so database errors are logged by type only (C-9)
-    if isinstance(error, psycopg.Error):
-        return f"{type(error).__name__} (database error, details not logged)"
-    return str(error)
 
 
 def _resolve_thread_id(thread_id: UUID | None) -> UUID:
@@ -218,14 +211,14 @@ async def _stream_agent_response(
             try:
                 yield _format_sse_event(_serialize_agent_stream_chunk(chunk))
             except Exception as e:
-                logger.error("Error while yielding chunk: %s", e)
+                logger.error("Error while yielding chunk: %s", describe_error(e))
     except Exception as e:
         # The response has already started, so an HTTP error can no longer be
         # sent: close the stream with an error event the client can display.
         logger.error(
             "Agent stream failed thread_id=%s error=%s",
             thread_id,
-            _describe_stream_error(e),
+            describe_error(e),
         )
         yield _format_sse_event(json.dumps(_build_stream_error_payload(thread_id)))
         return
@@ -252,6 +245,6 @@ async def _stream_agent_response(
         )
         final_payload = {**final_payload, "message_id": message_id}
     except Exception as e:
-        logger.error("Error while registering chat data: %s", e)
+        logger.error("Error while registering chat data: %s", describe_error(e))
 
     yield _format_sse_event(json.dumps(jsonable_encoder(final_payload)))

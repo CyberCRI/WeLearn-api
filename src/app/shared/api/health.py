@@ -6,6 +6,7 @@ from sqlalchemy.exc import SQLAlchemyError
 
 from src.app.shared.domain.responses import ErrorResponse
 from src.app.shared.infra.db import session_maker
+from src.app.shared.utils.db_errors import describe_error
 from src.app.shared.utils.logger import logger as utils_logger
 
 logger = utils_logger(__name__)
@@ -68,7 +69,7 @@ async def get_db_health() -> HealthCheck:
     try:
         await run_in_threadpool(_ping_db)
     except (SQLAlchemyError, OSError) as e:
-        logger.error("Database health check failed: %s", e)
+        logger.error("Database health check failed: %s", describe_error(e))
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
             detail={

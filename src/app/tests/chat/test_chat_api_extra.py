@@ -1,11 +1,14 @@
+import logging
 import unittest
 import uuid
 from unittest import mock
 
+import psycopg
 from fastapi import BackgroundTasks, HTTPException
 from fastapi.testclient import TestClient
 from langchain_core.messages import AIMessage, HumanMessage
 from langgraph.checkpoint.base import CheckpointTuple
+from sqlalchemy.exc import OperationalError as SAOperationalError
 from starlette.requests import Request
 
 from src.app.chat.api import router as chat_router
@@ -19,12 +22,15 @@ from src.app.shared.domain.exceptions import (
     LanguageNotSupportedError,
     SessionNotFoundError,
 )
+from src.app.tests.shared.log_helpers import format_records
 from src.main import app
 
 QNA_URL = f"{settings.API_V1_STR}/qna"
 HEADERS = {"X-API-Key": "test"}
 ROUTER = "src.app.chat.api.router"
 THREAD_ACCESS = "src.app.chat.services.thread_access"
+DB_SECRET = "S3cr3t%#"
+DB_ERROR_CODES = {"DATABASE_UNAVAILABLE", "DATABASE_ERROR"}
 
 USER_A, SESSION_A = uuid.uuid4(), uuid.uuid4()
 USER_B, SESSION_B = uuid.uuid4(), uuid.uuid4()
@@ -172,6 +178,87 @@ class ChatRouterTests(unittest.TestCase):
         )
         self.assertEqual(response.status_code, 422)
         self.chat.agent_get_history.assert_not_awaited()
+
+    # --- database connection failures (C-9) ---------------------------------
+
+    def _assert_db_failure_hides_dsn(self, method, path, expected_status, **kwargs):
+        with self.assertLogs(level=logging.DEBUG) as logs:
+            response = self.client.request(method, path, headers=HEADERS, **kwargs)
+
+        self.assertEqual(response.status_code, expected_status)
+        self.assertIn(response.json()["detail"]["code"], DB_ERROR_CODES)
+        self.assertNotIn(DB_SECRET, response.text)
+        output = format_records(logs.records)
+        self.assertNotIn(DB_SECRET, output)
+        self.assertIn("Database error", output)
+
+    def test_history_with_unparsable_conninfo_hides_the_password(self):
+        self.connect.side_effect = psycopg.ProgrammingError(
+            f'invalid percent-encoded token: "{DB_SECRET}"'
+        )
+
+        self._assert_db_failure_hides_dsn(
+            "GET",
+            f"{QNA_URL}/chat/history",
+            500,
+            params={"thread_id": str(uuid.uuid4())},
+        )
+        self.chat.agent_get_history.assert_not_awaited()
+
+    def test_history_with_unreachable_database_returns_503(self):
+        self.connect.side_effect = psycopg.OperationalError(
+            f"connection failed: password={DB_SECRET}"
+        )
+
+        self._assert_db_failure_hides_dsn(
+            "GET",
+            f"{QNA_URL}/chat/history",
+            503,
+            params={"thread_id": str(uuid.uuid4())},
+        )
+
+    def test_agent_with_unreachable_database_returns_503(self):
+        self.connect.side_effect = psycopg.OperationalError(
+            f"connection failed: password={DB_SECRET}"
+        )
+
+        self._assert_db_failure_hides_dsn(
+            "POST",
+            f"{QNA_URL}/chat/agent",
+            503,
+            json={"query": "q", "thread_id": str(uuid.uuid4())},
+        )
+        self.chat.agent_message.assert_not_awaited()
+
+    def test_agent_stream_thread_check_with_unreachable_database_returns_503(self):
+        self.connect.side_effect = psycopg.OperationalError(
+            f"connection failed: password={DB_SECRET}"
+        )
+
+        self._assert_db_failure_hides_dsn(
+            "POST",
+            f"{QNA_URL}/chat/agent_stream",
+            503,
+            json={"query": "q", "thread_id": str(uuid.uuid4())},
+        )
+        self.chat.agent_message.assert_not_awaited()
+
+    def test_agent_data_collection_database_error_is_logged_without_dsn(self):
+        self.data_collection.register_chat_data.side_effect = SAOperationalError(
+            "INSERT", {}, Exception(f"password={DB_SECRET}")
+        )
+
+        with self.assertLogs(ROUTER, "ERROR") as logs:
+            response = self.client.post(
+                f"{QNA_URL}/chat/agent",
+                json={"query": "q", "thread_id": str(uuid.uuid4())},
+                headers=HEADERS,
+            )
+
+        self.assertEqual(response.status_code, 200)
+        output = format_records(logs.records)
+        self.assertNotIn(DB_SECRET, output)
+        self.assertIn("sqlalchemy.exc.OperationalError", output)
 
     # --- /chat/agent_stream -----------------------------------------------
 

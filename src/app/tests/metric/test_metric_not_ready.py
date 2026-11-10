@@ -112,7 +112,7 @@ class NbDocsInfoNotPopulatedRouteTests(unittest.TestCase):
         self.assertNotIn("materialized", response.text)
         self.assertIn(f"REFRESH MATERIALIZED VIEW {IN_QDRANT_VIEW};", logs.output[0])
 
-    def test_other_db_error_still_returns_500(self):
+    def test_other_db_error_is_not_metrics_not_ready(self):
         client = TestClient(app, raise_server_exceptions=False)
         error = OperationalError(
             "SELECT ...", {}, psycopg.errors.QueryCanceled("canceling statement")
@@ -120,4 +120,7 @@ class NbDocsInfoNotPopulatedRouteTests(unittest.TestCase):
         with mock.patch(QUERY, side_effect=error):
             response = client.get(URL, headers=HEADERS)
 
-        self.assertEqual(response.status_code, 500)
+        # mapped by the global database handler (C-9), not by B-13
+        self.assertEqual(response.status_code, 503)
+        self.assertEqual(response.json()["detail"]["code"], "DATABASE_UNAVAILABLE")
+        self.assertNotIn("canceling statement", response.text)
