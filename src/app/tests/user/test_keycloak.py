@@ -1,3 +1,4 @@
+import threading
 import time
 import unittest
 import uuid
@@ -10,9 +11,11 @@ from welearn_database.data.models import InferredUser
 
 from src.app.user.infra import keycloak
 from src.app.user.infra.keycloak import (
+    JWKS_REFETCH_INTERVAL_SECONDS,
     KeycloakConfigError,
     KeycloakTokenError,
     KeycloakUnavailableError,
+    RateLimitedJWKClient,
     decode_keycloak_token,
     extract_bearer_token,
 )
@@ -21,26 +24,38 @@ from src.app.user.infra.queries import get_or_create_user_from_keycloak_sync
 KEYCLOAK_URL = "https://auth.example.org"
 KEYCLOAK_REALM = "welearn"
 ISSUER = f"{KEYCLOAK_URL}/realms/{KEYCLOAK_REALM}"
+CLIENT_ID = "welearn-front"
+JWKS_URI = f"{ISSUER}/protocol/openid-connect/certs"
 
 PRIVATE_KEY = rsa.generate_private_key(public_exponent=65537, key_size=2048)
 OTHER_PRIVATE_KEY = rsa.generate_private_key(public_exponent=65537, key_size=2048)
 
 
-def make_token(key=PRIVATE_KEY, algorithm="RS256", **overrides) -> str:
+def make_token(key=PRIVATE_KEY, algorithm="RS256", kid="k1", **overrides) -> str:
     now = int(time.time())
     payload = {
         "sub": str(uuid.uuid4()),
         "iss": ISSUER,
         "iat": now,
         "exp": now + 300,
-        "azp": "welearn-front",
+        "azp": CLIENT_ID,
     }
     payload.update(overrides)
     payload = {k: v for k, v in payload.items() if v is not None}
-    return jwt.encode(payload, key, algorithm=algorithm, headers={"kid": "k1"})
+    return jwt.encode(payload, key, algorithm=algorithm, headers={"kid": kid})
 
 
-@patch.object(keycloak.settings, "KEYCLOAK_CLIENT_ID", None)
+def make_jwks(*kids: str) -> dict:
+    """A JWKS publishing PRIVATE_KEY's public key under each kid."""
+    keys = []
+    for kid in kids:
+        jwk = jwt.algorithms.RSAAlgorithm.to_jwk(PRIVATE_KEY.public_key(), as_dict=True)
+        keys.append({**jwk, "kid": kid, "use": "sig", "alg": "RS256"})
+    return {"keys": keys}
+
+
+@patch.object(keycloak.settings, "KEYCLOAK_AUDIENCE", None)
+@patch.object(keycloak.settings, "KEYCLOAK_CLIENT_ID", CLIENT_ID)
 @patch.object(keycloak.settings, "KEYCLOAK_REALM", KEYCLOAK_REALM)
 @patch.object(keycloak.settings, "KEYCLOAK_URL", KEYCLOAK_URL)
 @patch("src.app.user.infra.keycloak.get_jwks_client")
@@ -111,11 +126,31 @@ class TestDecodeKeycloakToken(unittest.TestCase):
 
     def test_client_id_mismatch(self, get_jwks_client_mock):
         self._use_public_key(get_jwks_client_mock)
-        with patch.object(keycloak.settings, "KEYCLOAK_CLIENT_ID", "welearn-front"):
+        with self.assertRaises(KeycloakTokenError):
+            decode_keycloak_token(make_token(azp="another-client"))
+        # matching client is accepted
+        decode_keycloak_token(make_token())
+
+    def test_missing_azp(self, get_jwks_client_mock):
+        self._use_public_key(get_jwks_client_mock)
+        with self.assertRaises(KeycloakTokenError):
+            decode_keycloak_token(make_token(azp=None))
+
+    def test_audience_not_checked_when_unset(self, get_jwks_client_mock):
+        """Keycloak access tokens' default "aud" ("account") is accepted"""
+        self._use_public_key(get_jwks_client_mock)
+        decode_keycloak_token(make_token(aud="account"))
+
+    def test_audience_checked_when_set(self, get_jwks_client_mock):
+        self._use_public_key(get_jwks_client_mock)
+        with patch.object(keycloak.settings, "KEYCLOAK_AUDIENCE", "welearn-api"):
             with self.assertRaises(KeycloakTokenError):
-                decode_keycloak_token(make_token(azp="another-client"))
-            # matching client is accepted
-            decode_keycloak_token(make_token())
+                decode_keycloak_token(make_token(aud="account"))
+            with self.assertRaises(KeycloakTokenError):
+                decode_keycloak_token(make_token())  # no "aud" claim
+            # "aud" may be a list containing the audience
+            decode_keycloak_token(make_token(aud=["account", "welearn-api"]))
+            decode_keycloak_token(make_token(aud="welearn-api"))
 
     def test_signing_key_not_found(self, get_jwks_client_mock):
         get_jwks_client_mock.return_value.get_signing_key_from_jwt.side_effect = (
@@ -139,10 +174,151 @@ class TestDecodeKeycloakToken(unittest.TestCase):
             decode_keycloak_token(make_token())
 
     def test_missing_config(self, get_jwks_client_mock):
-        with patch.object(keycloak.settings, "KEYCLOAK_URL", None):
-            with self.assertRaises(KeycloakConfigError):
-                decode_keycloak_token(make_token())
+        for setting in ["KEYCLOAK_URL", "KEYCLOAK_REALM", "KEYCLOAK_CLIENT_ID"]:
+            with self.subTest(setting=setting):
+                with patch.object(keycloak.settings, setting, None):
+                    with self.assertRaises(KeycloakConfigError):
+                        decode_keycloak_token(make_token())
         get_jwks_client_mock.assert_not_called()
+
+    def test_missing_config_logged_once(self, get_jwks_client_mock):
+        with (
+            patch.object(keycloak.settings, "KEYCLOAK_CLIENT_ID", None),
+            patch.object(keycloak, "_config_error_logged", False),
+            patch.object(keycloak, "logger") as logger_mock,
+        ):
+            for _ in range(3):
+                with self.assertRaises(KeycloakConfigError):
+                    decode_keycloak_token(make_token())
+
+        logger_mock.error.assert_called_once()
+        self.assertIn("KEYCLOAK_CLIENT_ID", str(logger_mock.error.call_args))
+
+
+@patch.object(jwt.PyJWKClient, "fetch_data")
+@patch("src.app.user.infra.keycloak.time.monotonic")
+class TestRateLimitedJWKClient(unittest.TestCase):
+    """The JWKS endpoint is mocked by PyJWKClient.fetch_data."""
+
+    def _client(self, monotonic_mock, fetch_data_mock, *kids):
+        monotonic_mock.return_value = 1000.0
+        fetch_data_mock.return_value = make_jwks(*kids)
+        return RateLimitedJWKClient(
+            JWKS_URI, refetch_interval=JWKS_REFETCH_INTERVAL_SECONDS, cache_keys=True
+        )
+
+    def test_known_kid_fetched_once(self, monotonic_mock, fetch_data_mock):
+        jwks_client = self._client(monotonic_mock, fetch_data_mock, "k1")
+
+        for _ in range(5):
+            key = jwks_client.get_signing_key_from_jwt(make_token(kid="k1"))
+            self.assertEqual(key.key_id, "k1")
+
+        fetch_data_mock.assert_called_once()
+
+    def test_burst_of_unknown_kids_fetches_once(self, monotonic_mock, fetch_data_mock):
+        jwks_client = self._client(monotonic_mock, fetch_data_mock, "k1")
+        jwks_client.get_signing_key("k1")
+        self.assertEqual(fetch_data_mock.call_count, 1)
+
+        for i in range(20):
+            with self.assertRaises(jwt.PyJWKClientError):
+                jwks_client.get_signing_key(f"forged-{i}")
+        # one refetch for the first unknown kid, none for the others
+        self.assertEqual(fetch_data_mock.call_count, 2)
+
+        # a known kid is still served from the cache
+        self.assertEqual(jwks_client.get_signing_key("k1").key_id, "k1")
+        self.assertEqual(fetch_data_mock.call_count, 2)
+
+    def test_unknown_kid_on_cold_cache_fetches_once(
+        self, monotonic_mock, fetch_data_mock
+    ):
+        """The first fetch already has the latest keys: no immediate refetch"""
+        jwks_client = self._client(monotonic_mock, fetch_data_mock, "k1")
+
+        with self.assertRaises(jwt.PyJWKClientError):
+            jwks_client.get_signing_key("forged")
+        fetch_data_mock.assert_called_once()
+
+    def test_refetch_allowed_after_interval(self, monotonic_mock, fetch_data_mock):
+        """A rotated key is picked up once the interval has passed"""
+        jwks_client = self._client(monotonic_mock, fetch_data_mock, "k1")
+        jwks_client.get_signing_key("k1")
+        with self.assertRaises(jwt.PyJWKClientError):
+            jwks_client.get_signing_key("k2")  # refetch, k2 not published yet
+        self.assertEqual(fetch_data_mock.call_count, 2)
+
+        fetch_data_mock.return_value = make_jwks("k1", "k2")
+        monotonic_mock.return_value += JWKS_REFETCH_INTERVAL_SECONDS - 1
+        with self.assertRaises(jwt.PyJWKClientError):
+            jwks_client.get_signing_key("k2")  # still within the interval
+        self.assertEqual(fetch_data_mock.call_count, 2)
+
+        monotonic_mock.return_value += 1
+        self.assertEqual(jwks_client.get_signing_key("k2").key_id, "k2")
+        self.assertEqual(fetch_data_mock.call_count, 3)
+
+    def test_concurrent_unknown_kids_fetch_once(self, monotonic_mock, fetch_data_mock):
+        jwks_client = self._client(monotonic_mock, fetch_data_mock, "k1")
+        jwks_client.get_signing_key("k1")
+        errors = []
+
+        def lookup(kid):
+            try:
+                jwks_client.get_signing_key(kid)
+            except jwt.PyJWKClientError as e:
+                errors.append(e)
+
+        threads = [
+            threading.Thread(target=lookup, args=(f"forged-{i}",)) for i in range(20)
+        ]
+        for thread in threads:
+            thread.start()
+        for thread in threads:
+            thread.join()
+
+        self.assertEqual(len(errors), 20)
+        self.assertEqual(fetch_data_mock.call_count, 2)
+
+    def test_failed_refetch_counts(self, monotonic_mock, fetch_data_mock):
+        """Keycloak down: unknown kids do not retry the fetch on every request"""
+        jwks_client = self._client(monotonic_mock, fetch_data_mock, "k1")
+        jwks_client.get_signing_key("k1")
+        fetch_data_mock.side_effect = jwt.PyJWKClientConnectionError("timeout")
+
+        with self.assertRaises(jwt.PyJWKClientConnectionError):
+            jwks_client.get_signing_key("k2")
+        with self.assertRaises(jwt.PyJWKClientError):
+            jwks_client.get_signing_key("k2")
+        self.assertEqual(fetch_data_mock.call_count, 2)
+
+    @patch.object(keycloak.settings, "KEYCLOAK_AUDIENCE", None)
+    @patch.object(keycloak.settings, "KEYCLOAK_CLIENT_ID", CLIENT_ID)
+    @patch.object(keycloak.settings, "KEYCLOAK_REALM", KEYCLOAK_REALM)
+    @patch.object(keycloak.settings, "KEYCLOAK_URL", KEYCLOAK_URL)
+    def test_decode_with_jwks(self, monotonic_mock, fetch_data_mock):
+        jwks_client = self._client(monotonic_mock, fetch_data_mock, "k1")
+        with patch.object(keycloak, "get_jwks_client", return_value=jwks_client):
+            sub = uuid.uuid4()
+            self.assertEqual(
+                decode_keycloak_token(make_token(sub=str(sub))).keycloak_id, sub
+            )
+            # unknown kids -> invalid token (401), one refetch for the lot
+            for kid in ["forged-1", "forged-2", "forged-3"]:
+                with self.assertRaises(KeycloakTokenError):
+                    decode_keycloak_token(make_token(kid=kid))
+        self.assertEqual(fetch_data_mock.call_count, 2)
+
+    def test_get_jwks_client(self, monotonic_mock, fetch_data_mock):
+        keycloak.get_jwks_client.cache_clear()
+        try:
+            jwks_client = keycloak.get_jwks_client(ISSUER)
+            self.assertIsInstance(jwks_client, RateLimitedJWKClient)
+            self.assertEqual(jwks_client.uri, JWKS_URI)
+            self.assertIs(keycloak.get_jwks_client(ISSUER), jwks_client)
+        finally:
+            keycloak.get_jwks_client.cache_clear()
 
 
 class TestExtractBearerToken(unittest.TestCase):

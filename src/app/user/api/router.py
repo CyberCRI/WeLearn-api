@@ -1,5 +1,6 @@
 import math
 import uuid
+from typing import Any
 
 from fastapi import APIRouter, HTTPException, Request, Response, status
 from fastapi.concurrency import run_in_threadpool
@@ -84,6 +85,30 @@ def enforce_signup_rate_limit(request: Request, email: str) -> None:
         )
 
 
+# routes reading the optional `Authorization: Bearer <Keycloak token>` header
+BEARER_TOKEN_RESPONSES: dict[int | str, dict[str, Any]] = {
+    401: {"model": ErrorResponse, "description": "Invalid or expired token"},
+    503: {
+        "model": ErrorResponse,
+        "description": (
+            "Keycloak unavailable, or bearer tokens not accepted because Keycloak "
+            "is not configured (code AUTH_NOT_CONFIGURED)"
+        ),
+    },
+}
+
+
+def auth_not_configured() -> HTTPException:
+    """503 for a bearer token while the KEYCLOAK_* settings are missing."""
+    return HTTPException(
+        status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+        detail={
+            "message": "Authentication is not configured on this server",
+            "code": "AUTH_NOT_CONFIGURED",
+        },
+    )
+
+
 async def resolve_bookmark_user(request: Request) -> uuid.UUID:
     """
     Resolve the bookmarks owner: from the Keycloak token when there is one, so
@@ -115,6 +140,9 @@ async def resolve_bookmark_user(request: Request) -> uuid.UUID:
     except KeycloakUnavailableError as e:
         logger.error(f"Keycloak unavailable: {e}")
         raise HTTPException(status_code=503, detail="Keycloak unavailable")
+    except KeycloakConfigError:
+        # logged once by keycloak.get_token_settings
+        raise auth_not_configured()
     return user_id
 
 
@@ -122,6 +150,7 @@ async def resolve_bookmark_user(request: Request) -> uuid.UUID:
     "/user_and_session",
     summary="Create new user and session",
     response_model=UserAndSessionResponse,
+    responses=BEARER_TOKEN_RESPONSES,
 )
 async def handle_user_and_session(
     request: Request, response: Response, referer: str | None = None
@@ -151,6 +180,9 @@ async def handle_user_and_session(
     except KeycloakUnavailableError as e:
         logger.error(f"Keycloak unavailable: {e}")
         raise HTTPException(status_code=503, detail="Keycloak unavailable")
+    except KeycloakConfigError:
+        # logged once by keycloak.get_token_settings
+        raise auth_not_configured()
 
     response.set_cookie(
         key=SESSION_COOKIE_NAME,
@@ -225,7 +257,10 @@ async def sign_up(request: Request, data: SignUpRequest, referer: str | None = N
 
 
 @router.get(
-    "/bookmarks", summary="Get user bookmarks", response_model=BookmarksResponse
+    "/bookmarks",
+    summary="Get user bookmarks",
+    response_model=BookmarksResponse,
+    responses=BEARER_TOKEN_RESPONSES,
 )
 async def get_user_bookmarks(request: Request):
     user_id = await resolve_bookmark_user(request)
@@ -238,6 +273,7 @@ async def get_user_bookmarks(request: Request):
     "/bookmarks",
     summary="Delete all user bookmarks",
     response_model=BookmarksDeletedResponse,
+    responses=BEARER_TOKEN_RESPONSES,
 )
 async def delete_user_bookmarks(request: Request):
     user_id = await resolve_bookmark_user(request)
@@ -261,11 +297,13 @@ LEGACY_BOOKMARK_PATH = "/bookmarks/:document_id"
     "/bookmarks/{document_id}",
     summary="Delete a user bookmark",
     response_model=BookmarkDeletedResponse,
+    responses=BEARER_TOKEN_RESPONSES,
 )
 @router.delete(
     LEGACY_BOOKMARK_PATH,
     summary="Delete a user bookmark (deprecated, use /bookmarks/{document_id})",
     response_model=BookmarkDeletedResponse,
+    responses=BEARER_TOKEN_RESPONSES,
     deprecated=True,
     name="delete_user_bookmark_legacy",
 )
@@ -282,11 +320,13 @@ async def delete_user_bookmark(request: Request, document_id: uuid.UUID):
     "/bookmarks/{document_id}",
     summary="Add user bookmark",
     response_model=BookmarkAddedResponse,
+    responses=BEARER_TOKEN_RESPONSES,
 )
 @router.post(
     LEGACY_BOOKMARK_PATH,
     summary="Add user bookmark (deprecated, use /bookmarks/{document_id})",
     response_model=BookmarkAddedResponse,
+    responses=BEARER_TOKEN_RESPONSES,
     deprecated=True,
     name="add_user_bookmark_legacy",
 )

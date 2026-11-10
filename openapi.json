@@ -4244,6 +4244,26 @@
             },
             "description": "Successful Response"
           },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Invalid or expired token"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Keycloak unavailable, or bearer tokens not accepted because Keycloak is not configured (code AUTH_NOT_CONFIGURED)"
+          },
           "default": {
             "content": {
               "application/json": {
@@ -4277,6 +4297,26 @@
               }
             },
             "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Invalid or expired token"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Keycloak unavailable, or bearer tokens not accepted because Keycloak is not configured (code AUTH_NOT_CONFIGURED)"
           },
           "default": {
             "content": {
@@ -4327,6 +4367,26 @@
             },
             "description": "Successful Response"
           },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Invalid or expired token"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Keycloak unavailable, or bearer tokens not accepted because Keycloak is not configured (code AUTH_NOT_CONFIGURED)"
+          },
           "default": {
             "content": {
               "application/json": {
@@ -4373,6 +4433,26 @@
               }
             },
             "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Invalid or expired token"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Keycloak unavailable, or bearer tokens not accepted because Keycloak is not configured (code AUTH_NOT_CONFIGURED)"
           },
           "default": {
             "content": {
@@ -4422,6 +4502,26 @@
             },
             "description": "Successful Response"
           },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Invalid or expired token"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Keycloak unavailable, or bearer tokens not accepted because Keycloak is not configured (code AUTH_NOT_CONFIGURED)"
+          },
           "default": {
             "content": {
               "application/json": {
@@ -4467,6 +4567,26 @@
               }
             },
             "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Invalid or expired token"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Keycloak unavailable, or bearer tokens not accepted because Keycloak is not configured (code AUTH_NOT_CONFIGURED)"
           },
           "default": {
             "content": {
@@ -4662,6 +4782,26 @@
               }
             },
             "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Invalid or expired token"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Keycloak unavailable, or bearer tokens not accepted because Keycloak is not configured (code AUTH_NOT_CONFIGURED)"
           },
           "default": {
             "content": {
