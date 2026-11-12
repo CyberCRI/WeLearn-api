@@ -28,6 +28,26 @@ class UserQueriesTestBase(unittest.TestCase):
             s.add(InferredUser(id=self.user_id))
             s.commit()
 
+    def _add_session(self, end_at: datetime, user_id: uuid.UUID | None = None):
+        session_id = uuid.uuid4()
+        with self.s_maker() as s:
+            s.add(
+                Session(
+                    id=session_id,
+                    inferred_user_id=user_id or self.user_id,
+                    end_at=end_at,
+                )
+            )
+            s.commit()
+        return session_id
+
+    def _add_keycloak_user(self) -> uuid.UUID:
+        user_id = uuid.uuid4()
+        with self.s_maker() as s:
+            s.add(InferredUser(id=user_id, keycloak_id=uuid.uuid4()))
+            s.commit()
+        return user_id
+
     def _add_bookmark(self, document_id: uuid.UUID, user_id: uuid.UUID | None = None):
         with self.s_maker() as s:
             s.add(
@@ -202,26 +222,6 @@ class TestAddInstitutionData(UserQueriesTestBase):
 
 
 class TestSessionExpiry(UserQueriesTestBase):
-    def _add_session(self, end_at: datetime, user_id: uuid.UUID | None = None):
-        session_id = uuid.uuid4()
-        with self.s_maker() as s:
-            s.add(
-                Session(
-                    id=session_id,
-                    inferred_user_id=user_id or self.user_id,
-                    end_at=end_at,
-                )
-            )
-            s.commit()
-        return session_id
-
-    def _add_keycloak_user(self) -> uuid.UUID:
-        user_id = uuid.uuid4()
-        with self.s_maker() as s:
-            s.add(InferredUser(id=user_id, keycloak_id=uuid.uuid4()))
-            s.commit()
-        return user_id
-
     def test_strict_lookup_rejects_expired_session(self):
         expired = self._add_session(datetime.now() - timedelta(minutes=1))
 
@@ -259,3 +259,62 @@ class TestSessionExpiry(UserQueriesTestBase):
 
         with self.assertRaises(SessionNotFoundError):
             queries.get_user_for_session_renewal(expired)
+
+
+class TestEndSession(UserQueriesTestBase):
+    def _end_at(self, session_id: uuid.UUID) -> datetime:
+        with self.s_maker() as s:
+            return s.get(Session, session_id).end_at
+
+    def test_ends_a_valid_session(self):
+        valid = self._add_session(datetime.now() + timedelta(hours=1))
+
+        queries.end_session_sync(valid)
+
+        self.assertLessEqual(self._end_at(valid), datetime.now())
+        with self.assertRaises(SessionNotFoundError):
+            queries.get_user_from_session_id(valid)
+
+    def test_unknown_session_is_a_no_op(self):
+        valid = self._add_session(datetime.now() + timedelta(hours=1))
+        before = self._end_at(valid)
+
+        queries.end_session_sync(uuid.uuid4())
+
+        self.assertEqual(self._end_at(valid), before)
+
+    def test_does_not_touch_another_session(self):
+        ended = self._add_session(datetime.now() + timedelta(hours=1))
+        other = self._add_session(datetime.now() + timedelta(hours=1))
+        other_end = self._end_at(other)
+
+        queries.end_session_sync(ended)
+
+        self.assertEqual(self._end_at(other), other_end)
+        self.assertEqual(queries.get_user_from_session_id(other), self.user_id)
+
+    def test_already_ended_session_is_not_extended(self):
+        end_at = datetime.now() - timedelta(days=2)
+        expired = self._add_session(end_at)
+
+        queries.end_session_sync(expired)
+
+        self.assertEqual(self._end_at(expired), end_at)
+
+    def test_renewal_lookup_after_logout_of_keycloak_user_raises(self):
+        user_id = self._add_keycloak_user()
+        valid = self._add_session(datetime.now() + timedelta(hours=1), user_id)
+
+        queries.end_session_sync(valid)
+
+        # getting back to the account takes a token: a new guest is created
+        with self.assertRaises(SessionNotFoundError):
+            queries.get_user_for_session_renewal(valid)
+
+    def test_renewal_lookup_after_logout_of_guest_keeps_the_user(self):
+        valid = self._add_session(datetime.now() + timedelta(hours=1))
+
+        queries.end_session_sync(valid)
+
+        # existing behaviour: an ended guest session is still renewed
+        self.assertEqual(queries.get_user_for_session_renewal(valid), self.user_id)

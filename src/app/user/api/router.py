@@ -21,6 +21,7 @@ from src.app.user.domain.models import (
     BookmarksResponse,
     InstitutionData,
     InstitutionDataResponse,
+    LogoutResponse,
     SignUpRequest,
     SignUpResponse,
     UserAndSessionResponse,
@@ -36,6 +37,7 @@ from src.app.user.infra.queries import (
     add_user_bookmark_sync,
     delete_user_bookmark_sync,
     delete_user_bookmarks_sync,
+    end_session_sync,
     get_user_bookmarks_sync,
 )
 from src.app.user.services.session import (
@@ -199,6 +201,36 @@ async def handle_user_and_session(
         "session_id": session_uuid,
         "user_id": user_id,
     }
+
+
+@router.post(
+    "/logout",
+    summary="End the current session",
+    response_model=LogoutResponse,
+)
+async def logout(request: Request, response: Response):
+    """
+    End the caller's session and drop its cookie, so that after a Keycloak
+    logout the browser is no longer identified as the account user: the next
+    /user_and_session without a token gets a new guest. Answers 200 with or
+    without a session.
+    """
+    session_uuid = extract_session_cookie(request)
+    if session_uuid:
+        await run_in_threadpool(end_session_sync, session_uuid)
+
+    # same attributes as set_cookie in /user_and_session, otherwise the
+    # browser keeps the cookie (delete_cookie defaults to samesite="lax")
+    response.delete_cookie(
+        key=SESSION_COOKIE_NAME,
+        path="/",
+        domain=settings.SESSION_COOKIE_DOMAIN,
+        secure=True,
+        httponly=True,
+        samesite=None,
+    )
+
+    return {"message": "logged out"}
 
 
 @router.post(

@@ -125,6 +125,24 @@ def get_or_create_session_sync(
         return new_session.id
 
 
+def end_session_sync(session_id: uuid.UUID) -> None:
+    """
+    End a session now (logout). An unknown or already ended session is left
+    as it is: its end is never pushed back.
+    """
+    now = datetime.now()
+    with session_maker() as s:
+        session = s.execute(
+            select(Session).where((Session.id == session_id) & (Session.end_at > now))
+        ).scalar_one_or_none()
+        if session is None:
+            logger.info("No active session to end. session_id=%s", session_id)
+            return
+        session.end_at = now
+        s.commit()
+        logger.info("Session ended. session_id=%s", session_id)
+
+
 def get_user_from_session_id(session_id: uuid.UUID | None) -> uuid.UUID | None:
     """
     The user of a session that is still valid. An unknown or expired session

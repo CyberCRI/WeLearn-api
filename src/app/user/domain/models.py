@@ -60,6 +60,10 @@ class UserAndSessionResponse(BaseModel):
     user_id: uuid.UUID
 
 
+class LogoutResponse(BaseModel):
+    message: str
+
+
 class BookmarkRead(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
