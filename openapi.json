@@ -1253,6 +1253,19 @@
         "title": "LearningOutcomesRequest",
         "type": "object"
       },
+      "LogoutResponse": {
+        "properties": {
+          "message": {
+            "title": "Message",
+            "type": "string"
+          }
+        },
+        "required": [
+          "message"
+        ],
+        "title": "LogoutResponse",
+        "type": "object"
+      },
       "MessageResponse": {
         "properties": {
           "message": {
@@ -4729,6 +4742,43 @@
           }
         ],
         "summary": "Add institution data to user",
+        "tags": [
+          "user"
+        ]
+      }
+    },
+    "/api/v1/user/logout": {
+      "post": {
+        "description": "End the caller's session and drop its cookie, so that after a Keycloak\nlogout the browser is no longer identified as the account user: the next\n/user_and_session without a token gets a new guest. Answers 200 with or\nwithout a session.",
+        "operationId": "user-logout",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LogoutResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Error"
+          }
+        },
+        "security": [
+          {
+            "APIKeyHeader": []
+          }
+        ],
+        "summary": "End the current session",
         "tags": [
           "user"
         ]
