@@ -72,3 +72,18 @@ class AgentResponse(BaseModel):
         default=None,
         description="Id of the stored answer, null when data collection did not record it.",
     )
+
+
+class LatestChatThreadResponse(BaseModel):
+    thread_id: uuid.UUID | None = Field(
+        default=None,
+        description="Thread of the caller's most recent message, null when the caller has no session or no thread.",
+        examples=["6fca8d02-0bc2-48a5-9c95-4942ca57e651"],
+    )
+
+
+class ChatThreadDeletedResponse(BaseModel):
+    thread_id: uuid.UUID = Field(
+        description="Id of the deleted thread.",
+        examples=["6fca8d02-0bc2-48a5-9c95-4942ca57e651"],
+    )

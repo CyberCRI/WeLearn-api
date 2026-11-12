@@ -313,6 +313,24 @@
         "title": "BookmarksResponse",
         "type": "object"
       },
+      "ChatThreadDeletedResponse": {
+        "properties": {
+          "thread_id": {
+            "description": "Id of the deleted thread.",
+            "examples": [
+              "6fca8d02-0bc2-48a5-9c95-4942ca57e651"
+            ],
+            "format": "uuid",
+            "title": "Thread Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "thread_id"
+        ],
+        "title": "ChatThreadDeletedResponse",
+        "type": "object"
+      },
       "CompetencyMapping": {
         "properties": {
           "greencomp_competencies": {
@@ -1107,6 +1125,28 @@
           "documents"
         ],
         "title": "JourneySection",
+        "type": "object"
+      },
+      "LatestChatThreadResponse": {
+        "properties": {
+          "thread_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Thread of the caller's most recent message, null when the caller has no session or no thread.",
+            "examples": [
+              "6fca8d02-0bc2-48a5-9c95-4942ca57e651"
+            ],
+            "title": "Thread Id"
+          }
+        },
+        "title": "LatestChatThreadResponse",
         "type": "object"
       },
       "LearningObjective": {
@@ -2986,6 +3026,102 @@
           }
         ],
         "summary": "Get Chat History",
+        "tags": [
+          "qna"
+        ]
+      }
+    },
+    "/api/v1/qna/chat/threads/latest": {
+      "get": {
+        "description": "Thread of the caller's most recent message, to reopen it after a sign-in on any device. Null without a session or without any thread.",
+        "operationId": "qna-get_latest_chat_thread",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LatestChatThreadResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Error"
+          }
+        },
+        "security": [
+          {
+            "APIKeyHeader": []
+          }
+        ],
+        "summary": "Latest Chat Thread",
+        "tags": [
+          "qna"
+        ]
+      }
+    },
+    "/api/v1/qna/chat/threads/{thread_id}": {
+      "delete": {
+        "description": "Delete a thread owned by the caller: its LangGraph checkpoints, blobs and writes. 404 when the thread does not exist, has no recorded owner or belongs to another user.",
+        "operationId": "qna-delete_chat_thread",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "thread_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Thread Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ChatThreadDeletedResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Thread not found or owned by another user (code THREAD_NOT_FOUND)"
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Error"
+          }
+        },
+        "security": [
+          {
+            "APIKeyHeader": []
+          }
+        ],
+        "summary": "Delete Chat Thread",
         "tags": [
           "qna"
         ]

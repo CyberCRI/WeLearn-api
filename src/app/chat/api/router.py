@@ -14,7 +14,9 @@ from src.app.chat.services.chat_utils import _resolve_thread_id, _stream_agent_r
 from src.app.chat.services.helpers import latest_tool_docs, linkify_missing_citations
 from src.app.chat.services.thread_access import (
     check_thread_access,
+    delete_owned_thread,
     ensure_thread_access,
+    find_latest_thread,
     resolve_caller_user_id,
 )
 from src.app.data_collection.services.data_collection import get_data_collection_service
@@ -117,6 +119,46 @@ async def get_chat_history(
                 thread_id=thread_id, memory=memory
             )
             return res
+
+
+# declared before /chat/threads/{thread_id} so "latest" is never read as an id
+@router.get(
+    "/chat/threads/latest",
+    summary="Latest Chat Thread",
+    description="Thread of the caller's most recent message, to reopen it after a sign-in on any device. Null without a session or without any thread.",
+    response_model=models.LatestChatThreadResponse,
+)
+async def get_latest_chat_thread(request: Request) -> models.LatestChatThreadResponse:
+    user_id = await resolve_caller_user_id(request)
+    if user_id is None:
+        return models.LatestChatThreadResponse(thread_id=None)
+
+    thread_id = await find_latest_thread(
+        db_uri=DB_URI,
+        async_dict_row_factory=ASYNC_DICT_ROW_FACTORY,
+        user_id=user_id,
+    )
+    return models.LatestChatThreadResponse(thread_id=thread_id)
+
+
+@router.delete(
+    "/chat/threads/{thread_id}",
+    summary="Delete Chat Thread",
+    description="Delete a thread owned by the caller: its LangGraph checkpoints, blobs and writes. 404 when the thread does not exist, has no recorded owner or belongs to another user.",
+    response_model=models.ChatThreadDeletedResponse,
+    responses=THREAD_NOT_FOUND_RESPONSE,
+)
+async def delete_chat_thread(
+    request: Request, thread_id: UUID
+) -> models.ChatThreadDeletedResponse:
+    user_id = await resolve_caller_user_id(request)
+    await delete_owned_thread(
+        db_uri=DB_URI,
+        async_dict_row_factory=ASYNC_DICT_ROW_FACTORY,
+        thread_id=thread_id,
+        user_id=user_id,
+    )
+    return models.ChatThreadDeletedResponse(thread_id=thread_id)
 
 
 @router.post(
