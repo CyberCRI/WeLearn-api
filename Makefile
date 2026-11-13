@@ -1,4 +1,4 @@
-.PHONY: run-dev run-poetry generate-baml generate-baml-poetry lint lint-check lint-check-poetry test test-poetry openapi openapi-poetry ci-poetry install-hooks
+.PHONY: run-dev run-poetry generate-baml generate-baml-poetry lint lint-check lint-check-poetry test test-poetry openapi openapi-poetry ci-poetry eval-tutor install-hooks
 
 generate-baml:
 	baml-cli generate --from ./src/app/baml_src
@@ -43,6 +43,11 @@ test-poetry: generate-baml-poetry
 
 test: generate-baml
 	pytest -s -v --cov=src --cov-report=term-missing --cov-fail-under=90 --cov-report=html
+
+# tutor prompts on the test syllabi with the real model, never in CI. -p no:env skips the
+# dummy env of pytest.ini, so the settings (Mistral key, LangSmith) come from .env
+eval-tutor: generate-baml-poetry
+	poetry run pytest -p no:env -m llm src/app/tests/tutor/llm -v
 
 # what the lint-and-test CI job runs; used by the pre-push hook
 ci-poetry: lint-check-poetry test-poetry
