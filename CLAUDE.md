@@ -82,6 +82,11 @@ Code that several features need goes in `shared/`. That includes domain exceptio
     - used by `/tutor/syllabus`;
     - single pass when `TUTOR_SINGLE_PASS=True` (the default);
     - otherwise falls back to the legacy three-agent chain in `agents.py`.
+  - **Syllabus v2 (`tutor/services/llm.py`, LangChain + LangSmith; BAML is not used and will be removed):**
+    - every LLM function goes through `structured_call(prompt_name, lang, schema, data, variables)`: Pydantic output, one retry, then `UnusableLLMOutputError` (502);
+    - prompts are files, one per function and language: `tutor/domain/prompts/<name>.<fr|en>.md` (Jinja2, trusted `variables` only). **To change a prompt, edit that file**, keep FR and EN in step, and read `prompts/README.md`;
+    - untrusted text (the course, WeLearn resources) only goes in `data`, sent as tagged blocks in the human message; never interpolate it into a prompt file;
+    - `make eval-tutor` runs the prompts on `src/app/tests/tutor/llm/cases/` with the real model (marker `llm`, excluded from `make test-poetry` and CI). Register a prompt and its schema in `harness.py::EVALUATED_PROMPTS`.
 - **Sessions and users:**
   - Anonymous sessions use the `x-session-id` cookie or header.
   - Optional Keycloak bearer tokens are verified in `user/infra/keycloak.py`.
