@@ -1,6 +1,5 @@
 import math
 import uuid
-from typing import Any
 
 from fastapi import APIRouter, HTTPException, Request, Response, status
 from fastapi.concurrency import run_in_threadpool
@@ -28,7 +27,6 @@ from src.app.user.domain.models import (
 )
 from src.app.user.infra.keycloak import (
     KeycloakConfigError,
-    KeycloakTokenError,
     KeycloakUnavailableError,
     extract_bearer_token,
 )
@@ -39,6 +37,13 @@ from src.app.user.infra.queries import (
     delete_user_bookmarks_sync,
     end_session_sync,
     get_user_bookmarks_sync,
+)
+from src.app.user.services.account import (
+    ACCOUNT_REQUIRED_RESPONSES,
+    BEARER_TOKEN_RESPONSES,
+    account_required,
+    guest_restrictions_enabled,
+    keycloak_errors_as_http,
 )
 from src.app.user.services.session import (
     resolve_keycloak_user_and_session,
@@ -87,42 +92,21 @@ def enforce_signup_rate_limit(request: Request, email: str) -> None:
         )
 
 
-# routes reading the optional `Authorization: Bearer <Keycloak token>` header
-BEARER_TOKEN_RESPONSES: dict[int | str, dict[str, Any]] = {
-    401: {"model": ErrorResponse, "description": "Invalid or expired token"},
-    503: {
-        "model": ErrorResponse,
-        "description": (
-            "Keycloak unavailable, or bearer tokens not accepted because Keycloak "
-            "is not configured (code AUTH_NOT_CONFIGURED)"
-        ),
-    },
-}
-
-
-def auth_not_configured() -> HTTPException:
-    """503 for a bearer token while the KEYCLOAK_* settings are missing."""
-    return HTTPException(
-        status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-        detail={
-            "message": "Authentication is not configured on this server",
-            "code": "AUTH_NOT_CONFIGURED",
-        },
-    )
-
-
 async def resolve_bookmark_user(request: Request) -> uuid.UUID:
     """
     Resolve the bookmarks owner: from the Keycloak token when there is one, so
     bookmarks follow the account across sessions, else from the session cookie.
+    With guest restrictions on, bookmarks need an account: no cookie fallback.
     """
     session_uuid = extract_session_cookie(request)
     token = extract_bearer_token(request)
+    if not token and guest_restrictions_enabled():
+        raise account_required()
     if not token and not session_uuid:
         raise HTTPException(status_code=401, detail="Session cookie is missing")
     host = extract_origin_from_request(request)
 
-    try:
+    with keycloak_errors_as_http():
         if token:
             user_id, _ = await resolve_keycloak_user_and_session(
                 token=token,
@@ -136,15 +120,6 @@ async def resolve_bookmark_user(request: Request) -> uuid.UUID:
                 host=host,
                 referer=None,
             )
-    except KeycloakTokenError as e:
-        logger.warning(f"Invalid keycloak token: {e}")
-        raise HTTPException(status_code=401, detail="Invalid or expired token")
-    except KeycloakUnavailableError as e:
-        logger.error(f"Keycloak unavailable: {e}")
-        raise HTTPException(status_code=503, detail="Keycloak unavailable")
-    except KeycloakConfigError:
-        # logged once by keycloak.get_token_settings
-        raise auth_not_configured()
     return user_id
 
 
@@ -161,7 +136,7 @@ async def handle_user_and_session(
     session_uuid = extract_session_cookie(request)
     token = extract_bearer_token(request)
 
-    try:
+    with keycloak_errors_as_http():
         if token:
             user_id, session_uuid = await resolve_keycloak_user_and_session(
                 token=token,
@@ -176,15 +151,6 @@ async def handle_user_and_session(
                 referer=referer,
                 renew_expired_guest=True,
             )
-    except KeycloakTokenError as e:
-        logger.warning(f"Invalid keycloak token: {e}")
-        raise HTTPException(status_code=401, detail="Invalid or expired token")
-    except KeycloakUnavailableError as e:
-        logger.error(f"Keycloak unavailable: {e}")
-        raise HTTPException(status_code=503, detail="Keycloak unavailable")
-    except KeycloakConfigError:
-        # logged once by keycloak.get_token_settings
-        raise auth_not_configured()
 
     response.set_cookie(
         key=SESSION_COOKIE_NAME,
@@ -292,7 +258,7 @@ async def sign_up(request: Request, data: SignUpRequest, referer: str | None = N
     "/bookmarks",
     summary="Get user bookmarks",
     response_model=BookmarksResponse,
-    responses=BEARER_TOKEN_RESPONSES,
+    responses=ACCOUNT_REQUIRED_RESPONSES,
 )
 async def get_user_bookmarks(request: Request):
     user_id = await resolve_bookmark_user(request)
@@ -305,7 +271,7 @@ async def get_user_bookmarks(request: Request):
     "/bookmarks",
     summary="Delete all user bookmarks",
     response_model=BookmarksDeletedResponse,
-    responses=BEARER_TOKEN_RESPONSES,
+    responses=ACCOUNT_REQUIRED_RESPONSES,
 )
 async def delete_user_bookmarks(request: Request):
     user_id = await resolve_bookmark_user(request)
@@ -329,13 +295,13 @@ LEGACY_BOOKMARK_PATH = "/bookmarks/:document_id"
     "/bookmarks/{document_id}",
     summary="Delete a user bookmark",
     response_model=BookmarkDeletedResponse,
-    responses=BEARER_TOKEN_RESPONSES,
+    responses=ACCOUNT_REQUIRED_RESPONSES,
 )
 @router.delete(
     LEGACY_BOOKMARK_PATH,
     summary="Delete a user bookmark (deprecated, use /bookmarks/{document_id})",
     response_model=BookmarkDeletedResponse,
-    responses=BEARER_TOKEN_RESPONSES,
+    responses=ACCOUNT_REQUIRED_RESPONSES,
     deprecated=True,
     name="delete_user_bookmark_legacy",
 )
@@ -352,13 +318,13 @@ async def delete_user_bookmark(request: Request, document_id: uuid.UUID):
     "/bookmarks/{document_id}",
     summary="Add user bookmark",
     response_model=BookmarkAddedResponse,
-    responses=BEARER_TOKEN_RESPONSES,
+    responses=ACCOUNT_REQUIRED_RESPONSES,
 )
 @router.post(
     LEGACY_BOOKMARK_PATH,
     summary="Add user bookmark (deprecated, use /bookmarks/{document_id})",
     response_model=BookmarkAddedResponse,
-    responses=BEARER_TOKEN_RESPONSES,
+    responses=ACCOUNT_REQUIRED_RESPONSES,
     deprecated=True,
     name="add_user_bookmark_legacy",
 )
