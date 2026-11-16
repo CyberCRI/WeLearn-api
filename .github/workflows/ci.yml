@@ -1,8 +1,9 @@
-name: Build image and push to registry
+name: CI
 
 # Lint and tests run on every push, and so does the image build: a broken Dockerfile shows
 # up in the PR, not after the merge. The image is pushed and deployed (<ref>_deploy tag)
-# only for:
+# only for the refs below; on any other ref the build job reads "Build image only (no push)",
+# the tag job is skipped and the run summary says why:
 #   - main and tags (releases);
 #   - a branch whose open PR carries the `preview` label. Adding the label triggers this
 #     workflow through workflow_dispatch (see preview.yml), and later pushes redeploy;
@@ -27,6 +28,7 @@ jobs:
 
   # decides whether this ref pushes its image and gets a deploy tag
   deploy-target:
+    name: Decide push and deploy
     runs-on: ubuntu-latest
     permissions:
       pull-requests: read
@@ -40,17 +42,34 @@ jobs:
           REF_TYPE: ${{ github.ref_type }}
           REF_NAME: ${{ github.ref_name }}
         run: |
-          if [ "$EVENT" = "workflow_dispatch" ] || [ "$REF_TYPE" = "tag" ] || [ "$REF_NAME" = "main" ]; then
-            deploy=true
+          deploy=true
+          if [ "$EVENT" = "workflow_dispatch" ]; then
+            reason="manual run"
+          elif [ "$REF_TYPE" = "tag" ]; then
+            reason="release tag"
+          elif [ "$REF_NAME" = "main" ]; then
+            reason="main branch"
           else
-            previews=$(gh pr list --repo "$GITHUB_REPOSITORY" --head "$REF_NAME" --state open \
-              --label preview --json number --jq length)
-            if [ "$previews" -gt 0 ]; then deploy=true; else deploy=false; fi
+            pr=$(gh pr list --repo "$GITHUB_REPOSITORY" --head "$REF_NAME" --state open \
+              --label preview --json number --jq '.[0].number // empty')
+            if [ -n "$pr" ]; then
+              reason="open PR #$pr has the preview label"
+            else
+              deploy=false
+              reason="no open PR with the preview label"
+            fi
           fi
           echo "deploy=$deploy" | tee -a "$GITHUB_OUTPUT"
+          if [ "$deploy" = "true" ]; then
+            echo "Image pushed and ${REF_NAME}_deploy tag created: $reason" >> "$GITHUB_STEP_SUMMARY"
+          else
+            echo "Image built only, not pushed, no deploy tag: $reason" >> "$GITHUB_STEP_SUMMARY"
+          fi
 
-  # every push builds the image once the checks passed; only deploy targets push it
+  # every push builds the image once the checks passed; only deploy targets push it.
+  # the name says which: the inner job of the shared workflow is always called build-push
   build-docker:
+    name: ${{ needs.deploy-target.outputs.deploy == 'true' && 'Build and push image' || 'Build image only (no push)' }}
     needs:
       - lint-and-test
       - deploy-target
@@ -71,6 +90,7 @@ jobs:
       registry-password: ${{ secrets.DOCKER_PROD_PASSWORD }}
 
   tag-deploy:
+    name: Create ${{ github.ref_name }}_deploy tag
     needs:
       - build-docker
       - lint-and-test
