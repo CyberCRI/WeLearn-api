@@ -8,6 +8,7 @@ from src.app.shared.domain.exceptions import (
 from src.app.tutor.domain.course import (
     CourseOutline,
     CourseReading,
+    CourseReadResponse,
     ReadObjective,
     ReadSession,
     ReadTopic,
@@ -216,37 +217,63 @@ class PreferNumberedTopicsTests(unittest.TestCase):
         self.assertEqual(topics[0].subtopics, ["x"])
 
 
-class CleanReadingTests(unittest.TestCase):
-    def test_drops_empty_values_and_a_title_that_is_not_a_course(self):
-        reading = CourseReading(
-            title="Professor: Alex Martin",
-            discipline=" ",
-            discipline_suggested="Law",
-            summary="  A course.  ",
-            courses_found=["", "UE 1"],
-            objectives=[
-                ReadObjective(text=" Analyse ", scope="course"),
-                ReadObjective(text=" "),
-            ],
-            topics=[topic(" Rights ", [" A ", ""], " Theme 1 "), topic("  ")],
-            sessions=[
-                ReadSession(label="Week 8"),
-                ReadSession(label=" ", title=None),
-            ],
+class AnswerParsingTests(unittest.TestCase):
+    def test_trims_texts_and_drops_empty_values(self):
+        reading = CourseReading.model_validate(
+            {
+                "title": "  Ecology ",
+                "discipline": " ",
+                "summary": "  A course.  ",
+                "courses_found": ["", " UE 1 "],
+                "objectives": [
+                    {"text": " Analyse ", "scope": "course"},
+                    {"text": " "},
+                ],
+                "topics": [
+                    {"title": " Rights ", "subtopics": [" A ", ""], "source": " "},
+                    {"title": "  "},
+                ],
+                "sessions": [{"label": "Week 8"}, {"label": " ", "title": None}],
+            }
         )
 
-        cleaned = clean_reading(reading)
+        self.assertEqual(reading.title, "Ecology")
+        self.assertIsNone(reading.discipline)
+        self.assertEqual(reading.summary, "A course.")
+        self.assertEqual(reading.courses_found, ["UE 1"])
+        self.assertEqual(
+            reading.objectives, [ReadObjective(text="Analyse", scope="course")]
+        )
+        self.assertEqual(reading.topics, [topic("Rights", ["A"])])
+        self.assertEqual(reading.sessions, [ReadSession(label="Week 8")])
+
+    def test_outline_is_cleaned_the_same_way(self):
+        outline = CourseOutline.model_validate(
+            {"summary": " ", "topics": [{"title": " Soils "}, {"title": ""}]}
+        )
+
+        self.assertIsNone(outline.summary)
+        self.assertEqual(outline.topics, [topic("Soils")])
+
+    def test_extracted_text_is_returned_as_it_is(self):
+        response = CourseReadResponse(
+            text="  Theme 1: Soils\n",
+            is_text_truncated=False,
+            is_partial=False,
+            reading=CourseReading(),
+        )
+
+        self.assertEqual(response.text, "  Theme 1: Soils\n")
+
+
+class CleanReadingTests(unittest.TestCase):
+    def test_drops_a_title_that_is_not_a_course(self):
+        cleaned = clean_reading(
+            CourseReading(title="Professor: Alex Martin", discipline_suggested="Law")
+        )
 
         self.assertIsNone(cleaned.title)
-        self.assertIsNone(cleaned.discipline)
         self.assertEqual(cleaned.discipline_suggested, "Law")
-        self.assertEqual(cleaned.summary, "A course.")
-        self.assertEqual(cleaned.courses_found, ["UE 1"])
-        self.assertEqual(
-            cleaned.objectives, [ReadObjective(text="Analyse", scope="course")]
-        )
-        self.assertEqual(cleaned.topics, [topic("Rights", ["A"], "Theme 1")])
-        self.assertEqual(cleaned.sessions, [ReadSession(label="Week 8")])
 
     def test_suggested_discipline_only_when_none_is_stated(self):
         cleaned = clean_reading(

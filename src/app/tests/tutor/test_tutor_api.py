@@ -1256,3 +1256,63 @@ class TestSyllabusGuestQuota(TutorApiTestCase):
 
         self.assertEqual(response.json()["status"], "error")
         self.assertEqual(self.left(), self.LIMIT)
+
+    # syllabus v2: reading a course counts as one of the guest's syllabi
+
+    def read_course(self, content=b"A course"):
+        return self.client.post(
+            f"{BASE}/course/read",
+            files={"file": ("course.txt", content, "text/plain")},
+            headers=self.GUEST_HEADERS,
+        )
+
+    @patch(f"{ROUTER}.read_course", new_callable=AsyncMock)
+    def test_course_reading_shares_the_syllabus_quota(self, mock_read):
+        mock_read.return_value = CourseReadResponse(
+            text="A course",
+            is_text_truncated=False,
+            is_partial=False,
+            reading=CourseReading(),
+        )
+
+        for left in range(self.LIMIT - 1, -1, -1):
+            response = self.read_course()
+            self.assertEqual(response.status_code, 200)
+            self.assertEqual(response.headers["X-Guest-Remaining"], str(left))
+
+        response = self.read_course()
+
+        self.assertEqual(response.status_code, 403)
+        self.assertEqual(response.json()["detail"]["feature"], "syllabus")
+        self.assertEqual(mock_read.await_count, self.LIMIT)
+
+    @patch(f"{ROUTER}.read_course", new_callable=AsyncMock)
+    def test_failed_course_reading_is_refunded(self, mock_read):
+        mock_read.side_effect = UnusableReadingError()
+
+        self.assertEqual(self.read_course().status_code, 502)
+        self.assertEqual(self.left(), self.LIMIT)
+
+    @patch(f"{ROUTER}.read_course", new_callable=AsyncMock)
+    def test_a_file_rejected_before_reading_costs_nothing(self, mock_read):
+        self.assertEqual(self.read_course(b"  ").status_code, 422)
+        self.assertEqual(self.left(), self.LIMIT)
+        mock_read.assert_not_awaited()
+
+    @patch(
+        "src.app.user.services.guest_quota.verify_account_token",
+        new_callable=AsyncMock,
+    )
+    @patch(f"{ROUTER}.read_course", new_callable=AsyncMock)
+    def test_an_account_reads_without_limit(self, mock_read, mock_token):
+        mock_token.return_value = object()
+        mock_read.return_value = CourseReadResponse(
+            text="A course",
+            is_text_truncated=False,
+            is_partial=False,
+            reading=CourseReading(),
+        )
+
+        for _ in range(self.LIMIT + 1):
+            self.assertEqual(self.read_course().status_code, 200)
+        self.assertEqual(self.left(), self.LIMIT)

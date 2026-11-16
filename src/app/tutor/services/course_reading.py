@@ -21,8 +21,6 @@ from src.app.tutor.domain.course import (
     CourseOutline,
     CourseReading,
     CourseReadResponse,
-    ReadObjective,
-    ReadSession,
     ReadTopic,
 )
 from src.app.tutor.domain.models import TutorLang
@@ -201,106 +199,91 @@ def prefer_numbered_topics(topics: list[ReadTopic], text: str) -> list[ReadTopic
     if not numbered:
         return unique
 
-    no_duplicates = len(unique) == len(topics)
-    is_faithful = (
-        no_duplicates
-        and len(unique) == len(numbered)
-        and all(_is_same_topic(unique[i], item) for i, item in enumerate(numbered))
-    )
-    # numbered items kept under the syllabus's own higher headings ("Partie II : …" with its
-    # chapters as subtopics): a faithful structure too
-    is_under_own_headings = (
-        no_duplicates
-        and all(
-            any(
-                _is_same_topic(topic, item)
-                or any(
-                    _is_same_topic(ReadTopic(title=sub, source=sub), item)
-                    for sub in topic.subtopics
-                )
-                for topic in unique
-            )
-            for item in numbered
-        )
-        and all(_is_heading_line(topic.title, text) for topic in unique)
-    )
-    if is_under_own_headings:
+    has_duplicates = len(unique) != len(topics)
+    if not has_duplicates and _is_under_own_headings(unique, numbered, text):
         return unique
+    if not has_duplicates and _follows_one_for_one(unique, numbered):
+        return _with_headings_for_categories(unique, numbered)
+    return _rebuilt_from_headings(unique, numbered)
 
-    if is_faithful:
-        # one for one, but a title may be a category from the prose: the heading wins
-        result = []
-        for topic, heading in zip(unique, numbered):
-            mine, theirs = core(heading.title), core(topic.title)
-            is_own_words = theirs in mine or mine in theirs
-            result.append(
-                topic
-                if is_own_words
-                else heading.model_copy(
-                    update={"subtopics": _subtopics_of(topic, numbered)}
-                )
+
+def _is_under_own_headings(
+    topics: list[ReadTopic], numbered: list[ReadTopic], text: str
+) -> bool:
+    """
+    Numbered items kept under the syllabus's own higher headings ("Partie II : …" with its
+    chapters as subtopics): every numbered item is a topic or a subtopic, and every topic
+    is a heading line of the syllabus. A faithful structure too.
+    """
+
+    def is_kept(item: ReadTopic) -> bool:
+        return any(
+            _is_same_topic(topic, item)
+            or any(
+                _is_same_topic(ReadTopic(title=sub, source=sub), item)
+                for sub in topic.subtopics
             )
-        return result
+            for topic in topics
+        )
 
+    return all(is_kept(item) for item in numbered) and all(
+        _is_heading_line(topic.title, text) for topic in topics
+    )
+
+
+def _follows_one_for_one(topics: list[ReadTopic], numbered: list[ReadTopic]) -> bool:
+    """The model's topics are the numbered ones, in the same order."""
+    return len(topics) == len(numbered) and all(
+        _is_same_topic(topic, item) for topic, item in zip(topics, numbered)
+    )
+
+
+def _with_headings_for_categories(
+    topics: list[ReadTopic], numbered: list[ReadTopic]
+) -> list[ReadTopic]:
+    """One for one, but a title may be a category from the prose: the heading wins."""
+    return [
+        (
+            topic
+            if _names_the_heading(topic, heading)
+            else heading.model_copy(
+                update={"subtopics": _subtopics_of(topic, numbered)}
+            )
+        )
+        for topic, heading in zip(topics, numbered)
+    ]
+
+
+def _names_the_heading(topic: ReadTopic, heading: ReadTopic) -> bool:
+    mine, theirs = core(heading.title), core(topic.title)
+    return theirs in mine or mine in theirs
+
+
+def _rebuilt_from_headings(
+    topics: list[ReadTopic], numbered: list[ReadTopic]
+) -> list[ReadTopic]:
+    """The syllabus's headings, in its order, with the subtopics the model gave for each."""
     result = []
     for item in numbered:
-        same = next((t for t in unique if _is_same_topic(t, item)), None)
+        same = next((t for t in topics if _is_same_topic(t, item)), None)
         subtopics = _subtopics_of(same, numbered) if same else []
         result.append(item.model_copy(update={"subtopics": subtopics}))
     return result
 
 
-# ---- cleaning the model's answer ----
-
-
-def _text(value: str | None) -> str | None:
-    return value.strip() if value and value.strip() else None
-
-
-def _texts(values: list[str]) -> list[str]:
-    return [text for text in (_text(v) for v in values) if text]
-
-
-def clean_topics(topics: list[ReadTopic]) -> list[ReadTopic]:
-    """Topics with a title, their values trimmed."""
-    return [
-        ReadTopic(
-            title=title, subtopics=_texts(topic.subtopics), source=_text(topic.source)
-        )
-        for topic in topics
-        if (title := _text(topic.title))
-    ]
+# ---- what the text alone does not settle ----
+# (texts are trimmed and empty values dropped as the answer is parsed: domain/course.py)
 
 
 def clean_reading(reading: CourseReading) -> CourseReading:
-    """Empty values dropped, and a title that is not a course's name removed."""
-    title = _text(reading.title)
-    discipline = _text(reading.discipline)
+    """A title that is not a course's name removed, a discipline stated beats a suggested one."""
     return reading.model_copy(
         update={
-            "title": title if is_course_title(title) else None,
-            "discipline": discipline,
+            "title": reading.title if is_course_title(reading.title) else None,
             # inferred by the model: kept only when no discipline is stated
             "discipline_suggested": (
-                None if discipline else _text(reading.discipline_suggested)
+                None if reading.discipline else reading.discipline_suggested
             ),
-            "level": _text(reading.level),
-            "document_language": _text(reading.document_language),
-            "description": _text(reading.description),
-            "summary": _text(reading.summary),
-            "courses_found": _texts(reading.courses_found),
-            "objectives": [
-                ReadObjective(text=text, scope=objective.scope)
-                for objective in reading.objectives
-                if (text := _text(objective.text))
-            ],
-            "topics": clean_topics(reading.topics),
-            # a session with only its label ("Week 8") is still a session
-            "sessions": [
-                ReadSession(label=_text(s.label), title=_text(s.title))
-                for s in reading.sessions
-                if _text(s.label) or _text(s.title)
-            ],
         }
     )
 
@@ -319,7 +302,7 @@ async def read_course(
     be read for its outline is skipped, and the response says it is partial.
     """
     parts = text_parts(text)
-    focus = _text(focus)
+    focus = focus.strip() if focus else None
     focus_data = {"focus": focus[:MAX_FOCUS_CHARS]} if focus else {}
     variables = {"has_focus": bool(focus)}
 
@@ -348,9 +331,9 @@ async def read_course(
         except UnusableLLMOutputError:
             is_partial = True
             continue
-        summary = summary or _text(outline.summary)
+        summary = summary or outline.summary
         known = {normalise(topic.title) for topic in topics}
-        for topic in clean_topics(outline.topics):
+        for topic in outline.topics:
             if normalise(topic.title) not in known:
                 topics.append(topic)
                 known.add(normalise(topic.title))

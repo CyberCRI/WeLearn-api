@@ -4259,7 +4259,7 @@
     },
     "/api/v1/tutor/course/read": {
       "post": {
-        "description": "The course in the uploaded document: title, objectives, topics, sessions... and the\nextracted text, so the client checks each value word for word. `lang` is the teacher's\nlanguage (the answer's); `focus` reads one course of a document that holds several.",
+        "description": "The course in the uploaded document: title, objectives, topics, sessions... and the\nextracted text, so the client checks each value word for word. `lang` is the teacher's\nlanguage (the answer's); `focus` reads one course of a document that holds several.\n\nA guest's reading counts as one of their daily syllabi, refunded if it fails. A\nfile rejected before the reading (size, type, no text) costs nothing.",
         "operationId": "tutor-read_course_document",
         "requestBody": {
           "content": {
@@ -4291,6 +4291,26 @@
               }
             },
             "description": "Unsupported or unreadable file"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Invalid or expired token, or, with guest restrictions on, a guest without a known session (code SESSION_NOT_FOUND)"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Guest daily quota used up (code GUEST_QUOTA_EXCEEDED, with `feature` and `retry_after` in seconds, and a Retry-After header)"
           },
           "413": {
             "content": {

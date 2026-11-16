@@ -112,22 +112,27 @@ COURSE_READ_RESPONSES: dict[int | str, dict] = {
 @router.post(
     "/course/read",
     response_model=CourseReadResponse,
-    responses=COURSE_READ_RESPONSES,
+    responses={**COURSE_READ_RESPONSES, **GUEST_QUOTA_RESPONSES},
     summary="Read a course document (syllabus v2)",
 )
 async def read_course_document(
     file: Annotated[UploadFile, File()],
     lang: Annotated[TutorLang, Form()] = "en",
     focus: Annotated[str | None, Form(max_length=MAX_FOCUS_CHARS)] = None,
+    quota: GuestQuota = Depends(guest_quota("syllabus")),
 ) -> CourseReadResponse:
     """
     The course in the uploaded document: title, objectives, topics, sessions... and the
     extracted text, so the client checks each value word for word. `lang` is the teacher's
     language (the answer's); `focus` reads one course of a document that holds several.
+
+    A guest's reading counts as one of their daily syllabi, refunded if it fails. A
+    file rejected before the reading (size, type, no text) costs nothing.
     """
     await check_upload_limits([file], 1, MAX_COURSE_FILE_SIZE)
     [text] = await get_files_content([file])
-    return await read_course(text, lang, focus)
+    with quota.spend():
+        return await read_course(text, lang, focus)
 
 
 @router.post("/files/content", responses=UPLOAD_ERROR_RESPONSES)
