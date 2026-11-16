@@ -5,7 +5,7 @@ from pathlib import Path
 
 from pydantic import BaseModel
 
-from src.app.tests.tutor.llm.harness import check, load_cases
+from src.app.tests.tutor.llm.harness import CASES_DIR, CHECKS, check, load_cases
 
 
 class Reading(BaseModel):
@@ -84,3 +84,21 @@ class CheckTests(unittest.TestCase):
         self.assertIn("topics: unknown check 'shape'", failures)
         self.assertIn("objectives: missing", failures)
         self.assertIn("topics.9: missing", failures)
+
+
+class CommittedCasesTests(unittest.TestCase):
+    """The committed cases load without the model, so a broken case fails in CI."""
+
+    def test_every_committed_case_loads_and_uses_known_checks(self):
+        folders = [path for path in CASES_DIR.iterdir() if path.is_dir()]
+        self.assertTrue(folders)
+        for folder in folders:
+            cases = load_cases(folder.name)
+            self.assertTrue(cases, folder.name)
+            for case in cases:
+                with self.subTest(case=f"{folder.name}:{case.id}"):
+                    self.assertIn(case.lang, ("fr", "en"))
+                    self.assertTrue(case.data)
+                    self.assertTrue(case.expect)
+                    for checks in case.expect.values():
+                        self.assertLessEqual(set(checks), set(CHECKS))

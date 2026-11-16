@@ -1,0 +1,14 @@
+{
+  "about": "Fictional EN syllabus organised by week: learning outcomes found, weeks read as sessions, discipline identified.",
+  "lang": "en",
+  "data": {"course": "file:en-water-engineering.txt"},
+  "expect": {
+    "title": {"contains": "urban water systems"},
+    "discipline": {"contains": "engineering"},
+    "material_type": {"equals": "syllabus"},
+    "document_language": {"contains": "en"},
+    "objectives": {"min_items": 4},
+    "topics": {"min_items": 5, "contains": "drainage"},
+    "sessions": {"min_items": 10}
+  }
+}
