@@ -9,8 +9,11 @@ from src.app.shared.domain.exceptions import UnusableLLMOutputError
 from src.app.tutor.services import llm
 
 PROMPTS = {
-    "ideas.en.md": "Find at most {{ max_ideas }} ideas for the course in <course>.\n",
-    "ideas.fr.md": "Trouvez au plus {{ max_ideas }} idées pour le cours dans <course>.\n",
+    "ideas.md": (
+        "Find at most {{ max_ideas }} ideas for the course in <course>, "
+        "in {{ output_language }}.\n"
+    ),
+    "selection.md": "Judge the resources in <resource>.\n",
 }
 
 
@@ -32,10 +35,14 @@ class PromptTests(unittest.TestCase):
         llm.prompt_version.cache_clear()
         self.addCleanup(llm.prompt_version.cache_clear)
 
-    def test_renders_the_prompt_of_the_language(self):
+    def test_one_prompt_rendered_with_the_answer_language(self):
         self.assertEqual(
             llm.render_prompt("ideas", "fr", {"max_ideas": 4}),
-            "Trouvez au plus 4 idées pour le cours dans <course>.",
+            "Find at most 4 ideas for the course in <course>, in French.",
+        )
+        self.assertEqual(
+            llm.render_prompt("ideas", "en", {"max_ideas": 4}),
+            "Find at most 4 ideas for the course in <course>, in English.",
         )
 
     def test_a_missing_variable_is_an_error(self):
@@ -43,9 +50,17 @@ class PromptTests(unittest.TestCase):
             llm.render_prompt("ideas", "en", {})
 
     def test_prompt_version_changes_with_the_file(self):
-        before = llm.prompt_version("ideas", "en")
-        self.assertRegex(before, r"^[0-9a-f]{8}$")
-        self.assertNotEqual(before, llm.prompt_version("ideas", "fr"))
+        version = llm.prompt_version("ideas")
+        self.assertRegex(version, r"^[0-9a-f]{8}$")
+        self.assertNotEqual(version, llm.prompt_version("selection"))
+
+    def test_the_language_rule_is_added_to_every_prompt(self):
+        messages = llm.build_messages("selection", "fr", {"resource": "R"})
+
+        system = messages[0][1]
+        self.assertTrue(system.startswith("Judge the resources in <resource>."))
+        self.assertIn("Write the text you produce in French.", system)
+        self.assertIn("stays exactly as written", system)
 
     def test_untrusted_text_goes_in_tagged_blocks_of_the_human_message(self):
         messages = llm.build_messages(
@@ -114,7 +129,7 @@ class StructuredCallTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(config["metadata"]["prompt"], "ideas")
         self.assertEqual(config["metadata"]["lang"], "en")
         self.assertEqual(
-            config["metadata"]["prompt_version"], llm.prompt_version("ideas", "en")
+            config["metadata"]["prompt_version"], llm.prompt_version("ideas")
         )
 
     async def test_asks_again_once_after_a_malformed_answer(self):
@@ -162,9 +177,7 @@ class StructuredCallTests(unittest.IsolatedAsyncioTestCase):
 
 
 class PromptFilesTests(unittest.TestCase):
-    def test_every_prompt_exists_in_french_and_english(self):
+    def test_one_prompt_file_per_function_without_language_copies(self):
         names = {path.name for path in llm.PROMPTS_DIR.glob("*.md")} - {"README.md"}
-        functions = {name.rsplit(".", 2)[0] for name in names}
-        for function in functions:
-            self.assertIn(f"{function}.fr.md", names)
-            self.assertIn(f"{function}.en.md", names)
+        for name in names:
+            self.assertRegex(name, r"^[a-z][a-z_]*\.md$")

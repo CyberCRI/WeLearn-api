@@ -1,10 +1,11 @@
 """Structured LLM calls for the tutor (syllabus v2).
 
-Each LLM function has one prompt file per language, `tutor/domain/prompts/<name>.<lang>.md`,
-so the prompts can be read and edited without touching Python (see the README there).
+Each LLM function has one prompt file, `tutor/domain/prompts/<name>.md`, so the prompts can
+be read and edited without touching Python (see the README there). The prompt is written once,
+in English; the answer's language is a parameter (`lang`), not a second copy of the prompt.
 
 A prompt file is a Jinja2 template that only receives trusted `variables` (counts, the
-GreenComp list, ...). Untrusted text (the teacher's course, WeLearn resources) never goes
+GreenComp list, ...) and `output_language`. Untrusted text (the teacher's course, WeLearn resources) never goes
 into the template: it is sent in the human message as tagged, truncated data blocks, and
 the system prompt says their content is data, never instructions.
 """
@@ -41,6 +42,8 @@ MAX_ATTEMPTS = 2
 
 _TAG = re.compile(r"^[a-z][a-z_]*$")
 
+LANGUAGE_NAMES: dict[TutorLang, str] = {"en": "English", "fr": "French"}
+
 # prompts are plain text with JSON examples, never HTML: no autoescape. StrictUndefined
 # makes a missing variable an error instead of an empty string in the prompt
 _ENV = Environment(
@@ -61,15 +64,29 @@ async def get_chat_model() -> ChatMistralAI:
 
 
 def render_prompt(name: str, lang: TutorLang, variables: Mapping[str, object]) -> str:
-    """The prompt file `<name>.<lang>.md`, filled with trusted variables."""
-    return _ENV.get_template(f"{name}.{lang}.md").render(**variables).strip()
+    """
+    The prompt file `<name>.md`, filled with trusted variables and `output_language`
+    (the name of the answer's language, e.g. "French").
+    """
+    return (
+        _ENV.get_template(f"{name}.md")
+        .render(**variables, output_language=LANGUAGE_NAMES[lang])
+        .strip()
+    )
 
 
 @lru_cache
-def prompt_version(name: str, lang: TutorLang) -> str:
+def prompt_version(name: str) -> str:
     """Short hash of the prompt file, sent to LangSmith to compare two prompt versions."""
-    source, _, _ = _ENV.loader.get_source(_ENV, f"{name}.{lang}.md")  # type: ignore[union-attr]
+    source, _, _ = _ENV.loader.get_source(_ENV, f"{name}.md")  # type: ignore[union-attr]
     return hashlib.sha256(source.encode()).hexdigest()[:8]
+
+
+def language_rule(lang: TutorLang) -> str:
+    return (
+        f"Write the text you produce in {LANGUAGE_NAMES[lang]}. Text you are asked to "
+        "copy from the documents stays exactly as written, in its own language."
+    )
 
 
 def data_rule(tags: list[str]) -> str:
@@ -87,7 +104,10 @@ def build_messages(
     variables: Mapping[str, object] | None = None,
     max_data_chars: int = MAX_DATA_CHARS,
 ) -> list[tuple[str, str]]:
-    """System message: the prompt and the data rule. Human message: the data blocks."""
+    """
+    System message: the prompt, the language rule and the data rule.
+    Human message: the data blocks.
+    """
     if not data:
         raise ValueError("A structured call needs at least one data block")
     tags = list(data)
@@ -95,7 +115,13 @@ def build_messages(
         if not _TAG.match(tag):
             raise ValueError(f"Invalid data tag: {tag!r}")
 
-    system = render_prompt(name, lang, variables or {}) + "\n\n" + data_rule(tags)
+    system = "\n\n".join(
+        [
+            render_prompt(name, lang, variables or {}),
+            language_rule(lang),
+            data_rule(tags),
+        ]
+    )
     human = "\n\n".join(data_block(tag, data[tag], max_data_chars) for tag in tags)
     return [("system", system), ("human", human)]
 
@@ -122,7 +148,7 @@ async def structured_call(
         "metadata": {
             "prompt": prompt_name,
             "lang": lang,
-            "prompt_version": prompt_version(prompt_name, lang),
+            "prompt_version": prompt_version(prompt_name),
         },
     }
 
