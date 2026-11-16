@@ -1,0 +1,12 @@
+{
+  "about": "Same booklet, read with focus on one course (focus sent in a <focus> block, see SY-08): only that course's content is read.",
+  "lang": "fr",
+  "data": {
+    "course": "file:fr-programme-multi-cours.txt",
+    "focus": "UE 102 – Droit de l'environnement"
+  },
+  "expect": {
+    "title": {"contains": "droit de l'environnement"},
+    "topics": {"min_items": 4, "max_items": 4, "contains": "droit de l'eau"}
+  }
+}

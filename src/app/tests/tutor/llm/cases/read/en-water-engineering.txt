@@ -1,0 +1,38 @@
+Fictional Institute of Technology – School of Civil Engineering
+CE 312 – Urban Water Systems
+Spring term – 6 credits
+Instructor: Prof. Jordan Lee (office hours Tuesday 2-4 pm)
+
+Course description
+This course covers the design and operation of the water systems that serve cities: drinking water supply, distribution networks, wastewater collection and treatment, and urban drainage. It puts a strong emphasis on how these systems can adapt to climate change and population growth. Students combine hydraulic calculations with the analysis of real network data.
+
+Prerequisites: CE 210 Fluid Mechanics.
+
+Learning outcomes
+By the end of the course, students will be able to:
+1. Size a drinking water distribution network for a given demand.
+2. Explain the main stages of wastewater treatment and their purpose.
+3. Estimate stormwater runoff with the rational method and design a simple drainage system.
+4. Assess the resilience of an urban water system to drought and flooding.
+
+Course outline
+Week 1 – Introduction: the urban water cycle
+Week 2 – Water demand and supply sources
+Week 3 – Drinking water treatment
+Week 4 – Distribution networks: hydraulics and pipe sizing
+Week 5 – Network modelling with EPANET
+Week 6 – Wastewater collection
+Week 7 – Midterm exam
+Week 8 – Wastewater treatment processes
+Week 9 – Stormwater and urban drainage
+Week 10 – Nature-based solutions: green roofs, swales and retention ponds
+Week 11 – Water systems under climate change
+Week 12 – Project presentations and review
+
+Assessment
+- Problem sets: 20%
+- Midterm exam: 30%
+- Group project (resilience study of a district water system): 50%
+
+Readings
+Selected chapters from a water engineering textbook and case studies posted on the course page.

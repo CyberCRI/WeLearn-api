@@ -1,0 +1,16 @@
+{
+  "about": "Fictional FR syllabus with 5 numbered themes: the title is not the teacher line, the 5 themes are kept one for one (no regrouping, no exam or revision topic).",
+  "lang": "fr",
+  "data": {"course": "file:fr-sociolinguistique.txt"},
+  "expect": {
+    "title": {"contains": "sociolinguistique"},
+    "material_type": {"equals": "syllabus"},
+    "document_language": {"contains": "fr"},
+    "summary": {"not_empty": true},
+    "objectives": {"min_items": 4},
+    "topics": {"min_items": 5, "max_items": 5, "contains": "variation"},
+    "topics.3.title": {"contains": "contacts de langues"},
+    "sessions": {"min_items": 9},
+    "courses_found": {"max_items": 1}
+  }
+}

@@ -190,6 +190,14 @@ class TooManyQueriesError(WeLearnError):
     default_code = "TOO_MANY_QUERIES"
 
 
+class UnusableLLMOutputError(WeLearnError):
+    """Raised when the LLM gives no usable structured answer, even after a retry"""
+
+    status_code = status.HTTP_502_BAD_GATEWAY
+    default_message = "The language model gave no usable answer"
+    default_code = "UNUSABLE_LLM_OUTPUT"
+
+
 def handle_error(exc: Exception, response: Response | None = None) -> None:
     """
     Turn a domain error into its HTTPException. A partial result only sets 206
