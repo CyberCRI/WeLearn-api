@@ -44,10 +44,10 @@ test-poetry: generate-baml-poetry
 test: generate-baml
 	pytest -s -v --cov=src --cov-report=term-missing --cov-fail-under=90 --cov-report=html
 
-# tutor prompts on the test syllabi with the real model, never in CI. -p no:env skips the
-# dummy env of pytest.ini, so the settings (Mistral key, LangSmith) come from .env
+# tutor prompts on the test syllabi with the real model, never in CI. Run with unittest,
+# not pytest: the settings (Mistral key, LangSmith) come from .env, not pytest.ini's dummy env
 eval-tutor: generate-baml-poetry
-	poetry run pytest -p no:env -m llm src/app/tests/tutor/llm -v
+	TUTOR_EVAL=1 poetry run python -m unittest -v src.app.tests.tutor.llm.test_eval
 
 # what the lint-and-test CI job runs; used by the pre-push hook
 ci-poetry: lint-check-poetry test-poetry
