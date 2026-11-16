@@ -6,6 +6,7 @@ from fastapi import HTTPException, UploadFile
 from qdrant_client.models import ScoredPoint
 from starlette.datastructures import Headers
 
+from src.app.shared.domain.exceptions import EmptyDocumentTextError
 from src.app.shared.utils.utils import (
     build_system_message,
     extract_doc_info,
@@ -124,5 +125,5 @@ class TestTutorUtils(IsolatedAsyncioTestCase):
             filename="test.empty.txt",
             headers=Headers({"content-type": "text/plain"}),
         )
-        with self.assertRaises(HTTPException):
+        with self.assertRaises(EmptyDocumentTextError):
             await get_file_content(file)

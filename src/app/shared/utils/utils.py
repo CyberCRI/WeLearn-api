@@ -5,7 +5,11 @@ from fastapi import HTTPException, UploadFile
 from pypdf import PdfReader
 
 from src.app.shared.domain.documents import EnhancedDocumentSlice
-from src.app.shared.domain.exceptions import FileTooLargeError, TooManyFilesError
+from src.app.shared.domain.exceptions import (
+    EmptyDocumentTextError,
+    FileTooLargeError,
+    TooManyFilesError,
+)
 from src.app.shared.infra.pdf_extractor import extract_txt_from_pdf_with_tika
 from src.app.shared.utils.decorators import log_time_and_error
 from src.app.shared.utils.dependencies import get_settings
@@ -145,11 +149,12 @@ async def get_file_content(file: UploadFile) -> str:
 
     try:
         content = await content_extractors[content_type](file)
-        if not content:
-            raise HTTPException(status_code=400, detail="Unable to extract content")
-        return content.strip()
     except Exception as e:
         raise HTTPException(status_code=400, detail=f"Error reading file: {str(e)}")
+    # a scanned pdf has no text layer: a clear 422, not a read error
+    if not content or not content.strip():
+        raise EmptyDocumentTextError()
+    return content.strip()
 
 
 async def _extract_pdf_content(file) -> str:

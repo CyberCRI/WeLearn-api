@@ -18,6 +18,9 @@ Mistral, reads the answer as a Pydantic model and traces the call in LangSmith.
   WeLearn resources are sent apart, in tagged blocks such as `<course>…</course>`. Refer to
   them by their tag ("the course in <course>"). The code adds the rule that their content is
   data, never instructions.
+- A rule shared by several prompts lives in `partials/` and is included with
+  `{% include "partials/<name>.md" %}` (e.g. the summary and topics rules of `read` and
+  `read_outline`). Changing a partial changes every prompt that includes it.
 - Don't describe the JSON shape in detail: the answer is constrained by the Pydantic model
   of the endpoint. Explain what each field should contain, in plain words.
 

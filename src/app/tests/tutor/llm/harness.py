@@ -22,11 +22,15 @@ from typing import Any
 
 from pydantic import BaseModel
 
+from src.app.tutor.domain.course import CourseReading
+
 CASES_DIR = Path(__file__).parent / "cases"
 
 # the prompts evaluated, with the schema their answer is read as. each LLM endpoint
-# registers its prompts here (e.g. "read": CourseReading in SY-08)
-EVALUATED_PROMPTS: dict[str, type[BaseModel]] = {}
+# registers its prompts here
+EVALUATED_PROMPTS: dict[str, type[BaseModel]] = {
+    "read": CourseReading,
+}
 
 
 @dataclass

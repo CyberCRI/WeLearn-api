@@ -1,6 +1,7 @@
 {
   "about": "Same booklet, read with focus on one course (focus sent in a <focus> block, see SY-08): only that course's content is read.",
   "lang": "fr",
+  "variables": {"has_focus": true},
   "data": {
     "course": "file:fr-programme-multi-cours.txt",
     "focus": "UE 102 – Droit de l'environnement"

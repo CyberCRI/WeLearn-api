@@ -1,6 +1,7 @@
 {
   "about": "Fictional FR syllabus with 5 numbered themes: the title is not the teacher line, the 5 themes are kept one for one (no regrouping, no exam or revision topic).",
   "lang": "fr",
+  "variables": {"has_focus": false},
   "data": {"course": "file:fr-sociolinguistique.txt"},
   "expect": {
     "title": {"contains": "sociolinguistique"},

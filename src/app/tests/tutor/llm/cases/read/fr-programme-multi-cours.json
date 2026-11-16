@@ -1,6 +1,7 @@
 {
   "about": "Fictional programme booklet with 3 courses: they are listed in courses_found, so the client can ask which one to read.",
   "lang": "fr",
+  "variables": {"has_focus": false},
   "data": {"course": "file:fr-programme-multi-cours.txt"},
   "expect": {
     "courses_found": {"min_items": 2, "contains": "droit de l'environnement"}

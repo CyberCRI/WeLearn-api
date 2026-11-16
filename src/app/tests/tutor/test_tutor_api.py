@@ -14,7 +14,8 @@ from src.app.shared.domain.documents import (
     EnhancedDocumentSlice,
     EnhancedDocumentSlicePayloadModel,
 )
-from src.app.shared.domain.exceptions import NoResultsError
+from src.app.shared.domain.exceptions import NoResultsError, UnusableReadingError
+from src.app.tutor.domain.course import CourseReading, CourseReadResponse
 from src.app.tutor.domain.models import SyllabusResponseAgent, UserInput
 from src.app.user.services.guest_quota import guest_limiter
 from src.main import app
@@ -1082,6 +1083,95 @@ class TestTutorInputLimits(TutorApiTestCase):
         mock_search.assert_not_awaited()
 
 
+class TestCourseRead(TutorApiTestCase):
+    """Syllabus v2 (SY-08): POST /tutor/course/read."""
+
+    URL = f"{BASE}/course/read"
+
+    def post_file(self, content=b"A course", content_type="text/plain", **form):
+        return self.safe_client.post(
+            self.URL,
+            data=form,
+            files={"file": ("course.txt", content, content_type)},
+            headers=HEADERS,
+        )
+
+    @patch(f"{ROUTER}.read_course", new_callable=AsyncMock)
+    def test_reads_the_extracted_text_in_the_teacher_language(self, mock_read):
+        mock_read.return_value = CourseReadResponse(
+            text="A course",
+            is_text_truncated=False,
+            is_partial=False,
+            reading=CourseReading(title="Ecology"),
+        )
+
+        response = self.post_file(b"  A course \n", lang="fr", focus="UE 1")
+
+        self.assertEqual(response.status_code, 200)
+        mock_read.assert_awaited_once_with("A course", "fr", "UE 1")
+        body = response.json()
+        self.assertEqual(body["reading"]["title"], "Ecology")
+        self.assertEqual(body["text"], "A course")
+
+    @patch(f"{ROUTER}.read_course", new_callable=AsyncMock)
+    def test_default_language_is_english_without_focus(self, mock_read):
+        mock_read.return_value = CourseReadResponse(
+            text="A course",
+            is_text_truncated=False,
+            is_partial=False,
+            reading=CourseReading(),
+        )
+
+        self.post_file()
+
+        mock_read.assert_awaited_once_with("A course", "en", None)
+
+    @patch(f"{ROUTER}.read_course", new_callable=AsyncMock)
+    def test_a_file_without_text_is_422_empty_document_text(self, mock_read):
+        response = self.post_file(b"   \n ")
+
+        self.assertEqual(response.status_code, 422)
+        self.assertEqual(response.json()["detail"]["code"], "EMPTY_DOCUMENT_TEXT")
+        mock_read.assert_not_awaited()
+
+    @patch(f"{ROUTER}.MAX_COURSE_FILE_SIZE", 10)
+    @patch(f"{ROUTER}.read_course", new_callable=AsyncMock)
+    def test_a_file_over_the_limit_is_413(self, mock_read):
+        response = self.post_file(b"x" * 11)
+
+        self.assertEqual(response.status_code, 413)
+        self.assertEqual(response.json()["detail"]["code"], "FILE_TOO_LARGE")
+        mock_read.assert_not_awaited()
+
+    @patch(f"{ROUTER}.read_course", new_callable=AsyncMock)
+    def test_an_unsupported_file_is_400(self, mock_read):
+        response = self.post_file(b"\x89PNG", "image/png")
+
+        self.assertEqual(response.status_code, 400)
+        mock_read.assert_not_awaited()
+
+    @patch(f"{ROUTER}.read_course", new_callable=AsyncMock)
+    def test_an_unreadable_document_is_502_unusable_reading(self, mock_read):
+        mock_read.side_effect = UnusableReadingError()
+
+        response = self.post_file()
+
+        self.assertEqual(response.status_code, 502)
+        self.assertEqual(response.json()["detail"]["code"], "UNUSABLE_READING")
+
+    @patch(f"{ROUTER}.read_course", new_callable=AsyncMock)
+    def test_invalid_language_or_too_long_focus_is_422(self, mock_read):
+        for form in ({"lang": "de"}, {"focus": "x" * 201}):
+            with self.subTest(form=form):
+                self.assertEqual(self.post_file(**form).status_code, 422)
+        mock_read.assert_not_awaited()
+
+    def test_needs_a_file(self):
+        response = self.safe_client.post(self.URL, data={"lang": "en"}, headers=HEADERS)
+
+        self.assertEqual(response.status_code, 422)
+
+
 class TestSyllabusGuestQuota(TutorApiTestCase):
     """With guest restrictions on, a guest gets GUEST_SYLLABUS_DAILY_LIMIT syllabi a day."""
 
@@ -1165,4 +1255,64 @@ class TestSyllabusGuestQuota(TutorApiTestCase):
         response = self.generate()
 
         self.assertEqual(response.json()["status"], "error")
+        self.assertEqual(self.left(), self.LIMIT)
+
+    # syllabus v2: reading a course counts as one of the guest's syllabi
+
+    def read_course(self, content=b"A course"):
+        return self.client.post(
+            f"{BASE}/course/read",
+            files={"file": ("course.txt", content, "text/plain")},
+            headers=self.GUEST_HEADERS,
+        )
+
+    @patch(f"{ROUTER}.read_course", new_callable=AsyncMock)
+    def test_course_reading_shares_the_syllabus_quota(self, mock_read):
+        mock_read.return_value = CourseReadResponse(
+            text="A course",
+            is_text_truncated=False,
+            is_partial=False,
+            reading=CourseReading(),
+        )
+
+        for left in range(self.LIMIT - 1, -1, -1):
+            response = self.read_course()
+            self.assertEqual(response.status_code, 200)
+            self.assertEqual(response.headers["X-Guest-Remaining"], str(left))
+
+        response = self.read_course()
+
+        self.assertEqual(response.status_code, 403)
+        self.assertEqual(response.json()["detail"]["feature"], "syllabus")
+        self.assertEqual(mock_read.await_count, self.LIMIT)
+
+    @patch(f"{ROUTER}.read_course", new_callable=AsyncMock)
+    def test_failed_course_reading_is_refunded(self, mock_read):
+        mock_read.side_effect = UnusableReadingError()
+
+        self.assertEqual(self.read_course().status_code, 502)
+        self.assertEqual(self.left(), self.LIMIT)
+
+    @patch(f"{ROUTER}.read_course", new_callable=AsyncMock)
+    def test_a_file_rejected_before_reading_costs_nothing(self, mock_read):
+        self.assertEqual(self.read_course(b"  ").status_code, 422)
+        self.assertEqual(self.left(), self.LIMIT)
+        mock_read.assert_not_awaited()
+
+    @patch(
+        "src.app.user.services.guest_quota.verify_account_token",
+        new_callable=AsyncMock,
+    )
+    @patch(f"{ROUTER}.read_course", new_callable=AsyncMock)
+    def test_an_account_reads_without_limit(self, mock_read, mock_token):
+        mock_token.return_value = object()
+        mock_read.return_value = CourseReadResponse(
+            text="A course",
+            is_text_truncated=False,
+            is_partial=False,
+            reading=CourseReading(),
+        )
+
+        for _ in range(self.LIMIT + 1):
+            self.assertEqual(self.read_course().status_code, 200)
         self.assertEqual(self.left(), self.LIMIT)

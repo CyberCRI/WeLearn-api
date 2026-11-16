@@ -1,6 +1,7 @@
 {
   "about": "Same FR syllabus, English teacher: generated text (summary) is in English, copied text (topic titles) stays in French.",
   "lang": "en",
+  "variables": {"has_focus": false},
   "data": {"course": "file:fr-sociolinguistique.txt"},
   "expect": {
     "summary": {"contains": "language"},

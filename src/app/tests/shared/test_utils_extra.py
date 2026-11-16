@@ -13,7 +13,11 @@ from src.app.shared.domain.documents import (
     EnhancedDocumentSlice,
     EnhancedDocumentSlicePayloadModel,
 )
-from src.app.shared.domain.exceptions import FileTooLargeError, TooManyFilesError
+from src.app.shared.domain.exceptions import (
+    EmptyDocumentTextError,
+    FileTooLargeError,
+    TooManyFilesError,
+)
 from src.app.shared.utils.utils import (
     _extract_docx_content,
     _extract_pdf_content,
@@ -103,6 +107,21 @@ class GetFilesContentTests(IsolatedAsyncioTestCase):
             await get_files_content([])
         self.assertEqual(ctx.exception.status_code, 400)
         self.assertEqual(ctx.exception.detail, "added files are empty")
+
+    async def test_a_file_without_text_raises_empty_document_text(self):
+        # e.g. a scanned pdf: no text layer
+        with self.assertRaises(EmptyDocumentTextError) as ctx:
+            await get_files_content([_upload(b"  \n ", "text/plain")])
+        self.assertEqual(ctx.exception.status_code, 422)
+        self.assertEqual(ctx.exception.msg_code, "EMPTY_DOCUMENT_TEXT")
+
+    @patch("src.app.shared.utils.utils.DocxReader", side_effect=ValueError("bad zip"))
+    async def test_a_file_that_cannot_be_read_is_400(self, _reader):
+        docx = "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+        with self.assertRaises(HTTPException) as ctx:
+            await get_files_content([_upload(b"not a docx", docx)])
+        self.assertEqual(ctx.exception.status_code, 400)
+        self.assertEqual(ctx.exception.detail, "Error reading file: bad zip")
 
     async def test_unsupported_file_propagates_http_error(self):
         with self.assertRaises(HTTPException) as ctx:

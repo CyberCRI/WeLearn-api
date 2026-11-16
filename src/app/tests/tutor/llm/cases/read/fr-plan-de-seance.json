@@ -1,6 +1,7 @@
 {
   "about": "Fictional single lesson plan, not a syllabus: material_type is lesson.",
   "lang": "fr",
+  "variables": {"has_focus": false},
   "data": {"course": "file:fr-plan-de-seance.txt"},
   "expect": {
     "title": {"contains": "décomposition"},

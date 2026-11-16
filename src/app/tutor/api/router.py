@@ -5,6 +5,7 @@ from fastapi import (
     BackgroundTasks,
     Depends,
     File,
+    Form,
     HTTPException,
     Query,
     Request,
@@ -26,6 +27,7 @@ from src.app.shared.utils.dependencies import get_settings
 from src.app.shared.utils.logger import logger as utils_logger
 from src.app.shared.utils.requests import extract_session_cookie
 from src.app.shared.utils.utils import check_upload_limits, get_files_content
+from src.app.tutor.domain.course import CourseReadResponse
 from src.app.tutor.domain.models import (
     CompetencyMappingRequest,
     CourseDescriptionRequest,
@@ -46,6 +48,7 @@ from src.app.tutor.domain.models import (
     TutorSyllabusRequest,
     UserInput,
 )
+from src.app.tutor.services.course_reading import MAX_FOCUS_CHARS, read_course
 from src.app.tutor.services.extractor import extract_files_summaries, truncate_documents
 from src.app.tutor.services.orchestrator import SyllabusOrchestrator
 from src.app.tutor.services.tutor import apply_feedback, tutor_manager
@@ -81,6 +84,55 @@ async def _read_documents(files: list[UploadFile]) -> str:
     await check_upload_limits(files, MAX_UPLOAD_FILES, MAX_UPLOAD_FILE_SIZE)
     files_content = await get_files_content(files)
     return DOCUMENT_SEPARATOR.join(truncate_documents(files_content))
+
+
+# syllabus v2: one course document, 5 MB (as the client allows)
+MAX_COURSE_FILE_SIZE = 5 * 1024 * 1024
+
+COURSE_READ_RESPONSES: dict[int | str, dict] = {
+    400: {"model": ErrorResponse, "description": "Unsupported or unreadable file"},
+    413: {
+        "model": ErrorResponse,
+        "description": "The file is too large (code FILE_TOO_LARGE)",
+    },
+    422: {
+        "model": ErrorResponse,
+        "description": (
+            "No text in the file, e.g. a scanned PDF (code EMPTY_DOCUMENT_TEXT), "
+            "or invalid form fields"
+        ),
+    },
+    502: {
+        "model": ErrorResponse,
+        "description": "The document could not be read (code UNUSABLE_READING)",
+    },
+}
+
+
+@router.post(
+    "/course/read",
+    response_model=CourseReadResponse,
+    responses={**COURSE_READ_RESPONSES, **GUEST_QUOTA_RESPONSES},
+    summary="Read a course document (syllabus v2)",
+)
+async def read_course_document(
+    file: Annotated[UploadFile, File()],
+    lang: Annotated[TutorLang, Form()] = "en",
+    focus: Annotated[str | None, Form(max_length=MAX_FOCUS_CHARS)] = None,
+    quota: GuestQuota = Depends(guest_quota("syllabus")),
+) -> CourseReadResponse:
+    """
+    The course in the uploaded document: title, objectives, topics, sessions... and the
+    extracted text, so the client checks each value word for word. `lang` is the teacher's
+    language (the answer's); `focus` reads one course of a document that holds several.
+
+    A guest's reading counts as one of their daily syllabi, refunded if it fails. A
+    file rejected before the reading (size, type, no text) costs nothing.
+    """
+    await check_upload_limits([file], 1, MAX_COURSE_FILE_SIZE)
+    [text] = await get_files_content([file])
+    with quota.spend():
+        return await read_course(text, lang, focus)
 
 
 @router.post("/files/content", responses=UPLOAD_ERROR_RESPONSES)
