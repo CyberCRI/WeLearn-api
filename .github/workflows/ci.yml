@@ -17,8 +17,11 @@ on:
       - "!**_deploy"
   workflow_dispatch:
 
+# a new push cancels the run of the previous push. the run started by the `preview` label
+# (workflow_dispatch) gets its own group: in a shared group, the push run it cancelled kept
+# its reusable-workflow jobs waiting, and that waiting request cancelled the deploy run
 concurrency:
-  group: ${{ github.ref }}
+  group: ${{ github.workflow }}-${{ github.ref }}-${{ github.event_name }}
   cancel-in-progress: true
 
 jobs:
