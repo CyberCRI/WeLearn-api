@@ -2478,6 +2478,26 @@
             },
             "description": "Successful Response"
           },
+          "401": {
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "No bearer token while guest restrictions are on (code ACCOUNT_REQUIRED), or invalid or expired token"
+          },
+          "503": {
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Keycloak unavailable, or bearer tokens not accepted because Keycloak is not configured (code AUTH_NOT_CONFIGURED)"
+          },
           "default": {
             "content": {
               "text/plain": {
@@ -2658,6 +2678,26 @@
               }
             },
             "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "No bearer token while guest restrictions are on (code ACCOUNT_REQUIRED), or invalid or expired token"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Keycloak unavailable, or bearer tokens not accepted because Keycloak is not configured (code AUTH_NOT_CONFIGURED)"
           },
           "default": {
             "content": {
@@ -4479,7 +4519,7 @@
                 }
               }
             },
-            "description": "Invalid or expired token"
+            "description": "No bearer token while guest restrictions are on (code ACCOUNT_REQUIRED), or invalid or expired token"
           },
           "503": {
             "content": {
@@ -4533,7 +4573,7 @@
                 }
               }
             },
-            "description": "Invalid or expired token"
+            "description": "No bearer token while guest restrictions are on (code ACCOUNT_REQUIRED), or invalid or expired token"
           },
           "503": {
             "content": {
@@ -4602,7 +4642,7 @@
                 }
               }
             },
-            "description": "Invalid or expired token"
+            "description": "No bearer token while guest restrictions are on (code ACCOUNT_REQUIRED), or invalid or expired token"
           },
           "503": {
             "content": {
@@ -4669,7 +4709,7 @@
                 }
               }
             },
-            "description": "Invalid or expired token"
+            "description": "No bearer token while guest restrictions are on (code ACCOUNT_REQUIRED), or invalid or expired token"
           },
           "503": {
             "content": {
@@ -4737,7 +4777,7 @@
                 }
               }
             },
-            "description": "Invalid or expired token"
+            "description": "No bearer token while guest restrictions are on (code ACCOUNT_REQUIRED), or invalid or expired token"
           },
           "503": {
             "content": {
@@ -4803,7 +4843,7 @@
                 }
               }
             },
-            "description": "Invalid or expired token"
+            "description": "No bearer token while guest restrictions are on (code ACCOUNT_REQUIRED), or invalid or expired token"
           },
           "503": {
             "content": {

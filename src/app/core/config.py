@@ -93,6 +93,10 @@ class Settings(BaseSettings):
     KEYCLOAK_ADMIN_CLIENT_SECRET: Optional[str] = None
     # where the sign-up email link sends the user once done (needs KEYCLOAK_CLIENT_ID)
     KEYCLOAK_SIGNUP_REDIRECT_URI: Optional[str] = None
+    # account-only features (bookmarks, bibliography export, syllabus download)
+    # answer 401 ACCOUNT_REQUIRED without a bearer token. Turn on with the
+    # client's `auth` feature flag, per environment; off, a guest's cookie is enough
+    GUEST_RESTRICTIONS_ENABLED: bool = False
 
     model_config = SettingsConfigDict(
         env_file=".env", extra="ignore", case_sensitive=True

@@ -18,6 +18,8 @@ from welearn_database.data.models import (
 from src.app.core.config import settings
 from src.app.data_collection.services.data_collection import get_data_collection_service
 from src.app.metric.infra.queries import get_document_qty_table_info_sync
+from src.app.user.infra.keycloak import KeycloakUser
+from src.app.user.services import account
 from src.main import app
 
 METRIC_URL = f"{settings.API_V1_STR}/metric"
@@ -92,6 +94,37 @@ class MetricDataCollectionRoutesTests(unittest.TestCase):
         )
         self.assertEqual(response.status_code, 200)
         self.data_collection.register_syllabus_download.assert_awaited_once_with(None)
+
+    @mock.patch.object(account.settings, "GUEST_RESTRICTIONS_ENABLED", True)
+    def test_syllabus_downloaded_guest_requires_an_account(self):
+        response = self.client.post(
+            f"{METRIC_URL}/syllabus_downloaded",
+            headers={**HEADERS, "X-Session-Id": str(uuid.uuid4())},
+        )
+
+        self.assertEqual(response.status_code, 401)
+        self.assertEqual(response.json()["detail"]["code"], "ACCOUNT_REQUIRED")
+        self.data_collection.register_syllabus_download.assert_not_awaited()
+
+    @mock.patch.object(account.settings, "GUEST_RESTRICTIONS_ENABLED", True)
+    @mock.patch.object(account, "decode_keycloak_token")
+    def test_syllabus_downloaded_account_is_registered(self, decode_mock):
+        decode_mock.return_value = KeycloakUser(keycloak_id=uuid.uuid4())
+        session_id = uuid.uuid4()
+
+        response = self.client.post(
+            f"{METRIC_URL}/syllabus_downloaded",
+            headers={
+                **HEADERS,
+                "X-Session-Id": str(session_id),
+                "Authorization": "Bearer a.b.c",
+            },
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.data_collection.register_syllabus_download.assert_awaited_once_with(
+            session_id
+        )
 
     def _form_body(self):
         return {

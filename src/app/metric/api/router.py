@@ -14,6 +14,7 @@ from src.app.shared.utils.db_errors import describe_error
 from src.app.shared.utils.dependencies import get_settings
 from src.app.shared.utils.logger import logger as utils_logger
 from src.app.shared.utils.requests import extract_session_cookie
+from src.app.user.services.account import ACCOUNT_REQUIRED_RESPONSES, require_account
 
 logger = utils_logger(__name__)
 
@@ -67,7 +68,11 @@ async def update_clicked_doc_from_chat_message(
     return "updated"
 
 
-@router.post("/syllabus_downloaded")
+@router.post(
+    "/syllabus_downloaded",
+    responses=ACCOUNT_REQUIRED_RESPONSES,
+    dependencies=[Depends(require_account)],
+)
 async def register_syllabus_download(
     request: Request, data_collection=Depends(get_data_collection_service)
 ) -> str:
