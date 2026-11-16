@@ -17,7 +17,7 @@ from functools import lru_cache
 from pathlib import Path
 from typing import TypeVar
 
-from jinja2 import Environment, FileSystemLoader, StrictUndefined
+from jinja2 import Environment, FileSystemLoader, StrictUndefined, meta
 from langchain_core.exceptions import OutputParserException
 from langchain_core.runnables import RunnableConfig
 from langchain_mistralai import ChatMistralAI  # type: ignore
@@ -77,9 +77,18 @@ def render_prompt(name: str, lang: TutorLang, variables: Mapping[str, object]) -
 
 @lru_cache
 def prompt_version(name: str) -> str:
-    """Short hash of the prompt file, sent to LangSmith to compare two prompt versions."""
-    source, _, _ = _ENV.loader.get_source(_ENV, f"{name}.md")  # type: ignore[union-attr]
-    return hashlib.sha256(source.encode()).hexdigest()[:8]
+    """
+    Short hash of the prompt file and the partials it includes, sent to LangSmith to
+    compare two prompt versions.
+    """
+    return hashlib.sha256(_template_sources(f"{name}.md").encode()).hexdigest()[:8]
+
+
+def _template_sources(template: str) -> str:
+    """A template's source followed by those of the templates it includes."""
+    source, _, _ = _ENV.loader.get_source(_ENV, template)  # type: ignore[union-attr]
+    included = meta.find_referenced_templates(_ENV.parse(source))
+    return source + "".join(_template_sources(t) for t in included if t)
 
 
 def language_rule(lang: TutorLang) -> str:

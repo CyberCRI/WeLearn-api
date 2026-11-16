@@ -5,7 +5,14 @@ from pathlib import Path
 
 from pydantic import BaseModel
 
-from src.app.tests.tutor.llm.harness import CASES_DIR, CHECKS, check, load_cases
+from src.app.tests.tutor.llm.harness import (
+    CASES_DIR,
+    CHECKS,
+    EVALUATED_PROMPTS,
+    check,
+    load_cases,
+)
+from src.app.tutor.services.llm import render_prompt
 
 
 class Reading(BaseModel):
@@ -102,3 +109,10 @@ class CommittedCasesTests(unittest.TestCase):
                     self.assertTrue(case.expect)
                     for checks in case.expect.values():
                         self.assertLessEqual(set(checks), set(CHECKS))
+
+    def test_every_case_of_an_evaluated_prompt_renders_its_prompt(self):
+        # a variable missing from a case is an error (StrictUndefined), caught here
+        for prompt in EVALUATED_PROMPTS:
+            for case in load_cases(prompt):
+                with self.subTest(case=f"{prompt}:{case.id}"):
+                    render_prompt(prompt, case.lang, case.variables)

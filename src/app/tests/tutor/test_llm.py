@@ -14,6 +14,8 @@ PROMPTS = {
         "in {{ output_language }}.\n"
     ),
     "selection.md": "Judge the resources in <resource>.\n",
+    "read.md": 'Read <course>.\n{% include "partials/rules.md" %}\n',
+    "partials/rules.md": "- Add nothing.\n",
 }
 
 
@@ -53,6 +55,17 @@ class PromptTests(unittest.TestCase):
         version = llm.prompt_version("ideas")
         self.assertRegex(version, r"^[0-9a-f]{8}$")
         self.assertNotEqual(version, llm.prompt_version("selection"))
+
+    def test_a_prompt_includes_its_partials_and_they_change_its_version(self):
+        self.assertEqual(
+            llm.render_prompt("read", "en", {}), "Read <course>.\n- Add nothing."
+        )
+        before = llm.prompt_version("read")
+        llm.prompt_version.cache_clear()
+        PROMPTS["partials/rules.md"] = "- Add nothing at all.\n"
+        self.addCleanup(PROMPTS.__setitem__, "partials/rules.md", "- Add nothing.\n")
+
+        self.assertNotEqual(llm.prompt_version("read"), before)
 
     def test_the_language_rule_is_added_to_every_prompt(self):
         messages = llm.build_messages("selection", "fr", {"resource": "R"})

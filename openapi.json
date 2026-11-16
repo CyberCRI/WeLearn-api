@@ -218,6 +218,41 @@
         "title": "Body_tutor-extract_files_content_baml",
         "type": "object"
       },
+      "Body_tutor-read_course_document": {
+        "properties": {
+          "file": {
+            "format": "binary",
+            "title": "File",
+            "type": "string"
+          },
+          "focus": {
+            "anyOf": [
+              {
+                "maxLength": 200,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Focus"
+          },
+          "lang": {
+            "default": "en",
+            "enum": [
+              "en",
+              "fr"
+            ],
+            "title": "Lang",
+            "type": "string"
+          }
+        },
+        "required": [
+          "file"
+        ],
+        "title": "Body_tutor-read_course_document",
+        "type": "object"
+      },
       "BookmarkAddedResponse": {
         "properties": {
           "added": {
@@ -539,6 +574,165 @@
           "output_language"
         ],
         "title": "CourseMetadata",
+        "type": "object"
+      },
+      "CourseReadResponse": {
+        "properties": {
+          "is_partial": {
+            "description": "A part of a long document could not be read for its topics",
+            "title": "Is Partial",
+            "type": "boolean"
+          },
+          "is_text_truncated": {
+            "description": "The document is longer than one reading: title, objectives and sessions come from its first part only (topics and summary cover every part)",
+            "title": "Is Text Truncated",
+            "type": "boolean"
+          },
+          "reading": {
+            "$ref": "#/components/schemas/CourseReading"
+          },
+          "text": {
+            "description": "Text extracted from the file, to check the reading word for word",
+            "title": "Text",
+            "type": "string"
+          }
+        },
+        "required": [
+          "text",
+          "is_text_truncated",
+          "is_partial",
+          "reading"
+        ],
+        "title": "CourseReadResponse",
+        "type": "object"
+      },
+      "CourseReading": {
+        "description": "Answer of the `read` prompt.",
+        "properties": {
+          "courses_found": {
+            "default": [],
+            "items": {
+              "type": "string"
+            },
+            "title": "Courses Found",
+            "type": "array"
+          },
+          "description": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Description"
+          },
+          "discipline": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Discipline"
+          },
+          "discipline_suggested": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Discipline Suggested"
+          },
+          "document_language": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "ISO 639-1 code of the main language of the document, e.g. \"fr\"",
+            "title": "Document Language"
+          },
+          "level": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Level"
+          },
+          "material_type": {
+            "default": "other",
+            "enum": [
+              "syllabus",
+              "course_plan",
+              "lesson",
+              "partial",
+              "other"
+            ],
+            "title": "Material Type",
+            "type": "string"
+          },
+          "objectives": {
+            "default": [],
+            "items": {
+              "$ref": "#/components/schemas/ReadObjective"
+            },
+            "title": "Objectives",
+            "type": "array"
+          },
+          "sessions": {
+            "default": [],
+            "items": {
+              "$ref": "#/components/schemas/ReadSession"
+            },
+            "title": "Sessions",
+            "type": "array"
+          },
+          "summary": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Summary"
+          },
+          "title": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Title"
+          },
+          "topics": {
+            "default": [],
+            "items": {
+              "$ref": "#/components/schemas/ReadTopic"
+            },
+            "title": "Topics",
+            "type": "array"
+          }
+        },
+        "title": "CourseReading",
         "type": "object"
       },
       "Document": {
@@ -1327,6 +1521,91 @@
         ],
         "title": "QuestionType",
         "type": "string"
+      },
+      "ReadObjective": {
+        "properties": {
+          "scope": {
+            "default": "unspecified",
+            "enum": [
+              "course",
+              "programme",
+              "unspecified"
+            ],
+            "title": "Scope",
+            "type": "string"
+          },
+          "text": {
+            "description": "The objective, word for word, without number or bullet",
+            "title": "Text",
+            "type": "string"
+          }
+        },
+        "required": [
+          "text"
+        ],
+        "title": "ReadObjective",
+        "type": "object"
+      },
+      "ReadSession": {
+        "properties": {
+          "label": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Label"
+          },
+          "title": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Title"
+          }
+        },
+        "title": "ReadSession",
+        "type": "object"
+      },
+      "ReadTopic": {
+        "properties": {
+          "source": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "The heading or line of the document the topic comes from, word for word",
+            "title": "Source"
+          },
+          "subtopics": {
+            "default": [],
+            "items": {
+              "type": "string"
+            },
+            "title": "Subtopics",
+            "type": "array"
+          },
+          "title": {
+            "title": "Title",
+            "type": "string"
+          }
+        },
+        "required": [
+          "title"
+        ],
+        "title": "ReadTopic",
+        "type": "object"
       },
       "RegisterFormAnswerBody": {
         "properties": {
@@ -3856,6 +4135,93 @@
           }
         ],
         "summary": "Generate Syllabus",
+        "tags": [
+          "tutor"
+        ]
+      }
+    },
+    "/api/v1/tutor/course/read": {
+      "post": {
+        "description": "The course in the uploaded document: title, objectives, topics, sessions... and the\nextracted text, so the client checks each value word for word. `lang` is the teacher's\nlanguage (the answer's); `focus` reads one course of a document that holds several.",
+        "operationId": "tutor-read_course_document",
+        "requestBody": {
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "$ref": "#/components/schemas/Body_tutor-read_course_document"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CourseReadResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Unsupported or unreadable file"
+          },
+          "413": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "The file is too large (code FILE_TOO_LARGE)"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "No text in the file, e.g. a scanned PDF (code EMPTY_DOCUMENT_TEXT), or invalid form fields"
+          },
+          "502": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "The document could not be read (code UNUSABLE_READING)"
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Error"
+          }
+        },
+        "security": [
+          {
+            "APIKeyHeader": []
+          }
+        ],
+        "summary": "Read a course document (syllabus v2)",
         "tags": [
           "tutor"
         ]

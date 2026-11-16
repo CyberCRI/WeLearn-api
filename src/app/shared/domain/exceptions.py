@@ -198,6 +198,21 @@ class UnusableLLMOutputError(WeLearnError):
     default_code = "UNUSABLE_LLM_OUTPUT"
 
 
+class UnusableReadingError(UnusableLLMOutputError):
+    """Raised when a syllabus could not be read: no usable answer, even after a retry"""
+
+    default_message = "The document could not be read"
+    default_code = "UNUSABLE_READING"
+
+
+class EmptyDocumentTextError(WeLearnError):
+    """Raised when no text can be extracted from a file (e.g. a scanned PDF)"""
+
+    status_code = status.HTTP_422_UNPROCESSABLE_ENTITY
+    default_message = "No text could be extracted from the file"
+    default_code = "EMPTY_DOCUMENT_TEXT"
+
+
 def handle_error(exc: Exception, response: Response | None = None) -> None:
     """
     Turn a domain error into its HTTPException. A partial result only sets 206
