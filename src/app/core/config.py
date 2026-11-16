@@ -97,6 +97,10 @@ class Settings(BaseSettings):
     # answer 401 ACCOUNT_REQUIRED without a bearer token. Turn on with the
     # client's `auth` feature flag, per environment; off, a guest's cookie is enough
     GUEST_RESTRICTIONS_ENABLED: bool = False
+    # daily guest quotas while GUEST_RESTRICTIONS_ENABLED is on (sliding 24h window
+    # per anonymous user, in memory: per pod, reset on restart)
+    GUEST_CHAT_DAILY_LIMIT: int = 5
+    GUEST_SYLLABUS_DAILY_LIMIT: int = 1
 
     model_config = SettingsConfigDict(
         env_file=".env", extra="ignore", case_sensitive=True
