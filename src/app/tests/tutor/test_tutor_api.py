@@ -16,6 +16,7 @@ from src.app.shared.domain.documents import (
 )
 from src.app.shared.domain.exceptions import NoResultsError
 from src.app.tutor.domain.models import SyllabusResponseAgent, UserInput
+from src.app.user.services.guest_quota import guest_limiter
 from src.main import app
 
 ROUTER = "src.app.tutor.api.router"
@@ -1079,3 +1080,89 @@ class TestTutorInputLimits(TutorApiTestCase):
 
         self.assertEqual(response.status_code, 422)
         mock_search.assert_not_awaited()
+
+
+class TestSyllabusGuestQuota(TutorApiTestCase):
+    """With guest restrictions on, a guest gets GUEST_SYLLABUS_DAILY_LIMIT syllabi a day."""
+
+    GUEST = uuid.uuid4()
+    GUEST_HEADERS = {**HEADERS, "X-Session-Id": str(SESSION_ID)}
+    LIMIT = settings.GUEST_SYLLABUS_DAILY_LIMIT
+
+    def setUp(self):
+        super().setUp()
+        for target, kwargs in (
+            (
+                "src.app.user.services.guest_quota.get_user_for_session_renewal",
+                {"return_value": self.GUEST},
+            ),
+            (
+                "src.app.user.services.account.settings.GUEST_RESTRICTIONS_ENABLED",
+                {"new": True},
+            ),
+        ):
+            patcher = patch(target, **kwargs)
+            patcher.start()
+            self.addCleanup(patcher.stop)
+
+    def left(self) -> int:
+        return guest_limiter("syllabus").peek(str(self.GUEST))[0]
+
+    def create(self):
+        return self.client.post(
+            f"{BASE}/syllabus",
+            json=TestCreateSyllabus.body(TestCreateSyllabus()),
+            headers=self.GUEST_HEADERS,
+        )
+
+    def generate(self):
+        return self.client.post(
+            f"{BASE}/api/generate",
+            json={"mode": "mode_1", "course_metadata": COURSE_METADATA},
+            headers=self.GUEST_HEADERS,
+        )
+
+    @patch(f"{ROUTER}.tutor_manager", new_callable=AsyncMock)
+    def test_create_until_the_limit_then_403(self, mock_manager):
+        mock_manager.return_value = [SyllabusResponseAgent(content="final")]
+
+        for left in range(self.LIMIT - 1, -1, -1):
+            response = self.create()
+            self.assertEqual(response.status_code, 200)
+            self.assertEqual(response.headers["X-Guest-Remaining"], str(left))
+
+        response = self.create()
+
+        self.assertEqual(response.status_code, 403)
+        detail = response.json()["detail"]
+        self.assertEqual(detail["code"], "GUEST_QUOTA_EXCEEDED")
+        self.assertEqual(detail["feature"], "syllabus")
+        self.assertIn("Retry-After", response.headers)
+        self.assertEqual(mock_manager.await_count, self.LIMIT)
+
+    @patch(f"{ROUTER}.tutor_manager", new_callable=AsyncMock)
+    def test_failed_creation_is_refunded(self, mock_manager):
+        mock_manager.side_effect = RuntimeError("mistral down")
+
+        self.assertEqual(self.create().status_code, 502)
+        self.assertEqual(self.left(), self.LIMIT)
+
+    @patch(f"{ROUTER}.SyllabusOrchestrator")
+    def test_generate_shares_the_syllabus_quota(self, mock_orchestrator_cls):
+        mock_orchestrator_cls.return_value.run = AsyncMock(return_value={})
+
+        for _ in range(self.LIMIT):
+            self.assertEqual(self.generate().status_code, 200)
+
+        self.assertEqual(self.generate().status_code, 403)
+
+    @patch(f"{ROUTER}.SyllabusOrchestrator")
+    def test_failed_generation_is_refunded(self, mock_orchestrator_cls):
+        mock_orchestrator_cls.return_value.run = AsyncMock(
+            side_effect=Exception("Phase 1 failed")
+        )
+
+        response = self.generate()
+
+        self.assertEqual(response.json()["status"], "error")
+        self.assertEqual(self.left(), self.LIMIT)

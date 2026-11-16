@@ -49,6 +49,11 @@ from src.app.tutor.domain.models import (
 from src.app.tutor.services.extractor import extract_files_summaries, truncate_documents
 from src.app.tutor.services.orchestrator import SyllabusOrchestrator
 from src.app.tutor.services.tutor import apply_feedback, tutor_manager
+from src.app.user.services.guest_quota import (
+    GUEST_QUOTA_RESPONSES,
+    GuestQuota,
+    guest_quota,
+)
 
 logger = utils_logger(__name__)
 
@@ -173,13 +178,14 @@ async def tutor_search_extract(
     return resp
 
 
-@router.post("/syllabus")
+@router.post("/syllabus", responses=GUEST_QUOTA_RESPONSES)
 async def create_syllabus(
     request: Request,
     body: TutorSyllabusRequest,
     lang: TutorLang = "en",
     data_collection=Depends(get_data_collection_service),
     settings: Settings = Depends(get_settings),
+    quota: GuestQuota = Depends(guest_quota("syllabus")),
 ) -> SyllabusResponse:
     session_id = extract_session_cookie(request)
     trace_context = {
@@ -189,9 +195,11 @@ async def create_syllabus(
         "query_extracts_count": len(body.extracts),
         "documents_count": len(body.documents),
     }
+    quota.consume()
     try:
         results = await tutor_manager(body, lang, settings, trace_context=trace_context)
     except Exception as e:
+        quota.refund()
         logger.error(f"Syllabus generation failed: {e}")
         raise HTTPException(
             status_code=status.HTTP_502_BAD_GATEWAY,
@@ -358,9 +366,16 @@ async def generate_competency_map(
     return competencies
 
 
-@router.post("/api/generate", response_model=SyllabusGenerationResponse)
-async def generate_syllabus(body: SyllabusGenerationRequest):
-
+@router.post(
+    "/api/generate",
+    response_model=SyllabusGenerationResponse,
+    responses=GUEST_QUOTA_RESPONSES,
+)
+async def generate_syllabus(
+    body: SyllabusGenerationRequest,
+    quota: GuestQuota = Depends(guest_quota("syllabus")),
+):
+    quota.consume()
     try:
         user_input = UserInput(
             metadata=body.course_metadata,
@@ -384,6 +399,7 @@ async def generate_syllabus(body: SyllabusGenerationRequest):
             **output,
         }
     except Exception as e:
+        quota.refund()
         error = describe_error(e)
         logger.error("Error generating syllabus: %s", error)
         return {

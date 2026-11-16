@@ -27,6 +27,11 @@ from src.app.shared.utils.db_errors import describe_error
 from src.app.shared.utils.dependencies import get_settings
 from src.app.shared.utils.logger import logger as utils_logger
 from src.app.shared.utils.requests import extract_session_cookie
+from src.app.user.services.guest_quota import (
+    GUEST_QUOTA_RESPONSES,
+    GuestQuota,
+    guest_quota,
+)
 
 logger = utils_logger(__name__)
 
@@ -169,6 +174,7 @@ async def delete_chat_thread(
     responses={
         200: {"content": {"text/event-stream": {"schema": {"type": "string"}}}},
         **THREAD_NOT_FOUND_RESPONSE,
+        **GUEST_QUOTA_RESPONSES,
     },
 )
 async def agent_stream_response(
@@ -178,6 +184,7 @@ async def agent_stream_response(
     chatfactory=Depends(get_chat_service),
     sp: SearchService = Depends(get_search_service),
     data_collection=Depends(get_data_collection_service),
+    quota: GuestQuota = Depends(guest_quota("chat")),
 ) -> StreamingResponse:
     session_id = extract_session_cookie(request)
     thread_id = _resolve_thread_id(body.thread_id)
@@ -200,6 +207,8 @@ async def agent_stream_response(
             thread_id=thread_id,
             user_id=user_id,
         )
+    # counted before the response starts, so a 403 can still be sent
+    quota.consume()
 
     return StreamingResponse(
         content=_stream_agent_response(
@@ -214,9 +223,10 @@ async def agent_stream_response(
             thread_id=thread_id,
             trace_context=trace_context,
             owner_user_id=user_id,
+            on_failure=quota.refund,
         ),
         media_type="text/event-stream",
-        headers=SSE_HEADERS,
+        headers={**SSE_HEADERS, **quota.headers},
     )
 
 
@@ -226,7 +236,7 @@ async def agent_stream_response(
     summary="Agent Response",
     description="This endpoint is used to get an agent response to the user's message",
     response_model=models.AgentResponse,
-    responses=THREAD_NOT_FOUND_RESPONSE,
+    responses={**THREAD_NOT_FOUND_RESPONSE, **GUEST_QUOTA_RESPONSES},
     openapi_extra={
         "requestBody": {
             "content": {
@@ -262,6 +272,7 @@ async def agent_response(
     chatfactory=Depends(get_chat_service),
     sp: SearchService = Depends(get_search_service),
     data_collection=Depends(get_data_collection_service),
+    quota: GuestQuota = Depends(guest_quota("chat")),
 ):
     session_id = extract_session_cookie(request)
 
@@ -297,25 +308,27 @@ async def agent_response(
             if body.thread_id:
                 await ensure_thread_access(memory, thread_id, user_id)
 
+            with quota.spend():
+                res = await chatfactory.agent_message(
+                    query=body.query,
+                    memory=memory,
+                    thread_id=thread_id,
+                    corpora=body.corpora,
+                    sdg_filter=body.sdg_filter,
+                    sp=sp,
+                    background_tasks=background_tasks,
+                    trace_context=trace_context,
+                    owner_user_id=user_id,
+                )
+    else:
+        with quota.spend():
             res = await chatfactory.agent_message(
                 query=body.query,
-                memory=memory,
-                thread_id=thread_id,
                 corpora=body.corpora,
                 sdg_filter=body.sdg_filter,
                 sp=sp,
-                background_tasks=background_tasks,
                 trace_context=trace_context,
-                owner_user_id=user_id,
             )
-    else:
-        res = await chatfactory.agent_message(
-            query=body.query,
-            corpora=body.corpora,
-            sdg_filter=body.sdg_filter,
-            sp=sp,
-            trace_context=trace_context,
-        )
 
     docs = latest_tool_docs(res["messages"])
     content = linkify_missing_citations(

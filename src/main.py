@@ -115,6 +115,8 @@ app.add_middleware(
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
+    # read by the client to show the guest quotas left and when to retry
+    expose_headers=["X-Guest-Remaining", "Retry-After"],
 )
 
 app.api_route(path="/", tags=["root"], methods=["GET"])(settings.get_api_version)

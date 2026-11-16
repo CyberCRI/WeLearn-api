@@ -18,6 +18,8 @@ from src.app.user.domain.models import (
     BookmarkDeletedResponse,
     BookmarksDeletedResponse,
     BookmarksResponse,
+    GuestFeatureQuota,
+    GuestQuotaResponse,
     InstitutionData,
     InstitutionDataResponse,
     LogoutResponse,
@@ -44,6 +46,12 @@ from src.app.user.services.account import (
     account_required,
     guest_restrictions_enabled,
     keycloak_errors_as_http,
+)
+from src.app.user.services.guest_quota import (
+    GUEST_QUOTA_RESPONSES,
+    GuestFeature,
+    quota_status,
+    resolve_quota_user,
 )
 from src.app.user.services.session import (
     resolve_keycloak_user_and_session,
@@ -333,6 +341,33 @@ async def add_user_bookmark(request: Request, document_id: uuid.UUID):
 
     added_id = await run_in_threadpool(add_user_bookmark_sync, user_id, document_id)
     return {"added": added_id}
+
+
+@router.get(
+    "/guest_quota",
+    summary="Daily guest quotas left",
+    response_model=GuestQuotaResponse,
+    responses={
+        **BEARER_TOKEN_RESPONSES,
+        401: GUEST_QUOTA_RESPONSES[401],
+    },
+)
+async def get_guest_quota(request: Request) -> GuestQuotaResponse:
+    """
+    What the caller has left today of each guest quota, without using any.
+    Not limited (an account, or guest restrictions off): `limited` is false.
+    """
+    user_id = await resolve_quota_user(request)
+    if user_id is None:
+        return GuestQuotaResponse(limited=False)
+
+    def feature_quota(feature: GuestFeature) -> GuestFeatureQuota:
+        limit, remaining, resets_in = quota_status(feature, user_id)
+        return GuestFeatureQuota(limit=limit, remaining=remaining, resets_in=resets_in)
+
+    return GuestQuotaResponse(
+        limited=True, chat=feature_quota("chat"), syllabus=feature_quota("syllabus")
+    )
 
 
 @router.post(
