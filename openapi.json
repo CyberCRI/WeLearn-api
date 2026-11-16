@@ -1208,6 +1208,63 @@
         "title": "FileSummary",
         "type": "object"
       },
+      "GuestFeatureQuota": {
+        "properties": {
+          "limit": {
+            "title": "Limit",
+            "type": "integer"
+          },
+          "remaining": {
+            "title": "Remaining",
+            "type": "integer"
+          },
+          "resets_in": {
+            "title": "Resets In",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "limit",
+          "remaining",
+          "resets_in"
+        ],
+        "title": "GuestFeatureQuota",
+        "type": "object"
+      },
+      "GuestQuotaResponse": {
+        "description": "The caller's daily guest quotas. `limited` is false for an account, or when\nguest restrictions are off: the features are then null.",
+        "properties": {
+          "chat": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/GuestFeatureQuota"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "limited": {
+            "title": "Limited",
+            "type": "boolean"
+          },
+          "syllabus": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/GuestFeatureQuota"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "limited"
+        ],
+        "title": "GuestQuotaResponse",
+        "type": "object"
+      },
       "HealthCheck": {
         "description": "Response model to validate and return when performing a health check.",
         "properties": {
@@ -3192,6 +3249,26 @@
             },
             "description": "Successful Response"
           },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Invalid or expired token, or, with guest restrictions on, a guest without a known session (code SESSION_NOT_FOUND)"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Guest daily quota used up (code GUEST_QUOTA_EXCEEDED, with `feature` and `retry_after` in seconds, and a Retry-After header)"
+          },
           "404": {
             "content": {
               "application/json": {
@@ -3249,6 +3326,26 @@
               }
             },
             "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Invalid or expired token, or, with guest restrictions on, a guest without a known session (code SESSION_NOT_FOUND)"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Guest daily quota used up (code GUEST_QUOTA_EXCEEDED, with `feature` and `retry_after` in seconds, and a Retry-After header)"
           },
           "404": {
             "content": {
@@ -4118,6 +4215,26 @@
             },
             "description": "Successful Response"
           },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Invalid or expired token, or, with guest restrictions on, a guest without a known session (code SESSION_NOT_FOUND)"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Guest daily quota used up (code GUEST_QUOTA_EXCEEDED, with `feature` and `retry_after` in seconds, and a Retry-After header)"
+          },
           "default": {
             "content": {
               "application/json": {
@@ -4518,6 +4635,26 @@
               }
             },
             "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Invalid or expired token, or, with guest restrictions on, a guest without a known session (code SESSION_NOT_FOUND)"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Guest daily quota used up (code GUEST_QUOTA_EXCEEDED, with `feature` and `retry_after` in seconds, and a Retry-After header)"
           },
           "default": {
             "content": {
@@ -5238,6 +5375,63 @@
           }
         ],
         "summary": "Add user bookmark",
+        "tags": [
+          "user"
+        ]
+      }
+    },
+    "/api/v1/user/guest_quota": {
+      "get": {
+        "description": "What the caller has left today of each guest quota, without using any.\nNot limited (an account, or guest restrictions off): `limited` is false.",
+        "operationId": "user-get_guest_quota",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GuestQuotaResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Invalid or expired token, or, with guest restrictions on, a guest without a known session (code SESSION_NOT_FOUND)"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Keycloak unavailable, or bearer tokens not accepted because Keycloak is not configured (code AUTH_NOT_CONFIGURED)"
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Error"
+          }
+        },
+        "security": [
+          {
+            "APIKeyHeader": []
+          }
+        ],
+        "summary": "Daily guest quotas left",
         "tags": [
           "user"
         ]

@@ -88,3 +88,21 @@ class BookmarkDeletedResponse(BaseModel):
 
 class BookmarkAddedResponse(BaseModel):
     added: uuid.UUID
+
+
+class GuestFeatureQuota(BaseModel):
+    limit: int
+    remaining: int
+    # seconds until the oldest counted use leaves the 24h window (0 if none)
+    resets_in: int
+
+
+class GuestQuotaResponse(BaseModel):
+    """
+    The caller's daily guest quotas. `limited` is false for an account, or when
+    guest restrictions are off: the features are then null.
+    """
+
+    limited: bool
+    chat: GuestFeatureQuota | None = None
+    syllabus: GuestFeatureQuota | None = None

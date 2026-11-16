@@ -1,6 +1,6 @@
 import json
 import uuid
-from typing import Any, AsyncGenerator, cast
+from typing import Any, AsyncGenerator, Callable, cast
 from uuid import UUID
 
 import psycopg
@@ -181,7 +181,12 @@ async def _stream_agent_response(
     thread_id: UUID,
     trace_context: models.TraceContext | None = None,
     owner_user_id: UUID | None = None,
+    on_failure: Callable[[], None] | None = None,
 ) -> AsyncGenerator[str, None]:
+    """
+    `on_failure` runs when the agent fails before streaming any content: the
+    guest got nothing, so the quota counted for the request is given back.
+    """
     final_content = ""
     docs = None
     has_streamed_content = False
@@ -220,6 +225,8 @@ async def _stream_agent_response(
             thread_id,
             describe_error(e),
         )
+        if on_failure and not has_streamed_content:
+            on_failure()
         yield _format_sse_event(json.dumps(_build_stream_error_payload(thread_id)))
         return
 
