@@ -44,7 +44,10 @@ def get_collections_info_sync():
     # Get active parent corpus
     stmt = (
         select(
-            Corpus.source_name, Corpus.is_active, Category.title.label("category_name")
+            Corpus.source_name,
+            Corpus.is_active,
+            Category.title.label("category_name"),
+            Category.is_hidden,
         )
         .outerjoin(Category, Corpus.category_id == Category.id)
         .where(and_(Corpus.is_active, Corpus.parent_corpus_id.is_(None)))
