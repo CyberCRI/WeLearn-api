@@ -101,6 +101,10 @@ class Settings(BaseSettings):
     # per anonymous user, in memory: per pod, reset on restart)
     GUEST_CHAT_DAILY_LIMIT: int = 5
     GUEST_SYLLABUS_DAILY_LIMIT: int = 1
+    # new guests per client IP and hour while GUEST_RESTRICTIONS_ENABLED is on
+    # (0 = no limit). Only set it where FORWARDED_ALLOW_IPS lists the ingress
+    # pods: otherwise the API sees the ingress' address and every user shares it
+    GUEST_SESSIONS_PER_IP_HOURLY: int = 0
 
     model_config = SettingsConfigDict(
         env_file=".env", extra="ignore", case_sensitive=True
