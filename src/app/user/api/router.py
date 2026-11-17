@@ -49,7 +49,9 @@ from src.app.user.services.account import (
 )
 from src.app.user.services.guest_quota import (
     GUEST_QUOTA_RESPONSES,
+    NEW_GUEST_RATE_LIMITED_RESPONSES,
     GuestFeature,
+    enforce_new_guest_ip_limit,
     quota_status,
     resolve_quota_user,
 )
@@ -63,10 +65,11 @@ router = APIRouter()
 logger = logger_utils(__name__)
 settings = get_settings()
 
-# Sign-up limits, per pod/process (see shared/infra/rate_limit.py). The IP may
-# be the ingress' address shared by every user (uvicorn runs without
-# --proxy-headers), so the per-IP limit is a loose flood ceiling; the per-email
-# one stops repeated sign-ups (and Keycloak emails) for one address.
+# Sign-up limits, per pod/process (see shared/infra/rate_limit.py). The IP is
+# the user's only where FORWARDED_ALLOW_IPS lists the ingress pods; elsewhere it
+# is the ingress' address shared by every user and the per-IP limit is a loose
+# flood ceiling. The per-email one stops repeated sign-ups (and Keycloak
+# emails) for one address.
 SIGNUP_RATE_WINDOW_SECONDS = 3600
 SIGNUP_RATE_LIMIT_PER_IP = 20
 SIGNUP_RATE_LIMIT_PER_EMAIL = 3
@@ -135,7 +138,7 @@ async def resolve_bookmark_user(request: Request) -> uuid.UUID:
     "/user_and_session",
     summary="Create new user and session",
     response_model=UserAndSessionResponse,
-    responses=BEARER_TOKEN_RESPONSES,
+    responses={**BEARER_TOKEN_RESPONSES, **NEW_GUEST_RATE_LIMITED_RESPONSES},
 )
 async def handle_user_and_session(
     request: Request, response: Response, referer: str | None = None
@@ -158,6 +161,7 @@ async def handle_user_and_session(
                 host=host,
                 referer=referer,
                 renew_expired_guest=True,
+                before_new_guest=lambda: enforce_new_guest_ip_limit(request),
             )
 
     response.set_cookie(

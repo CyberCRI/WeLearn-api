@@ -7,11 +7,13 @@ is the anonymous user of the session cookie, so clearing the browser storage
 does not reset it. Accounts, and every caller while the flag is off, are not
 limited.
 
+New guests are also limited per client IP (GUEST_SESSIONS_PER_IP_HOURLY), since
+a new guest gets fresh quotas: only creations count, not the page loads that
+renew an existing session.
+
 Known limits (v0): the counters live in the memory of the process
 (see shared/infra/rate_limit.py). They apply per pod, are lost on restart and
-multiply by the number of replicas. A new guest is also free to create (one
-`/user/user_and_session` call), so this is no protection against abuse on its
-own: that is for a rate limit at the ingress. A persistent table can replace
+multiply by the number of replicas. A persistent table can replace
 the in-memory counters if this proves too lenient.
 """
 
@@ -25,7 +27,7 @@ from fastapi.concurrency import run_in_threadpool
 
 from src.app.shared.domain.exceptions import SessionNotFoundError
 from src.app.shared.domain.responses import ErrorResponse
-from src.app.shared.infra.rate_limit import SlidingWindowRateLimiter
+from src.app.shared.infra.rate_limit import SlidingWindowRateLimiter, client_ip
 from src.app.shared.utils.dependencies import get_settings
 from src.app.shared.utils.logger import logger as logger_utils
 from src.app.shared.utils.requests import extract_session_cookie
@@ -43,6 +45,7 @@ GuestFeature = Literal["chat", "syllabus"]
 GUEST_QUOTA_WINDOW_SECONDS = 24 * 60 * 60
 GUEST_QUOTA_EXCEEDED_CODE = "GUEST_QUOTA_EXCEEDED"
 GUEST_REMAINING_HEADER = "X-Guest-Remaining"
+GUEST_SESSION_WINDOW_SECONDS = 60 * 60
 
 # past max_keys the least recently seen guests are forgotten (their count
 # restarts): sized well above the daily number of guests of one pod
@@ -55,6 +58,23 @@ _limiters: dict[GuestFeature, SlidingWindowRateLimiter] = {
         GUEST_QUOTA_WINDOW_SECONDS,
         max_keys=100_000,
     ),
+}
+
+# new guests per client IP; only used when GUEST_SESSIONS_PER_IP_HOURLY > 0
+_new_guest_ip_limiter = SlidingWindowRateLimiter(
+    max(settings.GUEST_SESSIONS_PER_IP_HOURLY, 1),
+    GUEST_SESSION_WINDOW_SECONDS,
+    max_keys=100_000,
+)
+
+NEW_GUEST_RATE_LIMITED_RESPONSES: dict[int | str, dict] = {
+    429: {
+        "model": ErrorResponse,
+        "description": (
+            "Too many new guests from this IP (code RATE_LIMITED, with a "
+            "Retry-After header); a request with a known session is not counted"
+        ),
+    },
 }
 
 # routes counted against a guest quota
@@ -198,3 +218,25 @@ def quota_status(feature: GuestFeature, user_id: UUID) -> tuple[int, int, int]:
     limiter = guest_limiter(feature)
     remaining, resets_in = limiter.peek(str(user_id))
     return limiter.limit, remaining, math.ceil(resets_in)
+
+
+def enforce_new_guest_ip_limit(request: Request) -> None:
+    """
+    Count the creation of a guest against the caller's IP, or raise 429
+    RATE_LIMITED past GUEST_SESSIONS_PER_IP_HOURLY. Does nothing while guest
+    restrictions or the limit are off.
+    """
+    if not guest_restrictions_enabled() or settings.GUEST_SESSIONS_PER_IP_HOURLY < 1:
+        return
+    retry_after = _new_guest_ip_limiter.hit(client_ip(request))
+    if retry_after:
+        seconds = math.ceil(retry_after)
+        logger.warning("New guests rate limited. retry_after=%ss", seconds)
+        raise HTTPException(
+            status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+            detail={
+                "message": "Too many new sessions, try again later",
+                "code": "RATE_LIMITED",
+            },
+            headers={"Retry-After": str(seconds)},
+        )

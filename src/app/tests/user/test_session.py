@@ -1,6 +1,6 @@
 import unittest
 import uuid
-from unittest.mock import patch
+from unittest.mock import MagicMock, patch
 
 from src.app.shared.domain.exceptions import SessionNotFoundError
 from src.app.user.services import session
@@ -106,6 +106,40 @@ class TestResolveUserAndSession(unittest.IsolatedAsyncioTestCase):
         )
         renewal_mock.assert_called_once_with(session_uuid)
         strict_mock.assert_not_called()
+
+    @patch("src.app.user.services.session.get_or_create_session_sync")
+    @patch("src.app.user.services.session.get_or_create_user_sync")
+    @patch("src.app.user.services.session.get_user_from_session_id")
+    async def test_before_new_guest_runs_only_on_creation(
+        self, get_user_mock, create_user_mock, get_session_mock
+    ):
+        """The hook runs before a guest is created, never for a known user"""
+        hook = MagicMock()
+        get_user_mock.return_value = uuid.uuid4()
+        await session.resolve_user_and_session(
+            uuid.uuid4(), "localhost", None, before_new_guest=hook
+        )
+        hook.assert_not_called()
+
+        get_user_mock.side_effect = SessionNotFoundError("Session not found")
+        await session.resolve_user_and_session(
+            uuid.uuid4(), "localhost", None, before_new_guest=hook
+        )
+        hook.assert_called_once_with()
+        create_user_mock.assert_called_once()
+
+    @patch("src.app.user.services.session.get_or_create_user_sync")
+    @patch("src.app.user.services.session.get_user_from_session_id", return_value=None)
+    async def test_before_new_guest_can_refuse_the_creation(
+        self, _get_user_mock, create_user_mock
+    ):
+        """A hook that raises stops the creation"""
+        hook = MagicMock(side_effect=RuntimeError("refused"))
+        with self.assertRaises(RuntimeError):
+            await session.resolve_user_and_session(
+                None, "localhost", None, before_new_guest=hook
+            )
+        create_user_mock.assert_not_called()
 
 
 class TestResolveKeycloakUserAndSession(unittest.IsolatedAsyncioTestCase):

@@ -1,4 +1,4 @@
-from typing import Optional
+from typing import Callable, Optional
 from uuid import UUID
 
 from fastapi.concurrency import run_in_threadpool
@@ -21,6 +21,7 @@ async def resolve_user_and_session(
     host: str,
     referer: Optional[str],
     renew_expired_guest: bool = False,
+    before_new_guest: Callable[[], None] | None = None,
 ) -> tuple[UUID, UUID]:
     """
     Resolve the user of the session cookie, or create a new guest.
@@ -29,6 +30,9 @@ async def resolve_user_and_session(
     /user/user_and_session path, which sets the new cookie): an anonymous
     user's expired session then resolves to the same user and is rotated into
     a new session, so a guest keeps their user while the cookie lives.
+
+    `before_new_guest` runs only when a guest is about to be created, and may
+    raise to refuse it.
     """
     lookup = (
         get_user_for_session_renewal
@@ -43,6 +47,8 @@ async def resolve_user_and_session(
         user_id = None
 
     if not user_id:
+        if before_new_guest:
+            before_new_guest()
         logger.info("No user found. Creating new user and session.")
         user_id = await run_in_threadpool(get_or_create_user_sync, None, referer)
 

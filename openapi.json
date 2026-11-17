@@ -5682,6 +5682,16 @@
             },
             "description": "Invalid or expired token"
           },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Too many new guests from this IP (code RATE_LIMITED, with a Retry-After header); a request with a known session is not counted"
+          },
           "503": {
             "content": {
               "application/json": {

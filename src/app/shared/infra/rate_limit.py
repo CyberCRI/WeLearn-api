@@ -6,13 +6,13 @@ Limits are kept in the memory of the process: they apply **per pod/process**,
 are lost on restart, and multiply by the number of replicas (or uvicorn
 workers). They are a brake against floods from one client, not a global quota.
 
-Client IP: `client_ip()` uses `request.client.host`. The Docker image runs
-uvicorn without `--proxy-headers`, so behind the k8s (Traefik) ingress this is
-the ingress' address, not the end user's: every user then shares the same
-"IP" bucket. Forwarded headers are deliberately not read, since without a
-trusted proxy configuration anyone can forge them. A per-IP limit is therefore
-only a coarse ceiling here; limits keyed on something the request names (an
-email, an account) are what actually stops repeated attempts on one target.
+Client IP: `client_ip()` uses `request.client.host`. Uvicorn sets it from
+`X-Forwarded-For` only when the peer is listed in the FORWARDED_ALLOW_IPS env
+var (default 127.0.0.1); it then keeps the rightmost address that is not
+trusted, i.e. the one the proxy added, so a client cannot forge it. Behind the
+k8s (Traefik) ingress, set FORWARDED_ALLOW_IPS to the CIDR of the Traefik pods:
+without it, `client_ip()` is the ingress' address, every user shares the same
+"IP" bucket and a per-IP limit is only a coarse ceiling.
 """
 
 import threading
