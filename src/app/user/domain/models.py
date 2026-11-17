@@ -106,3 +106,7 @@ class GuestQuotaResponse(BaseModel):
     limited: bool
     chat: GuestFeatureQuota | None = None
     syllabus: GuestFeatureQuota | None = None
+    # changes asked on a generated syllabus
+    feedback: GuestFeatureQuota | None = None
+    # LLM summaries of uploaded files (tutor step 1)
+    files: GuestFeatureQuota | None = None

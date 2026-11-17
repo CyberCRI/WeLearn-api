@@ -2,7 +2,9 @@
 Daily quotas of guests (no Keycloak account) for the features that call an LLM.
 
 While GUEST_RESTRICTIONS_ENABLED is on, a guest gets GUEST_CHAT_DAILY_LIMIT chat
-questions and GUEST_SYLLABUS_DAILY_LIMIT syllabi per sliding 24h window. The key
+questions, GUEST_SYLLABUS_DAILY_LIMIT syllabi, GUEST_FEEDBACK_DAILY_LIMIT changes
+asked on a syllabus and GUEST_FILES_DAILY_LIMIT file summaries per sliding 24h
+window. The key
 is the anonymous user of the session cookie, so clearing the browser storage
 does not reset it. Accounts, and every caller while the flag is off, are not
 limited.
@@ -40,7 +42,7 @@ from src.app.user.services.account import (
 logger = logger_utils(__name__)
 settings = get_settings()
 
-GuestFeature = Literal["chat", "syllabus"]
+GuestFeature = Literal["chat", "syllabus", "feedback", "files"]
 
 GUEST_QUOTA_WINDOW_SECONDS = 24 * 60 * 60
 GUEST_QUOTA_EXCEEDED_CODE = "GUEST_QUOTA_EXCEEDED"
@@ -50,14 +52,15 @@ GUEST_SESSION_WINDOW_SECONDS = 60 * 60
 # past max_keys the least recently seen guests are forgotten (their count
 # restarts): sized well above the daily number of guests of one pod
 _limiters: dict[GuestFeature, SlidingWindowRateLimiter] = {
-    "chat": SlidingWindowRateLimiter(
-        settings.GUEST_CHAT_DAILY_LIMIT, GUEST_QUOTA_WINDOW_SECONDS, max_keys=100_000
-    ),
-    "syllabus": SlidingWindowRateLimiter(
-        settings.GUEST_SYLLABUS_DAILY_LIMIT,
-        GUEST_QUOTA_WINDOW_SECONDS,
-        max_keys=100_000,
-    ),
+    feature: SlidingWindowRateLimiter(
+        limit, GUEST_QUOTA_WINDOW_SECONDS, max_keys=100_000
+    )
+    for feature, limit in (
+        ("chat", settings.GUEST_CHAT_DAILY_LIMIT),
+        ("syllabus", settings.GUEST_SYLLABUS_DAILY_LIMIT),
+        ("feedback", settings.GUEST_FEEDBACK_DAILY_LIMIT),
+        ("files", settings.GUEST_FILES_DAILY_LIMIT),
+    )
 }
 
 # new guests per client IP; only used when GUEST_SESSIONS_PER_IP_HOURLY > 0
@@ -155,26 +158,44 @@ class GuestQuota:
             return
         retry_after = guest_limiter(self.feature).hit(str(self.user_id))
         if retry_after:
-            seconds = math.ceil(retry_after)
-            logger.info(
-                "Guest quota exceeded. feature=%s user_id=%s retry_after=%ss",
-                self.feature,
-                self.user_id,
-                seconds,
-            )
-            raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN,
-                detail={
-                    "message": "Daily guest quota used up, create an account to continue",
-                    "code": GUEST_QUOTA_EXCEEDED_CODE,
-                    "feature": self.feature,
-                    "retry_after": seconds,
-                },
-                headers={"Retry-After": str(seconds), GUEST_REMAINING_HEADER: "0"},
-            )
+            raise self._exceeded(self.feature, retry_after)
         self._consumed = True
         if self._response is not None:
             self._response.headers.update(self.headers)
+
+    def require_left(self, feature: GuestFeature) -> None:
+        """
+        Raise 403 GUEST_QUOTA_EXCEEDED for `feature` when the guest has none of
+        it left, without counting anything: for a step that is only worth
+        running while a later one is still possible.
+        """
+        if self.user_id is None:
+            return
+        remaining, resets_in = guest_limiter(feature).peek(str(self.user_id))
+        if not remaining:
+            raise self._exceeded(feature, resets_in)
+
+    def _exceeded(self, feature: GuestFeature, retry_after: float) -> HTTPException:
+        seconds = max(math.ceil(retry_after), 1)
+        logger.info(
+            "Guest quota exceeded. feature=%s user_id=%s retry_after=%ss",
+            feature,
+            self.user_id,
+            seconds,
+        )
+        headers = {"Retry-After": str(seconds)}
+        if feature == self.feature:
+            headers[GUEST_REMAINING_HEADER] = "0"
+        return HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail={
+                "message": "Daily guest quota used up, create an account to continue",
+                "code": GUEST_QUOTA_EXCEEDED_CODE,
+                "feature": feature,
+                "retry_after": seconds,
+            },
+            headers=headers,
+        )
 
     def refund(self) -> None:
         """Give back the use counted by `consume`, for work that failed."""

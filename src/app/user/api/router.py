@@ -370,7 +370,11 @@ async def get_guest_quota(request: Request) -> GuestQuotaResponse:
         return GuestFeatureQuota(limit=limit, remaining=remaining, resets_in=resets_in)
 
     return GuestQuotaResponse(
-        limited=True, chat=feature_quota("chat"), syllabus=feature_quota("syllabus")
+        limited=True,
+        chat=feature_quota("chat"),
+        syllabus=feature_quota("syllabus"),
+        feedback=feature_quota("feedback"),
+        files=feature_quota("files"),
     )
 
 
