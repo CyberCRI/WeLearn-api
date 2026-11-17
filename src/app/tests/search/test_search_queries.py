@@ -52,7 +52,7 @@ class SearchQueriesSqliteTests(unittest.TestCase):
         dict_patcher.start()
         self.addCleanup(dict_patcher.stop)
 
-        self.category = Category(id=uuid4(), title="cat_title")
+        self.category = Category(id=uuid4(), title="cat_title", is_hidden=False)
         self.parent_corpus = Corpus(
             id=uuid4(),
             source_name="parent",
@@ -75,7 +75,7 @@ class SearchQueriesSqliteTests(unittest.TestCase):
             is_active=False,
             category_id=self.category.id,
         )
-        self.other_category = Category(id=uuid4(), title="other_cat")
+        self.other_category = Category(id=uuid4(), title="other_cat", is_hidden=True)
         self.other_corpus = Corpus(
             id=uuid4(),
             source_name="other",
@@ -143,6 +143,8 @@ class SearchQueriesSqliteTests(unittest.TestCase):
         self.assertCountEqual(by_name.keys(), ["parent", "other"])
         self.assertEqual(by_name["parent"].category_name, "cat_title")
         self.assertEqual(by_name["other"].category_name, "other_cat")
+        self.assertIs(by_name["parent"].is_hidden, False)
+        self.assertIs(by_name["other"].is_hidden, True)
         self.assertTrue(all(r.is_active for r in rows))
 
     def test_get_nb_docs_sync_returns_first_row(self):

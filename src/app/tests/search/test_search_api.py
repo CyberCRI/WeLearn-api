@@ -33,6 +33,37 @@ from src.main import app
 
 client = TestClient(app)
 
+
+@patch("src.app.shared.infra.security.check_api_key_sync", return_value=True)
+@patch("src.app.search.api.router.get_collections_info_sync")
+def test_collections_include_category_visibility(mock_collections, mock_api_key):
+    mock_collections.return_value = [
+        ("visible", True, "Visible Category", False),
+        ("hidden", True, "Hidden Category", True),
+        ("inactive", False, "Hidden Category", False),
+    ]
+
+    response = client.get(
+        f"{settings.API_V1_STR}/search/collections", headers={"X-API-Key": "test"}
+    )
+
+    assert response.status_code == 200
+    assert response.json() == [
+        {
+            "name": "visible",
+            "category": "visible_category",
+            "is_active": True,
+            "is_hidden": False,
+        },
+        {
+            "name": "hidden",
+            "category": "hidden_category",
+            "is_active": True,
+            "is_hidden": True,
+        },
+    ]
+
+
 search_pipeline_path = "src.app.search.services.search.SearchService"
 
 mocked_collection = collections.Collection(

@@ -121,8 +121,9 @@ async def get_corpus():
                 category_name.replace(" ", "_").lower() if category_name else None
             ),
             "is_active": is_active,
+            "is_hidden": is_hidden,
         }
-        for source_name, is_active, category_name in collections
+        for source_name, is_active, category_name, is_hidden in collections
         if is_active
     ]
 

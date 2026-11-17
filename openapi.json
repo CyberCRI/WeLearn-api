@@ -460,6 +460,10 @@
             "title": "Is Active",
             "type": "boolean"
           },
+          "is_hidden": {
+            "title": "Is Hidden",
+            "type": "boolean"
+          },
           "name": {
             "title": "Name",
             "type": "string"
@@ -468,7 +472,8 @@
         "required": [
           "name",
           "category",
-          "is_active"
+          "is_active",
+          "is_hidden"
         ],
         "title": "CorpusRead",
         "type": "object"

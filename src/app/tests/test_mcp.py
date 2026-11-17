@@ -88,7 +88,7 @@ def test_mcp_tools_forward_api_key(mcp_client, monkeypatch, tool_name, api_key):
     monkeypatch.setattr(
         "src.app.shared.infra.security.check_api_key_sync", check_api_key
     )
-    collections = Mock(return_value=[("test-corpus", True, "Test Category")])
+    collections = Mock(return_value=[("test-corpus", True, "Test Category", True)])
     monkeypatch.setattr(
         "src.app.search.api.router.get_collections_info_sync", collections
     )
@@ -152,7 +152,12 @@ def test_mcp_tools_forward_api_key(mcp_client, monkeypatch, tool_name, api_key):
     elif tool_name == "get_corpus_list":
         collections.assert_called_once_with()
         assert json.loads(result["content"][0]["text"]) == [
-            {"name": "test-corpus", "category": "test_category", "is_active": True}
+            {
+                "name": "test-corpus",
+                "category": "test_category",
+                "is_active": True,
+                "is_hidden": True,
+            }
         ]
     else:
         visible_corpora.assert_called_once_with()
