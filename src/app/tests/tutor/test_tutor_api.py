@@ -303,6 +303,7 @@ class TestSearchDatasets(TestSearchExtracts):
             f"{ROUTER}.get_collections_info_sync",
             return_value=[
                 ("datagouv", True, "datasets", False),
+                ("eurostat", True, "datasets", False),
                 ("inactive_dataset", False, "datasets", False),
                 ("wikipedia", True, "encyclopedias", False),
             ],
