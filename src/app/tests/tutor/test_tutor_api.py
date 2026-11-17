@@ -187,6 +187,7 @@ class TestMasFilesContent(TutorApiTestCase):
 
 class TestSearchExtracts(TutorApiTestCase):
     URL = f"{BASE}/search_extracts"
+    CORPORA = None
 
     @patch(f"{ROUTER}.search_multi_inputs", new_callable=AsyncMock)
     def test_returns_documents(self, mock_search):
@@ -214,7 +215,7 @@ class TestSearchExtracts(TutorApiTestCase):
         self.assertEqual(kwargs["qp"].query, ["climate", "biodiversity"])
         self.assertEqual(kwargs["qp"].nb_results, 5)
         self.assertIsNone(kwargs["qp"].sdg_filter)
-        self.assertIsNone(kwargs["qp"].corpora)
+        self.assertEqual(kwargs["qp"].corpora, self.CORPORA)
         self.assertIs(kwargs["callback_function"], self.search_service.search_handler)
 
     @patch(f"{ROUTER}.search_multi_inputs", new_callable=AsyncMock)
@@ -290,6 +291,68 @@ class TestSearchExtracts(TutorApiTestCase):
         )
 
         self.assertEqual(response.status_code, 422)
+
+
+class TestSearchDatasets(TestSearchExtracts):
+    URL = f"{BASE}/search_datasets"
+    CORPORA = ("datagouv", "eurostat")
+
+    def setUp(self):
+        super().setUp()
+        patcher = patch(
+            f"{ROUTER}.get_collections_info_sync",
+            return_value=[
+                ("datagouv", True, "datasets", False),
+                ("inactive_dataset", False, "datasets", False),
+                ("wikipedia", True, "encyclopedias", False),
+            ],
+        )
+        self.mock_collections = patcher.start()
+        self.addCleanup(patcher.stop)
+
+    @patch(f"{ROUTER}.search_multi_inputs", new_callable=AsyncMock)
+    def test_no_active_dataset_corpora_returns_empty_results(self, mock_search):
+        for collections in (
+            [],
+            [
+                ("datagouv", False, "datasets", False),
+                ("wikipedia", True, "encyclopedias", False),
+            ],
+        ):
+            with self.subTest(collections=collections):
+                self.mock_collections.return_value = collections
+                response = self.client.post(
+                    self.URL, json={"summaries": ["climate"]}, headers=HEADERS
+                )
+                self.assertEqual(response.status_code, 200)
+                self.assertEqual(
+                    response.json(), {"extracts": [], "nb_results": 0, "documents": []}
+                )
+        mock_search.assert_not_awaited()
+
+    @patch(f"{ROUTER}.search_multi_inputs", new_callable=AsyncMock)
+    def test_rejects_invalid_result_limits(self, mock_search):
+        for nb_results in (0, 101):
+            with self.subTest(nb_results=nb_results):
+                response = self.client.post(
+                    self.URL,
+                    params={"nb_results": nb_results},
+                    json={"summaries": ["climate"]},
+                    headers=HEADERS,
+                )
+                self.assertEqual(response.status_code, 422)
+        mock_search.assert_not_awaited()
+
+    @patch(f"{ROUTER}.search_multi_inputs", new_callable=AsyncMock)
+    def test_rejects_invalid_api_key(self, mock_search):
+        with patch(
+            "src.app.shared.infra.security.check_api_key_sync", return_value=False
+        ):
+            response = self.client.post(
+                self.URL, json={"summaries": ["climate"]}, headers=HEADERS
+            )
+        self.assertEqual(response.status_code, 401)
+        mock_search.assert_not_awaited()
 
 
 class TestCreateSyllabus(TutorApiTestCase):

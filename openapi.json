@@ -4561,6 +4561,66 @@
         ]
       }
     },
+    "/api/v1/tutor/search_datasets": {
+      "post": {
+        "operationId": "tutor-tutor_search_datasets",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "nb_results",
+            "required": false,
+            "schema": {
+              "default": 15,
+              "maximum": 100,
+              "minimum": 1,
+              "title": "Nb Results",
+              "type": "integer"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SummariesList"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TutorSearchResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Error"
+          }
+        },
+        "security": [
+          {
+            "APIKeyHeader": []
+          }
+        ],
+        "summary": "Tutor Search Datasets",
+        "tags": [
+          "tutor"
+        ]
+      }
+    },
     "/api/v1/tutor/search_extracts": {
       "post": {
         "operationId": "tutor-tutor_search_extract",

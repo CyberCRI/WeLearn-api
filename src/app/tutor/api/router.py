@@ -13,11 +13,13 @@ from fastapi import (
     UploadFile,
     status,
 )
+from fastapi.concurrency import run_in_threadpool
 
 from src.app.baml_client.async_client import b, types
 from src.app.core.config import Settings
 from src.app.data_collection.services.data_collection import get_data_collection_service
 from src.app.search.domain.models import EnhancedSearchQuery
+from src.app.search.infra.queries import get_collections_info_sync
 from src.app.search.services.search import SearchService, get_search_service
 from src.app.search.services.search_helpers import search_multi_inputs
 from src.app.shared.domain.exceptions import NoResultsError
@@ -185,13 +187,46 @@ async def tutor_search_extract(
     response: Response,
     sp: SearchService = Depends(get_search_service),
     nb_results: int = Query(15, ge=1, le=100),
-):
+) -> TutorSearchResponse:
+    return await _tutor_search(summaries, background_tasks, response, sp, nb_results)
+
+
+@router.post("/search_datasets", response_model=TutorSearchResponse)
+async def tutor_search_datasets(
+    summaries: SummariesList,
+    background_tasks: BackgroundTasks,
+    response: Response,
+    sp: SearchService = Depends(get_search_service),
+    nb_results: int = Query(15, ge=1, le=100),
+) -> TutorSearchResponse:
+    collections = await run_in_threadpool(get_collections_info_sync)
+    corpora = tuple(
+        source_name
+        for source_name, is_active, category_name, _ in collections
+        if is_active and category_name == "datasets"
+    )
+    if not corpora:
+        return TutorSearchResponse(extracts=[], nb_results=0, documents=[])
+
+    return await _tutor_search(
+        summaries, background_tasks, response, sp, nb_results, corpora=corpora
+    )
+
+
+async def _tutor_search(
+    summaries: SummariesList,
+    background_tasks: BackgroundTasks,
+    response: Response,
+    sp: SearchService,
+    nb_results: int,
+    corpora: tuple[str, ...] | None = None,
+) -> TutorSearchResponse:
     try:
         qp = EnhancedSearchQuery(
             query=summaries.summaries,
             nb_results=nb_results,
             sdg_filter=None,
-            corpora=None,
+            corpora=corpora,
         )
 
         search_results = await search_multi_inputs(
