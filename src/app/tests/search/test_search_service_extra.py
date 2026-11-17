@@ -1,4 +1,6 @@
 import os
+import threading
+import time
 import uuid
 from types import SimpleNamespace
 from unittest import IsolatedAsyncioTestCase, TestCase, mock
@@ -15,6 +17,7 @@ from src.app.search.services.search import (
     SearchService,
     concatenate_same_doc_id_slices,
     get_subject_vector,
+    preload_embedding_models,
 )
 from src.app.shared.domain.collections import Collection, CorpusRelation
 from src.app.shared.domain.exceptions import CollectionNotFoundError, ModelNotFoundError
@@ -190,6 +193,89 @@ class GetModelTests(ModelCacheMixin, TestCase):
                 log = "\n".join(logs.output)
                 self.assertIn(os.path.abspath("../models/embedding/broken/"), log)
                 self.assertIn(f"reason={type(error).__name__}: {error}", log)
+
+    @mock.patch(f"{SEARCH_MODULE}.os.path.isdir", return_value=True)
+    @mock.patch(f"{SEARCH_MODULE}.AutoTokenizer")
+    @mock.patch(f"{SEARCH_MODULE}.AutoModel")
+    def test_concurrent_first_calls_load_the_model_once(
+        self, auto_model, auto_tokenizer, _isdir
+    ):
+        auto_tokenizer.from_pretrained.return_value = mock.MagicMock(model_max_length=8)
+        loading = threading.Event()
+        release = threading.Event()
+
+        def slow_load(_path):
+            loading.set()
+            release.wait(timeout=5)
+            return mock.MagicMock()
+
+        auto_model.from_pretrained.side_effect = slow_load
+        results = []
+
+        def call():
+            results.append(SearchService._get_model("shared-model"))
+
+        first = threading.Thread(target=call)
+        second = threading.Thread(target=call)
+        first.start()
+        self.assertTrue(loading.wait(timeout=5))
+        # the second call misses the cache while the first one is loading
+        second.start()
+        time.sleep(0.05)
+        release.set()
+        first.join(timeout=5)
+        second.join(timeout=5)
+
+        auto_model.from_pretrained.assert_called_once()
+        self.assertEqual(len(results), 2)
+        self.assertIs(results[0], results[1])
+        self.assertIs(SearchService.model["shared-model"], results[0])
+
+
+class PreloadEmbeddingModelsTests(ModelCacheMixin, TestCase):
+    def test_loads_each_model(self):
+        with mock.patch.object(SearchService, "_get_model") as get_model:
+            preload_embedding_models(["model-a", "model-b"])
+
+        self.assertEqual(
+            get_model.call_args_list, [mock.call("model-a"), mock.call("model-b")]
+        )
+
+    def test_failed_model_is_logged_and_the_next_one_still_loads(self):
+        with (
+            mock.patch.object(
+                SearchService,
+                "_get_model",
+                side_effect=[ModelNotFoundError("missing"), {}],
+            ) as get_model,
+            self.assertLogs(SEARCH_MODULE, level="ERROR") as logs,
+        ):
+            preload_embedding_models(["missing-model", "model-b"])
+
+        self.assertEqual(get_model.call_count, 2)
+        self.assertIn(
+            "api_error=MODEL_PRELOAD_FAILED model=missing-model",
+            "\n".join(logs.output),
+        )
+
+    def test_no_model_loads_nothing(self):
+        with mock.patch.object(SearchService, "_get_model") as get_model:
+            preload_embedding_models([])
+
+        get_model.assert_not_called()
+
+    @mock.patch(f"{SEARCH_MODULE}.os.path.isdir", return_value=True)
+    @mock.patch(f"{SEARCH_MODULE}.AutoTokenizer")
+    @mock.patch(f"{SEARCH_MODULE}.AutoModel")
+    def test_preloaded_model_is_reused_by_a_search(
+        self, auto_model, auto_tokenizer, _isdir
+    ):
+        auto_tokenizer.from_pretrained.return_value = mock.MagicMock(model_max_length=8)
+
+        preload_embedding_models(["model-a"])
+        self.service._get_model("model-a")
+
+        auto_model.from_pretrained.assert_called_once()
 
 
 class ComputeEmbeddingsTests(ModelCacheMixin, TestCase):

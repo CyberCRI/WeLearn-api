@@ -1,7 +1,10 @@
+import os
 import unittest
+from unittest.mock import patch
 
 from psycopg.conninfo import conninfo_to_dict
 
+from src.app.core.config import Settings
 from src.app.shared.utils.dependencies import get_settings
 
 
@@ -45,3 +48,20 @@ class PostgresConninfoTests(unittest.TestCase):
         self.assertEqual(
             conninfo_to_dict(settings.postgres_conninfo()), {"dbname": "welearn_dev"}
         )
+
+
+class EmbeddingModelsToPreloadTests(unittest.TestCase):
+    def test_default_preloads_the_multilingual_model(self):
+        default = Settings.model_fields["EMBEDDING_MODELS_TO_PRELOAD"].default
+        self.assertEqual(default, ["granite-embedding-107m-multilingual"])
+
+    def test_env_value_is_read_as_a_json_list(self):
+        for raw, expected in (
+            ("[]", []),
+            ('["model-a", "model-b"]', ["model-a", "model-b"]),
+        ):
+            with (
+                self.subTest(raw=raw),
+                patch.dict(os.environ, {"EMBEDDING_MODELS_TO_PRELOAD": raw}),
+            ):
+                self.assertEqual(Settings().EMBEDDING_MODELS_TO_PRELOAD, expected)

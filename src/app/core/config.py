@@ -75,6 +75,11 @@ class Settings(BaseSettings):
     QDRANT_HOST: str
     QDRANT_PORT: int
 
+    # embedding models loaded at startup, from ../models/embedding/<name>/.
+    # Other models still load on the first search that needs them. Override
+    # with a JSON list, e.g. EMBEDDING_MODELS_TO_PRELOAD='[]' to turn it off
+    EMBEDDING_MODELS_TO_PRELOAD: list[str] = ["granite-embedding-107m-multilingual"]
+
     # TIKA
     TIKA_URL_BASE: str
 

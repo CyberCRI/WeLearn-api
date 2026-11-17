@@ -1,6 +1,7 @@
 # src/app/search/services/search.py
 
 import os
+import threading
 import time
 from typing import Iterable, Tuple, cast
 
@@ -57,7 +58,9 @@ async def get_qdrant(request: Request) -> AsyncQdrantClient:
 
 
 class SearchService:
-    model = {}
+    # embedding models, loaded once per process and shared by every instance
+    model: dict[str, dict] = {}
+    _model_lock = threading.Lock()
 
     def __init__(self, client):
         logger.debug("SearchService=init_searchService")
@@ -154,10 +157,26 @@ class SearchService:
 
         return embedding
 
+    @classmethod
     @log_time_and_error
-    def _get_model(self, curr_model: str) -> dict:
-        if curr_model in self.model:
-            return self.model[curr_model]
+    def _get_model(cls, curr_model: str) -> dict:
+        """Return the cached model, loading it on the first call.
+
+        The models are usually preloaded at startup (see
+        preload_embedding_models); a model that was not is loaded here, by the
+        first search that needs it.
+        """
+        if curr_model in cls.model:
+            return cls.model[curr_model]
+        # concurrent first calls must not each load the model: check again
+        # once the lock is held
+        with cls._model_lock:
+            if curr_model not in cls.model:
+                cls.model[curr_model] = cls._load_model(curr_model)
+        return cls.model[curr_model]
+
+    @staticmethod
+    def _load_model(curr_model: str) -> dict:
         # TODO: path should be an env variable
         model_path = f"../models/embedding/{curr_model}/"
         if not os.path.isdir(model_path):
@@ -176,7 +195,7 @@ class SearchService:
             model = AutoModel.from_pretrained(model_path)
             tokenizer = AutoTokenizer.from_pretrained(model_path)
             model.eval()
-            self.model[curr_model] = {
+            loaded = {
                 "max_seq_length": tokenizer.model_max_length,
                 "instance": model,
                 "tokenizer": tokenizer,
@@ -199,7 +218,7 @@ class SearchService:
             raise ModelNotFoundError(
                 f"Embedding model '{curr_model}' could not be loaded"
             ) from e
-        return self.model[curr_model]
+        return loaded
 
     @log_time_and_error
     def _split_input_seq_len(self, seq_len: int, input: str) -> list[str]:
@@ -474,6 +493,20 @@ async def get_search_service(
     qdrant: AsyncQdrantClient = Depends(get_qdrant),
 ) -> SearchService:
     return SearchService(qdrant)
+
+
+def preload_embedding_models(model_names: Iterable[str]) -> None:
+    """Load the embedding models into the shared cache before the first search.
+
+    Called at startup. A model that cannot be loaded is logged and skipped, so
+    the API still starts: a search that needs it tries to load it again.
+    """
+    for model_name in model_names:
+        try:
+            SearchService._get_model(model_name)
+        except ModelNotFoundError:
+            # _get_model has already logged the path and the reason
+            logger.error("api_error=MODEL_PRELOAD_FAILED model=%s", model_name)
 
 
 @log_time_and_error
