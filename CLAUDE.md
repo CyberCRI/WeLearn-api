@@ -38,7 +38,8 @@ FastAPI service for the WeLearn platform: semantic search over a Qdrant vector s
 - **Startup (`src/app/core/lifespan.py`):**
   - creates the shared Qdrant client, `app.state.qdrant` (`AsyncQdrantClient`);
   - initialises the shared `ChatMistralAI` model (`tutor/services/tutor.py::chat_model`), also used by the file summary extractor (`tutor/services/extractor.py`);
-  - configures LangSmith tracing.
+  - configures LangSmith tracing;
+  - preloads the embedding models listed in `EMBEDDING_MODELS_TO_PRELOAD` (`search/services/search.py::preload_embedding_models`). The API answers no request until they are loaded. A model that fails is logged and skipped. `pytest.ini` sets the list to `[]`.
 - **API contract (`openapi.json`):**
   - The OpenAPI schema FastAPI generates is the single source of truth between this API and WeLearn-client. It is committed at the repo root, and the client generates its TypeScript types from it (`yarn gen:api` in WeLearn-client).
   - After changing a route, a Pydantic model it uses, or a `response_model`, run `make openapi-poetry` and commit `openapi.json`. `src/app/tests/shared/test_openapi_contract.py` fails when the committed file is stale.
@@ -67,7 +68,7 @@ Code that several features need goes in `shared/`. That includes domain exceptio
 
 ### Key cross-cutting pieces
 
-- **Search:** `search/services/search.py::SearchService` embeds the query locally with HuggingFace models loaded from `../models/embedding/<model>/`, relative to the CWD. It then queries Qdrant and joins the hits with Postgres document data. Collections follow the pattern `collection_welearn_<lang>_<model>`.
+- **Search:** `search/services/search.py::SearchService` embeds the query locally with HuggingFace models loaded from `../models/embedding/<model>/`, relative to the CWD. The models are cached per process in `SearchService.model`; one that was not preloaded loads on the first search that needs it. It then queries Qdrant and joins the hits with Postgres document data. Collections follow the pattern `collection_welearn_<lang>_<model>`.
 - **Chat:**
   - **Stack:** `chat/services/abst_chat.py::AbstractChat` wraps LangChain `create_agent` with `ChatMistralAI`. The agent's search tool is in `chat/services/agent.py`.
   - **Agent memory:** conversations persist through LangGraph `AsyncPostgresSaver` in the `agent_related` schema, keyed by `thread_id`.
