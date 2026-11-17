@@ -111,6 +111,29 @@ class ResolveQuotaUserTests(unittest.IsolatedAsyncioTestCase):
             await resolve_quota_user(make_request({"X-Session-Id": str(SESSION)}))
 
 
+class RequireLeftTests(unittest.TestCase):
+    def test_raises_for_the_other_feature_without_counting(self):
+        for _ in range(settings.GUEST_SYLLABUS_DAILY_LIMIT):
+            GuestQuota("syllabus", GUEST).consume()
+        files = GuestQuota("files", GUEST)
+
+        with self.assertRaises(HTTPException) as raised:
+            files.require_left("syllabus")
+
+        self.assertEqual(raised.exception.status_code, 403)
+        self.assertEqual(raised.exception.detail["feature"], "syllabus")
+        self.assertNotIn("X-Guest-Remaining", raised.exception.headers)
+        self.assertEqual(files.remaining, settings.GUEST_FILES_DAILY_LIMIT)
+
+    def test_passes_while_some_is_left(self):
+        GuestQuota("files", GUEST).require_left("syllabus")
+
+    def test_unlimited_caller_always_passes(self):
+        for _ in range(settings.GUEST_SYLLABUS_DAILY_LIMIT):
+            GuestQuota("syllabus", GUEST).consume()
+        GuestQuota("files", None).require_left("syllabus")
+
+
 class GuestQuotaTests(unittest.TestCase):
     def setUp(self):
         self.response = Response()
@@ -200,6 +223,23 @@ class GuestQuotaRouteTests(unittest.TestCase):
             },
         )
 
+    def test_every_feature_is_listed(self):
+        GuestQuota("feedback", GUEST).consume()
+
+        with restrictions(True):
+            body = client.get(f"{BASE}/guest_quota", headers=self.headers).json()
+
+        limits = {
+            "chat": settings.GUEST_CHAT_DAILY_LIMIT,
+            "syllabus": settings.GUEST_SYLLABUS_DAILY_LIMIT,
+            "feedback": settings.GUEST_FEEDBACK_DAILY_LIMIT,
+            "files": settings.GUEST_FILES_DAILY_LIMIT,
+        }
+        for feature, limit in limits.items():
+            self.assertEqual(body[feature]["limit"], limit)
+        self.assertEqual(body["feedback"]["remaining"], limits["feedback"] - 1)
+        self.assertEqual(body["files"]["remaining"], limits["files"])
+
     def test_reading_the_quota_uses_nothing(self):
         with restrictions(True):
             for _ in range(3):
@@ -213,7 +253,14 @@ class GuestQuotaRouteTests(unittest.TestCase):
             response = client.get(f"{BASE}/guest_quota", headers=self.headers)
 
         self.assertEqual(
-            response.json(), {"limited": False, "chat": None, "syllabus": None}
+            response.json(),
+            {
+                "limited": False,
+                "chat": None,
+                "syllabus": None,
+                "feedback": None,
+                "files": None,
+            },
         )
 
     def test_guest_without_session_gets_401(self):

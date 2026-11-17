@@ -52,6 +52,7 @@ from src.app.tutor.services.course_reading import MAX_FOCUS_CHARS, read_course
 from src.app.tutor.services.extractor import extract_files_summaries, truncate_documents
 from src.app.tutor.services.orchestrator import SyllabusOrchestrator
 from src.app.tutor.services.tutor import apply_feedback, tutor_manager
+from src.app.user.services.account import ACCOUNT_REQUIRED_RESPONSES, require_account
 from src.app.user.services.guest_quota import (
     GUEST_QUOTA_RESPONSES,
     GuestQuota,
@@ -135,24 +136,40 @@ async def read_course_document(
         return await read_course(text, lang, focus)
 
 
-@router.post("/files/content", responses=UPLOAD_ERROR_RESPONSES)
+@router.post(
+    "/files/content", responses={**UPLOAD_ERROR_RESPONSES, **GUEST_QUOTA_RESPONSES}
+)
 async def extract_files_content(
     files: Annotated[list[UploadFile], File()],
     response: Response,
     lang: TutorLang = "en",
+    quota: GuestQuota = Depends(guest_quota("files")),
 ) -> ExtractorOutputList | None:
+    """
+    Summaries of the uploaded files, the first step towards a syllabus. A guest
+    whose syllabus of the day is used is refused (feature `syllabus`), and the
+    summaries count against their own daily limit, refunded if they fail.
+    """
     files_content_str = await _read_documents(files)
+    quota.require_left("syllabus")
 
     try:
-        return await extract_files_summaries(files_content_str, lang)
+        with quota.spend():
+            return await extract_files_summaries(files_content_str, lang)
 
+    except HTTPException:
+        raise
     except Exception as e:
         logger.error(f"Error in extractor schema: {e}")
         response.status_code = 204
         raise e
 
 
-@router.post("/mas_files/content", responses=UPLOAD_ERROR_RESPONSES)
+@router.post(
+    "/mas_files/content",
+    responses={**UPLOAD_ERROR_RESPONSES, **ACCOUNT_REQUIRED_RESPONSES},
+    dependencies=[Depends(require_account)],
+)
 async def extract_files_content_baml(
     files: Annotated[list[UploadFile], File()],
     response: Response,
@@ -280,25 +297,35 @@ async def create_syllabus(
     )
 
 
-@router.post("/syllabus/feedback", response_model=SyllabusResponse)
+@router.post(
+    "/syllabus/feedback",
+    response_model=SyllabusResponse,
+    responses=GUEST_QUOTA_RESPONSES,
+)
 async def handle_syllabus_feedback(
     request: Request,
     body: SyllabusFeedback,
     data_collection=Depends(get_data_collection_service),
     settings: Settings = Depends(get_settings),
+    quota: GuestQuota = Depends(guest_quota("feedback")),
 ):
+    """
+    The syllabus regenerated with the user's change. A guest gets a few a day,
+    and a change that fails is refunded.
+    """
     session_id = extract_session_cookie(request)
 
     try:
-        syllabus = await apply_feedback(
-            body,
-            settings,
-            trace_context={
-                "endpoint": request.url.path,
-                "feature": "syllabus_feedback",
-                "session_id": str(session_id) if session_id else None,
-            },
-        )
+        with quota.spend():
+            syllabus = await apply_feedback(
+                body,
+                settings,
+                trace_context={
+                    "endpoint": request.url.path,
+                    "feature": "syllabus_feedback",
+                    "session_id": str(session_id) if session_id else None,
+                },
+            )
 
         await data_collection.register_syllabus_data(
             session_id=session_id,
@@ -313,6 +340,8 @@ async def handle_syllabus_feedback(
             extracts=body.extracts,
         )
 
+    except HTTPException:
+        raise
     except Exception as e:
         logger.error("Error in chat schema: %s", describe_error(e))
         raise e
@@ -334,7 +363,11 @@ async def register_syllabus_user_update(
     return {"message": "user update registered"}
 
 
-@router.post("/syllabus/description")
+@router.post(
+    "/syllabus/description",
+    responses=ACCOUNT_REQUIRED_RESPONSES,
+    dependencies=[Depends(require_account)],
+)
 async def baml_test(body: CourseDescriptionRequest) -> types.CourseDescription:
     b_response = await b.GenerateCourseDescription(
         mode=body.mode,
@@ -345,7 +378,11 @@ async def baml_test(body: CourseDescriptionRequest) -> types.CourseDescription:
     return b_response
 
 
-@router.post("/syllabus/learning_objectives")
+@router.post(
+    "/syllabus/learning_objectives",
+    responses=ACCOUNT_REQUIRED_RESPONSES,
+    dependencies=[Depends(require_account)],
+)
 async def baml_learning_objectives(
     body: LearningObjectivesRequest,
 ) -> types.LearningObjectives:
@@ -360,7 +397,11 @@ async def baml_learning_objectives(
     return b_response
 
 
-@router.post("/syllabus/sustainability_integration")
+@router.post(
+    "/syllabus/sustainability_integration",
+    responses=ACCOUNT_REQUIRED_RESPONSES,
+    dependencies=[Depends(require_account)],
+)
 async def integrate_sustainability(
     body: IntegrateSustainabilityRequest,
 ) -> types.SustainabilityIntegration:
@@ -379,7 +420,11 @@ async def integrate_sustainability(
     return b_response
 
 
-@router.post("/syllabus/learning_outcomes")
+@router.post(
+    "/syllabus/learning_outcomes",
+    responses=ACCOUNT_REQUIRED_RESPONSES,
+    dependencies=[Depends(require_account)],
+)
 async def baml_learning_outcomes(
     body: LearningOutcomesRequest,
 ) -> types.LearningOutcomes:
@@ -393,7 +438,11 @@ async def baml_learning_outcomes(
     return b_response
 
 
-@router.post("/syllabus/competency_map")
+@router.post(
+    "/syllabus/competency_map",
+    responses=ACCOUNT_REQUIRED_RESPONSES,
+    dependencies=[Depends(require_account)],
+)
 async def generate_competency_map(
     body: CompetencyMappingRequest,
 ) -> types.CompetencyMappings:

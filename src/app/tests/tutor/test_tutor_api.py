@@ -1172,8 +1172,8 @@ class TestCourseRead(TutorApiTestCase):
         self.assertEqual(response.status_code, 422)
 
 
-class TestSyllabusGuestQuota(TutorApiTestCase):
-    """With guest restrictions on, a guest gets GUEST_SYLLABUS_DAILY_LIMIT syllabi a day."""
+class GuestTutorTestCase(TutorApiTestCase):
+    """Guest restrictions on, the request's session resolving to one guest."""
 
     GUEST = uuid.uuid4()
     GUEST_HEADERS = {**HEADERS, "X-Session-Id": str(SESSION_ID)}
@@ -1197,6 +1197,10 @@ class TestSyllabusGuestQuota(TutorApiTestCase):
 
     def left(self) -> int:
         return guest_limiter("syllabus").peek(str(self.GUEST))[0]
+
+
+class TestSyllabusGuestQuota(GuestTutorTestCase):
+    """With guest restrictions on, a guest gets GUEST_SYLLABUS_DAILY_LIMIT syllabi a day."""
 
     def create(self):
         return self.client.post(
@@ -1316,3 +1320,196 @@ class TestSyllabusGuestQuota(TutorApiTestCase):
         for _ in range(self.LIMIT + 1):
             self.assertEqual(self.read_course().status_code, 200)
         self.assertEqual(self.left(), self.LIMIT)
+
+
+class TestTutorStepsGuestQuota(GuestTutorTestCase):
+    """
+    With guest restrictions on: file summaries need a syllabus left and have their
+    own daily limit; changes asked on a syllabus have theirs.
+    """
+
+    FILES_LIMIT = settings.GUEST_FILES_DAILY_LIMIT
+    FEEDBACK_LIMIT = settings.GUEST_FEEDBACK_DAILY_LIMIT
+
+    def left_of(self, feature) -> int:
+        return guest_limiter(feature).peek(str(self.GUEST))[0]
+
+    def use_the_syllabus(self):
+        for _ in range(self.LIMIT):
+            guest_limiter("syllabus").hit(str(self.GUEST))
+
+    def summarize(self, content=b"text"):
+        return self.client.post(
+            f"{BASE}/files/content",
+            files=[("files", ("a.txt", content, "text/plain"))],
+            headers=self.GUEST_HEADERS,
+        )
+
+    def feedback(self):
+        return self.client.post(
+            f"{BASE}/syllabus/feedback",
+            json=TestSyllabusFeedback.body(TestSyllabusFeedback()),
+            headers=self.GUEST_HEADERS,
+        )
+
+    def assert_exceeded(self, response, feature):
+        self.assertEqual(response.status_code, 403)
+        detail = response.json()["detail"]
+        self.assertEqual(detail["code"], "GUEST_QUOTA_EXCEEDED")
+        self.assertEqual(detail["feature"], feature)
+        self.assertEqual(response.headers["Retry-After"], str(detail["retry_after"]))
+
+    # --- /files/content ----------------------------------------------------
+
+    @patch(f"{ROUTER}.extract_files_summaries", new_callable=AsyncMock)
+    def test_summaries_until_the_limit_then_403(self, mock_extract):
+        mock_extract.return_value = {"extracts": []}
+
+        for left in range(self.FILES_LIMIT - 1, -1, -1):
+            response = self.summarize()
+            self.assertEqual(response.status_code, 200)
+            self.assertEqual(response.headers["X-Guest-Remaining"], str(left))
+
+        self.assert_exceeded(self.summarize(), "files")
+        self.assertEqual(mock_extract.await_count, self.FILES_LIMIT)
+        # summaries don't use the syllabus of the day
+        self.assertEqual(self.left_of("syllabus"), self.LIMIT)
+
+    @patch(f"{ROUTER}.extract_files_summaries", new_callable=AsyncMock)
+    def test_summaries_are_refused_once_the_syllabus_is_used(self, mock_extract):
+        self.use_the_syllabus()
+
+        response = self.summarize()
+
+        self.assert_exceeded(response, "syllabus")
+        self.assertNotIn("X-Guest-Remaining", response.headers)
+        mock_extract.assert_not_awaited()
+        self.assertEqual(self.left_of("files"), self.FILES_LIMIT)
+
+    @patch(f"{ROUTER}.extract_files_summaries", new_callable=AsyncMock)
+    def test_failed_summary_is_refunded(self, mock_extract):
+        mock_extract.side_effect = RuntimeError("mistral down")
+
+        self.assertEqual(
+            self.safe_client.post(
+                f"{BASE}/files/content",
+                files=[("files", ("a.txt", b"text", "text/plain"))],
+                headers=self.GUEST_HEADERS,
+            ).status_code,
+            500,
+        )
+        self.assertEqual(self.left_of("files"), self.FILES_LIMIT)
+
+    @patch(f"{ROUTER}.MAX_UPLOAD_FILE_SIZE", 10)
+    @patch(f"{ROUTER}.extract_files_summaries", new_callable=AsyncMock)
+    def test_a_rejected_upload_costs_nothing(self, mock_extract):
+        self.assertEqual(self.summarize(b"x" * 11).status_code, 413)
+        self.assertEqual(self.left_of("files"), self.FILES_LIMIT)
+        mock_extract.assert_not_awaited()
+
+    @patch(
+        "src.app.user.services.guest_quota.verify_account_token",
+        new_callable=AsyncMock,
+    )
+    @patch(f"{ROUTER}.extract_files_summaries", new_callable=AsyncMock)
+    def test_an_account_summarizes_without_limit(self, mock_extract, mock_token):
+        mock_token.return_value = object()
+        mock_extract.return_value = {"extracts": []}
+        self.use_the_syllabus()
+
+        for _ in range(self.FILES_LIMIT + 1):
+            self.assertEqual(self.summarize().status_code, 200)
+
+    @patch(f"{ROUTER}.extract_files_summaries", new_callable=AsyncMock)
+    def test_restrictions_off_summarize_without_limit(self, mock_extract):
+        mock_extract.return_value = {"extracts": []}
+        with patch(
+            "src.app.user.services.account.settings.GUEST_RESTRICTIONS_ENABLED", False
+        ):
+            for _ in range(self.FILES_LIMIT + 1):
+                self.assertEqual(self.summarize().status_code, 200)
+
+    # --- /syllabus/feedback ------------------------------------------------
+
+    @patch(f"{ROUTER}.apply_feedback", new_callable=AsyncMock)
+    def test_feedback_until_the_limit_then_403(self, mock_feedback):
+        mock_feedback.return_value = "new syllabus"
+
+        for left in range(self.FEEDBACK_LIMIT - 1, -1, -1):
+            response = self.feedback()
+            self.assertEqual(response.status_code, 200)
+            self.assertEqual(response.headers["X-Guest-Remaining"], str(left))
+
+        self.assert_exceeded(self.feedback(), "feedback")
+        self.assertEqual(mock_feedback.await_count, self.FEEDBACK_LIMIT)
+        self.assertEqual(self.left_of("syllabus"), self.LIMIT)
+
+    @patch(f"{ROUTER}.apply_feedback", new_callable=AsyncMock)
+    def test_failed_feedback_is_refunded(self, mock_feedback):
+        mock_feedback.side_effect = RuntimeError("mistral down")
+
+        response = self.safe_client.post(
+            f"{BASE}/syllabus/feedback",
+            json=TestSyllabusFeedback.body(TestSyllabusFeedback()),
+            headers=self.GUEST_HEADERS,
+        )
+
+        self.assertEqual(response.status_code, 500)
+        self.assertEqual(self.left_of("feedback"), self.FEEDBACK_LIMIT)
+        self.data_collection.register_syllabus_data.assert_not_awaited()
+
+
+class TestAccountOnlyTutorRoutes(TutorApiTestCase):
+    """Routes no guest page calls: with guest restrictions on, an account only."""
+
+    ROUTES = {
+        "syllabus/description": "GenerateCourseDescription",
+        "syllabus/learning_objectives": "GenerateLearningObjectives",
+        "syllabus/sustainability_integration": "IntegrateSustainability",
+        "syllabus/learning_outcomes": "GenerateLearningOutcomes",
+        "syllabus/competency_map": "MapCompetencies",
+        "mas_files/content": "FileSummaryExtractor",
+    }
+
+    def setUp(self):
+        super().setUp()
+        patcher = patch(
+            "src.app.user.services.account.settings.GUEST_RESTRICTIONS_ENABLED", True
+        )
+        patcher.start()
+        self.addCleanup(patcher.stop)
+
+    def test_a_guest_gets_401_account_required(self):
+        for path, function in self.ROUTES.items():
+            with (
+                self.subTest(path=path),
+                patch(f"{ROUTER}.b.{function}", new_callable=AsyncMock) as mock_llm,
+            ):
+                response = self.client.post(f"{BASE}/{path}", json={}, headers=HEADERS)
+
+                self.assertEqual(response.status_code, 401)
+                self.assertEqual(response.json()["detail"]["code"], "ACCOUNT_REQUIRED")
+                mock_llm.assert_not_awaited()
+
+    @patch(
+        "src.app.user.services.account.decode_keycloak_token",
+        return_value=object(),
+    )
+    def test_an_account_gets_past_the_check(self, _decode):
+        for path in self.ROUTES:
+            with self.subTest(path=path):
+                response = self.client.post(
+                    f"{BASE}/{path}",
+                    json={},
+                    headers={**HEADERS, "Authorization": "Bearer token"},
+                )
+
+                # past the account check, the empty body is then refused
+                self.assertEqual(response.status_code, 422)
+
+    def test_routes_document_the_401(self):
+        paths = app.openapi()["paths"]
+        for path in self.ROUTES:
+            with self.subTest(path=path):
+                responses = paths[f"{BASE}/{path}"]["post"]["responses"]
+                self.assertIn("ACCOUNT_REQUIRED", responses["401"]["description"])

@@ -1249,6 +1249,26 @@
               }
             ]
           },
+          "feedback": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/GuestFeatureQuota"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "files": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/GuestFeatureQuota"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
           "limited": {
             "title": "Limited",
             "type": "boolean"
@@ -4371,6 +4391,7 @@
     },
     "/api/v1/tutor/files/content": {
       "post": {
+        "description": "Summaries of the uploaded files, the first step towards a syllabus. A guest\nwhose syllabus of the day is used is refused (feature `syllabus`), and the\nsummaries count against their own daily limit, refunded if they fail.",
         "operationId": "tutor-extract_files_content",
         "parameters": [
           {
@@ -4426,6 +4447,26 @@
               }
             },
             "description": "Too many files (code TOO_MANY_FILES) or unreadable file"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Invalid or expired token, or, with guest restrictions on, a guest without a known session (code SESSION_NOT_FOUND)"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Guest daily quota used up (code GUEST_QUOTA_EXCEEDED, with `feature` and `retry_after` in seconds, and a Retry-After header)"
           },
           "413": {
             "content": {
@@ -4529,6 +4570,16 @@
             },
             "description": "Too many files (code TOO_MANY_FILES) or unreadable file"
           },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "No bearer token while guest restrictions are on (code ACCOUNT_REQUIRED), or invalid or expired token"
+          },
           "413": {
             "content": {
               "application/json": {
@@ -4538,6 +4589,16 @@
               }
             },
             "description": "A file is too large (code FILE_TOO_LARGE)"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Keycloak unavailable, or bearer tokens not accepted because Keycloak is not configured (code AUTH_NOT_CONFIGURED)"
           },
           "default": {
             "content": {
@@ -4727,6 +4788,26 @@
             },
             "description": "Successful Response"
           },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "No bearer token while guest restrictions are on (code ACCOUNT_REQUIRED), or invalid or expired token"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Keycloak unavailable, or bearer tokens not accepted because Keycloak is not configured (code AUTH_NOT_CONFIGURED)"
+          },
           "default": {
             "content": {
               "application/json": {
@@ -4773,6 +4854,26 @@
             },
             "description": "Successful Response"
           },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "No bearer token while guest restrictions are on (code ACCOUNT_REQUIRED), or invalid or expired token"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Keycloak unavailable, or bearer tokens not accepted because Keycloak is not configured (code AUTH_NOT_CONFIGURED)"
+          },
           "default": {
             "content": {
               "application/json": {
@@ -4797,6 +4898,7 @@
     },
     "/api/v1/tutor/syllabus/feedback": {
       "post": {
+        "description": "The syllabus regenerated with the user's change. A guest gets a few a day,\nand a change that fails is refunded.",
         "operationId": "tutor-handle_syllabus_feedback",
         "requestBody": {
           "content": {
@@ -4818,6 +4920,26 @@
               }
             },
             "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Invalid or expired token, or, with guest restrictions on, a guest without a known session (code SESSION_NOT_FOUND)"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Guest daily quota used up (code GUEST_QUOTA_EXCEEDED, with `feature` and `retry_after` in seconds, and a Retry-After header)"
           },
           "default": {
             "content": {
@@ -4865,6 +4987,26 @@
             },
             "description": "Successful Response"
           },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "No bearer token while guest restrictions are on (code ACCOUNT_REQUIRED), or invalid or expired token"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Keycloak unavailable, or bearer tokens not accepted because Keycloak is not configured (code AUTH_NOT_CONFIGURED)"
+          },
           "default": {
             "content": {
               "application/json": {
@@ -4911,6 +5053,26 @@
             },
             "description": "Successful Response"
           },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "No bearer token while guest restrictions are on (code ACCOUNT_REQUIRED), or invalid or expired token"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Keycloak unavailable, or bearer tokens not accepted because Keycloak is not configured (code AUTH_NOT_CONFIGURED)"
+          },
           "default": {
             "content": {
               "application/json": {
@@ -4956,6 +5118,26 @@
               }
             },
             "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "No bearer token while guest restrictions are on (code ACCOUNT_REQUIRED), or invalid or expired token"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Keycloak unavailable, or bearer tokens not accepted because Keycloak is not configured (code AUTH_NOT_CONFIGURED)"
           },
           "default": {
             "content": {
