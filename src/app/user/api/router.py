@@ -14,6 +14,7 @@ from src.app.shared.utils.requests import (
     extract_session_cookie,
 )
 from src.app.user.domain.models import (
+    AccountAccessResponse,
     BookmarkAddedResponse,
     BookmarkDeletedResponse,
     BookmarksDeletedResponse,
@@ -46,6 +47,7 @@ from src.app.user.services.account import (
     account_required,
     guest_restrictions_enabled,
     keycloak_errors_as_http,
+    verify_account_token,
 )
 from src.app.user.services.guest_quota import (
     GUEST_QUOTA_RESPONSES,
@@ -55,6 +57,7 @@ from src.app.user.services.guest_quota import (
     quota_status,
     resolve_quota_user,
 )
+from src.app.user.services.limited_access import get_account_access
 from src.app.user.services.session import (
     resolve_keycloak_user_and_session,
     resolve_user_and_session,
@@ -345,6 +348,32 @@ async def add_user_bookmark(request: Request, document_id: uuid.UUID):
 
     added_id = await run_in_threadpool(add_user_bookmark_sync, user_id, document_id)
     return {"added": added_id}
+
+
+@router.get(
+    "/access",
+    summary="How long the account's access lasts",
+    response_model=AccountAccessResponse,
+    responses={
+        **BEARER_TOKEN_RESPONSES,
+        401: {
+            "model": ErrorResponse,
+            "description": (
+                "No bearer token (code ACCOUNT_REQUIRED), or invalid or expired token"
+            ),
+        },
+    },
+)
+async def get_access(request: Request) -> AccountAccessResponse:
+    """
+    Whether the caller's account is time-limited (Google or email/password
+    login) and until when. Needs a bearer token; an account whose access has
+    ended gets 403 ACCESS_EXPIRED.
+    """
+    account = await verify_account_token(request)
+    if account is None:
+        raise account_required()
+    return await get_account_access(account)
 
 
 @router.get(

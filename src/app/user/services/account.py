@@ -25,6 +25,7 @@ from src.app.user.infra.keycloak import (
     decode_keycloak_token,
     extract_bearer_token,
 )
+from src.app.user.services.limited_access import check_limited_access
 
 logger = logger_utils(__name__)
 settings = get_settings()
@@ -34,6 +35,13 @@ ACCOUNT_REQUIRED_CODE = "ACCOUNT_REQUIRED"
 # routes reading the optional `Authorization: Bearer <Keycloak token>` header
 BEARER_TOKEN_RESPONSES: dict[int | str, dict[str, Any]] = {
     401: {"model": ErrorResponse, "description": "Invalid or expired token"},
+    403: {
+        "model": ErrorResponse,
+        "description": (
+            "The access of a time-limited account (Google or email/password "
+            "login) has ended (code ACCESS_EXPIRED)"
+        ),
+    },
     503: {
         "model": ErrorResponse,
         "description": (
@@ -104,14 +112,17 @@ def keycloak_errors_as_http() -> Iterator[None]:
 async def verify_account_token(request: Request) -> KeycloakUser | None:
     """
     The account of the request's bearer token, or None without a token. Only
-    verifies the token: no user or session is created or linked.
+    verifies the token: no user or session is created or linked. Raises
+    AccessExpiredError (403) for a time-limited account past its end date.
     """
     token = extract_bearer_token(request)
     if not token:
         return None
     with keycloak_errors_as_http():
         # JWKS fetch is blocking I/O
-        return await run_in_threadpool(decode_keycloak_token, token)
+        account = await run_in_threadpool(decode_keycloak_token, token)
+    await check_limited_access(account)
+    return account
 
 
 async def require_account(request: Request) -> KeycloakUser | None:

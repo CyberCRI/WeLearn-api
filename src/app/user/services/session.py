@@ -12,6 +12,7 @@ from src.app.user.infra.queries import (
     get_user_for_session_renewal,
     get_user_from_session_id,
 )
+from src.app.user.services.limited_access import check_limited_access
 
 logger = logger_utils(__name__)
 
@@ -89,7 +90,10 @@ async def resolve_keycloak_user_and_session(
             logger.info("Session %s not found, ignoring it", session_uuid)
             session_uuid = None
 
-    user_id, _ = await get_or_create_keycloak_user(token, anonymous_user_id, referer)
+    user_id, keycloak_user = await get_or_create_keycloak_user(
+        token, anonymous_user_id, referer
+    )
+    await check_limited_access(keycloak_user)
 
     # reuses the session only if it belongs to this user and is still valid
     session_uuid = await run_in_threadpool(

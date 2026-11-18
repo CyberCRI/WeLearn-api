@@ -113,6 +113,18 @@ class Settings(BaseSettings):
     # (0 = no limit). Only set it where FORWARDED_ALLOW_IPS lists the ingress
     # pods: otherwise the API sees the ingress' address and every user shares it
     GUEST_SESSIONS_PER_IP_HOURLY: int = 0
+    # time-limited accounts: a login through one of LIMITED_ACCESS_IDENTITY_PROVIDERS
+    # (Keycloak IdP aliases), or with an email and password, gets
+    # LIMITED_ACCESS_DAYS from its first login, stored in the Keycloak user
+    # attribute "welearn_access_until". Past it, account tokens answer 403
+    # ACCESS_EXPIRED and the user goes back to guest mode. Other IdPs (Renater)
+    # are not limited. Turn on only once the Keycloak client maps the
+    # "identity_provider" session note and the "welearn_access_until" attribute
+    # into the access token: without the first, every login counts as an
+    # email/password one
+    LIMITED_ACCESS_ENABLED: bool = False
+    LIMITED_ACCESS_IDENTITY_PROVIDERS: list[str] = ["google"]
+    LIMITED_ACCESS_DAYS: int = 183
 
     model_config = SettingsConfigDict(
         env_file=".env", extra="ignore", case_sensitive=True

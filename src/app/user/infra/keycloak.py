@@ -56,6 +56,20 @@ class KeycloakUser(BaseModel):
     first_name: str | None = None
     last_name: str | None = None
     name: str | None = None
+    # alias of the identity provider the user logged in with (Google, a
+    # university...), None for an email/password login. Needs a "User Session
+    # Note" mapper (note "identity_provider") on the client
+    identity_provider: str | None = None
+    # end of a time-limited access (ISO date), from the user attribute
+    # "welearn_access_until" through a "User Attribute" mapper
+    access_until: str | None = None
+
+
+def _single_claim(value: Any) -> str | None:
+    """A claim mapped as a string, or as a list when the mapper is multivalued."""
+    if isinstance(value, list):
+        value = value[0] if value else None
+    return str(value) if value else None
 
 
 def get_issuer() -> str:
@@ -190,6 +204,8 @@ def decode_keycloak_token(token: str) -> KeycloakUser:
             first_name=claims.get("given_name"),
             last_name=claims.get("family_name"),
             name=claims.get("name"),
+            identity_provider=_single_claim(claims.get("identity_provider")),
+            access_until=_single_claim(claims.get("welearn_access_until")),
         )
     except ValidationError as e:
         raise KeycloakTokenError(f"Invalid 'sub' claim: {e}") from e
