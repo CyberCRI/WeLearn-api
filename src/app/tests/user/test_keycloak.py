@@ -88,6 +88,31 @@ class TestDecodeKeycloakToken(unittest.TestCase):
         self.assertEqual(user.name, "Jane Doe")
         get_jwks_client_mock.assert_called_once_with(ISSUER)
 
+    def test_decode_limited_access_claims(self, get_jwks_client_mock):
+        self._use_public_key(get_jwks_client_mock)
+        token = make_token(
+            identity_provider="google", welearn_access_until="2027-05-20"
+        )
+
+        user = decode_keycloak_token(token)
+
+        self.assertEqual(user.identity_provider, "google")
+        self.assertEqual(user.access_until, "2027-05-20")
+
+    def test_decode_multivalued_access_until(self, get_jwks_client_mock):
+        self._use_public_key(get_jwks_client_mock)
+        token = make_token(welearn_access_until=["2027-05-20"])
+
+        self.assertEqual(decode_keycloak_token(token).access_until, "2027-05-20")
+
+    def test_decode_password_login_has_no_identity_provider(self, get_jwks_client_mock):
+        self._use_public_key(get_jwks_client_mock)
+
+        user = decode_keycloak_token(make_token())
+
+        self.assertIsNone(user.identity_provider)
+        self.assertIsNone(user.access_until)
+
     def test_wrong_signature(self, get_jwks_client_mock):
         self._use_public_key(get_jwks_client_mock)
         with self.assertRaises(KeycloakTokenError):

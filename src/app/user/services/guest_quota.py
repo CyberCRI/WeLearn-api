@@ -93,7 +93,9 @@ GUEST_QUOTA_RESPONSES: dict[int | str, dict] = {
         "model": ErrorResponse,
         "description": (
             f"Guest daily quota used up (code {GUEST_QUOTA_EXCEEDED_CODE}, with "
-            "`feature` and `retry_after` in seconds, and a Retry-After header)"
+            "`feature` and `retry_after` in seconds, and a Retry-After header), "
+            "or the access of a time-limited account has ended (code "
+            "ACCESS_EXPIRED)"
         ),
     },
 }

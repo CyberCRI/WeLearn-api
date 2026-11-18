@@ -1,6 +1,6 @@
 # src/app/user/infra/keycloak_admin.py
 """
-Keycloak Admin REST API, used for sign-up.
+Keycloak Admin REST API, used for sign-up and time-limited access.
 
 The API authenticates as a confidential client (client credentials grant)
 whose service account has the realm-management roles "view-users" and
@@ -175,3 +175,34 @@ async def send_signup_email(keycloak_id: uuid.UUID) -> None:
             headers={"Authorization": f"Bearer {token}"},
         )
     _raise_for_status(response, "send signup email")
+
+
+async def set_user_attribute_if_missing(
+    keycloak_id: uuid.UUID, name: str, value: str
+) -> str:
+    """
+    Set a single-valued user attribute unless it already has a value, and
+    return the value it ends up with. The user is read, then written back
+    whole: a PUT with only this attribute would drop the user's other
+    attributes, which other apps of the realm may use.
+    """
+    base_url = get_admin_base_url()
+    user_url = f"{base_url}/users/{keycloak_id}"
+    async with _http_client() as client:
+        token = await get_admin_token(client)
+        headers = {"Authorization": f"Bearer {token}"}
+        response = await _request(client, "get user", "GET", user_url, headers=headers)
+        _raise_for_status(response, "get user")
+        user = response.json()
+        attributes = user.get("attributes") or {}
+        existing = attributes.get(name)
+        if existing:
+            return existing[0]
+
+        attributes[name] = [value]
+        user["attributes"] = attributes
+        response = await _request(
+            client, "update user", "PUT", user_url, json=user, headers=headers
+        )
+    _raise_for_status(response, "update user")
+    return value

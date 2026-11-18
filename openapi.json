@@ -1,6 +1,43 @@
 {
   "components": {
     "schemas": {
+      "AccountAccessResponse": {
+        "description": "Whether the account's access is time-limited (a Google or email/password\nlogin, not an institution one) and until when. `access_until` is the last\nday of access, `days_left` counts today; both are null when the account is\nnot limited, or when the end date could not be stored yet.",
+        "properties": {
+          "access_until": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Access Until"
+          },
+          "days_left": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Days Left"
+          },
+          "limited": {
+            "title": "Limited",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "limited"
+        ],
+        "title": "AccountAccessResponse",
+        "type": "object"
+      },
       "AgentContext": {
         "examples": [
           {
@@ -2849,6 +2886,16 @@
             },
             "description": "No bearer token while guest restrictions are on (code ACCOUNT_REQUIRED), or invalid or expired token"
           },
+          "403": {
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "The access of a time-limited account (Google or email/password login) has ended (code ACCESS_EXPIRED)"
+          },
           "503": {
             "content": {
               "text/plain": {
@@ -3049,6 +3096,16 @@
               }
             },
             "description": "No bearer token while guest restrictions are on (code ACCOUNT_REQUIRED), or invalid or expired token"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "The access of a time-limited account (Google or email/password login) has ended (code ACCESS_EXPIRED)"
           },
           "503": {
             "content": {
@@ -3292,7 +3349,7 @@
                 }
               }
             },
-            "description": "Guest daily quota used up (code GUEST_QUOTA_EXCEEDED, with `feature` and `retry_after` in seconds, and a Retry-After header)"
+            "description": "Guest daily quota used up (code GUEST_QUOTA_EXCEEDED, with `feature` and `retry_after` in seconds, and a Retry-After header), or the access of a time-limited account has ended (code ACCESS_EXPIRED)"
           },
           "404": {
             "content": {
@@ -3370,7 +3427,7 @@
                 }
               }
             },
-            "description": "Guest daily quota used up (code GUEST_QUOTA_EXCEEDED, with `feature` and `retry_after` in seconds, and a Retry-After header)"
+            "description": "Guest daily quota used up (code GUEST_QUOTA_EXCEEDED, with `feature` and `retry_after` in seconds, and a Retry-After header), or the access of a time-limited account has ended (code ACCESS_EXPIRED)"
           },
           "404": {
             "content": {
@@ -4258,7 +4315,7 @@
                 }
               }
             },
-            "description": "Guest daily quota used up (code GUEST_QUOTA_EXCEEDED, with `feature` and `retry_after` in seconds, and a Retry-After header)"
+            "description": "Guest daily quota used up (code GUEST_QUOTA_EXCEEDED, with `feature` and `retry_after` in seconds, and a Retry-After header), or the access of a time-limited account has ended (code ACCESS_EXPIRED)"
           },
           "default": {
             "content": {
@@ -4335,7 +4392,7 @@
                 }
               }
             },
-            "description": "Guest daily quota used up (code GUEST_QUOTA_EXCEEDED, with `feature` and `retry_after` in seconds, and a Retry-After header)"
+            "description": "Guest daily quota used up (code GUEST_QUOTA_EXCEEDED, with `feature` and `retry_after` in seconds, and a Retry-After header), or the access of a time-limited account has ended (code ACCESS_EXPIRED)"
           },
           "413": {
             "content": {
@@ -4466,7 +4523,7 @@
                 }
               }
             },
-            "description": "Guest daily quota used up (code GUEST_QUOTA_EXCEEDED, with `feature` and `retry_after` in seconds, and a Retry-After header)"
+            "description": "Guest daily quota used up (code GUEST_QUOTA_EXCEEDED, with `feature` and `retry_after` in seconds, and a Retry-After header), or the access of a time-limited account has ended (code ACCESS_EXPIRED)"
           },
           "413": {
             "content": {
@@ -4579,6 +4636,16 @@
               }
             },
             "description": "No bearer token while guest restrictions are on (code ACCOUNT_REQUIRED), or invalid or expired token"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "The access of a time-limited account (Google or email/password login) has ended (code ACCESS_EXPIRED)"
           },
           "413": {
             "content": {
@@ -4800,7 +4867,7 @@
                 }
               }
             },
-            "description": "Guest daily quota used up (code GUEST_QUOTA_EXCEEDED, with `feature` and `retry_after` in seconds, and a Retry-After header)"
+            "description": "Guest daily quota used up (code GUEST_QUOTA_EXCEEDED, with `feature` and `retry_after` in seconds, and a Retry-After header), or the access of a time-limited account has ended (code ACCESS_EXPIRED)"
           },
           "default": {
             "content": {
@@ -4857,6 +4924,16 @@
               }
             },
             "description": "No bearer token while guest restrictions are on (code ACCOUNT_REQUIRED), or invalid or expired token"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "The access of a time-limited account (Google or email/password login) has ended (code ACCESS_EXPIRED)"
           },
           "503": {
             "content": {
@@ -4923,6 +5000,16 @@
               }
             },
             "description": "No bearer token while guest restrictions are on (code ACCOUNT_REQUIRED), or invalid or expired token"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "The access of a time-limited account (Google or email/password login) has ended (code ACCESS_EXPIRED)"
           },
           "503": {
             "content": {
@@ -4999,7 +5086,7 @@
                 }
               }
             },
-            "description": "Guest daily quota used up (code GUEST_QUOTA_EXCEEDED, with `feature` and `retry_after` in seconds, and a Retry-After header)"
+            "description": "Guest daily quota used up (code GUEST_QUOTA_EXCEEDED, with `feature` and `retry_after` in seconds, and a Retry-After header), or the access of a time-limited account has ended (code ACCESS_EXPIRED)"
           },
           "default": {
             "content": {
@@ -5056,6 +5143,16 @@
               }
             },
             "description": "No bearer token while guest restrictions are on (code ACCOUNT_REQUIRED), or invalid or expired token"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "The access of a time-limited account (Google or email/password login) has ended (code ACCESS_EXPIRED)"
           },
           "503": {
             "content": {
@@ -5123,6 +5220,16 @@
             },
             "description": "No bearer token while guest restrictions are on (code ACCOUNT_REQUIRED), or invalid or expired token"
           },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "The access of a time-limited account (Google or email/password login) has ended (code ACCESS_EXPIRED)"
+          },
           "503": {
             "content": {
               "application/json": {
@@ -5188,6 +5295,16 @@
               }
             },
             "description": "No bearer token while guest restrictions are on (code ACCOUNT_REQUIRED), or invalid or expired token"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "The access of a time-limited account (Google or email/password login) has ended (code ACCESS_EXPIRED)"
           },
           "503": {
             "content": {
@@ -5267,6 +5384,73 @@
         ]
       }
     },
+    "/api/v1/user/access": {
+      "get": {
+        "description": "Whether the caller's account is time-limited (Google or email/password\nlogin) and until when. Needs a bearer token; an account whose access has\nended gets 403 ACCESS_EXPIRED.",
+        "operationId": "user-get_access",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AccountAccessResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "No bearer token (code ACCOUNT_REQUIRED), or invalid or expired token"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "The access of a time-limited account (Google or email/password login) has ended (code ACCESS_EXPIRED)"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Keycloak unavailable, or bearer tokens not accepted because Keycloak is not configured (code AUTH_NOT_CONFIGURED)"
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Error"
+          }
+        },
+        "security": [
+          {
+            "APIKeyHeader": []
+          }
+        ],
+        "summary": "How long the account's access lasts",
+        "tags": [
+          "user"
+        ]
+      }
+    },
     "/api/v1/user/bookmarks": {
       "delete": {
         "operationId": "user-delete_user_bookmarks",
@@ -5290,6 +5474,16 @@
               }
             },
             "description": "No bearer token while guest restrictions are on (code ACCOUNT_REQUIRED), or invalid or expired token"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "The access of a time-limited account (Google or email/password login) has ended (code ACCESS_EXPIRED)"
           },
           "503": {
             "content": {
@@ -5344,6 +5538,16 @@
               }
             },
             "description": "No bearer token while guest restrictions are on (code ACCOUNT_REQUIRED), or invalid or expired token"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "The access of a time-limited account (Google or email/password login) has ended (code ACCESS_EXPIRED)"
           },
           "503": {
             "content": {
@@ -5414,6 +5618,16 @@
             },
             "description": "No bearer token while guest restrictions are on (code ACCOUNT_REQUIRED), or invalid or expired token"
           },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "The access of a time-limited account (Google or email/password login) has ended (code ACCESS_EXPIRED)"
+          },
           "503": {
             "content": {
               "application/json": {
@@ -5480,6 +5694,16 @@
               }
             },
             "description": "No bearer token while guest restrictions are on (code ACCOUNT_REQUIRED), or invalid or expired token"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "The access of a time-limited account (Google or email/password login) has ended (code ACCESS_EXPIRED)"
           },
           "503": {
             "content": {
@@ -5549,6 +5773,16 @@
             },
             "description": "No bearer token while guest restrictions are on (code ACCOUNT_REQUIRED), or invalid or expired token"
           },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "The access of a time-limited account (Google or email/password login) has ended (code ACCESS_EXPIRED)"
+          },
           "503": {
             "content": {
               "application/json": {
@@ -5615,6 +5849,16 @@
             },
             "description": "No bearer token while guest restrictions are on (code ACCOUNT_REQUIRED), or invalid or expired token"
           },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "The access of a time-limited account (Google or email/password login) has ended (code ACCESS_EXPIRED)"
+          },
           "503": {
             "content": {
               "application/json": {
@@ -5671,6 +5915,16 @@
               }
             },
             "description": "Invalid or expired token, or, with guest restrictions on, a guest without a known session (code SESSION_NOT_FOUND)"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "The access of a time-limited account (Google or email/password login) has ended (code ACCESS_EXPIRED)"
           },
           "503": {
             "content": {
@@ -5923,6 +6177,16 @@
               }
             },
             "description": "Invalid or expired token"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "The access of a time-limited account (Google or email/password login) has ended (code ACCESS_EXPIRED)"
           },
           "429": {
             "content": {

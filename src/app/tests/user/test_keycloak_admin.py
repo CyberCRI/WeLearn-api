@@ -12,6 +12,7 @@ from src.app.user.infra.keycloak_admin import (
     create_user,
     find_user_id_by_email,
     send_signup_email,
+    set_user_attribute_if_missing,
 )
 
 KEYCLOAK_URL = "https://auth.example.org"
@@ -184,6 +185,89 @@ class TestKeycloakAdmin(unittest.IsolatedAsyncioTestCase):
         params = fake.requests[0].url.params
         self.assertEqual(params["client_id"], "welearn-front")
         self.assertEqual(params["redirect_uri"], "https://front.example.org")
+
+    async def test_set_attribute_keeps_other_attributes(self):
+        user_id = uuid.uuid4()
+        user = {
+            "id": str(user_id),
+            "email": "jane@example.org",
+            "attributes": {"locale": ["fr"], "projects_role": ["member"]},
+        }
+
+        def handler(request):
+            if request.method == "GET":
+                return httpx.Response(200, json=user)
+            return httpx.Response(204)
+
+        fake = self._fake(handler)
+
+        result = await set_user_attribute_if_missing(
+            user_id, "welearn_access_until", "2027-05-20"
+        )
+
+        self.assertEqual(result, "2027-05-20")
+        get, put = fake.requests
+        self.assertEqual(
+            get.url.path, f"/admin/realms/{KEYCLOAK_REALM}/users/{user_id}"
+        )
+        self.assertEqual(put.method, "PUT")
+        self.assertEqual(put.url, get.url)
+        payload = json.loads(put.content)
+        self.assertEqual(payload["email"], "jane@example.org")
+        self.assertEqual(
+            payload["attributes"],
+            {
+                "locale": ["fr"],
+                "projects_role": ["member"],
+                "welearn_access_until": ["2027-05-20"],
+            },
+        )
+
+    async def test_set_attribute_without_attributes(self):
+        user_id = uuid.uuid4()
+
+        def handler(request):
+            if request.method == "GET":
+                return httpx.Response(200, json={"id": str(user_id)})
+            return httpx.Response(204)
+
+        fake = self._fake(handler)
+
+        await set_user_attribute_if_missing(
+            user_id, "welearn_access_until", "2027-05-20"
+        )
+
+        payload = json.loads(fake.requests[1].content)
+        self.assertEqual(
+            payload["attributes"], {"welearn_access_until": ["2027-05-20"]}
+        )
+
+    async def test_set_attribute_already_set_is_not_overwritten(self):
+        fake = self._fake(
+            lambda r: httpx.Response(
+                200, json={"attributes": {"welearn_access_until": ["2026-01-01"]}}
+            )
+        )
+
+        result = await set_user_attribute_if_missing(
+            uuid.uuid4(), "welearn_access_until", "2027-05-20"
+        )
+
+        self.assertEqual(result, "2026-01-01")
+        self.assertEqual([r.method for r in fake.requests], ["GET"])
+
+    async def test_set_attribute_update_refused(self):
+        def handler(request):
+            if request.method == "GET":
+                return httpx.Response(200, json={})
+            return httpx.Response(403)
+
+        self._fake(handler)
+
+        with self.assertRaises(KeycloakUnavailableError):
+            await set_user_attribute_if_missing(
+                uuid.uuid4(), "welearn_access_until", "2027-05-20"
+            )
 
 
 if __name__ == "__main__":

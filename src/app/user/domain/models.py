@@ -1,6 +1,6 @@
 import re
 import uuid
-from datetime import datetime
+from datetime import date, datetime
 
 from pydantic import BaseModel, ConfigDict, field_validator
 
@@ -95,6 +95,19 @@ class GuestFeatureQuota(BaseModel):
     remaining: int
     # seconds until the oldest counted use leaves the 24h window (0 if none)
     resets_in: int
+
+
+class AccountAccessResponse(BaseModel):
+    """
+    Whether the account's access is time-limited (a Google or email/password
+    login, not an institution one) and until when. `access_until` is the last
+    day of access, `days_left` counts today; both are null when the account is
+    not limited, or when the end date could not be stored yet.
+    """
+
+    limited: bool
+    access_until: date | None = None
+    days_left: int | None = None
 
 
 class GuestQuotaResponse(BaseModel):

@@ -63,6 +63,17 @@ class SessionNotFoundError(WeLearnError):
     default_code = "SESSION_NOT_FOUND"
 
 
+class AccessExpiredError(WeLearnError):
+    """
+    Raised for a time-limited account (Google or email/password login) whose
+    access has ended: the client logs the user out and goes back to guest mode
+    """
+
+    status_code = status.HTTP_403_FORBIDDEN
+    default_message = "The access of this account has ended"
+    default_code = "ACCESS_EXPIRED"
+
+
 class UserNotFoundError(WeLearnError):
     """Raised when a user is not found"""
 
