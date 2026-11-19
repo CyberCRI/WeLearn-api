@@ -1,0 +1,2 @@
+Proposed change: Ajouter au thème sur le PIB un exemple : une marée noire fait baisser le PIB, car le PIB retranche la dégradation de l'environnement.
+Why: Les étudiants voient comment le PIB tient compte du capital naturel.

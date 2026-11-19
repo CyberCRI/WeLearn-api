@@ -29,6 +29,7 @@ from src.app.shared.utils.dependencies import get_settings
 from src.app.shared.utils.logger import logger as utils_logger
 from src.app.shared.utils.requests import extract_session_cookie
 from src.app.shared.utils.utils import check_upload_limits, get_files_content
+from src.app.tutor.domain.adaptation import AdaptationProposal, AdaptationRequest
 from src.app.tutor.domain.connections import (
     ConnectionEvidenceRequest,
     ConnectionEvidenceResponse,
@@ -56,6 +57,7 @@ from src.app.tutor.domain.models import (
     TutorSyllabusRequest,
     UserInput,
 )
+from src.app.tutor.services.adaptation import adapt_course
 from src.app.tutor.services.connections import find_connection_ideas
 from src.app.tutor.services.course_reading import MAX_FOCUS_CHARS, read_course
 from src.app.tutor.services.evidence import find_connection_evidence
@@ -194,6 +196,23 @@ async def judge_connection_evidence(
     return await find_connection_evidence(
         body.course, body.idea, body.lang, sp, background_tasks
     )
+
+
+@router.post(
+    "/course/adaptation",
+    response_model=AdaptationProposal,
+    responses=UNUSABLE_LLM_OUTPUT_RESPONSE,
+    summary="Propose one checked change to the course for a connection (syllabus v2)",
+)
+async def propose_course_adaptation(body: AdaptationRequest) -> AdaptationProposal:
+    """
+    One concrete, limited change to the course for the connection the teacher chose,
+    from the resources `connection_evidence` kept for it (sent back as they came). Its
+    claims are checked against those resources, and the change is asked again once when
+    some are not established or wrong. `support` is capped by what the check found, and
+    `checks` lists the problems for the teacher. `lang` is the teacher's language.
+    """
+    return await adapt_course(body.course, body.connection, body.lang)
 
 
 @router.post(

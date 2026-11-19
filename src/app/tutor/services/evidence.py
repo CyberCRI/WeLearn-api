@@ -20,6 +20,7 @@ from src.app.shared.domain.documents import EnhancedDocumentSlice
 from src.app.shared.domain.exceptions import UnusableLLMOutputError
 from src.app.shared.utils.logger import logger as utils_logger
 from src.app.tutor.domain.connections import (
+    MAX_RESOURCES,
     ConfirmedCourse,
     ConnectionEvidenceResponse,
     ConnectionIdea,
@@ -35,7 +36,6 @@ logger = utils_logger(__name__)
 
 # a few resources the teacher can weigh, from a few search results
 MAX_CANDIDATES = 6
-MAX_RESOURCES = 3
 # as the client's searches: mostly relevance, a little diversity
 RELEVANCE_FACTOR = 0.75
 

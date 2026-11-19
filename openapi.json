@@ -38,6 +38,251 @@
         "title": "AccountAccessResponse",
         "type": "object"
       },
+      "AdaptationChecks": {
+        "properties": {
+          "problems": {
+            "description": "Claims not established by the resources, or wrong, for the teacher",
+            "items": {
+              "type": "string"
+            },
+            "title": "Problems",
+            "type": "array"
+          },
+          "status": {
+            "description": "unchecked: the check gave no usable answer (support partial at most)",
+            "enum": [
+              "checked",
+              "unchecked"
+            ],
+            "title": "Status",
+            "type": "string"
+          },
+          "unbacked_names": {
+            "description": "Names in the change that no direct resource nor the course contains",
+            "items": {
+              "type": "string"
+            },
+            "title": "Unbacked Names",
+            "type": "array"
+          }
+        },
+        "required": [
+          "status",
+          "problems",
+          "unbacked_names"
+        ],
+        "title": "AdaptationChecks",
+        "type": "object"
+      },
+      "AdaptationGuidance": {
+        "description": "Optional notes for the teacher, never part of the syllabus change.",
+        "properties": {
+          "check": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "How the teacher might check the learning",
+            "title": "Check"
+          },
+          "greencomp": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/GreenCompLink"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "learning": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "What students could do thanks to it",
+            "title": "Learning"
+          },
+          "teaching": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "A teaching approach, in one sentence",
+            "title": "Teaching"
+          }
+        },
+        "required": [
+          "learning",
+          "greencomp",
+          "teaching",
+          "check"
+        ],
+        "title": "AdaptationGuidance",
+        "type": "object"
+      },
+      "AdaptationProposal": {
+        "properties": {
+          "checks": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/AdaptationChecks"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "The check of its claims; null without any resource to check against"
+          },
+          "guidance": {
+            "$ref": "#/components/schemas/AdaptationGuidance"
+          },
+          "kind": {
+            "enum": [
+              "objective",
+              "topic",
+              "teaching",
+              "assessment"
+            ],
+            "title": "Kind",
+            "type": "string"
+          },
+          "original": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "The course part changed, as the teacher wrote it; null when the change only adds something",
+            "title": "Original"
+          },
+          "resources": {
+            "description": "The connection's resources the change relies on",
+            "items": {
+              "$ref": "#/components/schemas/AdaptationResource"
+            },
+            "title": "Resources",
+            "type": "array"
+          },
+          "suggested": {
+            "title": "Suggested",
+            "type": "string"
+          },
+          "support": {
+            "description": "strong only with a sentence of a direct resource found word for word, and never above what the check found",
+            "enum": [
+              "strong",
+              "partial",
+              "none"
+            ],
+            "title": "Support",
+            "type": "string"
+          },
+          "why": {
+            "title": "Why",
+            "type": "string"
+          }
+        },
+        "required": [
+          "kind",
+          "original",
+          "suggested",
+          "why",
+          "support",
+          "resources",
+          "guidance",
+          "checks"
+        ],
+        "title": "AdaptationProposal",
+        "type": "object"
+      },
+      "AdaptationRequest": {
+        "properties": {
+          "connection": {
+            "$ref": "#/components/schemas/ChosenConnection"
+          },
+          "course": {
+            "$ref": "#/components/schemas/ConfirmedCourse"
+          },
+          "lang": {
+            "default": "en",
+            "enum": [
+              "en",
+              "fr"
+            ],
+            "title": "Lang",
+            "type": "string"
+          }
+        },
+        "required": [
+          "course",
+          "connection"
+        ],
+        "title": "AdaptationRequest",
+        "type": "object"
+      },
+      "AdaptationResource": {
+        "properties": {
+          "document": {
+            "$ref": "#/components/schemas/EnhancedDocumentSlice"
+          },
+          "evidence": {
+            "description": "The sentence it was kept for, found word for word in its text",
+            "title": "Evidence",
+            "type": "string"
+          },
+          "quote": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "The sentence of it that backs the change, found word for word",
+            "title": "Quote"
+          },
+          "role": {
+            "description": "direct: supports the connection; context: background only",
+            "enum": [
+              "direct",
+              "context"
+            ],
+            "title": "Role",
+            "type": "string"
+          },
+          "usefulness": {
+            "description": "What it brings to the connection in class",
+            "title": "Usefulness",
+            "type": "string"
+          }
+        },
+        "required": [
+          "document",
+          "usefulness",
+          "evidence",
+          "role",
+          "quote"
+        ],
+        "title": "AdaptationResource",
+        "type": "object"
+      },
       "AgentContext": {
         "examples": [
           {
@@ -401,6 +646,57 @@
           "thread_id"
         ],
         "title": "ChatThreadDeletedResponse",
+        "type": "object"
+      },
+      "ChosenConnection": {
+        "properties": {
+          "anchor": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "The course part the connection builds on, as the teacher wrote it",
+            "title": "Anchor"
+          },
+          "background": {
+            "default": [],
+            "description": "Context only",
+            "items": {
+              "$ref": "#/components/schemas/EvidencedResource"
+            },
+            "maxItems": 3,
+            "title": "Background",
+            "type": "array"
+          },
+          "resources": {
+            "default": [],
+            "description": "Direct support",
+            "items": {
+              "$ref": "#/components/schemas/EvidencedResource"
+            },
+            "maxItems": 3,
+            "title": "Resources",
+            "type": "array"
+          },
+          "title": {
+            "title": "Title",
+            "type": "string"
+          },
+          "why": {
+            "title": "Why",
+            "type": "string"
+          }
+        },
+        "required": [
+          "title",
+          "anchor",
+          "why"
+        ],
+        "title": "ChosenConnection",
         "type": "object"
       },
       "CompetencyMapping": {
@@ -1588,6 +1884,38 @@
           "objectives"
         ],
         "title": "FileSummary",
+        "type": "object"
+      },
+      "GreenCompLink": {
+        "properties": {
+          "how": {
+            "title": "How",
+            "type": "string"
+          },
+          "id": {
+            "enum": [
+              "valuing_sustainability",
+              "supporting_fairness",
+              "promoting_nature",
+              "systems_thinking",
+              "critical_thinking",
+              "problem_framing",
+              "futures_literacy",
+              "adaptability",
+              "exploratory_thinking",
+              "political_agency",
+              "collective_action",
+              "individual_initiative"
+            ],
+            "title": "Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "how"
+        ],
+        "title": "GreenCompLink",
         "type": "object"
       },
       "GuestFeatureQuota": {
@@ -4674,6 +5002,63 @@
           }
         ],
         "summary": "Generate Syllabus",
+        "tags": [
+          "tutor"
+        ]
+      }
+    },
+    "/api/v1/tutor/course/adaptation": {
+      "post": {
+        "description": "One concrete, limited change to the course for the connection the teacher chose,\nfrom the resources `connection_evidence` kept for it (sent back as they came). Its\nclaims are checked against those resources, and the change is asked again once when\nsome are not established or wrong. `support` is capped by what the check found, and\n`checks` lists the problems for the teacher. `lang` is the teacher's language.",
+        "operationId": "tutor-propose_course_adaptation",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AdaptationRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdaptationProposal"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "502": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "The model gave no usable answer (code UNUSABLE_LLM_OUTPUT)"
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Error"
+          }
+        },
+        "security": [
+          {
+            "APIKeyHeader": []
+          }
+        ],
+        "summary": "Propose one checked change to the course for a connection (syllabus v2)",
         "tags": [
           "tutor"
         ]

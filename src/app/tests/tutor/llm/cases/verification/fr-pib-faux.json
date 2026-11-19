@@ -1,0 +1,32 @@
+{
+  "about": "A change that states the opposite of the resource (a spill lowers GDP): its claim is not established or incorrect.",
+  "lang": "fr",
+  "variables": {
+    "count": 1
+  },
+  "data": {
+    "course": "file:../ideas/fr-macroeconomie.txt",
+    "proposal": "file:proposal-pib-faux.txt",
+    "resource": [
+      {
+        "text": "file:../selection/r-pib-environnement.txt",
+        "attrs": {
+          "role": "direct",
+          "title": "Ce que le PIB ne mesure pas",
+          "source": "openalex · Revue d'économie fictive · fr"
+        }
+      }
+    ]
+  },
+  "expect": {
+    "claims": {
+      "min_items": 1,
+      "has_item": {
+        "status": [
+          "incorrect",
+          "not_established"
+        ]
+      }
+    }
+  }
+}

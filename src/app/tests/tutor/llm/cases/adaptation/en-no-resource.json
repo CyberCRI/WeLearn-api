@@ -1,0 +1,23 @@
+{
+  "about": "A connection without any WeLearn resource: a general change, no evidence, support none.",
+  "lang": "en",
+  "variables": {
+    "count": 0,
+    "has_problems": false
+  },
+  "data": {
+    "course": "file:../ideas/en-corporate-finance.txt",
+    "connection": "file:connection-carbon-discounting.txt"
+  },
+  "expect": {
+    "suggested": {
+      "not_empty": true
+    },
+    "support": {
+      "equals": "none"
+    },
+    "evidence": {
+      "max_items": 0
+    }
+  }
+}

@@ -1,0 +1,2 @@
+Proposed change: Ajouter au thème sur le PIB l'exemple de la marée noire, dont les dépenses de nettoyage peuvent faire augmenter le PIB.
+Why: Les étudiants voient que le PIB ne retranche pas la dégradation de l'environnement.
