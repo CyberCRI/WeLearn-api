@@ -17,7 +17,10 @@ from src.app.core.config import settings
 from src.app.core.lifespan import lifespan
 from src.app.router import api_router, api_tags_metadata
 from src.app.shared.api import health
-from src.app.shared.api.errors import register_exception_handlers
+from src.app.shared.api.errors import (
+    UnhandledErrorMiddleware,
+    register_exception_handlers,
+)
 from src.app.shared.api.monitor_requests import MonitorRequestsMiddleware
 from src.app.shared.api.openapi import generate_operation_id
 from src.app.shared.domain.responses import ERROR_RESPONSES
@@ -108,6 +111,9 @@ async def add_process_time_header(request: Request, call_next):
             return Response(status_code=status.HTTP_204_NO_CONTENT)
         raise
 
+
+# added before CORSMiddleware, so it runs inside it: a 500 the client can read
+app.add_middleware(UnhandledErrorMiddleware)
 
 app.add_middleware(
     CORSMiddleware,
