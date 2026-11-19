@@ -14,6 +14,7 @@ the cases point to. The format is described in `../harness.py`.
   case or a missing text file fails there. The cases themselves only run with
   `make eval-tutor`, for the prompts registered in `harness.py::EVALUATED_PROMPTS`.
 
-The `read/` cases are **fictional** syllabi written as examples. The test syllabi of SY-06
-(anonymised, FR and EN, several disciplines) are added next to them. Never put a real,
+The `read/` and `ideas/` cases are **fictional** syllabi and courses written as examples
+(an `ideas/` text is a course as the prompt receives it: `connections.py::course_block`). The
+test syllabi of SY-06 (anonymised, FR and EN, several disciplines) are added next to them. Never put a real,
 non-anonymised syllabus here: this folder is committed.

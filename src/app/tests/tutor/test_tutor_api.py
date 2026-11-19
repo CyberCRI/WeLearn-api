@@ -14,8 +14,17 @@ from src.app.shared.domain.documents import (
     EnhancedDocumentSlice,
     EnhancedDocumentSlicePayloadModel,
 )
-from src.app.shared.domain.exceptions import NoResultsError, UnusableReadingError
+from src.app.shared.domain.exceptions import (
+    NoResultsError,
+    UnusableLLMOutputError,
+    UnusableReadingError,
+)
 from src.app.tests.user.guest_usage_db import guest_left, guest_use, use_guest_usage_db
+from src.app.tutor.domain.connections import (
+    ConfirmedCourse,
+    ConnectionIdea,
+    ConnectionIdeasResponse,
+)
 from src.app.tutor.domain.course import CourseReading, CourseReadResponse
 from src.app.tutor.domain.models import SyllabusResponseAgent, UserInput
 from src.main import app
@@ -1234,6 +1243,68 @@ class TestCourseRead(TutorApiTestCase):
         response = self.safe_client.post(self.URL, data={"lang": "en"}, headers=HEADERS)
 
         self.assertEqual(response.status_code, 422)
+
+
+class TestConnectionIdeas(TutorApiTestCase):
+    """Syllabus v2: POST /tutor/course/connection_ideas."""
+
+    URL = f"{BASE}/course/connection_ideas"
+    COURSE = {
+        "title": "Macroeconomics",
+        "topics": [{"title": "GDP", "subtopics": ["Measure"]}],
+        "objectives": ["Understand GDP"],
+    }
+
+    @patch(f"{ROUTER}.find_connection_ideas", new_callable=AsyncMock)
+    def test_suggests_ideas_for_the_course_in_the_teacher_language(self, mock_find):
+        mock_find.return_value = ConnectionIdeasResponse(
+            ideas=[
+                ConnectionIdea(
+                    id="idea-1",
+                    title="Limits of GDP",
+                    anchor="GDP",
+                    anchor_label="GDP",
+                    why="GDP leaves out environmental damage.",
+                    use=None,
+                    queries=["limits of GDP", "beyond GDP"],
+                )
+            ],
+            none_reason=None,
+        )
+
+        response = self.client.post(
+            self.URL, json={"course": self.COURSE, "lang": "fr"}, headers=HEADERS
+        )
+
+        self.assertEqual(response.status_code, 200)
+        course, lang = mock_find.await_args.args
+        self.assertEqual(course, ConfirmedCourse.model_validate(self.COURSE))
+        self.assertEqual(lang, "fr")
+        self.assertEqual(response.json()["ideas"][0]["anchor"], "GDP")
+        self.assertIsNone(response.json()["none_reason"])
+
+    @patch(f"{ROUTER}.find_connection_ideas", new_callable=AsyncMock)
+    def test_an_empty_course_or_unknown_language_is_422(self, mock_find):
+        for body in (
+            {"course": {"discipline": "Economics"}},
+            {"course": self.COURSE, "lang": "de"},
+            {"lang": "en"},
+        ):
+            with self.subTest(body=body):
+                response = self.safe_client.post(self.URL, json=body, headers=HEADERS)
+                self.assertEqual(response.status_code, 422)
+        mock_find.assert_not_awaited()
+
+    @patch(f"{ROUTER}.find_connection_ideas", new_callable=AsyncMock)
+    def test_no_usable_answer_is_502(self, mock_find):
+        mock_find.side_effect = UnusableLLMOutputError()
+
+        response = self.safe_client.post(
+            self.URL, json={"course": self.COURSE}, headers=HEADERS
+        )
+
+        self.assertEqual(response.status_code, 502)
+        self.assertEqual(response.json()["detail"]["code"], "UNUSABLE_LLM_OUTPUT")
 
 
 class GuestTutorTestCase(TutorApiTestCase):
