@@ -61,6 +61,8 @@ class SearchService:
     # embedding models, loaded once per process and shared by every instance
     model: dict[str, dict] = {}
     _model_lock = threading.Lock()
+    # one lock per cached tokenizer (see _compute_embeddings)
+    _embedding_locks: dict[int, threading.Lock] = {}
 
     def __init__(self, client):
         logger.debug("SearchService=init_searchService")
@@ -243,9 +245,22 @@ class SearchService:
 
         return inputs
 
+    @classmethod
+    def _embedding_lock(cls, tokenizer) -> threading.Lock:
+        """The lock of one tokenizer and its model, created on first use."""
+        with cls._model_lock:
+            return cls._embedding_locks.setdefault(id(tokenizer), threading.Lock())
+
     @log_time_and_error
     def _compute_embeddings(self, model, tokenizer, inputs: list[str]) -> np.ndarray:
-        with torch.no_grad():
+        """
+        Run in a worker thread. A fast tokenizer is not thread-safe: called with
+        padding, it changes its own settings, and two threads at once fail with
+        "RuntimeError: Already borrowed". Every request shares the cached
+        tokenizer, so one embedding at a time per model; the searches around it
+        stay parallel.
+        """
+        with self._embedding_lock(tokenizer), torch.no_grad():
             tokenized_inputs = tokenizer(
                 inputs, padding=True, truncation=True, return_tensors="pt"
             )

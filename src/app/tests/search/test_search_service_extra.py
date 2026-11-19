@@ -292,6 +292,53 @@ class ComputeEmbeddingsTests(ModelCacheMixin, TestCase):
         self.assertIn("input_ids", model.received)
 
 
+class ComputeEmbeddingsThreadsTests(ModelCacheMixin, TestCase):
+    def test_one_embedding_at_a_time_per_tokenizer(self):
+        # a fast tokenizer called by two threads at once fails ("Already borrowed")
+        class OneThreadTokenizer(FakeTokenizer):
+            def __init__(self):
+                super().__init__()
+                self.busy = threading.Lock()
+                self.overlaps = 0
+
+            def __call__(self, *args, **kwargs):
+                if not self.busy.acquire(blocking=False):
+                    self.overlaps += 1
+                    raise RuntimeError("Already borrowed")
+                try:
+                    time.sleep(0.02)
+                    return super().__call__(*args, **kwargs)
+                finally:
+                    self.busy.release()
+
+        tokenizer = OneThreadTokenizer()
+        errors = []
+
+        def embed():
+            try:
+                self.service._compute_embeddings(FakeModel(), tokenizer, ["a"])
+            except Exception as e:  # pragma: no cover - the failure being tested
+                errors.append(e)
+
+        threads = [threading.Thread(target=embed) for _ in range(4)]
+        for thread in threads:
+            thread.start()
+        for thread in threads:
+            thread.join()
+
+        self.assertEqual((errors, tokenizer.overlaps), ([], 0))
+        self.assertEqual(len(tokenizer.calls), 4)
+
+    def test_each_tokenizer_has_its_own_lock(self):
+        first, second = FakeTokenizer(), FakeTokenizer()
+        self.assertIs(
+            SearchService._embedding_lock(first), SearchService._embedding_lock(first)
+        )
+        self.assertIsNot(
+            SearchService._embedding_lock(first), SearchService._embedding_lock(second)
+        )
+
+
 class EmbedQueryTests(ModelCacheMixin, IsolatedAsyncioTestCase):
     def _cache_model(self, name="m", seq_len=512):
         SearchService.model[name] = {
