@@ -134,7 +134,7 @@ async def read_course_document(
     """
     await check_upload_limits([file], 1, MAX_COURSE_FILE_SIZE)
     [text] = await get_files_content([file])
-    with quota.spend():
+    async with quota.spend():
         return await read_course(text, lang, focus)
 
 
@@ -153,10 +153,10 @@ async def extract_files_content(
     summaries count against their own daily limit, refunded if they fail.
     """
     files_content_str = await _read_documents(files)
-    quota.require_left("syllabus")
+    await quota.require_left("syllabus")
 
     try:
-        with quota.spend():
+        async with quota.spend():
             return await extract_files_summaries(files_content_str, lang)
 
     except HTTPException:
@@ -299,11 +299,11 @@ async def create_syllabus(
         "query_extracts_count": len(body.extracts),
         "documents_count": len(body.documents),
     }
-    quota.consume()
+    await quota.consume()
     try:
         results = await tutor_manager(body, lang, settings, trace_context=trace_context)
     except Exception as e:
-        quota.refund()
+        await quota.refund()
         logger.error(f"Syllabus generation failed: {e}")
         raise HTTPException(
             status_code=status.HTTP_502_BAD_GATEWAY,
@@ -351,7 +351,7 @@ async def handle_syllabus_feedback(
     session_id = extract_session_cookie(request)
 
     try:
-        with quota.spend():
+        async with quota.spend():
             syllabus = await apply_feedback(
                 body,
                 settings,
@@ -511,7 +511,7 @@ async def generate_syllabus(
     body: SyllabusGenerationRequest,
     quota: GuestQuota = Depends(guest_quota("syllabus")),
 ):
-    quota.consume()
+    await quota.consume()
     try:
         user_input = UserInput(
             metadata=body.course_metadata,
@@ -535,7 +535,7 @@ async def generate_syllabus(
             **output,
         }
     except Exception as e:
-        quota.refund()
+        await quota.refund()
         error = describe_error(e)
         logger.error("Error generating syllabus: %s", error)
         return {

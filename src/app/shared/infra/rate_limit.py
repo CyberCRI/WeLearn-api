@@ -80,13 +80,6 @@ class SlidingWindowRateLimiter:
                 del self._hits[next(iter(self._hits))]
             return 0.0
 
-    def refund(self, key: str) -> None:
-        """Forget the latest hit of `key`, for an accepted action that failed."""
-        with self._lock:
-            hits = self._hits.get(key)
-            if hits:
-                hits.pop()
-
     def peek(self, key: str) -> tuple[int, float]:
         """
         Without recording a hit: how many hits `key` has left, and the seconds

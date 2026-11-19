@@ -103,7 +103,7 @@ class Settings(BaseSettings):
     # client's `auth` feature flag, per environment; off, a guest's cookie is enough
     GUEST_RESTRICTIONS_ENABLED: bool = False
     # daily guest quotas while GUEST_RESTRICTIONS_ENABLED is on (sliding 24h window
-    # per anonymous user, in memory: per pod, reset on restart)
+    # per anonymous user, counted in user_related.guest_feature_usage)
     GUEST_CHAT_DAILY_LIMIT: int = 5
     GUEST_SYLLABUS_DAILY_LIMIT: int = 1
     # changes asked on a generated syllabus, and LLM summaries of uploaded files

@@ -208,7 +208,7 @@ async def agent_stream_response(
             user_id=user_id,
         )
     # counted before the response starts, so a 403 can still be sent
-    quota.consume()
+    await quota.consume()
 
     return StreamingResponse(
         content=_stream_agent_response(
@@ -308,7 +308,7 @@ async def agent_response(
             if body.thread_id:
                 await ensure_thread_access(memory, thread_id, user_id)
 
-            with quota.spend():
+            async with quota.spend():
                 res = await chatfactory.agent_message(
                     query=body.query,
                     memory=memory,
@@ -321,7 +321,7 @@ async def agent_response(
                     owner_user_id=user_id,
                 )
     else:
-        with quota.spend():
+        async with quota.spend():
             res = await chatfactory.agent_message(
                 query=body.query,
                 corpora=body.corpora,

@@ -394,16 +394,16 @@ async def get_guest_quota(request: Request) -> GuestQuotaResponse:
     if user_id is None:
         return GuestQuotaResponse(limited=False)
 
-    def feature_quota(feature: GuestFeature) -> GuestFeatureQuota:
-        limit, remaining, resets_in = quota_status(feature, user_id)
+    async def feature_quota(feature: GuestFeature) -> GuestFeatureQuota:
+        limit, remaining, resets_in = await quota_status(feature, user_id)
         return GuestFeatureQuota(limit=limit, remaining=remaining, resets_in=resets_in)
 
     return GuestQuotaResponse(
         limited=True,
-        chat=feature_quota("chat"),
-        syllabus=feature_quota("syllabus"),
-        feedback=feature_quota("feedback"),
-        files=feature_quota("files"),
+        chat=await feature_quota("chat"),
+        syllabus=await feature_quota("syllabus"),
+        feedback=await feature_quota("feedback"),
+        files=await feature_quota("files"),
     )
 
 
