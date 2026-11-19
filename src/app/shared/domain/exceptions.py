@@ -216,6 +216,22 @@ class UnusableReadingError(UnusableLLMOutputError):
     default_code = "UNUSABLE_READING"
 
 
+class LLMUnavailableError(WeLearnError):
+    """Raised when the LLM provider fails or does not answer in time"""
+
+    status_code = status.HTTP_503_SERVICE_UNAVAILABLE
+    default_message = "The language model is unavailable, try again later"
+    default_code = "LLM_UNAVAILABLE"
+
+
+class CourseTooLargeError(WeLearnError):
+    """Raised when a course sent back by the client is larger than a prompt takes"""
+
+    status_code = status.HTTP_413_REQUEST_ENTITY_TOO_LARGE
+    default_message = "The course is too large"
+    default_code = "COURSE_TOO_LARGE"
+
+
 class EmptyDocumentTextError(WeLearnError):
     """Raised when no text can be extracted from a file (e.g. a scanned PDF)"""
 

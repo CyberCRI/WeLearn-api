@@ -123,3 +123,40 @@ class ClientIpTests(unittest.TestCase):
 
     def test_no_peer(self):
         self.assertEqual(client_ip(SimpleNamespace(client=None)), "unknown")
+
+
+class InFlightLimiterTests(unittest.TestCase):
+    def test_up_to_the_limit_per_key_until_released(self):
+        limiter = rate_limit.InFlightLimiter(2)
+
+        self.assertTrue(limiter.acquire("a"))
+        self.assertTrue(limiter.acquire("a"))
+        self.assertFalse(limiter.acquire("a"))
+        # another key has its own places
+        self.assertTrue(limiter.acquire("b"))
+
+        limiter.release("a")
+        self.assertEqual(limiter.running("a"), 1)
+        self.assertTrue(limiter.acquire("a"))
+
+    def test_a_key_with_nothing_running_is_forgotten(self):
+        limiter = rate_limit.InFlightLimiter(1)
+        limiter.acquire("a")
+        limiter.release("a")
+        # an extra release does not go below nothing
+        limiter.release("a")
+
+        self.assertEqual(len(limiter), 0)
+        self.assertEqual(limiter.running("a"), 0)
+
+    def test_reset_with_the_other_limiters(self):
+        limiter = rate_limit.InFlightLimiter(1)
+        limiter.acquire("a")
+
+        reset_rate_limiters()
+
+        self.assertTrue(limiter.acquire("a"))
+
+    def test_needs_a_positive_limit(self):
+        with self.assertRaises(ValueError):
+            rate_limit.InFlightLimiter(0)

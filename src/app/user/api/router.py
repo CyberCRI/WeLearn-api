@@ -404,6 +404,7 @@ async def get_guest_quota(request: Request) -> GuestQuotaResponse:
         syllabus=await feature_quota("syllabus"),
         feedback=await feature_quota("feedback"),
         files=await feature_quota("files"),
+        adaptation=await feature_quota("adaptation"),
     )
 
 

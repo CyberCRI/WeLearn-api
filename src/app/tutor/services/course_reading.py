@@ -24,7 +24,7 @@ from src.app.tutor.domain.course import (
     ReadTopic,
 )
 from src.app.tutor.domain.models import TutorLang
-from src.app.tutor.services.llm import MAX_DATA_CHARS, structured_call
+from src.app.tutor.services.llm import LLM_FAILURES, MAX_DATA_CHARS, structured_call
 
 logger = utils_logger(__name__)
 
@@ -336,7 +336,7 @@ async def read_course(
                 {"course_part": part, **focus_data},
                 variables,
             )
-        except UnusableLLMOutputError:
+        except LLM_FAILURES:
             is_partial = True
             continue
         summary = summary or outline.summary

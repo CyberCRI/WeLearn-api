@@ -10,6 +10,7 @@ into the template: it is sent in the human message as tagged, truncated data blo
 the system prompt says their content is data, never instructions.
 """
 
+import asyncio
 import hashlib
 import re
 from collections.abc import Callable, Mapping, Sequence
@@ -18,6 +19,7 @@ from functools import lru_cache
 from pathlib import Path
 from typing import TypeVar
 
+import httpx
 from jinja2 import Environment, FileSystemLoader, StrictUndefined, meta
 from langchain_core.exceptions import OutputParserException
 from langchain_core.runnables import RunnableConfig
@@ -25,7 +27,7 @@ from langchain_mistralai import ChatMistralAI  # type: ignore
 from langsmith import traceable
 from pydantic import BaseModel, ValidationError
 
-from src.app.shared.domain.exceptions import UnusableLLMOutputError
+from src.app.shared.domain.exceptions import LLMUnavailableError, UnusableLLMOutputError
 from src.app.shared.infra.tracing import TraceName
 from src.app.shared.utils.dependencies import get_settings
 from src.app.shared.utils.logger import logger as utils_logger
@@ -40,6 +42,9 @@ PROMPTS_DIR = Path(__file__).parent.parent / "domain" / "prompts"
 MAX_DATA_CHARS = 60_000
 # one retry for a malformed answer, like generate_syllabus
 MAX_ATTEMPTS = 2
+
+# what a step that can do without one LLM answer catches: none usable, or no answer
+LLM_FAILURES = (UnusableLLMOutputError, LLMUnavailableError)
 
 _TAG = re.compile(r"^[a-z][a-z_]*$")
 # an attribute value is a short label (a source, a role): no quote, bracket or line break
@@ -198,6 +203,10 @@ async def structured_call(
 
     `is_usable` adds checks the schema alone can't make (they need the course or the
     resources): an answer it rejects is asked again like a malformed one.
+
+    Each attempt has TUTOR_LLM_TIMEOUT_SECONDS, the Mistral client's own retries
+    included. A timeout or an error of the provider is not asked again: it raises
+    LLMUnavailableError (503) at once.
     """
     messages = build_messages(prompt_name, lang, data, variables, max_data_chars)
     model = await get_chat_model()
@@ -213,10 +222,22 @@ async def structured_call(
 
     for attempt in range(1, MAX_ATTEMPTS + 1):
         try:
-            result = await structured.ainvoke(messages, config=config)
+            result = await asyncio.wait_for(
+                structured.ainvoke(messages, config=config),
+                timeout=get_settings().TUTOR_LLM_TIMEOUT_SECONDS,
+            )
             # with_structured_output is typed dict | BaseModel: normalise to the schema
             # (also raises ValidationError when the LLM returned no or partial fields)
             answer = schema.model_validate(result, from_attributes=True)
+        except (TimeoutError, httpx.HTTPError) as e:
+            logger.warning(
+                "tutor_llm_unavailable prompt=%s lang=%s attempt=%s error=%s",
+                prompt_name,
+                lang,
+                attempt,
+                type(e).__name__,
+            )
+            raise LLMUnavailableError() from e
         except (OutputParserException, ValidationError) as e:
             error = type(e).__name__
         else:

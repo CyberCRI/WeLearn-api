@@ -1,11 +1,13 @@
+import asyncio
 import unittest
 from unittest import mock
 
+import httpx
 from jinja2 import DictLoader, Environment, StrictUndefined, UndefinedError
 from langchain_core.exceptions import OutputParserException
 from pydantic import BaseModel
 
-from src.app.shared.domain.exceptions import UnusableLLMOutputError
+from src.app.shared.domain.exceptions import LLMUnavailableError, UnusableLLMOutputError
 from src.app.tutor.services import llm
 
 PROMPTS = {
@@ -192,6 +194,39 @@ class StructuredCallTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(structured.ainvoke.await_count, 2)
         # no answer content in the logs
         self.assertNotIn("bad json", "\n".join(logs.output))
+
+    async def test_a_call_past_its_deadline_is_unavailable_at_once(self):
+        async def too_slow(*args, **kwargs):
+            await asyncio.sleep(1)
+
+        model, structured = self._model(too_slow)
+
+        with (
+            mock.patch.object(llm.get_settings(), "TUTOR_LLM_TIMEOUT_SECONDS", 0.01),
+            self.assertLogs(llm.logger, level="WARNING") as logs,
+        ):
+            with self.assertRaises(LLMUnavailableError) as raised:
+                await self._call(model)
+
+        self.assertEqual(raised.exception.status_code, 503)
+        self.assertEqual(raised.exception.msg_code, "LLM_UNAVAILABLE")
+        # not asked again: the provider would only make the teacher wait longer
+        self.assertEqual(structured.ainvoke.await_count, 1)
+        self.assertIn("tutor_llm_unavailable", logs.output[0])
+        self.assertIn("error=TimeoutError", logs.output[0])
+
+    async def test_an_error_of_the_provider_is_unavailable(self):
+        error = httpx.HTTPStatusError(
+            "429",
+            request=httpx.Request("POST", "https://x"),
+            response=httpx.Response(429),
+        )
+        model, structured = self._model([error])
+
+        with self.assertLogs(llm.logger, level="WARNING"):
+            with self.assertRaises(LLMUnavailableError):
+                await self._call(model)
+        self.assertEqual(structured.ainvoke.await_count, 1)
 
     async def test_raises_after_two_unusable_answers(self):
         model, structured = self._model([{"titles": "not a list"}, None])

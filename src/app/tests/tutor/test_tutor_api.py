@@ -15,6 +15,7 @@ from src.app.shared.domain.documents import (
     EnhancedDocumentSlicePayloadModel,
 )
 from src.app.shared.domain.exceptions import (
+    LLMUnavailableError,
     NoResultsError,
     UnusableLLMOutputError,
     UnusableReadingError,
@@ -1398,6 +1399,19 @@ class TestCourseAdaptation(TutorApiTestCase):
             "lang": "fr",
         }
 
+    PROPOSAL = AdaptationProposal(
+        kind="topic",
+        original="Soils",
+        suggested="Add soil carbon storage.",
+        why="Students link soils and climate.",
+        support="partial",
+        resources=[],
+        guidance=AdaptationGuidance(
+            learning=None, greencomp=None, teaching=None, check=None
+        ),
+        checks=AdaptationChecks(status="checked", problems=["P."], unbacked_names=[]),
+    )
+
     @patch(f"{ROUTER}.adapt_course", new_callable=AsyncMock)
     def test_proposes_a_checked_change_for_the_connection(self, mock_adapt):
         mock_adapt.return_value = AdaptationProposal(
@@ -1595,6 +1609,48 @@ class TestSyllabusGuestQuota(GuestTutorTestCase):
 
         for _ in range(self.LIMIT + 1):
             self.assertEqual(self.read_course().status_code, 200)
+        self.assertEqual(self.left(), self.LIMIT)
+
+
+class TestAdaptationGuestQuota(GuestTutorTestCase):
+    """With guest restrictions on, a guest gets GUEST_ADAPTATION_DAILY_LIMIT changes a day."""
+
+    LIMIT = settings.GUEST_ADAPTATION_DAILY_LIMIT
+
+    def adapt(self):
+        return self.safe_client.post(
+            f"{BASE}/course/adaptation",
+            json=TestCourseAdaptation.body(TestCourseAdaptation()),
+            headers=self.GUEST_HEADERS,
+        )
+
+    def left(self) -> int:
+        return guest_left("adaptation", self.GUEST)
+
+    @patch(f"{ROUTER}.adapt_course", new_callable=AsyncMock)
+    def test_each_change_counts_until_the_quota_is_used(self, mock_adapt):
+        mock_adapt.return_value = TestCourseAdaptation.PROPOSAL
+
+        for left in range(self.LIMIT - 1, -1, -1):
+            response = self.adapt()
+            self.assertEqual(response.status_code, 200)
+            self.assertEqual(response.headers["X-Guest-Remaining"], str(left))
+
+        response = self.adapt()
+
+        self.assertEqual(response.status_code, 403)
+        self.assertEqual(response.json()["detail"]["feature"], "adaptation")
+        self.assertEqual(mock_adapt.await_count, self.LIMIT)
+        # the syllabus of the day is untouched
+        self.assertEqual(
+            guest_left("syllabus", self.GUEST), settings.GUEST_SYLLABUS_DAILY_LIMIT
+        )
+
+    @patch(f"{ROUTER}.adapt_course", new_callable=AsyncMock)
+    def test_a_failed_change_is_refunded(self, mock_adapt):
+        for error in (UnusableLLMOutputError(), LLMUnavailableError()):
+            mock_adapt.side_effect = error
+            self.assertIn(self.adapt().status_code, (502, 503))
         self.assertEqual(self.left(), self.LIMIT)
 
 

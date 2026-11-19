@@ -1944,6 +1944,16 @@
       "GuestQuotaResponse": {
         "description": "The caller's daily guest quotas. `limited` is false for an account, or when\nguest restrictions are off: the features are then null.",
         "properties": {
+          "adaptation": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/GuestFeatureQuota"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
           "chat": {
             "anyOf": [
               {
@@ -5009,7 +5019,7 @@
     },
     "/api/v1/tutor/course/adaptation": {
       "post": {
-        "description": "One concrete, limited change to the course for the connection the teacher chose,\nfrom the resources `connection_evidence` kept for it (sent back as they came). Its\nclaims are checked against those resources, and the change is asked again once when\nsome are not established or wrong. `support` is capped by what the check found, and\n`checks` lists the problems for the teacher. `lang` is the teacher's language.",
+        "description": "One concrete, limited change to the course for the connection the teacher chose,\nfrom the resources `connection_evidence` kept for it (sent back as they came). Its\nclaims are checked against those resources, and the change is asked again once when\nsome are not established or wrong. `support` is capped by what the check found, and\n`checks` lists the problems for the teacher. `lang` is the teacher's language.\n\nA guest's change counts against their daily adaptations, refunded if it fails.",
         "operationId": "tutor-propose_course_adaptation",
         "requestBody": {
           "content": {
@@ -5032,6 +5042,46 @@
             },
             "description": "Successful Response"
           },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Invalid or expired token, or, with guest restrictions on, a guest without a known session (code SESSION_NOT_FOUND)"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Guest daily quota used up (code GUEST_QUOTA_EXCEEDED, with `feature` and `retry_after` in seconds, and a Retry-After header), or the access of a time-limited account has ended (code ACCESS_EXPIRED)"
+          },
+          "413": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "The course does not fit a prompt (code COURSE_TOO_LARGE)"
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "The session already has its LLM requests running (code TOO_MANY_REQUESTS_IN_FLIGHT) or sent too many requests (code RATE_LIMITED); both come with a Retry-After header"
+          },
           "502": {
             "content": {
               "application/json": {
@@ -5041,6 +5091,16 @@
               }
             },
             "description": "The model gave no usable answer (code UNUSABLE_LLM_OUTPUT)"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "The model failed or did not answer in time (code LLM_UNAVAILABLE)"
           },
           "default": {
             "content": {
@@ -5089,6 +5149,36 @@
             },
             "description": "Successful Response"
           },
+          "413": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "The course does not fit a prompt (code COURSE_TOO_LARGE)"
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "The session already has its LLM requests running (code TOO_MANY_REQUESTS_IN_FLIGHT) or sent too many requests (code RATE_LIMITED); both come with a Retry-After header"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "The model failed or did not answer in time (code LLM_UNAVAILABLE)"
+          },
           "default": {
             "content": {
               "application/json": {
@@ -5136,6 +5226,26 @@
             },
             "description": "Successful Response"
           },
+          "413": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "The course does not fit a prompt (code COURSE_TOO_LARGE)"
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "The session already has its LLM requests running (code TOO_MANY_REQUESTS_IN_FLIGHT) or sent too many requests (code RATE_LIMITED); both come with a Retry-After header"
+          },
           "502": {
             "content": {
               "application/json": {
@@ -5145,6 +5255,16 @@
               }
             },
             "description": "The model gave no usable answer (code UNUSABLE_LLM_OUTPUT)"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "The model failed or did not answer in time (code LLM_UNAVAILABLE)"
           },
           "default": {
             "content": {
@@ -5243,6 +5363,16 @@
             },
             "description": "No text in the file, e.g. a scanned PDF (code EMPTY_DOCUMENT_TEXT), or invalid form fields"
           },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "The session already has its LLM requests running (code TOO_MANY_REQUESTS_IN_FLIGHT) or sent too many requests (code RATE_LIMITED); both come with a Retry-After header"
+          },
           "502": {
             "content": {
               "application/json": {
@@ -5252,6 +5382,16 @@
               }
             },
             "description": "The document could not be read (code UNUSABLE_READING)"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "The model failed or did not answer in time (code LLM_UNAVAILABLE)"
           },
           "default": {
             "content": {

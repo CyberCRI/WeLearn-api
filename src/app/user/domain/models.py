@@ -123,3 +123,5 @@ class GuestQuotaResponse(BaseModel):
     feedback: GuestFeatureQuota | None = None
     # LLM summaries of uploaded files (tutor step 1)
     files: GuestFeatureQuota | None = None
+    # changes proposed for a sustainability connection (syllabus v2)
+    adaptation: GuestFeatureQuota | None = None

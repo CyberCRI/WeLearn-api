@@ -59,6 +59,12 @@ from src.app.tutor.domain.models import (
 )
 from src.app.tutor.services.adaptation import adapt_course
 from src.app.tutor.services.connections import find_connection_ideas
+from src.app.tutor.services.course_limits import (
+    COURSE_LIMIT_RESPONSES,
+    COURSE_TOO_LARGE_RESPONSE,
+    course_llm_request,
+    ensure_course_fits,
+)
 from src.app.tutor.services.course_reading import MAX_FOCUS_CHARS, read_course
 from src.app.tutor.services.evidence import find_connection_evidence
 from src.app.tutor.services.extractor import extract_files_summaries, truncate_documents
@@ -125,8 +131,13 @@ COURSE_READ_RESPONSES: dict[int | str, dict] = {
 @router.post(
     "/course/read",
     response_model=CourseReadResponse,
-    responses={**COURSE_READ_RESPONSES, **GUEST_QUOTA_RESPONSES},
+    responses={
+        **COURSE_READ_RESPONSES,
+        **GUEST_QUOTA_RESPONSES,
+        **COURSE_LIMIT_RESPONSES,
+    },
     summary="Read a course document (syllabus v2)",
+    dependencies=[Depends(course_llm_request)],
 )
 async def read_course_document(
     file: Annotated[UploadFile, File()],
@@ -154,13 +165,16 @@ UNUSABLE_LLM_OUTPUT_RESPONSE: dict[int | str, dict] = {
         "description": "The model gave no usable answer (code UNUSABLE_LLM_OUTPUT)",
     },
 }
+# the JSON routes of syllabus v2, which take the course back
+COURSE_ROUTE_RESPONSES = {**COURSE_LIMIT_RESPONSES, **COURSE_TOO_LARGE_RESPONSE}
 
 
 @router.post(
     "/course/connection_ideas",
     response_model=ConnectionIdeasResponse,
-    responses=UNUSABLE_LLM_OUTPUT_RESPONSE,
+    responses={**COURSE_ROUTE_RESPONSES, **UNUSABLE_LLM_OUTPUT_RESPONSE},
     summary="Suggest sustainability connections for a course (syllabus v2)",
+    dependencies=[Depends(course_llm_request)],
 )
 async def suggest_connection_ideas(
     body: ConnectionIdeasRequest,
@@ -171,13 +185,16 @@ async def suggest_connection_ideas(
     searches for its resources. No connection at all comes with `none_reason`.
     `lang` is the teacher's language (the answer's).
     """
+    ensure_course_fits(body.course)
     return await find_connection_ideas(body.course, body.lang)
 
 
 @router.post(
     "/course/connection_evidence",
     response_model=ConnectionEvidenceResponse,
+    responses=COURSE_ROUTE_RESPONSES,
     summary="Find and judge the WeLearn resources of a connection (syllabus v2)",
+    dependencies=[Depends(course_llm_request)],
 )
 async def judge_connection_evidence(
     body: ConnectionEvidenceRequest,
@@ -193,6 +210,7 @@ async def judge_connection_evidence(
     `status` is `unchecked` when the judgement gave no usable answer: ask again for this
     idea alone. `lang` is the teacher's language (the answer's).
     """
+    ensure_course_fits(body.course)
     return await find_connection_evidence(
         body.course, body.idea, body.lang, sp, background_tasks
     )
@@ -201,18 +219,30 @@ async def judge_connection_evidence(
 @router.post(
     "/course/adaptation",
     response_model=AdaptationProposal,
-    responses=UNUSABLE_LLM_OUTPUT_RESPONSE,
+    responses={
+        **COURSE_ROUTE_RESPONSES,
+        **UNUSABLE_LLM_OUTPUT_RESPONSE,
+        **GUEST_QUOTA_RESPONSES,
+    },
     summary="Propose one checked change to the course for a connection (syllabus v2)",
+    dependencies=[Depends(course_llm_request)],
 )
-async def propose_course_adaptation(body: AdaptationRequest) -> AdaptationProposal:
+async def propose_course_adaptation(
+    body: AdaptationRequest,
+    quota: GuestQuota = Depends(guest_quota("adaptation")),
+) -> AdaptationProposal:
     """
     One concrete, limited change to the course for the connection the teacher chose,
     from the resources `connection_evidence` kept for it (sent back as they came). Its
     claims are checked against those resources, and the change is asked again once when
     some are not established or wrong. `support` is capped by what the check found, and
     `checks` lists the problems for the teacher. `lang` is the teacher's language.
+
+    A guest's change counts against their daily adaptations, refunded if it fails.
     """
-    return await adapt_course(body.course, body.connection, body.lang)
+    ensure_course_fits(body.course)
+    async with quota.spend():
+        return await adapt_course(body.course, body.connection, body.lang)
 
 
 @router.post(

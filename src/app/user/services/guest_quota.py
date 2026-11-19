@@ -3,8 +3,9 @@ Daily quotas of guests (no Keycloak account) for the features that call an LLM.
 
 While GUEST_RESTRICTIONS_ENABLED is on, a guest gets GUEST_CHAT_DAILY_LIMIT chat
 questions, GUEST_SYLLABUS_DAILY_LIMIT syllabi, GUEST_FEEDBACK_DAILY_LIMIT changes
-asked on a syllabus and GUEST_FILES_DAILY_LIMIT file summaries per sliding 24h
-window. The key is the anonymous user of the session cookie, so clearing the
+asked on a syllabus, GUEST_FILES_DAILY_LIMIT file summaries and
+GUEST_ADAPTATION_DAILY_LIMIT changes proposed for a sustainability connection
+(syllabus v2) per sliding 24h window. The key is the anonymous user of the session cookie, so clearing the
 browser storage does not reset it. Accounts, and every caller while the flag is
 off, are not limited.
 
@@ -47,7 +48,7 @@ from src.app.user.services.account import (
 logger = logger_utils(__name__)
 settings = get_settings()
 
-GuestFeature = Literal["chat", "syllabus", "feedback", "files"]
+GuestFeature = Literal["chat", "syllabus", "feedback", "files", "adaptation"]
 
 GUEST_QUOTA_WINDOW = timedelta(hours=24)
 GUEST_QUOTA_EXCEEDED_CODE = "GUEST_QUOTA_EXCEEDED"
@@ -60,6 +61,7 @@ GUEST_USAGE_KEYS: dict[GuestFeature, UsageKey] = {
     "syllabus": ("syllabus", "generate"),
     "feedback": ("syllabus", "feedback"),
     "files": ("syllabus", "files"),
+    "adaptation": ("syllabus", "adaptation"),
 }
 
 # new guests per client IP; only used when GUEST_SESSIONS_PER_IP_HOURLY > 0
@@ -106,6 +108,7 @@ def guest_quota_limit(feature: GuestFeature) -> int:
         "syllabus": settings.GUEST_SYLLABUS_DAILY_LIMIT,
         "feedback": settings.GUEST_FEEDBACK_DAILY_LIMIT,
         "files": settings.GUEST_FILES_DAILY_LIMIT,
+        "adaptation": settings.GUEST_ADAPTATION_DAILY_LIMIT,
     }[feature]
 
 
