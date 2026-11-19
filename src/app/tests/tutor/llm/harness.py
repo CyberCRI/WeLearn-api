@@ -10,7 +10,9 @@ A case is a JSON file in `cases/<prompt>/`:
       "expect": {"title": {"contains": "sociolinguistique"}, "topics": {"min_items": 3}}
     }
 
-- `data` values are text, or `file:<name>` for a UTF-8 text file next to the case.
+- `data` values are text, or `file:<name>` for a UTF-8 text file next to the case. A tag
+  sent as several numbered blocks (the resources of `selection`) takes a list of
+  `{"text": ..., "attrs": {...}}`, each `text` read the same way.
 - `expect` maps a dotted path of the answer to checks: `equals`, `contains` (case-insensitive,
   in a text or in a list of texts), `min_items`, `max_items`, `not_empty`.
 """
@@ -22,8 +24,9 @@ from typing import Any
 
 from pydantic import BaseModel
 
-from src.app.tutor.domain.connections import IdeasAnswer
+from src.app.tutor.domain.connections import IdeasAnswer, SelectionAnswer
 from src.app.tutor.domain.course import CourseReading
+from src.app.tutor.services.llm import DataBlock
 
 CASES_DIR = Path(__file__).parent / "cases"
 
@@ -32,6 +35,7 @@ CASES_DIR = Path(__file__).parent / "cases"
 EVALUATED_PROMPTS: dict[str, type[BaseModel]] = {
     "read": CourseReading,
     "ideas": IdeasAnswer,
+    "selection": SelectionAnswer,
 }
 
 
@@ -40,9 +44,15 @@ class EvalCase:
     prompt: str
     id: str
     lang: str
-    data: dict[str, str]
+    data: dict[str, str | list[DataBlock]]
     variables: dict[str, Any] = field(default_factory=dict)
     expect: dict[str, dict[str, Any]] = field(default_factory=dict)
+
+
+def _text(value: str, folder: Path) -> str:
+    if value.startswith("file:"):
+        return (folder / value[len("file:") :]).read_text(encoding="utf-8")
+    return value
 
 
 def load_cases(prompt: str, cases_dir: Path = CASES_DIR) -> list[EvalCase]:
@@ -51,9 +61,12 @@ def load_cases(prompt: str, cases_dir: Path = CASES_DIR) -> list[EvalCase]:
         raw = json.loads(path.read_text(encoding="utf-8"))
         data = {
             tag: (
-                (path.parent / value[len("file:") :]).read_text(encoding="utf-8")
-                if value.startswith("file:")
-                else value
+                _text(value, path.parent)
+                if isinstance(value, str)
+                else [
+                    DataBlock(_text(block["text"], path.parent), block.get("attrs", {}))
+                    for block in value
+                ]
             )
             for tag, value in raw["data"].items()
         }

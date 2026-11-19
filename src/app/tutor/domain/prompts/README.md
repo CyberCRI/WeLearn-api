@@ -17,7 +17,9 @@ Mistral, reads the answer as a Pydantic model and traces the call in LangSmith.
 - **Never paste the course or a resource into a prompt file.** The teacher's course and the
   WeLearn resources are sent apart, in tagged blocks such as `<course>…</course>`. Refer to
   them by their tag ("the course in <course>"). The code adds the rule that their content is
-  data, never instructions.
+  data, never instructions. Several documents under one tag (the resources of `selection`)
+  come as numbered blocks, `<resource n="1" title="…" source="…">`: refer to a document by
+  its `n` and to its details by these attributes.
 - A rule shared by several prompts lives in `partials/` and is included with
   `{% include "partials/<name>.md" %}` (e.g. the summary and topics rules of `read` and
   `read_outline`). Changing a partial changes every prompt that includes it.

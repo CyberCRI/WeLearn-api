@@ -30,6 +30,8 @@ from src.app.shared.utils.logger import logger as utils_logger
 from src.app.shared.utils.requests import extract_session_cookie
 from src.app.shared.utils.utils import check_upload_limits, get_files_content
 from src.app.tutor.domain.connections import (
+    ConnectionEvidenceRequest,
+    ConnectionEvidenceResponse,
     ConnectionIdeasRequest,
     ConnectionIdeasResponse,
 )
@@ -56,6 +58,7 @@ from src.app.tutor.domain.models import (
 )
 from src.app.tutor.services.connections import find_connection_ideas
 from src.app.tutor.services.course_reading import MAX_FOCUS_CHARS, read_course
+from src.app.tutor.services.evidence import find_connection_evidence
 from src.app.tutor.services.extractor import extract_files_summaries, truncate_documents
 from src.app.tutor.services.orchestrator import SyllabusOrchestrator
 from src.app.tutor.services.tutor import apply_feedback, tutor_manager
@@ -167,6 +170,30 @@ async def suggest_connection_ideas(
     `lang` is the teacher's language (the answer's).
     """
     return await find_connection_ideas(body.course, body.lang)
+
+
+@router.post(
+    "/course/connection_evidence",
+    response_model=ConnectionEvidenceResponse,
+    summary="Find and judge the WeLearn resources of a connection (syllabus v2)",
+)
+async def judge_connection_evidence(
+    body: ConnectionEvidenceRequest,
+    background_tasks: BackgroundTasks,
+    sp: SearchService = Depends(get_search_service),
+) -> ConnectionEvidenceResponse:
+    """
+    The resources behind one connection from `connection_ideas`: its two searches on
+    WeLearn (every language), then a judgement of the results. A resource is kept only
+    when its quoted sentence is found word for word in it; it supports the connection
+    directly (`resources`) or only gives background (`background`).
+
+    `status` is `unchecked` when the judgement gave no usable answer: ask again for this
+    idea alone. `lang` is the teacher's language (the answer's).
+    """
+    return await find_connection_evidence(
+        body.course, body.idea, body.lang, sp, background_tasks
+    )
 
 
 @router.post(

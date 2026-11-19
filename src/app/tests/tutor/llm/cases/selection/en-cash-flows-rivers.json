@@ -1,0 +1,28 @@
+{
+  "about": "An analogy (cash flows as river flows): judged not genuine, nothing kept.",
+  "lang": "en",
+  "variables": {
+    "count": 1
+  },
+  "data": {
+    "course": "file:../ideas/en-corporate-finance.txt",
+    "idea": "file:idea-cash-rivers.txt",
+    "resource": [
+      {
+        "text": "file:r-river-discharge.txt",
+        "attrs": {
+          "title": "River discharge",
+          "source": "wikipedia · en"
+        }
+      }
+    ]
+  },
+  "expect": {
+    "keep": {
+      "equals": false
+    },
+    "resources": {
+      "max_items": 0
+    }
+  }
+}

@@ -1,0 +1,4 @@
+Title: Les limites du PIB comme mesure du bien-être
+Part of the course concerned: Le PIB : définition et mesure
+Why: Le PIB compte la production sans retrancher l'épuisement des ressources naturelles ni la dégradation de l'environnement.
+Use of the course's concept: Partir de la définition du PIB comme somme des valeurs ajoutées pour montrer ce qu'il ne mesure pas.

@@ -6,10 +6,11 @@ corrections included, degree-level objectives left out). The client sends it bac
 call: the endpoints keep no state.
 """
 
-from typing import Annotated
+from typing import Annotated, Literal, get_args
 
-from pydantic import AfterValidator, BaseModel, Field, model_validator
+from pydantic import AfterValidator, BaseModel, BeforeValidator, Field, model_validator
 
+from src.app.shared.domain.documents import EnhancedDocumentSlice
 from src.app.tutor.domain.course import Answer, Text, Texts
 from src.app.tutor.domain.models import TutorLang
 
@@ -126,3 +127,89 @@ class ConnectionIdeasResponse(BaseModel):
     none_reason: str | None = Field(
         description="Why no connection is proposed, for the teacher; set only when ideas is empty"
     )
+
+
+# ---- the `selection` prompt's answer ----
+
+Fit = Literal["genuine", "analogy", "off_discipline"]
+Relevance = Literal["direct", "context"]
+FITS: tuple[str, ...] = get_args(Fit)
+RELEVANCES: tuple[str, ...] = get_args(Relevance)
+
+
+def _known(values: tuple[str, ...]) -> BeforeValidator:
+    """An unknown value is no value: not worth losing the whole answer."""
+    return BeforeValidator(lambda value: value if value in values else None)
+
+
+class SelectedResource(Answer):
+    # every field may be missing: one bad item is left out, not the whole answer
+    document: int | None = Field(default=None, description='The "n" of the document')
+    subject: Text = None
+    concept_terms: Texts = []
+    sustainability_terms: Texts = []
+    same_sense: bool | None = None
+    establishes: bool | None = None
+    relevance: Annotated[Relevance | None, _known(RELEVANCES)] = None
+    usefulness: Text = None
+    evidence: Text = Field(
+        default=None, description="One sentence copied word for word from the document"
+    )
+
+
+class SelectionAnswer(Answer):
+    """Answer of the `selection` prompt."""
+
+    fit: Annotated[Fit | None, _known(FITS)] = None
+    fit_reason: Text = None
+    keep: bool
+    concept: Text = None
+    why: Text = None
+    resources: list[SelectedResource] = []
+
+
+# ---- POST /tutor/course/connection_evidence ----
+
+
+class ConnectionEvidenceRequest(BaseModel):
+    course: ConfirmedCourse
+    idea: ConnectionIdea
+    lang: TutorLang = "en"
+
+
+class EvidencedResource(BaseModel):
+    document: EnhancedDocumentSlice
+    usefulness: str = Field(description="What it brings to the connection in class")
+    evidence: str = Field(
+        description="The sentence it was kept for, found word for word in its text"
+    )
+
+
+EvidenceStatus = Literal["supported", "unsupported", "forced", "unchecked"]
+
+
+class ConnectionEvidenceResponse(BaseModel):
+    status: EvidenceStatus = Field(
+        description=(
+            "supported: at least one resource supports the connection directly; "
+            "unsupported: none does (no candidate, or none passed the checks); "
+            "forced: the connection itself was judged an analogy or off the discipline; "
+            "unchecked: the resources could not be judged (ask again)"
+        )
+    )
+    concept: str | None = Field(
+        description="The course's concept or mechanism the connection rests on"
+    )
+    why: str = Field(
+        description=(
+            "Why the connection matters for the course: the judgement's words when a "
+            "resource supports it, otherwise the idea's own"
+        )
+    )
+    resources: list[EvidencedResource] = Field(
+        description="Direct support, best first (at most 3 with background)"
+    )
+    background: list[EvidencedResource] = Field(
+        description="Context on the sustainability issue only, never counted as support"
+    )
+    candidate_count: int = Field(description="Search results judged")

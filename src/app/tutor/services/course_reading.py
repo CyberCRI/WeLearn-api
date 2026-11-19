@@ -35,19 +35,27 @@ MAX_FOCUS_CHARS = 200
 # ---- comparing texts (port of courseCheck.ts) ----
 
 
-def normalise(text: str) -> str:
+def unify_characters(text: str) -> str:
     """
-    A text as it reads: case, spaces, line breaks, quote and dash styles aside. Accents
-    and words are kept.
+    One way to write each character: lower case, one apostrophe, one quotation mark, one
+    dash, "oe" for "œ". A word cut at the end of a line ("struc-\nture") is one word.
+    Accents, words and spaces are kept.
     """
     text = unicodedata.normalize("NFC", text).lower()
     text = re.sub(r"[’‘`´]", "'", text)
     text = re.sub(r"[«»“”]", '"', text)
     text = re.sub(r"[‐-―−]", "-", text)
     text = text.replace("…", "...").replace("œ", "oe")
-    # a word cut at the end of a line ("struc-\nture") is one word
-    text = re.sub(r"-\s*\n\s*", "", text)
-    return re.sub(r"\s+", "", text)
+    return re.sub(r"-\s*\n\s*", "", text)
+
+
+def normalise(text: str) -> str:
+    """
+    A text as it reads: case, spaces, line breaks, quote and dash styles aside. Accents
+    and words are kept. Without spaces, word boundaries are gone too: "the rapist" reads
+    as "therapist".
+    """
+    return re.sub(r"\s+", "", unify_characters(text))
 
 
 _LIST_MARKER = re.compile(r"^\s*(?:[-–•o▪◦*]|\d+[.)])\s")

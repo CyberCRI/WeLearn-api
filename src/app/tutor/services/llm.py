@@ -12,7 +12,8 @@ the system prompt says their content is data, never instructions.
 
 import hashlib
 import re
-from collections.abc import Mapping
+from collections.abc import Mapping, Sequence
+from dataclasses import dataclass, field
 from functools import lru_cache
 from pathlib import Path
 from typing import TypeVar
@@ -41,6 +42,9 @@ MAX_DATA_CHARS = 60_000
 MAX_ATTEMPTS = 2
 
 _TAG = re.compile(r"^[a-z][a-z_]*$")
+# an attribute value is a short label (a source, a role): no quote, bracket or line break
+MAX_ATTR_CHARS = 200
+_NOT_IN_ATTR = re.compile(r'["<>\s]+')
 
 LANGUAGE_NAMES: dict[TutorLang, str] = {"en": "English", "fr": "French"}
 
@@ -54,6 +58,20 @@ _ENV = Environment(
 )
 
 T = TypeVar("T", bound=BaseModel)
+
+
+@dataclass(frozen=True)
+class DataBlock:
+    """
+    One of several blocks under the same tag (the resources of a connection...): numbered
+    by the code (`n="1"`, `n="2"`...) in the order given, with its own attributes.
+    """
+
+    text: str
+    attrs: Mapping[str, str] = field(default_factory=dict)
+
+
+Data = Mapping[str, str | Sequence[DataBlock]]
 
 
 async def get_chat_model() -> ChatMistralAI:
@@ -106,16 +124,37 @@ def data_rule(tags: list[str]) -> str:
     )
 
 
+def _attr(value: str) -> str:
+    return _NOT_IN_ATTR.sub(" ", value).strip()[:MAX_ATTR_CHARS]
+
+
+def numbered_blocks(tag: str, blocks: Sequence[DataBlock], max_chars: int) -> str:
+    """`<tag n="1" key="value">…</tag>` for each block, its text truncated to max_chars."""
+    rendered = []
+    for n, block in enumerate(blocks, start=1):
+        for name in block.attrs:
+            if not _TAG.match(name):
+                raise ValueError(f"Invalid attribute name: {name!r}")
+        attrs = {"n": str(n), **block.attrs}
+        opening = f"<{tag} " + " ".join(f'{k}="{_attr(v)}"' for k, v in attrs.items())
+        # data_block makes the text safe and opens with "<tag>": only the opening differs
+        rendered.append(
+            opening + data_block(tag, block.text, max_chars)[len(tag) + 1 :]
+        )
+    return "\n\n".join(rendered)
+
+
 def build_messages(
     name: str,
     lang: TutorLang,
-    data: Mapping[str, str],
+    data: Data,
     variables: Mapping[str, object] | None = None,
     max_data_chars: int = MAX_DATA_CHARS,
 ) -> list[tuple[str, str]]:
     """
     System message: the prompt, the language rule and the data rule.
-    Human message: the data blocks.
+    Human message: the data blocks. A tag given a list of DataBlock has one numbered
+    block per item.
     """
     if not data:
         raise ValueError("A structured call needs at least one data block")
@@ -131,7 +170,14 @@ def build_messages(
             data_rule(tags),
         ]
     )
-    human = "\n\n".join(data_block(tag, data[tag], max_data_chars) for tag in tags)
+    human = "\n\n".join(
+        (
+            data_block(tag, value, max_data_chars)
+            if isinstance(value, str)
+            else numbered_blocks(tag, value, max_data_chars)
+        )
+        for tag, value in data.items()
+    )
     return [("system", system), ("human", human)]
 
 
@@ -140,7 +186,7 @@ async def structured_call(
     prompt_name: str,
     lang: TutorLang,
     schema: type[T],
-    data: Mapping[str, str],
+    data: Data,
     variables: Mapping[str, object] | None = None,
     *,
     max_data_chars: int = MAX_DATA_CHARS,

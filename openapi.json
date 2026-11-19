@@ -563,6 +563,94 @@
         "title": "ConfirmedCourse",
         "type": "object"
       },
+      "ConnectionEvidenceRequest": {
+        "properties": {
+          "course": {
+            "$ref": "#/components/schemas/ConfirmedCourse"
+          },
+          "idea": {
+            "$ref": "#/components/schemas/ConnectionIdea"
+          },
+          "lang": {
+            "default": "en",
+            "enum": [
+              "en",
+              "fr"
+            ],
+            "title": "Lang",
+            "type": "string"
+          }
+        },
+        "required": [
+          "course",
+          "idea"
+        ],
+        "title": "ConnectionEvidenceRequest",
+        "type": "object"
+      },
+      "ConnectionEvidenceResponse": {
+        "properties": {
+          "background": {
+            "description": "Context on the sustainability issue only, never counted as support",
+            "items": {
+              "$ref": "#/components/schemas/EvidencedResource"
+            },
+            "title": "Background",
+            "type": "array"
+          },
+          "candidate_count": {
+            "description": "Search results judged",
+            "title": "Candidate Count",
+            "type": "integer"
+          },
+          "concept": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "The course's concept or mechanism the connection rests on",
+            "title": "Concept"
+          },
+          "resources": {
+            "description": "Direct support, best first (at most 3 with background)",
+            "items": {
+              "$ref": "#/components/schemas/EvidencedResource"
+            },
+            "title": "Resources",
+            "type": "array"
+          },
+          "status": {
+            "description": "supported: at least one resource supports the connection directly; unsupported: none does (no candidate, or none passed the checks); forced: the connection itself was judged an analogy or off the discipline; unchecked: the resources could not be judged (ask again)",
+            "enum": [
+              "supported",
+              "unsupported",
+              "forced",
+              "unchecked"
+            ],
+            "title": "Status",
+            "type": "string"
+          },
+          "why": {
+            "description": "Why the connection matters for the course: the judgement's words when a resource supports it, otherwise the idea's own",
+            "title": "Why",
+            "type": "string"
+          }
+        },
+        "required": [
+          "status",
+          "concept",
+          "why",
+          "resources",
+          "background",
+          "candidate_count"
+        ],
+        "title": "ConnectionEvidenceResponse",
+        "type": "object"
+      },
       "ConnectionIdea": {
         "properties": {
           "anchor": {
@@ -1379,6 +1467,30 @@
           "detail"
         ],
         "title": "ErrorResponse",
+        "type": "object"
+      },
+      "EvidencedResource": {
+        "properties": {
+          "document": {
+            "$ref": "#/components/schemas/EnhancedDocumentSlice"
+          },
+          "evidence": {
+            "description": "The sentence it was kept for, found word for word in its text",
+            "title": "Evidence",
+            "type": "string"
+          },
+          "usefulness": {
+            "description": "What it brings to the connection in class",
+            "title": "Usefulness",
+            "type": "string"
+          }
+        },
+        "required": [
+          "document",
+          "usefulness",
+          "evidence"
+        ],
+        "title": "EvidencedResource",
         "type": "object"
       },
       "ExtractorOutput": {
@@ -4562,6 +4674,53 @@
           }
         ],
         "summary": "Generate Syllabus",
+        "tags": [
+          "tutor"
+        ]
+      }
+    },
+    "/api/v1/tutor/course/connection_evidence": {
+      "post": {
+        "description": "The resources behind one connection from `connection_ideas`: its two searches on\nWeLearn (every language), then a judgement of the results. A resource is kept only\nwhen its quoted sentence is found word for word in it; it supports the connection\ndirectly (`resources`) or only gives background (`background`).\n\n`status` is `unchecked` when the judgement gave no usable answer: ask again for this\nidea alone. `lang` is the teacher's language (the answer's).",
+        "operationId": "tutor-judge_connection_evidence",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ConnectionEvidenceRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ConnectionEvidenceResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Error"
+          }
+        },
+        "security": [
+          {
+            "APIKeyHeader": []
+          }
+        ],
+        "summary": "Find and judge the WeLearn resources of a connection (syllabus v2)",
         "tags": [
           "tutor"
         ]

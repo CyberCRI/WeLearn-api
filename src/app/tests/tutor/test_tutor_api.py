@@ -22,8 +22,10 @@ from src.app.shared.domain.exceptions import (
 from src.app.tests.user.guest_usage_db import guest_left, guest_use, use_guest_usage_db
 from src.app.tutor.domain.connections import (
     ConfirmedCourse,
+    ConnectionEvidenceResponse,
     ConnectionIdea,
     ConnectionIdeasResponse,
+    EvidencedResource,
 )
 from src.app.tutor.domain.course import CourseReading, CourseReadResponse
 from src.app.tutor.domain.models import SyllabusResponseAgent, UserInput
@@ -1305,6 +1307,65 @@ class TestConnectionIdeas(TutorApiTestCase):
 
         self.assertEqual(response.status_code, 502)
         self.assertEqual(response.json()["detail"]["code"], "UNUSABLE_LLM_OUTPUT")
+
+
+class TestConnectionEvidence(TutorApiTestCase):
+    """Syllabus v2: POST /tutor/course/connection_evidence."""
+
+    URL = f"{BASE}/course/connection_evidence"
+    BODY = {
+        "course": {"title": "Macroeconomics", "topics": [{"title": "GDP"}]},
+        "idea": {
+            "id": "idea-1",
+            "title": "Limits of GDP",
+            "anchor": "GDP",
+            "anchor_label": "GDP",
+            "why": "GDP leaves out environmental damage.",
+            "use": None,
+            "queries": ["limits of GDP", "beyond GDP"],
+        },
+        "lang": "fr",
+    }
+
+    @patch(f"{ROUTER}.find_connection_evidence", new_callable=AsyncMock)
+    def test_judges_the_idea_with_the_search_service(self, mock_find):
+        document = make_document()
+        mock_find.return_value = ConnectionEvidenceResponse(
+            status="supported",
+            concept="GDP measurement",
+            why="GDP leaves out environmental damage.",
+            resources=[
+                EvidencedResource(
+                    document=document, usefulness="Shows it.", evidence="content"
+                )
+            ],
+            background=[],
+            candidate_count=4,
+        )
+
+        response = self.client.post(self.URL, json=self.BODY, headers=HEADERS)
+
+        self.assertEqual(response.status_code, 200)
+        course, idea, lang, search, _ = mock_find.await_args.args
+        self.assertEqual(course, ConfirmedCourse.model_validate(self.BODY["course"]))
+        self.assertEqual(idea.queries, ["limits of GDP", "beyond GDP"])
+        self.assertEqual(lang, "fr")
+        self.assertIs(search, self.search_service)
+        body = response.json()
+        self.assertEqual(body["status"], "supported")
+        self.assertEqual(
+            body["resources"][0]["document"]["payload"]["document_title"], "Climate"
+        )
+
+    @patch(f"{ROUTER}.find_connection_evidence", new_callable=AsyncMock)
+    def test_an_idea_without_search_or_course_is_422(self, mock_find):
+        no_query = {**self.BODY, "idea": {**self.BODY["idea"], "queries": []}}
+        three = {**self.BODY, "idea": {**self.BODY["idea"], "queries": ["a", "b", "c"]}}
+        for body in (no_query, three, {"idea": self.BODY["idea"]}):
+            with self.subTest(body=body):
+                response = self.safe_client.post(self.URL, json=body, headers=HEADERS)
+                self.assertEqual(response.status_code, 422)
+        mock_find.assert_not_awaited()
 
 
 class GuestTutorTestCase(TutorApiTestCase):

@@ -12,7 +12,7 @@ from src.app.tests.tutor.llm.harness import (
     check,
     load_cases,
 )
-from src.app.tutor.services.llm import render_prompt
+from src.app.tutor.services.llm import DataBlock, render_prompt
 
 
 class Reading(BaseModel):
@@ -52,6 +52,37 @@ class LoadCasesTests(unittest.TestCase):
         self.assertEqual(cases[1].prompt, "read")
         self.assertEqual(cases[0].variables, {})
         self.assertEqual(cases[0].expect, {})
+
+    def test_a_tag_may_hold_numbered_blocks(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            folder = Path(tmp) / "selection"
+            folder.mkdir()
+            (folder / "r1.txt").write_text("Resource one", encoding="utf-8")
+            (folder / "a.json").write_text(
+                json.dumps(
+                    {
+                        "lang": "en",
+                        "data": {
+                            "course": "c",
+                            "resource": [
+                                {"text": "file:r1.txt", "attrs": {"source": "INSEE"}},
+                                {"text": "Resource two"},
+                            ],
+                        },
+                    }
+                ),
+                encoding="utf-8",
+            )
+
+            [case] = load_cases("selection", Path(tmp))
+
+        self.assertEqual(
+            case.data["resource"],
+            [
+                DataBlock("Resource one", {"source": "INSEE"}),
+                DataBlock("Resource two", {}),
+            ],
+        )
 
     def test_no_folder_means_no_cases(self):
         with tempfile.TemporaryDirectory() as tmp:
