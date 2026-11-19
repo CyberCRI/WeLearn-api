@@ -15,9 +15,9 @@ from src.app.shared.domain.documents import (
     EnhancedDocumentSlicePayloadModel,
 )
 from src.app.shared.domain.exceptions import NoResultsError, UnusableReadingError
+from src.app.tests.user.guest_usage_db import guest_left, guest_use, use_guest_usage_db
 from src.app.tutor.domain.course import CourseReading, CourseReadResponse
 from src.app.tutor.domain.models import SyllabusResponseAgent, UserInput
-from src.app.user.services.guest_quota import guest_limiter
 from src.main import app
 
 ROUTER = "src.app.tutor.api.router"
@@ -1258,9 +1258,10 @@ class GuestTutorTestCase(TutorApiTestCase):
             patcher = patch(target, **kwargs)
             patcher.start()
             self.addCleanup(patcher.stop)
+        use_guest_usage_db(self, self.GUEST)
 
     def left(self) -> int:
-        return guest_limiter("syllabus").peek(str(self.GUEST))[0]
+        return guest_left("syllabus", self.GUEST)
 
 
 class TestSyllabusGuestQuota(GuestTutorTestCase):
@@ -1396,11 +1397,10 @@ class TestTutorStepsGuestQuota(GuestTutorTestCase):
     FEEDBACK_LIMIT = settings.GUEST_FEEDBACK_DAILY_LIMIT
 
     def left_of(self, feature) -> int:
-        return guest_limiter(feature).peek(str(self.GUEST))[0]
+        return guest_left(feature, self.GUEST)
 
     def use_the_syllabus(self):
-        for _ in range(self.LIMIT):
-            guest_limiter("syllabus").hit(str(self.GUEST))
+        guest_use("syllabus", self.GUEST, self.LIMIT)
 
     def summarize(self, content=b"text"):
         return self.client.post(

@@ -1,17 +1,30 @@
 import unittest
 import uuid
+from datetime import datetime, timedelta
 from unittest import mock
 
 from fastapi import HTTPException, Response
 from fastapi.testclient import TestClient
+from sqlalchemy import select
 from starlette.requests import Request
+from welearn_database.data.models import Feature, GuestFeatureUsage
 
 from src.app.core.config import settings
-from src.app.shared.domain.exceptions import SessionNotFoundError
-from src.app.shared.infra.rate_limit import SlidingWindowRateLimiter
+from src.app.shared.domain.exceptions import SessionNotFoundError, UserNotFoundError
+from src.app.tests.user.guest_usage_db import guest_left, guest_use, use_guest_usage_db
+from src.app.user.infra.guest_usage import (
+    add_guest_usage_sync,
+    delete_guest_usage_sync,
+    get_guest_usage_sync,
+)
 from src.app.user.infra.keycloak import KeycloakUser
 from src.app.user.services import account, guest_quota
-from src.app.user.services.guest_quota import GuestQuota, resolve_quota_user
+from src.app.user.services.guest_quota import (
+    GUEST_QUOTA_WINDOW,
+    GUEST_USAGE_KEYS,
+    GuestQuota,
+    resolve_quota_user,
+)
 from src.main import app
 
 BASE = f"{settings.API_V1_STR}/user"
@@ -31,46 +44,6 @@ def make_request(headers: dict[str, str]) -> Request:
 
 def restrictions(enabled: bool):
     return mock.patch.object(account.settings, "GUEST_RESTRICTIONS_ENABLED", enabled)
-
-
-class Clock:
-    def __init__(self):
-        self.now = 1000.0
-
-    def __call__(self) -> float:
-        return self.now
-
-
-class LimiterRefundPeekTests(unittest.TestCase):
-    def setUp(self):
-        self.clock = Clock()
-        self.limiter = SlidingWindowRateLimiter(2, 100, clock=self.clock)
-
-    def test_peek_does_not_count(self):
-        self.assertEqual(self.limiter.peek("k"), (2, 0.0))
-        self.limiter.hit("k")
-        self.clock.now += 10
-        self.assertEqual(self.limiter.peek("k"), (1, 90.0))
-        self.assertEqual(self.limiter.peek("k"), (1, 90.0))
-
-    def test_refund_gives_back_the_latest_hit(self):
-        self.limiter.hit("k")
-        self.limiter.hit("k")
-        self.assertGreater(self.limiter.hit("k"), 0)
-
-        self.limiter.refund("k")
-
-        self.assertEqual(self.limiter.peek("k")[0], 1)
-        self.assertEqual(self.limiter.hit("k"), 0.0)
-
-    def test_refund_of_unknown_key_is_a_no_op(self):
-        self.limiter.refund("nobody")
-        self.assertEqual(self.limiter.peek("nobody"), (2, 0.0))
-
-    def test_hits_leave_the_window(self):
-        self.limiter.hit("k")
-        self.clock.now += 100
-        self.assertEqual(self.limiter.peek("k"), (2, 0.0))
 
 
 class ResolveQuotaUserTests(unittest.IsolatedAsyncioTestCase):
@@ -111,42 +84,114 @@ class ResolveQuotaUserTests(unittest.IsolatedAsyncioTestCase):
             await resolve_quota_user(make_request({"X-Session-Id": str(SESSION)}))
 
 
-class RequireLeftTests(unittest.TestCase):
-    def test_raises_for_the_other_feature_without_counting(self):
-        for _ in range(settings.GUEST_SYLLABUS_DAILY_LIMIT):
-            GuestQuota("syllabus", GUEST).consume()
+class GuestUsageQueriesTests(unittest.TestCase):
+    def setUp(self):
+        self.s_maker = use_guest_usage_db(self, GUEST)
+        self.key = GUEST_USAGE_KEYS["chat"]
+        self.now = datetime.now()
+        self.since = self.now - GUEST_QUOTA_WINDOW
+
+    def add(self, limit=2, user_id=GUEST, key=None):
+        return add_guest_usage_sync(
+            user_id, key or self.key, limit, self.since, self.now
+        )
+
+    def test_add_until_the_limit(self):
+        first_id, used, oldest = self.add()
+        self.assertIsNotNone(first_id)
+        self.assertEqual((used, oldest), (0, None))
+
+        second_id, used, oldest = self.add()
+        self.assertIsNotNone(second_id)
+        self.assertEqual((used, oldest), (1, self.now))
+
+        refused_id, used, _ = self.add()
+        self.assertIsNone(refused_id)
+        self.assertEqual(used, 2)
+        self.assertEqual(get_guest_usage_sync(GUEST, self.key, self.since)[0], 2)
+
+    def test_uses_before_the_window_are_not_counted(self):
+        with self.s_maker() as s:
+            feature_id = s.execute(
+                select(Feature.id).where(Feature.title == "chat")
+            ).scalar_one()
+            s.add(
+                GuestFeatureUsage(
+                    inferred_user_id=GUEST,
+                    feature_id=feature_id,
+                    action="question",
+                    created_at=self.since - timedelta(seconds=1),
+                )
+            )
+            s.commit()
+
+        self.assertEqual(get_guest_usage_sync(GUEST, self.key, self.since), (0, None))
+        self.assertIsNotNone(self.add(limit=1)[0])
+
+    def test_each_feature_and_action_is_counted_apart(self):
+        self.add(limit=1)
+
+        for feature in ("syllabus", "feedback", "files"):
+            key = GUEST_USAGE_KEYS[feature]
+            self.assertIsNotNone(self.add(limit=1, key=key)[0])
+        self.assertIsNone(self.add(limit=1)[0])
+
+    def test_delete_removes_only_that_use(self):
+        first_id, _, _ = self.add()
+        self.add()
+
+        delete_guest_usage_sync(first_id)
+
+        self.assertEqual(get_guest_usage_sync(GUEST, self.key, self.since)[0], 1)
+
+    def test_unknown_user_is_refused(self):
+        with self.assertRaises(UserNotFoundError):
+            self.add(user_id=uuid.uuid4())
+
+    def test_missing_feature_is_an_error(self):
+        with self.assertRaises(LookupError):
+            self.add(key=("unknown", "question"))
+
+
+class RequireLeftTests(unittest.IsolatedAsyncioTestCase):
+    def setUp(self):
+        use_guest_usage_db(self, GUEST)
+
+    async def test_raises_for_the_other_feature_without_counting(self):
+        guest_use("syllabus", GUEST, settings.GUEST_SYLLABUS_DAILY_LIMIT)
         files = GuestQuota("files", GUEST)
 
         with self.assertRaises(HTTPException) as raised:
-            files.require_left("syllabus")
+            await files.require_left("syllabus")
 
         self.assertEqual(raised.exception.status_code, 403)
         self.assertEqual(raised.exception.detail["feature"], "syllabus")
+        self.assertGreater(raised.exception.detail["retry_after"], 0)
         self.assertNotIn("X-Guest-Remaining", raised.exception.headers)
-        self.assertEqual(files.remaining, settings.GUEST_FILES_DAILY_LIMIT)
+        self.assertEqual(guest_left("files", GUEST), settings.GUEST_FILES_DAILY_LIMIT)
 
-    def test_passes_while_some_is_left(self):
-        GuestQuota("files", GUEST).require_left("syllabus")
+    async def test_passes_while_some_is_left(self):
+        await GuestQuota("files", GUEST).require_left("syllabus")
 
-    def test_unlimited_caller_always_passes(self):
-        for _ in range(settings.GUEST_SYLLABUS_DAILY_LIMIT):
-            GuestQuota("syllabus", GUEST).consume()
-        GuestQuota("files", None).require_left("syllabus")
+    async def test_unlimited_caller_always_passes(self):
+        guest_use("syllabus", GUEST, settings.GUEST_SYLLABUS_DAILY_LIMIT)
+        await GuestQuota("files", None).require_left("syllabus")
 
 
-class GuestQuotaTests(unittest.TestCase):
+class GuestQuotaTests(unittest.IsolatedAsyncioTestCase):
     def setUp(self):
+        use_guest_usage_db(self, GUEST)
         self.response = Response()
         self.quota = GuestQuota("syllabus", GUEST, self.response)
         self.limit = settings.GUEST_SYLLABUS_DAILY_LIMIT
 
-    def test_consume_until_exceeded(self):
+    async def test_consume_until_exceeded(self):
         for _ in range(self.limit):
-            self.quota.consume()
+            await GuestQuota("syllabus", GUEST, self.response).consume()
         self.assertEqual(self.response.headers["X-Guest-Remaining"], "0")
 
         with self.assertRaises(HTTPException) as ctx:
-            self.quota.consume()
+            await self.quota.consume()
 
         error = ctx.exception
         self.assertEqual(error.status_code, 403)
@@ -154,35 +199,59 @@ class GuestQuotaTests(unittest.TestCase):
         self.assertEqual(error.detail["feature"], "syllabus")
         self.assertGreater(error.detail["retry_after"], 0)
         self.assertEqual(error.headers["Retry-After"], str(error.detail["retry_after"]))
+        self.assertEqual(error.headers["X-Guest-Remaining"], "0")
 
-    def test_refund_after_consume(self):
-        self.quota.consume()
-        self.quota.refund()
-        self.assertEqual(self.quota.remaining, self.limit)
+    async def test_consume_sets_what_is_left(self):
+        await self.quota.consume()
+        self.assertEqual(self.quota.headers, {"X-Guest-Remaining": str(self.limit - 1)})
+        self.assertEqual(
+            self.response.headers["X-Guest-Remaining"], str(self.limit - 1)
+        )
+
+    async def test_refund_after_consume(self):
+        await self.quota.consume()
+        await self.quota.refund()
+        self.assertEqual(guest_left("syllabus", GUEST), self.limit)
         self.assertEqual(self.response.headers["X-Guest-Remaining"], str(self.limit))
 
-    def test_refund_without_consume_gives_nothing_back(self):
-        GuestQuota("syllabus", GUEST).consume()
-        self.quota.refund()
-        self.assertEqual(self.quota.remaining, self.limit - 1)
+    async def test_refund_gives_back_once(self):
+        await self.quota.consume()
+        await self.quota.refund()
+        guest_use("syllabus", GUEST)
+        await self.quota.refund()
+        self.assertEqual(guest_left("syllabus", GUEST), self.limit - 1)
 
-    def test_spend_refunds_when_the_block_raises(self):
+    async def test_refund_without_consume_gives_nothing_back(self):
+        guest_use("syllabus", GUEST)
+        await self.quota.refund()
+        self.assertEqual(guest_left("syllabus", GUEST), self.limit - 1)
+        self.assertEqual(self.quota.headers, {})
+
+    async def test_a_failed_refund_is_only_logged(self):
+        await self.quota.consume()
+        with mock.patch.object(
+            guest_quota, "delete_guest_usage_sync", side_effect=RuntimeError("db down")
+        ):
+            await self.quota.refund()
+        self.assertEqual(guest_left("syllabus", GUEST), self.limit - 1)
+
+    async def test_spend_refunds_when_the_block_raises(self):
         with self.assertRaises(RuntimeError):
-            with self.quota.spend():
+            async with self.quota.spend():
                 raise RuntimeError("llm down")
-        self.assertEqual(self.quota.remaining, self.limit)
+        self.assertEqual(guest_left("syllabus", GUEST), self.limit)
 
-    def test_spend_keeps_the_use_on_success(self):
-        with self.quota.spend():
+    async def test_spend_keeps_the_use_on_success(self):
+        async with self.quota.spend():
             pass
-        self.assertEqual(self.quota.remaining, self.limit - 1)
+        self.assertEqual(guest_left("syllabus", GUEST), self.limit - 1)
 
-    def test_unlimited_caller_is_never_counted(self):
+    async def test_unlimited_caller_is_never_counted(self):
         quota = GuestQuota("syllabus", None, self.response)
         for _ in range(self.limit + 3):
-            quota.consume()
-        quota.refund()
-        self.assertIsNone(quota.remaining)
+            await quota.consume()
+        await quota.refund()
+        self.assertEqual(guest_left("syllabus", GUEST), self.limit)
         self.assertEqual(quota.headers, {})
         self.assertNotIn("X-Guest-Remaining", self.response.headers)
 
@@ -200,9 +269,10 @@ class GuestQuotaRouteTests(unittest.TestCase):
         )
         patcher.start()
         self.addCleanup(patcher.stop)
+        use_guest_usage_db(self, GUEST)
 
     def test_guest_sees_what_is_left(self):
-        GuestQuota("chat", GUEST).consume()
+        guest_use("chat", GUEST)
 
         with restrictions(True):
             response = client.get(f"{BASE}/guest_quota", headers=self.headers)
@@ -224,7 +294,7 @@ class GuestQuotaRouteTests(unittest.TestCase):
         )
 
     def test_every_feature_is_listed(self):
-        GuestQuota("feedback", GUEST).consume()
+        guest_use("feedback", GUEST)
 
         with restrictions(True):
             body = client.get(f"{BASE}/guest_quota", headers=self.headers).json()
@@ -244,9 +314,7 @@ class GuestQuotaRouteTests(unittest.TestCase):
         with restrictions(True):
             for _ in range(3):
                 client.get(f"{BASE}/guest_quota", headers=self.headers)
-        self.assertEqual(
-            GuestQuota("chat", GUEST).remaining, settings.GUEST_CHAT_DAILY_LIMIT
-        )
+        self.assertEqual(guest_left("chat", GUEST), settings.GUEST_CHAT_DAILY_LIMIT)
 
     def test_restrictions_off_is_not_limited(self):
         with restrictions(False):

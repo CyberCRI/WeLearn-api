@@ -10,9 +10,9 @@ from src.app.core.config import settings
 from src.app.data_collection.services.data_collection import get_data_collection_service
 from src.app.search.services.search import get_search_service
 from src.app.shared.domain.exceptions import SessionNotFoundError
+from src.app.tests.user.guest_usage_db import guest_left, use_guest_usage_db
 from src.app.user.infra.keycloak import KeycloakUser
 from src.app.user.services import account, guest_quota
-from src.app.user.services.guest_quota import guest_limiter
 from src.main import app
 
 QNA_URL = f"{settings.API_V1_STR}/qna"
@@ -44,7 +44,7 @@ def _fake_connect():
 
 
 def _left(user_id) -> int:
-    return guest_limiter("chat").peek(str(user_id))[0]
+    return guest_left("chat", user_id)
 
 
 @mock.patch(
@@ -91,6 +91,7 @@ class ChatGuestQuotaTests(unittest.TestCase):
             patcher = mock.patch(target, **kwargs)
             patcher.start()
             self.addCleanup(patcher.stop)
+        use_guest_usage_db(self, USER_A, USER_B)
         self.client = TestClient(app)
         self.safe_client = TestClient(app, raise_server_exceptions=False)
 
