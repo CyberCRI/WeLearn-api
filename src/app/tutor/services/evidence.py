@@ -11,7 +11,6 @@ of sustainability, and no figure may be stated that the resources do not contain
 
 import asyncio
 import re
-import unicodedata
 
 from fastapi import BackgroundTasks
 
@@ -29,7 +28,7 @@ from src.app.tutor.domain.connections import (
 )
 from src.app.tutor.domain.models import TutorLang
 from src.app.tutor.services.connections import course_block
-from src.app.tutor.services.course_reading import normalise
+from src.app.tutor.services.course_reading import normalise, unify_characters
 from src.app.tutor.services.llm import DataBlock, structured_call
 
 logger = utils_logger(__name__)
@@ -139,57 +138,86 @@ def has_unsupported_figure(text: str, docs: list[EnhancedDocumentSlice]) -> bool
     return any(normalise(figure) not in source for figure in _FIGURES.findall(text))
 
 
-# a long quote may have what text extraction adds to a pdf inside it (a page header or
-# number): up to this many words, if all of its own words are there in order
+# text extraction may put a page header or number inside a sentence of a pdf. A quote of
+# at least MIN_LOOSE_WORDS words is still found with up to MAX_INSERTED_WORDS such words
+# inside it; a shorter quote, with so few words of its own, must be found as it is
 MIN_LOOSE_WORDS = 8
 MAX_INSERTED_WORDS = 8
 # a sentence kept from a quote stitched from several
 MIN_SENTENCE = 40
 
-_CUT_WORD = re.compile(r"([^\W\d_])[-‐‑]\s+([^\W\d_])")
+# a word cut by a hyphen at the end of a pdf line, the line break read as a space
+_CUT_WORD = re.compile(r"([^\W\d_])-\s+([^\W\d_])")
 _NOT_A_WORD = re.compile(r"[\W_]+")
 
 
 def words_of(text: str) -> list[str]:
-    text = unicodedata.normalize("NFC", text).lower()
-    text = re.sub(r"[’‘`´]", "'", text)
-    # a word cut by a hyphen at the end of a pdf line ("diffi- cult") is one word
-    text = _CUT_WORD.sub(r"\1\2", text)
+    """
+    The words of a text, its characters unified as `normalise` does (so both checks of
+    `is_quoted_in` read characters the same way); "diffi- cult" is one word.
+    """
+    text = _CUT_WORD.sub(r"\1\2", unify_characters(text))
     return [word for word in _NOT_A_WORD.split(text) if word]
+
+
+def _in_order_with_few_insertions(
+    doc_words: list[str], start: int, quote_words: list[str]
+) -> bool:
+    """
+    The quote's words appear in the document from `start` on, in order, with at most
+    MAX_INSERTED_WORDS other words between them in total.
+
+    Each quote word is matched at its first appearance: that ends the match as early as
+    possible, so it inserts the fewest words.
+    """
+    found = inserted = 0
+    for word in doc_words[start:]:
+        if word == quote_words[found]:
+            found += 1
+            if found == len(quote_words):
+                return True
+        else:
+            inserted += 1
+            if inserted > MAX_INSERTED_WORDS:
+                return False
+    return False
 
 
 def is_quoted_in(quote: str, doc: EnhancedDocumentSlice) -> bool:
     """
-    The quote is in the resource: word for word, or with only what text extraction adds to
-    a pdf. Its words must all be there, in order: nothing changed or left out, and a short
-    quote must match exactly.
+    The quote is in the resource, with only what text extraction adds to a pdf:
+
+    1. the quote is in the text once case, spaces, line breaks, quote and dash styles are
+       set aside (`normalise`). Word boundaries are set aside too, a trade-off that is
+       harmless for a sentence. Hyphens are tried without as well: a pdf cuts "difficult"
+       into "diffi- cult", which reads "diffi-cult" without spaces;
+    2. otherwise, for a quote of at least MIN_LOOSE_WORDS words: every word of the quote,
+       in order, with at most MAX_INSERTED_WORDS other words between them in total (a page
+       header inside the sentence).
+
+    Every word of the quote must be in the resource; the reverse is not checked. So a
+    quote that leaves out a few words of the resource's sentence is still found: that is
+    how a page header is skipped, and the price of it. A word changed by the model is
+    caught, unless the quote's own word comes a few words further on in the resource.
     """
-    text = resource_text([doc])
-    wanted = normalise(quote)
-    if not wanted:
+    doc_compact = resource_text([doc])
+    quote_compact = normalise(quote)
+    if not quote_compact:
         return False
-    if wanted in text or wanted.replace("-", "") in text.replace("-", ""):
+    if quote_compact in doc_compact:
         return True
-    quoted = words_of(quote)
-    if len(quoted) < MIN_LOOSE_WORDS:
+    if quote_compact.replace("-", "") in doc_compact.replace("-", ""):
+        return True
+
+    quote_words = words_of(quote)
+    if len(quote_words) < MIN_LOOSE_WORDS:
         return False
-    source = words_of(_text_of(doc))
-    for start, word in enumerate(source):
-        if word != quoted[0]:
-            continue
-        found, inserted = 1, 0
-        for other in source[start + 1 :]:
-            if found == len(quoted):
-                break
-            if other == quoted[found]:
-                found += 1
-            else:
-                inserted += 1
-                if inserted > MAX_INSERTED_WORDS:
-                    break
-        if found == len(quoted):
-            return True
-    return False
+    doc_words = words_of(_text_of(doc))
+    return any(
+        _in_order_with_few_insertions(doc_words, start, quote_words)
+        for start, word in enumerate(doc_words)
+        if word == quote_words[0]
+    )
 
 
 _SENTENCE_END = re.compile(r"(?<=[.!?;])\s+")

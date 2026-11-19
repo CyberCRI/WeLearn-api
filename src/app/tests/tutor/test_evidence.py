@@ -31,6 +31,7 @@ from src.app.tutor.services.evidence import (
     speaks_of_sustainability,
     to_evidence,
     verified_quote,
+    words_of,
 )
 from src.app.tutor.services.llm import DataBlock, render_prompt
 
@@ -139,6 +140,49 @@ class QuoteTests(unittest.TestCase):
 
         self.assertTrue(is_quoted_in(quote, source(8)))
         self.assertFalse(is_quoted_in(quote, source(9)))
+
+    def test_a_long_quote_may_leave_out_a_few_words_of_the_sentence(self):
+        # the price of skipping a page header: "fossil energy and of" is left out
+        source = doc(
+            "p",
+            "Prices of fossil energy and of food rose sharply in the country last year.",
+        )
+        self.assertTrue(
+            is_quoted_in(
+                "Prices of food rose sharply in the country last year.", source
+            )
+        )
+        # a word changed by the model is caught
+        self.assertFalse(
+            is_quoted_in(
+                "Prices of fossil fuels and of food rose sharply in the country.",
+                source,
+            )
+        )
+
+    def test_word_boundaries_are_set_aside_in_the_first_check(self):
+        # a known trade-off of reading the text without spaces, harmless for a sentence
+        self.assertTrue(is_quoted_in("the rapist", doc("t", "A therapist listens.")))
+
+    def test_both_checks_read_characters_the_same_way(self):
+        self.assertEqual(words_of("Le CŒUR, l’œuvre"), ["le", "coeur", "l", "oeuvre"])
+        self.assertEqual(
+            words_of("struc-\nture et diffi- cult"), ["structure", "et", "difficult"]
+        )
+        # an accent written as two characters (e + combining accent) is the same letter
+        self.assertTrue(
+            is_quoted_in("le problème", doc("e", "Le proble\u0300me du cœur."))
+        )
+        # "œ" read as "oe" in the loose check too, with a page header inside the quote
+        source = doc(
+            "c",
+            "Au cœur de la transition 12 Rapport annuel se trouve la sobriété énergétique.",
+        )
+        self.assertTrue(
+            is_quoted_in(
+                "Au coeur de la transition se trouve la sobriété énergétique.", source
+            )
+        )
 
     def test_keeps_only_the_true_sentence_of_a_stitched_quote(self):
         self.assertEqual(
