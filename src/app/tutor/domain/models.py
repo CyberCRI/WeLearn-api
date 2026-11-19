@@ -36,6 +36,10 @@ class TutorSearchResponse(BaseModel):
 
 
 class TutorSyllabusRequest(TutorSearchResponse):
+    datasets: list[EnhancedDocumentSlice] = Field(
+        default_factory=list,
+        description="WeLearn datasets that may support relevant learning activities.",
+    )
     course_title: str | None = None
     discipline: int | None = None
     level: str | None = None
@@ -160,6 +164,7 @@ class MessageWithResources(BaseModel):
     themes: list[Dict]
     summary: list[str]
     resources: List[Dict]
+    datasets: List[Dict]
     source: str = "default"
 
 

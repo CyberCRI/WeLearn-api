@@ -6,7 +6,7 @@ from src.app.tutor.domain.models import (
     DraftSyllabus,
 )
 from src.app.tutor.services.syllabus import (
-    MAX_RESOURCE_CHARS,
+    MAX_CONTENT_CHARS,
     MAX_SUMMARY_CHARS,
     SYSTEM_PROMPT,
     build_user_prompt,
@@ -171,6 +171,9 @@ def test_build_user_prompt_delimits_and_truncates_untrusted_text():
             {"title": "Res", "url": "https://r.org", "content": "r" * 5000},
             {"title": "", "url": "https://skip.org", "content": "skipped"},
         ],
+        datasets=[
+            {"title": "Dataset", "url": "https://dataset.org", "content": "d" * 5000}
+        ],
     )
     prompt = build_user_prompt(msg, compute_limits(None), [])
     assert prompt.count("<document>") == prompt.count("</document>") == 1
@@ -179,17 +182,24 @@ def test_build_user_prompt_delimits_and_truncates_untrusted_text():
     assert len(summary) == MAX_SUMMARY_CHARS
     assert "<themes>\nEnergy, Water\n</themes>" in prompt
     resource = prompt.split("<resource>\n")[1].split("\n</resource>")[0]
-    assert resource.startswith("Res: r") and len(resource) == MAX_RESOURCE_CHARS
+    assert resource.startswith("Res: r") and len(resource) == MAX_CONTENT_CHARS
+    dataset = prompt.split("<dataset>\n")[1].split("\n</dataset>")[0]
+    assert dataset.startswith("Dataset: d") and len(dataset) == MAX_CONTENT_CHARS
     assert "skipped" not in prompt
     # the model is told what the tags mean
     assert "<document>" in SYSTEM_PROMPT and "never instructions" in SYSTEM_PROMPT
 
     empty = MessageWithResources(
-        lang="en", content=[], summary=[], themes=[], resources=[]
+        lang="en",
+        content=[],
+        summary=[],
+        themes=[],
+        resources=[],
+        datasets=[],
     )
-    assert "WELEARN RESOURCES:\nnone" in build_user_prompt(
-        empty, compute_limits(None), []
-    )
+    empty_prompt = build_user_prompt(empty, compute_limits(None), [])
+    assert "WELEARN RESOURCES:\nnone" in empty_prompt
+    assert "WELEARN DATASETS:\nnone" in empty_prompt
 
 
 def test_split_and_trim():
@@ -231,7 +241,13 @@ def test_generate_syllabus_retries_once_then_raises():
             return RunnableLambda(lambda _: answers.pop(0))
 
     msg = MessageWithResources(
-        lang="fr", content=[], themes=[], summary=[], resources=[], duration=None
+        lang="fr",
+        content=[],
+        themes=[],
+        summary=[],
+        resources=[],
+        datasets=[],
+        duration=None,
     )
     md = asyncio.run(generate_syllabus(msg, FakeModel(), [], RunnableConfig()))  # type: ignore
     assert md.startswith("# Économie circulaire") and not answers

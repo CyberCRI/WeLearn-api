@@ -409,6 +409,33 @@ class TestCreateSyllabus(TutorApiTestCase):
         self.assertEqual(dc_kwargs["agent_answer"], "final")
         self.assertEqual(dc_kwargs["feature"], "syllabus_creation")
 
+    @patch("src.app.tutor.services.tutor.chat_model", new_callable=MagicMock)
+    @patch("src.app.tutor.services.tutor.generate_syllabus", new_callable=AsyncMock)
+    def test_passes_datasets_to_generator(self, mock_generate, _mock_model):
+        mock_generate.return_value = "Syllabus"
+        request_body = self.body()
+        dataset = make_document().model_dump(mode="json")
+        dataset["payload"]["document_title"] = "Air quality dataset"
+        dataset["payload"]["document_desc"] = "Monthly PM2.5 by monitoring station"
+        dataset["payload"]["slice_content"] = "Unrelated slice text"
+        request_body["datasets"] = [dataset]
+
+        response = self.client.post(self.URL, json=request_body, headers=HEADERS)
+
+        self.assertEqual(response.status_code, 200, response.text)
+        mock_generate.assert_awaited_once()
+        message = mock_generate.await_args.args[0]
+        self.assertEqual(
+            [dataset["title"] for dataset in message.datasets], ["Air quality dataset"]
+        )
+        self.assertEqual(
+            [resource["title"] for resource in message.resources], ["Climate"]
+        )
+        self.assertEqual(
+            message.datasets[0]["content"], "Monthly PM2.5 by monitoring station"
+        )
+        self.assertEqual(message.resources[0]["content"], "content")
+
     @patch(f"{ROUTER}.tutor_manager", new_callable=AsyncMock)
     def test_without_session(self, mock_manager):
         mock_manager.return_value = [SyllabusResponseAgent(content="only")]
@@ -419,6 +446,7 @@ class TestCreateSyllabus(TutorApiTestCase):
         self.assertEqual(response.status_code, 200)
         self.assertIsNone(response.json()["syllabus_message_id"])
         self.assertIsNone(mock_manager.await_args.kwargs["trace_context"]["session_id"])
+        self.assertEqual(mock_manager.await_args.args[0].datasets, [])
         self.assertEqual(mock_manager.await_args.args[1], "en")
         self.assertIsNone(
             self.data_collection.register_syllabus_data.await_args.kwargs["session_id"]

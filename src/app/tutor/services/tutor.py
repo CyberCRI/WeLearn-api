@@ -57,6 +57,7 @@ async def tutor_manager(
         lang=lang,
         content=content.extracts,
         resources=extract_doc_info(content.documents),
+        datasets=extract_doc_info(content.datasets, use_description=True),
         themes=[theme for extract in content.extracts for theme in extract.themes],
         summary=[extract.summary for extract in content.extracts],
         course_title=content.course_title,

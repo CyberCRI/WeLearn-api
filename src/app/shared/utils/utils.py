@@ -37,14 +37,18 @@ def build_system_message(
     return message
 
 
-def extract_doc_info(documents: list[EnhancedDocumentSlice]) -> list[dict]:
+def extract_doc_info(
+    documents: list[EnhancedDocumentSlice], *, use_description: bool = False
+) -> list[dict]:
     """
     Extracts the document information from a list of documents.
     Args:
         documents (list[Document]): List of Document objects.
+        use_description: Use the document description instead of the slice content.
     Returns:
         list[dict]: List of dictionaries containing document information.
     """
+    content_field = "document_desc" if use_description else "slice_content"
     result = []
     for doc in documents:
         payload = getattr(doc, "payload", None)
@@ -56,11 +60,11 @@ def extract_doc_info(documents: list[EnhancedDocumentSlice]) -> list[dict]:
         if isinstance(payload, dict):
             title = payload.get("document_title")
             url = payload.get("document_url")
-            content = payload.get("slice_content")
+            content = payload.get(content_field)
         else:
             title = getattr(payload, "document_title", None)
             url = getattr(payload, "document_url", None)
-            content = getattr(payload, "slice_content", None)
+            content = getattr(payload, content_field, None)
 
         if title is None and url is None and content is None:
             continue

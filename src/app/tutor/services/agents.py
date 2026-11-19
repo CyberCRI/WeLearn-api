@@ -19,7 +19,7 @@ from src.app.tutor.services.syllabus import (
     COUNTS_GUIDE,
     DATA_BLOCKS_RULE,
     GREENCOMP_NAMES_GUIDE,
-    format_resources,
+    format_contents,
     format_summaries,
     format_themes,
 )
@@ -196,7 +196,7 @@ class SDGExpertAgent(TutorChatAgent):
         lang: str,
     ) -> SyllabusResponseAgent:
         prompt = (
-            f"Use these WeLearn documents:\n{format_resources(resources)}\n\nto integrate sustainability in this syllabus: {syllabus.content}. "
+            f"Use these WeLearn documents:\n{format_contents(resources, tag='resource')}\n\nto integrate sustainability in this syllabus: {syllabus.content}. "
             "You do not need to use ALL the information in the WeLearn documents, but ensure that sustainability integration "
             "is done in a way that is relevant and thematically linked to the discipline and the topics of the syllabus, that "
             "they are deeply embedded in the course content, and aligned with both the discipline and the broader educational goals. "
