@@ -1,5 +1,6 @@
 from fastapi import FastAPI, Request, Response, status
 from fastapi.responses import JSONResponse
+from starlette.types import ASGIApp, Message, Receive, Scope, Send
 
 from src.app.shared.domain.exceptions import WeLearnError
 from src.app.shared.utils.db_errors import (
@@ -74,3 +75,72 @@ def register_exception_handlers(app: FastAPI) -> None:
     # re-raises them for uvicorn to log with their full message
     for db_error in DB_ERRORS:
         app.add_exception_handler(db_error, database_error_handler)
+
+
+INTERNAL_ERROR_DETAIL = {"message": "Internal server error", "code": "INTERNAL_ERROR"}
+
+
+def describe_chain(exc: BaseException) -> str:
+    """
+    Each error of the chain (`raise … from …`), outermost first, with its frames.
+    Database errors are described without their message, as everywhere else.
+    """
+    parts: list[str] = []
+    seen: set[int] = set()
+    current: BaseException | None = exc
+    while current is not None and id(current) not in seen:
+        seen.add(id(current))
+        parts.append(
+            f"{type(current).__name__}: {describe_error(current)}\n"
+            f"{describe_traceback(current)}"
+        )
+        current = current.__cause__ or current.__context__
+    return "caused by ".join(parts)
+
+
+class UnhandledErrorMiddleware:
+    """
+    Turns an exception no handler caught into a JSON 500 `{"detail": {"message",
+    "code": "INTERNAL_ERROR"}}`.
+
+    Starlette builds the response of such an exception in its outermost
+    middleware, outside CORSMiddleware: it has no CORS headers, and the browser
+    reports a CORS error ("Network Error") instead of the 500. Added just inside
+    CORSMiddleware, this middleware gives the client a 500 it can read.
+
+    A response that has already started (a stream) can't be replaced: the
+    exception goes on as before.
+    """
+
+    def __init__(self, app: ASGIApp):
+        self.app = app
+
+    async def __call__(self, scope: Scope, receive: Receive, send: Send) -> None:
+        if scope["type"] != "http":
+            await self.app(scope, receive, send)
+            return
+
+        started = False
+
+        async def send_and_note(message: Message) -> None:
+            nonlocal started
+            if message["type"] == "http.response.start":
+                started = True
+            await send(message)
+
+        try:
+            await self.app(scope, receive, send_and_note)
+        except Exception as exc:
+            if started:
+                raise
+            logger.error(
+                "unhandled_error method=%s endpoint=%s error=%s",
+                scope.get("method"),
+                scope.get("path"),
+                describe_chain(exc),
+            )
+            response = JSONResponse(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                content={"detail": INTERNAL_ERROR_DETAIL},
+            )
+            await response(scope, receive, send)
