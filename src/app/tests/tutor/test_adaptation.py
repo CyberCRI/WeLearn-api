@@ -609,6 +609,36 @@ class AdaptCourseTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(result.support, "none")
         self.assertIsNone(result.checks)
 
+    async def test_a_proposal_citing_no_resource_is_not_checked(self):
+        # the connection has resources, but the change relies on none of them
+        with self.assertLogs(adaptation.logger, level="INFO") as logs:
+            result, call = await self.run_with(answer(documents=[], evidence=[]))
+
+        self.assertEqual(call.await_count, 1)
+        self.assertEqual(result.support, "none")
+        self.assertIsNone(result.checks)
+        self.assertIn("calls=1 check=none", logs.output[-1])
+
+    async def test_one_log_line_with_counts_only(self):
+        with self.assertLogs(adaptation.logger, level="INFO") as logs:
+            await self.run_with(
+                self.GOOD,
+                self.verification(self.WRONG_CLAIM),
+                self.SECOND,
+                self.verification(),
+            )
+
+        line = logs.output[-1]
+        self.assertIn(
+            "tutor_adaptation_done calls=4 check=checked first_problems=1 "
+            "first_serious=False redone=True "
+            "second_kept=True final_problems=0 unbacked_names=0 support=strong kind=topic",
+            line,
+        )
+        # never the course, the change or a problem
+        for text in ("PIB", "Non établi", "Ajouter"):
+            self.assertNotIn(text, line)
+
     async def test_no_usable_proposal_is_an_error(self):
         with self.assertRaises(UnusableLLMOutputError):
             await self.run_with(UnusableLLMOutputError())

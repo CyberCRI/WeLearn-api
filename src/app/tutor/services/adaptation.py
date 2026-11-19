@@ -17,7 +17,10 @@ import re
 from dataclasses import dataclass
 from typing import Literal
 
+from langsmith import traceable
+
 from src.app.shared.domain.exceptions import UnusableLLMOutputError
+from src.app.shared.infra.tracing import TraceName
 from src.app.shared.utils.logger import logger as utils_logger
 from src.app.tutor.domain.adaptation import (
     AdaptationAnswer,
@@ -478,29 +481,81 @@ async def check(
     return to_verification(answer, resources, change)
 
 
+@traceable(name=TraceName.TUTOR_ADAPTATION.value)
 async def adapt_course(
     course: ConfirmedCourse, connection: ChosenConnection, lang: TutorLang
 ) -> AdaptationProposal:
     """
     One checked change for the connection. Raises UnusableLLMOutputError when no proposal
-    can be used. A change without any resource has nothing to be checked against: it comes
-    back unchecked (`checks` null), never supported.
+    can be used.
+
+    A change that cites no resource (the connection has none, or the model used none) has
+    nothing to be checked against: its support is already "none", which no check can
+    lower, so it comes back without a check (`checks` null).
+
+    Traced as one run in LangSmith, its LLM calls inside, and summed up in one log line
+    without content (`tutor_adaptation_done`), to measure how often each step runs.
     """
     resources = roled_resources(connection)
     proposal = await propose(course, connection, resources, lang)
-    if not resources:
+    calls = 1
+    if not proposal.resources:
+        _log_adaptation(calls, proposal)
         return proposal
 
     verification = await check(course, proposal, resources, lang)
+    calls += 1
+    first_problems = len(verification.problems) if verification else None
+    # would a wrong claim or a forced change alone have asked again? (measurement plan)
+    first_serious = (
+        verification.has_incorrect or verification.is_forced if verification else None
+    )
+    is_redone = is_second_kept = False
     if verification and verification.problems:
         # asked again once without what was wrong; kept only once checked too
+        is_redone = True
         try:
             second = await propose(
                 course, connection, resources, lang, verification.problems
             )
         except UnusableLLMOutputError:
             second = None
-        second_check = await check(course, second, resources, lang) if second else None
+        calls += 1
+        second_check = None
+        if second:
+            second_check = await check(course, second, resources, lang)
+            calls += 1
         if second and second_check:
             proposal, verification = second, second_check
-    return with_checks(proposal, verification, resources, course)
+            is_second_kept = True
+    proposal = with_checks(proposal, verification, resources, course)
+    _log_adaptation(
+        calls, proposal, first_problems, first_serious, is_redone, is_second_kept
+    )
+    return proposal
+
+
+def _log_adaptation(
+    calls: int,
+    proposal: AdaptationProposal,
+    first_problems: int | None = None,
+    first_serious: bool | None = None,
+    is_redone: bool = False,
+    is_second_kept: bool = False,
+) -> None:
+    """One line per adaptation, counts and enums only (never the course or the change)."""
+    checks = proposal.checks
+    logger.info(
+        "tutor_adaptation_done calls=%s check=%s first_problems=%s first_serious=%s "
+        "redone=%s second_kept=%s final_problems=%s unbacked_names=%s support=%s kind=%s",
+        calls,
+        checks.status if checks else "none",
+        first_problems,
+        first_serious,
+        is_redone,
+        is_second_kept,
+        len(checks.problems) if checks else None,
+        len(checks.unbacked_names) if checks else None,
+        proposal.support,
+        proposal.kind,
+    )

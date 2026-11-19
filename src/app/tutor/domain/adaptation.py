@@ -172,5 +172,8 @@ class AdaptationProposal(BaseModel):
     )
     guidance: AdaptationGuidance
     checks: AdaptationChecks | None = Field(
-        description="The check of its claims; null without any resource to check against"
+        description=(
+            "The check of its claims; null when the change cites no resource (nothing to "
+            "check it against, and its support is none)"
+        )
     )
