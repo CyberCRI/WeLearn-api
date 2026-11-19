@@ -22,6 +22,7 @@ from typing import Any
 
 from pydantic import BaseModel
 
+from src.app.tutor.domain.connections import IdeasAnswer
 from src.app.tutor.domain.course import CourseReading
 
 CASES_DIR = Path(__file__).parent / "cases"
@@ -30,6 +31,7 @@ CASES_DIR = Path(__file__).parent / "cases"
 # registers its prompts here
 EVALUATED_PROMPTS: dict[str, type[BaseModel]] = {
     "read": CourseReading,
+    "ideas": IdeasAnswer,
 }
 
 

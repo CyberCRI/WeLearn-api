@@ -29,6 +29,10 @@ from src.app.shared.utils.dependencies import get_settings
 from src.app.shared.utils.logger import logger as utils_logger
 from src.app.shared.utils.requests import extract_session_cookie
 from src.app.shared.utils.utils import check_upload_limits, get_files_content
+from src.app.tutor.domain.connections import (
+    ConnectionIdeasRequest,
+    ConnectionIdeasResponse,
+)
 from src.app.tutor.domain.course import CourseReadResponse
 from src.app.tutor.domain.models import (
     CompetencyMappingRequest,
@@ -50,6 +54,7 @@ from src.app.tutor.domain.models import (
     TutorSyllabusRequest,
     UserInput,
 )
+from src.app.tutor.services.connections import find_connection_ideas
 from src.app.tutor.services.course_reading import MAX_FOCUS_CHARS, read_course
 from src.app.tutor.services.extractor import extract_files_summaries, truncate_documents
 from src.app.tutor.services.orchestrator import SyllabusOrchestrator
@@ -136,6 +141,32 @@ async def read_course_document(
     [text] = await get_files_content([file])
     async with quota.spend():
         return await read_course(text, lang, focus)
+
+
+UNUSABLE_LLM_OUTPUT_RESPONSE: dict[int | str, dict] = {
+    502: {
+        "model": ErrorResponse,
+        "description": "The model gave no usable answer (code UNUSABLE_LLM_OUTPUT)",
+    },
+}
+
+
+@router.post(
+    "/course/connection_ideas",
+    response_model=ConnectionIdeasResponse,
+    responses=UNUSABLE_LLM_OUTPUT_RESPONSE,
+    summary="Suggest sustainability connections for a course (syllabus v2)",
+)
+async def suggest_connection_ideas(
+    body: ConnectionIdeasRequest,
+) -> ConnectionIdeasResponse:
+    """
+    At most 4 sustainability connections for the course the teacher confirmed, each tied
+    to the part of the course it builds on (`anchor`, as the teacher wrote it), with two
+    searches for its resources. No connection at all comes with `none_reason`.
+    `lang` is the teacher's language (the answer's).
+    """
+    return await find_connection_ideas(body.course, body.lang)
 
 
 @router.post(

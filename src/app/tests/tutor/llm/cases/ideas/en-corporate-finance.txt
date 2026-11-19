@@ -1,0 +1,20 @@
+Title: Corporate Finance
+Discipline: Finance
+Level: Master 1
+Overview: The course covers how firms value investment projects, choose how to finance them and manage risk.
+Topics:
+- Investment decisions (Net present value, Internal rate of return)
+- The cost of capital (CAPM, WACC)
+- Capital structure
+- Risk management with derivatives
+Learning objectives:
+- Value an investment project with discounted cash flows.
+- Estimate a firm's weighted average cost of capital.
+- Explain how leverage affects a firm's value and risk.
+Course outline:
+- Week 1 – Time value of money
+- Week 2 – Project valuation
+- Week 3 – Risk and return
+- Week 4 – Cost of capital
+- Week 5 – Debt and equity
+- Week 6 – Hedging with futures and options

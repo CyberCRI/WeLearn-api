@@ -1,0 +1,12 @@
+{
+  "about": "Fictional FR macroeconomics course: a few connections on precise mechanisms (GDP measure, energy prices and inflation...), each tied to a course part, two searches each, no reason for none.",
+  "lang": "fr",
+  "variables": {"max_ideas": 4},
+  "data": {"course": "file:fr-macroeconomie.txt"},
+  "expect": {
+    "ideas": {"min_items": 1, "max_items": 4},
+    "ideas.0.anchor": {"not_empty": true},
+    "ideas.0.queries": {"min_items": 2, "max_items": 2},
+    "none_reason": {"equals": null}
+  }
+}

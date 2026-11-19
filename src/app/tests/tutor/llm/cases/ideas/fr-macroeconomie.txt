@@ -1,0 +1,22 @@
+Title: Introduction à la macroéconomie
+Discipline: Économie
+Level: Licence 1
+Overview: Ce cours présente les grands agrégats de la macroéconomie, leur mesure et les principaux mécanismes qui relient croissance, inflation et emploi.
+Topics:
+- Les grandeurs de la macroéconomie (Le PIB : définition et mesure, L’inflation, Le chômage)
+- La consommation et l’épargne des ménages
+- L’investissement et le rôle du taux d’intérêt
+- La politique monétaire
+Learning objectives:
+- Définir et mesurer le PIB, l’inflation et le chômage.
+- Expliquer les déterminants de la consommation et de l’investissement.
+- Analyser les effets d’une variation du taux directeur.
+Competencies:
+- Lire et commenter une série statistique de l’INSEE
+Course outline:
+- Séance 1 – La comptabilité nationale
+- Séance 2 – Mesurer les prix : l’indice des prix à la consommation
+- Séance 3 – Le marché du travail
+- Séance 4 – Consommation et épargne
+- Séance 5 – Investissement
+- Séance 6 – Banque centrale et politique monétaire

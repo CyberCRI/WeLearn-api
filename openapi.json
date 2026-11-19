@@ -480,6 +480,213 @@
         "title": "CompetencyMappings",
         "type": "object"
       },
+      "ConfirmedCourse": {
+        "properties": {
+          "competencies": {
+            "default": [],
+            "items": {
+              "type": "string"
+            },
+            "title": "Competencies",
+            "type": "array"
+          },
+          "discipline": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Discipline"
+          },
+          "level": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Level"
+          },
+          "objectives": {
+            "default": [],
+            "items": {
+              "type": "string"
+            },
+            "title": "Objectives",
+            "type": "array"
+          },
+          "overview": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Overview"
+          },
+          "sessions": {
+            "default": [],
+            "description": "The course outline: sessions, weeks or chapters",
+            "items": {
+              "type": "string"
+            },
+            "title": "Sessions",
+            "type": "array"
+          },
+          "title": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Title"
+          },
+          "topics": {
+            "default": [],
+            "items": {
+              "$ref": "#/components/schemas/CourseTopic"
+            },
+            "title": "Topics",
+            "type": "array"
+          }
+        },
+        "title": "ConfirmedCourse",
+        "type": "object"
+      },
+      "ConnectionIdea": {
+        "properties": {
+          "anchor": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "The course part the connection builds on, as the teacher wrote it (a topic, subtopic, objective, competency or session); null when the model named no part of this course",
+            "title": "Anchor"
+          },
+          "anchor_label": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "A few words naming the course part; null without an anchor",
+            "title": "Anchor Label"
+          },
+          "id": {
+            "description": "Given by the server: idea-1, idea-2…",
+            "title": "Id",
+            "type": "string"
+          },
+          "queries": {
+            "description": "The searches for its resources",
+            "items": {
+              "type": "string"
+            },
+            "maxItems": 2,
+            "minItems": 1,
+            "title": "Queries",
+            "type": "array"
+          },
+          "title": {
+            "title": "Title",
+            "type": "string"
+          },
+          "use": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Use"
+          },
+          "why": {
+            "title": "Why",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "title",
+          "anchor",
+          "anchor_label",
+          "why",
+          "use",
+          "queries"
+        ],
+        "title": "ConnectionIdea",
+        "type": "object"
+      },
+      "ConnectionIdeasRequest": {
+        "properties": {
+          "course": {
+            "$ref": "#/components/schemas/ConfirmedCourse"
+          },
+          "lang": {
+            "default": "en",
+            "enum": [
+              "en",
+              "fr"
+            ],
+            "title": "Lang",
+            "type": "string"
+          }
+        },
+        "required": [
+          "course"
+        ],
+        "title": "ConnectionIdeasRequest",
+        "type": "object"
+      },
+      "ConnectionIdeasResponse": {
+        "properties": {
+          "ideas": {
+            "items": {
+              "$ref": "#/components/schemas/ConnectionIdea"
+            },
+            "maxItems": 4,
+            "title": "Ideas",
+            "type": "array"
+          },
+          "none_reason": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Why no connection is proposed, for the teacher; set only when ideas is empty",
+            "title": "None Reason"
+          }
+        },
+        "required": [
+          "ideas",
+          "none_reason"
+        ],
+        "title": "ConnectionIdeasResponse",
+        "type": "object"
+      },
       "CorpusRead": {
         "properties": {
           "category": {
@@ -775,6 +982,27 @@
           }
         },
         "title": "CourseReading",
+        "type": "object"
+      },
+      "CourseTopic": {
+        "properties": {
+          "subtopics": {
+            "default": [],
+            "items": {
+              "type": "string"
+            },
+            "title": "Subtopics",
+            "type": "array"
+          },
+          "title": {
+            "title": "Title",
+            "type": "string"
+          }
+        },
+        "required": [
+          "title"
+        ],
+        "title": "CourseTopic",
         "type": "object"
       },
       "Document": {
@@ -4334,6 +4562,63 @@
           }
         ],
         "summary": "Generate Syllabus",
+        "tags": [
+          "tutor"
+        ]
+      }
+    },
+    "/api/v1/tutor/course/connection_ideas": {
+      "post": {
+        "description": "At most 4 sustainability connections for the course the teacher confirmed, each tied\nto the part of the course it builds on (`anchor`, as the teacher wrote it), with two\nsearches for its resources. No connection at all comes with `none_reason`.\n`lang` is the teacher's language (the answer's).",
+        "operationId": "tutor-suggest_connection_ideas",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ConnectionIdeasRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ConnectionIdeasResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "502": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "The model gave no usable answer (code UNUSABLE_LLM_OUTPUT)"
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Error"
+          }
+        },
+        "security": [
+          {
+            "APIKeyHeader": []
+          }
+        ],
+        "summary": "Suggest sustainability connections for a course (syllabus v2)",
         "tags": [
           "tutor"
         ]
