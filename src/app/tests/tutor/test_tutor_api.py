@@ -20,6 +20,11 @@ from src.app.shared.domain.exceptions import (
     UnusableReadingError,
 )
 from src.app.tests.user.guest_usage_db import guest_left, guest_use, use_guest_usage_db
+from src.app.tutor.domain.adaptation import (
+    AdaptationChecks,
+    AdaptationGuidance,
+    AdaptationProposal,
+)
 from src.app.tutor.domain.connections import (
     ConfirmedCourse,
     ConnectionEvidenceResponse,
@@ -1366,6 +1371,80 @@ class TestConnectionEvidence(TutorApiTestCase):
                 response = self.safe_client.post(self.URL, json=body, headers=HEADERS)
                 self.assertEqual(response.status_code, 422)
         mock_find.assert_not_awaited()
+
+
+class TestCourseAdaptation(TutorApiTestCase):
+    """Syllabus v2: POST /tutor/course/adaptation."""
+
+    URL = f"{BASE}/course/adaptation"
+
+    def body(self, **connection):
+        document = make_document().model_dump(mode="json")
+        resource = {
+            "document": document,
+            "usefulness": "Shows it.",
+            "evidence": "content",
+        }
+        return {
+            "course": {"title": "Ecology", "topics": [{"title": "Soils"}]},
+            "connection": {
+                "title": "Soil carbon",
+                "anchor": "Soils",
+                "why": "Soils store carbon.",
+                "resources": [resource],
+                "background": [],
+                **connection,
+            },
+            "lang": "fr",
+        }
+
+    @patch(f"{ROUTER}.adapt_course", new_callable=AsyncMock)
+    def test_proposes_a_checked_change_for_the_connection(self, mock_adapt):
+        mock_adapt.return_value = AdaptationProposal(
+            kind="topic",
+            original="Soils",
+            suggested="Add soil carbon storage.",
+            why="Students link soils and climate.",
+            support="partial",
+            resources=[],
+            guidance=AdaptationGuidance(
+                learning=None, greencomp=None, teaching=None, check=None
+            ),
+            checks=AdaptationChecks(
+                status="checked", problems=["P."], unbacked_names=[]
+            ),
+        )
+
+        response = self.client.post(self.URL, json=self.body(), headers=HEADERS)
+
+        self.assertEqual(response.status_code, 200)
+        course, connection, lang = mock_adapt.await_args.args
+        self.assertEqual(course.title, "Ecology")
+        self.assertEqual(connection.anchor, "Soils")
+        self.assertEqual(len(connection.resources), 1)
+        self.assertEqual(lang, "fr")
+        self.assertEqual(response.json()["checks"]["problems"], ["P."])
+
+    @patch(f"{ROUTER}.adapt_course", new_callable=AsyncMock)
+    def test_too_many_resources_or_no_connection_is_422(self, mock_adapt):
+        resource = self.body()["connection"]["resources"][0]
+        for body in (
+            self.body(resources=[resource] * 4),
+            {"course": self.body()["course"]},
+        ):
+            with self.subTest(body=list(body)):
+                response = self.safe_client.post(self.URL, json=body, headers=HEADERS)
+                self.assertEqual(response.status_code, 422)
+        mock_adapt.assert_not_awaited()
+
+    @patch(f"{ROUTER}.adapt_course", new_callable=AsyncMock)
+    def test_no_usable_proposal_is_502(self, mock_adapt):
+        mock_adapt.side_effect = UnusableLLMOutputError()
+
+        response = self.safe_client.post(self.URL, json=self.body(), headers=HEADERS)
+
+        self.assertEqual(response.status_code, 502)
+        self.assertEqual(response.json()["detail"]["code"], "UNUSABLE_LLM_OUTPUT")
 
 
 class GuestTutorTestCase(TutorApiTestCase):

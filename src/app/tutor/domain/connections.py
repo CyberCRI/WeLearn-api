@@ -14,8 +14,9 @@ from src.app.shared.domain.documents import EnhancedDocumentSlice
 from src.app.tutor.domain.course import Answer, Text, Texts
 from src.app.tutor.domain.models import TutorLang
 
-# a small set the teacher can weigh
+# a small set the teacher can weigh: a few ideas, a few resources each
 MAX_IDEAS = 4
+MAX_RESOURCES = 3
 
 
 class CourseTopic(BaseModel):
@@ -137,7 +138,7 @@ FITS: tuple[str, ...] = get_args(Fit)
 RELEVANCES: tuple[str, ...] = get_args(Relevance)
 
 
-def _known(values: tuple[str, ...]) -> BeforeValidator:
+def known(values: tuple[str, ...]) -> BeforeValidator:
     """An unknown value is no value: not worth losing the whole answer."""
     return BeforeValidator(lambda value: value if value in values else None)
 
@@ -150,7 +151,7 @@ class SelectedResource(Answer):
     sustainability_terms: Texts = []
     same_sense: bool | None = None
     establishes: bool | None = None
-    relevance: Annotated[Relevance | None, _known(RELEVANCES)] = None
+    relevance: Annotated[Relevance | None, known(RELEVANCES)] = None
     usefulness: Text = None
     evidence: Text = Field(
         default=None, description="One sentence copied word for word from the document"
@@ -160,7 +161,7 @@ class SelectedResource(Answer):
 class SelectionAnswer(Answer):
     """Answer of the `selection` prompt."""
 
-    fit: Annotated[Fit | None, _known(FITS)] = None
+    fit: Annotated[Fit | None, known(FITS)] = None
     fit_reason: Text = None
     keep: bool
     concept: Text = None

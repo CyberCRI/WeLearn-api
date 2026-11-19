@@ -107,6 +107,15 @@ class CheckTests(unittest.TestCase):
             [],
         )
 
+    def test_has_item_finds_an_object_with_these_values(self):
+        answer = {"claims": [{"status": "incorrect", "document": None}]}
+        self.assertEqual(
+            check(answer, {"claims": {"has_item": {"status": ["incorrect", "x"]}}}), []
+        )
+        self.assertEqual(
+            len(check(answer, {"claims": {"has_item": {"status": "established"}}})), 1
+        )
+
     def test_lists_the_failed_expectations(self):
         failures = check(
             self.answer.model_dump(),

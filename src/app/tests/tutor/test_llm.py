@@ -204,6 +204,37 @@ class StructuredCallTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(raised.exception.msg_code, "UNUSABLE_LLM_OUTPUT")
         self.assertEqual(structured.ainvoke.await_count, 2)
 
+    async def test_an_answer_the_caller_finds_unusable_is_asked_again(self):
+        model, structured = self._model(
+            [
+                Ideas(titles=[]),
+                Ideas(titles=["Water"]),
+                Ideas(titles=[]),
+                Ideas(titles=[]),
+            ]
+        )
+
+        async def call():
+            with mock.patch.object(llm.tutor, "chat_model", model):
+                return await llm.structured_call(
+                    "ideas",
+                    "en",
+                    Ideas,
+                    {"course": "A course"},
+                    {"max_ideas": 2},
+                    is_usable=lambda answer: bool(answer.titles),
+                )
+
+        with self.assertLogs(llm.logger, level="WARNING") as logs:
+            self.assertEqual(await call(), Ideas(titles=["Water"]))
+        self.assertIn("error=NotUsable", logs.output[0])
+
+        # rejected twice: unusable
+        with self.assertLogs(llm.logger, level="WARNING"):
+            with self.assertRaises(UnusableLLMOutputError):
+                await call()
+        self.assertEqual(structured.ainvoke.await_count, 4)
+
     async def test_creates_the_model_when_the_app_did_not(self):
         model, _ = self._model([{"titles": []}])
 

@@ -13,8 +13,12 @@ A case is a JSON file in `cases/<prompt>/`:
 - `data` values are text, or `file:<name>` for a UTF-8 text file next to the case. A tag
   sent as several numbered blocks (the resources of `selection`) takes a list of
   `{"text": ..., "attrs": {...}}`, each `text` read the same way.
+- `variables` are added to the ones the code always gives the prompt (`PROMPT_VARIABLES`,
+  e.g. the GreenComp list of `adaptation`).
 - `expect` maps a dotted path of the answer to checks: `equals`, `contains` (case-insensitive,
-  in a text or in a list of texts), `min_items`, `max_items`, `not_empty`.
+  in a text or in a list of texts), `min_items`, `max_items`, `not_empty`, and `has_item`
+  (a list holds an object with these field values, e.g. `{"status": "established"}`; a list
+  of values allows any of them).
 """
 
 import json
@@ -24,8 +28,10 @@ from typing import Any
 
 from pydantic import BaseModel
 
+from src.app.tutor.domain.adaptation import AdaptationAnswer, VerificationAnswer
 from src.app.tutor.domain.connections import IdeasAnswer, SelectionAnswer
 from src.app.tutor.domain.course import CourseReading
+from src.app.tutor.domain.greencomp import greencomp_for_prompt
 from src.app.tutor.services.llm import DataBlock
 
 CASES_DIR = Path(__file__).parent / "cases"
@@ -36,6 +42,13 @@ EVALUATED_PROMPTS: dict[str, type[BaseModel]] = {
     "read": CourseReading,
     "ideas": IdeasAnswer,
     "selection": SelectionAnswer,
+    "adaptation": AdaptationAnswer,
+    "verification": VerificationAnswer,
+}
+
+# variables the code always gives a prompt (not written in each case)
+PROMPT_VARIABLES: dict[str, dict[str, Any]] = {
+    "adaptation": {"greencomp": greencomp_for_prompt()},
 }
 
 
@@ -76,7 +89,10 @@ def load_cases(prompt: str, cases_dir: Path = CASES_DIR) -> list[EvalCase]:
                 id=raw.get("id", path.stem),
                 lang=raw["lang"],
                 data=data,
-                variables=raw.get("variables", {}),
+                variables={
+                    **PROMPT_VARIABLES.get(prompt, {}),
+                    **raw.get("variables", {}),
+                },
                 expect=raw.get("expect", {}),
             )
         )
@@ -97,9 +113,26 @@ def _contains(value: Any, expected: str) -> bool:
     return needle in str(value).lower()
 
 
+def _has_item(items: Any, expected: dict[str, Any]) -> bool:
+    """An item whose fields have these values (a list gives the values allowed)."""
+
+    def matches(item: Any) -> bool:
+        return all(
+            (
+                item.get(key) in wanted
+                if isinstance(wanted, list)
+                else item.get(key) == wanted
+            )
+            for key, wanted in expected.items()
+        )
+
+    return any(isinstance(item, dict) and matches(item) for item in items)
+
+
 CHECKS = {
     "equals": lambda value, expected: value == expected,
     "contains": _contains,
+    "has_item": _has_item,
     "min_items": lambda value, expected: len(value) >= expected,
     "max_items": lambda value, expected: len(value) <= expected,
     "not_empty": lambda value, expected: bool(value) == expected,

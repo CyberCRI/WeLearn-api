@@ -1,0 +1,44 @@
+{
+  "about": "A change for a supported connection: one topic or teaching change, backed by a quote of the direct resource.",
+  "lang": "fr",
+  "variables": {
+    "count": 2,
+    "has_problems": false
+  },
+  "data": {
+    "course": "file:../ideas/fr-macroeconomie.txt",
+    "connection": "file:connection-limites-pib.txt",
+    "resource": [
+      {
+        "text": "file:../selection/r-pib-environnement.txt",
+        "attrs": {
+          "role": "direct",
+          "title": "Ce que le PIB ne mesure pas",
+          "source": "openalex · Revue d'économie fictive · fr"
+        }
+      },
+      {
+        "text": "file:../selection/r-climate-overview.txt",
+        "attrs": {
+          "role": "context",
+          "title": "What is climate change?",
+          "source": "un-sdg · en"
+        }
+      }
+    ]
+  },
+  "expect": {
+    "suggested": {
+      "not_empty": true
+    },
+    "why": {
+      "not_empty": true
+    },
+    "evidence": {
+      "min_items": 1
+    },
+    "documents": {
+      "min_items": 1
+    }
+  }
+}

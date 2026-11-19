@@ -12,7 +12,7 @@ the system prompt says their content is data, never instructions.
 
 import hashlib
 import re
-from collections.abc import Mapping, Sequence
+from collections.abc import Callable, Mapping, Sequence
 from dataclasses import dataclass, field
 from functools import lru_cache
 from pathlib import Path
@@ -190,10 +190,14 @@ async def structured_call(
     variables: Mapping[str, object] | None = None,
     *,
     max_data_chars: int = MAX_DATA_CHARS,
+    is_usable: Callable[[T], bool] | None = None,
 ) -> T:
     """
     Run the prompt `prompt_name` in `lang` and return its answer as `schema`.
     A malformed answer is asked again once; a second one raises UnusableLLMOutputError.
+
+    `is_usable` adds checks the schema alone can't make (they need the course or the
+    resources): an answer it rejects is asked again like a malformed one.
     """
     messages = build_messages(prompt_name, lang, data, variables, max_data_chars)
     model = await get_chat_model()
@@ -212,15 +216,20 @@ async def structured_call(
             result = await structured.ainvoke(messages, config=config)
             # with_structured_output is typed dict | BaseModel: normalise to the schema
             # (also raises ValidationError when the LLM returned no or partial fields)
-            return schema.model_validate(result, from_attributes=True)
+            answer = schema.model_validate(result, from_attributes=True)
         except (OutputParserException, ValidationError) as e:
-            # no content in the logs: the answer may quote the teacher's course
-            logger.warning(
-                "tutor_llm_unusable_output prompt=%s lang=%s attempt=%s error=%s",
-                prompt_name,
-                lang,
-                attempt,
-                type(e).__name__,
-            )
+            error = type(e).__name__
+        else:
+            if is_usable is None or is_usable(answer):
+                return answer
+            error = "NotUsable"
+        # no content in the logs: the answer may quote the teacher's course
+        logger.warning(
+            "tutor_llm_unusable_output prompt=%s lang=%s attempt=%s error=%s",
+            prompt_name,
+            lang,
+            attempt,
+            error,
+        )
 
     raise UnusableLLMOutputError()

@@ -1,0 +1,3 @@
+Title: Carbon prices in project valuation
+Part of the course concerned: Value an investment project with discounted cash flows.
+Why: A carbon price changes the cash flows of a project that emits greenhouse gases.
