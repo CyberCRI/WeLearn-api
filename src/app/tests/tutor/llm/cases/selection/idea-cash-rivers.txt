@@ -1,0 +1,4 @@
+Title: Cash flows as river flows
+Part of the course concerned: Week 1 – Time value of money
+Why: Money flows through a firm the way water flows through a river basin.
+Use of the course's concept: Compare discounting cash flows with measuring the flow of a river.

@@ -1,0 +1,56 @@
+{
+  "about": "The same judgement for a teacher working in English: the evidence stays a French sentence of the resource.",
+  "lang": "en",
+  "variables": {
+    "count": 4
+  },
+  "data": {
+    "course": "file:../ideas/fr-macroeconomie.txt",
+    "idea": "file:idea-limites-pib.txt",
+    "resource": [
+      {
+        "text": "file:r-pib-environnement.txt",
+        "attrs": {
+          "title": "Ce que le PIB ne mesure pas",
+          "source": "openalex · Revue d'économie fictive · fr"
+        }
+      },
+      {
+        "text": "file:r-climate-overview.txt",
+        "attrs": {
+          "title": "What is climate change?",
+          "source": "un-sdg · en"
+        }
+      },
+      {
+        "text": "file:r-tri-dechets.txt",
+        "attrs": {
+          "title": "Le tri des emballages",
+          "source": "press · fr"
+        }
+      },
+      {
+        "text": "file:r-football-revenue.txt",
+        "attrs": {
+          "title": "Football club revenue",
+          "source": "press · en"
+        }
+      }
+    ]
+  },
+  "expect": {
+    "fit": {
+      "equals": "genuine"
+    },
+    "keep": {
+      "equals": true
+    },
+    "resources": {
+      "min_items": 1,
+      "max_items": 3
+    },
+    "why": {
+      "not_empty": true
+    }
+  }
+}
