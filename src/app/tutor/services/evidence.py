@@ -17,9 +17,9 @@ from fastapi import BackgroundTasks
 from src.app.search.domain.models import EnhancedSearchQuery, SearchMethods
 from src.app.search.services.search import SearchService, resolve_corpora
 from src.app.shared.domain.documents import EnhancedDocumentSlice
-from src.app.shared.domain.exceptions import UnusableLLMOutputError
 from src.app.shared.utils.logger import logger as utils_logger
 from src.app.tutor.domain.connections import (
+    MAX_RESOURCE_CHARS,
     MAX_RESOURCES,
     ConfirmedCourse,
     ConnectionEvidenceResponse,
@@ -30,7 +30,7 @@ from src.app.tutor.domain.connections import (
 from src.app.tutor.domain.models import TutorLang
 from src.app.tutor.services.connections import course_block
 from src.app.tutor.services.course_reading import normalise, unify_characters
-from src.app.tutor.services.llm import DataBlock, structured_call
+from src.app.tutor.services.llm import LLM_FAILURES, DataBlock, structured_call
 
 logger = utils_logger(__name__)
 
@@ -107,7 +107,7 @@ def source_of(doc: EnhancedDocumentSlice) -> str:
 def resource_blocks(docs: list[EnhancedDocumentSlice]) -> list[DataBlock]:
     return [
         DataBlock(
-            text=doc.payload.slice_content or "",
+            text=(doc.payload.slice_content or "")[:MAX_RESOURCE_CHARS],
             attrs={"title": doc.payload.document_title, "source": source_of(doc)},
         )
         for doc in docs
@@ -413,7 +413,7 @@ async def find_connection_evidence(
             },
             {"count": len(candidates)},
         )
-    except UnusableLLMOutputError:
+    except LLM_FAILURES:
         logger.warning("tutor_connection_evidence_unchecked idea=%s", idea.id)
         return unjudged.model_copy(update={"status": "unchecked"})
     return to_evidence(answer, idea, candidates)

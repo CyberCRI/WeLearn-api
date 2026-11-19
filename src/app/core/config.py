@@ -38,6 +38,14 @@ class Settings(BaseSettings):
     LLM_TEMPERATURE: float
     # old tutor: one structured LLM call instead of the 3-agent chain (False = revert)
     TUTOR_SINGLE_PASS: bool = True
+    # syllabus v2 (/tutor/course/*): the longest one LLM call may take, retries of the
+    # Mistral client included; past it the route answers 503 LLM_UNAVAILABLE
+    TUTOR_LLM_TIMEOUT_SECONDS: float = 60
+    # per session (or client IP without one), in the memory of each pod: LLM requests
+    # running at once, and requests per window
+    TUTOR_COURSE_IN_FLIGHT_PER_SESSION: int = 2
+    TUTOR_COURSE_REQUESTS_PER_WINDOW: int = 30
+    TUTOR_COURSE_WINDOW_SECONDS: int = 600
     ENV: str
     MCP_ENABLED: bool = True
 
@@ -109,6 +117,8 @@ class Settings(BaseSettings):
     # changes asked on a generated syllabus, and LLM summaries of uploaded files
     GUEST_FEEDBACK_DAILY_LIMIT: int = 2
     GUEST_FILES_DAILY_LIMIT: int = 5
+    # changes proposed for a sustainability connection (syllabus v2)
+    GUEST_ADAPTATION_DAILY_LIMIT: int = 3
     # new guests per client IP and hour while GUEST_RESTRICTIONS_ENABLED is on
     # (0 = no limit). Only set it where FORWARDED_ALLOW_IPS lists the ingress
     # pods: otherwise the API sees the ingress' address and every user shares it

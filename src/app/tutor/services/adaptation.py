@@ -19,7 +19,6 @@ from typing import Literal
 
 from langsmith import traceable
 
-from src.app.shared.domain.exceptions import UnusableLLMOutputError
 from src.app.shared.infra.tracing import TraceName
 from src.app.shared.utils.logger import logger as utils_logger
 from src.app.tutor.domain.adaptation import (
@@ -33,7 +32,11 @@ from src.app.tutor.domain.adaptation import (
     GreenCompLink,
     VerificationAnswer,
 )
-from src.app.tutor.domain.connections import ConfirmedCourse, EvidencedResource
+from src.app.tutor.domain.connections import (
+    MAX_RESOURCE_CHARS,
+    ConfirmedCourse,
+    EvidencedResource,
+)
 from src.app.tutor.domain.greencomp import GREENCOMP_IDS, greencomp_for_prompt
 from src.app.tutor.domain.models import TutorLang
 from src.app.tutor.services.connections import (
@@ -50,7 +53,7 @@ from src.app.tutor.services.evidence import (
     verified_quote,
     words_of,
 )
-from src.app.tutor.services.llm import DataBlock, structured_call
+from src.app.tutor.services.llm import LLM_FAILURES, DataBlock, structured_call
 
 logger = utils_logger(__name__)
 
@@ -89,7 +92,7 @@ def connection_block(connection: ChosenConnection) -> str:
 def resource_blocks(resources: list[RoledResource]) -> list[DataBlock]:
     return [
         DataBlock(
-            text=r.resource.document.payload.slice_content or "",
+            text=(r.resource.document.payload.slice_content or "")[:MAX_RESOURCE_CHARS],
             attrs={
                 "role": r.role,
                 "title": r.resource.document.payload.document_title,
@@ -475,7 +478,7 @@ async def check(
             },
             {"count": len(resources)},
         )
-    except UnusableLLMOutputError:
+    except LLM_FAILURES:
         logger.warning("tutor_adaptation_unchecked")
         return None
     return to_verification(answer, resources, change)
@@ -487,7 +490,8 @@ async def adapt_course(
 ) -> AdaptationProposal:
     """
     One checked change for the connection. Raises UnusableLLMOutputError when no proposal
-    can be used.
+    can be used, LLMUnavailableError when the model does not answer it. A check or a
+    second proposal that fails leaves the first proposal, unchecked or as it was.
 
     A change that cites no resource (the connection has none, or the model used none) has
     nothing to be checked against: its support is already "none", which no check can
@@ -518,7 +522,7 @@ async def adapt_course(
             second = await propose(
                 course, connection, resources, lang, verification.problems
             )
-        except UnusableLLMOutputError:
+        except LLM_FAILURES:
             second = None
         calls += 1
         second_check = None

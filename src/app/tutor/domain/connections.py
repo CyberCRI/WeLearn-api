@@ -17,6 +17,9 @@ from src.app.tutor.domain.models import TutorLang
 # a small set the teacher can weigh: a few ideas, a few resources each
 MAX_IDEAS = 4
 MAX_RESOURCES = 3
+# the text of one resource the model reads: a search result is one passage, far shorter;
+# a resource the client sends back is cut there, so it can't fill the prompt
+MAX_RESOURCE_CHARS = 10_000
 
 
 class CourseTopic(BaseModel):

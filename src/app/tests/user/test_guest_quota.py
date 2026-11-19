@@ -304,6 +304,7 @@ class GuestQuotaRouteTests(unittest.TestCase):
             "syllabus": settings.GUEST_SYLLABUS_DAILY_LIMIT,
             "feedback": settings.GUEST_FEEDBACK_DAILY_LIMIT,
             "files": settings.GUEST_FILES_DAILY_LIMIT,
+            "adaptation": settings.GUEST_ADAPTATION_DAILY_LIMIT,
         }
         for feature, limit in limits.items():
             self.assertEqual(body[feature]["limit"], limit)
@@ -328,6 +329,7 @@ class GuestQuotaRouteTests(unittest.TestCase):
                 "syllabus": None,
                 "feedback": None,
                 "files": None,
+                "adaptation": None,
             },
         )
 

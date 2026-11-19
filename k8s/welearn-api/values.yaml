@@ -12,8 +12,9 @@ image:
   path: welearn-api
   tag: "{{ .Values.application.revision }}"
 
-# the per-IP limit of new guests is kept in the memory of each pod
-# (user/services/guest_quota.py): more replicas multiply it
+# the per-IP limit of new guests (user/services/guest_quota.py) and the
+# per-session limits of /tutor/course/* (tutor/services/course_limits.py) are
+# kept in the memory of each pod: more replicas multiply them
 replicaCount: 1
 
 ingress:

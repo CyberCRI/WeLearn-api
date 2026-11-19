@@ -87,6 +87,8 @@ Code that several features need goes in `shared/`. That includes domain exceptio
     - every LLM function goes through `structured_call(prompt_name, lang, schema, data, variables)`: Pydantic output, one retry, then `UnusableLLMOutputError` (502);
     - prompts are files, one per function, written in English: `tutor/domain/prompts/<name>.md` (Jinja2, trusted `variables` only). `lang` only sets the answer's language (rule added by the code, `{{ output_language }}` in the template); there are no per-language copies. **To change a prompt, edit that file** and read `prompts/README.md`;
     - untrusted text (the course, WeLearn resources) only goes in `data`, sent as tagged blocks in the human message; never interpolate it into a prompt file;
+    - each LLM call has `TUTOR_LLM_TIMEOUT_SECONDS`; a timeout or a provider error raises `LLMUnavailableError` (503 `LLM_UNAVAILABLE`), not retried. A step that can do without one answer catches `llm.LLM_FAILURES`;
+    - the `/tutor/course/*` routes depend on `course_limits.course_llm_request`: per session, 2 LLM requests in flight and a request window (429), in the memory of the pod. The routes that take the course back call `ensure_course_fits` (413 `COURSE_TOO_LARGE`); a guest's adaptation counts against the `adaptation` daily quota;
     - `make eval-tutor` runs the prompts on `src/app/tests/tutor/llm/cases/` with the real model (unittest, skipped unless `TUTOR_EVAL=1`, so never in `make test-poetry` or CI). Register a prompt and its schema in `harness.py::EVALUATED_PROMPTS`.
 - **Sessions and users:**
   - Anonymous sessions use the `x-session-id` cookie or header.

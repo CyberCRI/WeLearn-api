@@ -6,7 +6,7 @@ from src.app.shared.domain.documents import (
     EnhancedDocumentSlice,
     EnhancedDocumentSlicePayloadModel,
 )
-from src.app.shared.domain.exceptions import UnusableLLMOutputError
+from src.app.shared.domain.exceptions import LLMUnavailableError, UnusableLLMOutputError
 from src.app.tutor.domain.adaptation import (
     AdaptationAnswer,
     AdaptationResource,
@@ -14,6 +14,7 @@ from src.app.tutor.domain.adaptation import (
     VerificationAnswer,
 )
 from src.app.tutor.domain.connections import (
+    MAX_RESOURCE_CHARS,
     ConfirmedCourse,
     CourseTopic,
     EvidencedResource,
@@ -592,10 +593,31 @@ class AdaptCourseTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(result.suggested, self.GOOD.suggested)
 
     async def test_an_unusable_check_leaves_the_proposal_unchecked(self):
-        result, _ = await self.run_with(self.GOOD, UnusableLLMOutputError())
-        self.assertEqual(
-            (result.support, result.checks.status), ("partial", "unchecked")
+        for error in (UnusableLLMOutputError(), LLMUnavailableError()):
+            with self.subTest(error=type(error).__name__):
+                result, _ = await self.run_with(self.GOOD, error)
+                self.assertEqual(
+                    (result.support, result.checks.status), ("partial", "unchecked")
+                )
+
+    async def test_a_second_proposal_the_model_does_not_answer_keeps_the_first(self):
+        result, _ = await self.run_with(
+            self.GOOD, self.verification(self.WRONG_CLAIM), LLMUnavailableError()
         )
+        self.assertEqual(result.suggested, self.GOOD.suggested)
+
+    async def test_a_first_proposal_the_model_does_not_answer_is_unavailable(self):
+        with self.assertRaises(LLMUnavailableError):
+            await self.run_with(LLMUnavailableError())
+
+    def test_a_resource_sent_back_is_cut_for_the_prompt(self):
+        long = EvidencedResource(
+            document=doc("l", "x" * (MAX_RESOURCE_CHARS + 50)),
+            usefulness="U.",
+            evidence="x",
+        )
+        [block] = resource_blocks(roled_resources(connection(resources=(long,))))
+        self.assertEqual(len(block.text), MAX_RESOURCE_CHARS)
 
     async def test_without_resources_nothing_is_checked(self):
         bare = connection(resources=())

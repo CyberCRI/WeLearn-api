@@ -2,6 +2,7 @@ import unittest
 from unittest import mock
 
 from src.app.shared.domain.exceptions import (
+    LLMUnavailableError,
     UnusableLLMOutputError,
     UnusableReadingError,
 )
@@ -364,6 +365,21 @@ class ReadCourseTests(unittest.IsolatedAsyncioTestCase):
 
         self.assertTrue(response.is_partial)
         self.assertEqual(titles(response.reading.topics), ["Soils"])
+
+    async def test_a_part_the_model_does_not_answer_makes_the_reading_partial(self):
+        with (
+            mock.patch.object(course_reading, "text_parts", return_value=["p1", "p2"]),
+            self._call(CourseReading(topics=[topic("Soils")]), LLMUnavailableError()),
+            self.assertLogs(course_reading.logger, level="WARNING"),
+        ):
+            response = await read_course("p1p2", "en")
+
+        self.assertTrue(response.is_partial)
+
+    async def test_a_first_part_the_model_does_not_answer_is_unavailable(self):
+        with self._call(LLMUnavailableError()):
+            with self.assertRaises(LLMUnavailableError):
+                await read_course("text", "en")
 
     async def test_an_unreadable_document_raises_unusable_reading(self):
         with self._call(UnusableLLMOutputError()):

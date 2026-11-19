@@ -7,8 +7,9 @@ from src.app.shared.domain.documents import (
     EnhancedDocumentSlice,
     EnhancedDocumentSlicePayloadModel,
 )
-from src.app.shared.domain.exceptions import UnusableLLMOutputError
+from src.app.shared.domain.exceptions import LLMUnavailableError, UnusableLLMOutputError
 from src.app.tutor.domain.connections import (
+    MAX_RESOURCE_CHARS,
     ConfirmedCourse,
     ConnectionIdea,
     SelectedResource,
@@ -267,6 +268,10 @@ class ResourceCheckTests(unittest.TestCase):
 
 
 class WhatTheModelSeesTests(unittest.TestCase):
+    def test_a_resource_text_is_cut_for_the_prompt(self):
+        [block] = resource_blocks([doc("l", "x" * (MAX_RESOURCE_CHARS + 50))])
+        self.assertEqual(len(block.text), MAX_RESOURCE_CHARS)
+
     def test_the_idea_block(self):
         self.assertEqual(
             idea_block(IDEA),
@@ -570,12 +575,15 @@ class FindConnectionEvidenceTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual((result.candidate_count, result.why), (0, IDEA.why))
 
     async def test_an_unusable_judgement_leaves_the_idea_unchecked(self):
-        call = mock.AsyncMock(side_effect=UnusableLLMOutputError())
-        search, llm = self._patch(self.CANDIDATES, call)
-        with search, llm:
-            result = await find_connection_evidence(
-                COURSE, IDEA, "en", mock.MagicMock(), mock.MagicMock()
-            )
+        for error in (UnusableLLMOutputError(), LLMUnavailableError()):
+            with self.subTest(error=type(error).__name__):
+                call = mock.AsyncMock(side_effect=error)
+                search, llm = self._patch(self.CANDIDATES, call)
+                with search, llm:
+                    result = await find_connection_evidence(
+                        COURSE, IDEA, "en", mock.MagicMock(), mock.MagicMock()
+                    )
+                self.assertEqual(result.status, "unchecked")
 
         self.assertEqual(result.status, "unchecked")
         self.assertEqual(result.candidate_count, 1)

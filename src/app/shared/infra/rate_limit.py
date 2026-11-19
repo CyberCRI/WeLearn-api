@@ -26,7 +26,7 @@ from fastapi import Request
 # drop keys that have no hit left in their window every this many hits
 _SWEEP_EVERY = 256
 
-_limiters: "WeakSet[SlidingWindowRateLimiter]" = WeakSet()
+_limiters: "WeakSet[SlidingWindowRateLimiter | InFlightLimiter]" = WeakSet()
 
 
 class SlidingWindowRateLimiter:
@@ -117,6 +117,50 @@ class SlidingWindowRateLimiter:
             self._expire(hits, now)
             if not hits:
                 del self._hits[key]
+
+
+class InFlightLimiter:
+    """
+    At most `limit` requests of one key running at once. Thread-safe; in the memory
+    of the process, like the sliding window above.
+    """
+
+    def __init__(self, limit: int):
+        if limit < 1:
+            raise ValueError("limit must be positive")
+        self.limit = limit
+        self._running: dict[str, int] = {}
+        self._lock = threading.Lock()
+        _limiters.add(self)
+
+    def acquire(self, key: str) -> bool:
+        """Count one more running request for `key`, or False when it has `limit`."""
+        with self._lock:
+            running = self._running.get(key, 0)
+            if running >= self.limit:
+                return False
+            self._running[key] = running + 1
+            return True
+
+    def release(self, key: str) -> None:
+        with self._lock:
+            running = self._running.get(key, 0) - 1
+            if running > 0:
+                self._running[key] = running
+            else:
+                self._running.pop(key, None)
+
+    def running(self, key: str) -> int:
+        with self._lock:
+            return self._running.get(key, 0)
+
+    def reset(self) -> None:
+        with self._lock:
+            self._running.clear()
+
+    def __len__(self) -> int:
+        with self._lock:
+            return len(self._running)
 
 
 def reset_rate_limiters() -> None:
