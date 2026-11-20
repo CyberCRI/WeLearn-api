@@ -16,25 +16,26 @@ from src.app.tutor.domain.connections import (
     SelectionAnswer,
 )
 from src.app.tutor.services import evidence
-from src.app.tutor.services.connections import course_block
+from src.app.tutor.services.course_prompt import course_block, source_of
 from src.app.tutor.services.evidence import (
-    clean_quote,
     find_connection_evidence,
     has_link,
-    has_unsupported_figure,
     idea_block,
     is_about_process,
-    is_quoted_in,
     names_concept,
     resource_blocks,
     search_candidates,
-    source_of,
     speaks_of_sustainability,
     to_evidence,
+)
+from src.app.tutor.services.llm import DataBlock, render_prompt
+from src.app.tutor.services.resource_checks import (
+    clean_quote,
+    has_unsupported_figure,
+    is_quoted_in,
     verified_quote,
     words_of,
 )
-from src.app.tutor.services.llm import DataBlock, render_prompt
 
 COURSE = ConfirmedCourse(title="Introduction à la macroéconomie", topics=[])
 IDEA = ConnectionIdea(

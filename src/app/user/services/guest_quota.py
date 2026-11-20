@@ -27,6 +27,7 @@ from uuid import UUID
 from fastapi import HTTPException, Request, Response, status
 from fastapi.concurrency import run_in_threadpool
 
+from src.app.shared.api.errors import retry_later
 from src.app.shared.domain.exceptions import SessionNotFoundError
 from src.app.shared.domain.responses import ErrorResponse
 from src.app.shared.infra.rate_limit import SlidingWindowRateLimiter, client_ip
@@ -207,18 +208,15 @@ class GuestQuota:
             self.user_id,
             seconds,
         )
-        headers = {"Retry-After": str(seconds)}
-        if feature == self.feature:
-            headers[GUEST_REMAINING_HEADER] = "0"
-        return HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail={
+        return retry_later(
+            status.HTTP_403_FORBIDDEN,
+            {
                 "message": "Daily guest quota used up, create an account to continue",
                 "code": GUEST_QUOTA_EXCEEDED_CODE,
                 "feature": feature,
-                "retry_after": seconds,
             },
-            headers=headers,
+            retry_after,
+            {GUEST_REMAINING_HEADER: "0"} if feature == self.feature else None,
         )
 
     async def refund(self) -> None:
@@ -300,11 +298,11 @@ def enforce_new_guest_ip_limit(request: Request) -> None:
     if retry_after:
         seconds = math.ceil(retry_after)
         logger.warning("New guests rate limited. retry_after=%ss", seconds)
-        raise HTTPException(
-            status_code=status.HTTP_429_TOO_MANY_REQUESTS,
-            detail={
+        raise retry_later(
+            status.HTTP_429_TOO_MANY_REQUESTS,
+            {
                 "message": "Too many new sessions, try again later",
                 "code": "RATE_LIMITED",
             },
-            headers={"Retry-After": str(seconds)},
+            retry_after,
         )

@@ -16,42 +16,13 @@ from src.app.tutor.domain.connections import (
     IdeasAnswer,
 )
 from src.app.tutor.domain.models import TutorLang
-from src.app.tutor.services.course_reading import normalise
+from src.app.tutor.services.course_prompt import course_block
 from src.app.tutor.services.llm import structured_call
+from src.app.tutor.services.text_match import normalise
 
 MAX_QUERIES = 2
 # a label names a course part in a few words
 MAX_LABEL_WORDS = 8
-
-
-def course_block(course: ConfirmedCourse) -> str:
-    """The course as the prompts read it: one labelled line or list per field."""
-
-    def line(label: str, value: str | None) -> str:
-        return f"{label}: {value}" if value else ""
-
-    def bullets(label: str, items: list[str]) -> str:
-        return f"{label}:\n" + "\n".join(f"- {item}" for item in items) if items else ""
-
-    topics = [
-        f"{t.title} ({', '.join(t.subtopics)})" if t.subtopics else t.title
-        for t in course.topics
-    ]
-    return "\n".join(
-        part
-        for part in [
-            line("Title", course.title),
-            line("Discipline", course.discipline),
-            line("Level", course.level),
-            line("Overview", course.overview),
-            bullets("Topics", topics),
-            bullets("Learning objectives", course.objectives)
-            or "Learning objectives: none stated in the syllabus",
-            bullets("Competencies", course.competencies),
-            bullets("Course outline", course.sessions),
-        ]
-        if part
-    )
 
 
 def course_parts(course: ConfirmedCourse) -> list[str]:

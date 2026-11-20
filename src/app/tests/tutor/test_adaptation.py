@@ -38,7 +38,7 @@ from src.app.tutor.services.adaptation import (
     unbacked_names,
     with_checks,
 )
-from src.app.tutor.services.connections import course_block
+from src.app.tutor.services.course_prompt import course_block
 from src.app.tutor.services.llm import render_prompt
 
 QUOTE = "Le PIB ignore la dégradation des ressources naturelles."
