@@ -74,10 +74,12 @@ def limit_key(request: Request) -> str:
 
 
 def _too_many(message: str, code: str, retry_after: float) -> HTTPException:
+    seconds = max(math.ceil(retry_after), 1)
+    # in the body too: a browser on another origin cannot read the Retry-After header
     return HTTPException(
         status_code=status.HTTP_429_TOO_MANY_REQUESTS,
-        detail={"message": message, "code": code},
-        headers={"Retry-After": str(max(math.ceil(retry_after), 1))},
+        detail={"message": message, "code": code, "retry_after": seconds},
+        headers={"Retry-After": str(seconds)},
     )
 
 

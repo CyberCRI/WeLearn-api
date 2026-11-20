@@ -55,6 +55,7 @@ class CourseLlmRequestTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(raised.exception.status_code, 429)
         self.assertEqual(raised.exception.detail["code"], "TOO_MANY_REQUESTS_IN_FLIGHT")
         self.assertEqual(raised.exception.headers["Retry-After"], "5")
+        self.assertEqual(raised.exception.detail["retry_after"], 5)
         # another session is not held back
         await self.enter(request("99999999-2222-3333-4444-555555555555"))
 
@@ -73,6 +74,10 @@ class CourseLlmRequestTests(unittest.IsolatedAsyncioTestCase):
             await self.enter(request(SESSION))
         self.assertEqual(raised.exception.detail["code"], "RATE_LIMITED")
         self.assertGreaterEqual(int(raised.exception.headers["Retry-After"]), 1)
+        self.assertEqual(
+            str(raised.exception.detail["retry_after"]),
+            raised.exception.headers["Retry-After"],
+        )
         # the refused request did not keep a place
         self.assertEqual(course_limits._in_flight.running(f"session:{SESSION}"), 0)
 
@@ -116,7 +121,10 @@ class CourseRouteLimitsTests(TutorApiTestCase):
 
         self.assertEqual(response.status_code, 429)
         self.assertEqual(response.json()["detail"]["code"], "RATE_LIMITED")
-        self.assertIn("Retry-After", response.headers)
+        self.assertEqual(
+            response.headers["Retry-After"],
+            str(response.json()["detail"]["retry_after"]),
+        )
         self.assertEqual(mock_find.await_count, 1)
 
     def test_every_course_route_is_limited(self):
