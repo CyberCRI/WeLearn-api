@@ -274,7 +274,8 @@ class SearchService:
         logger.debug("Creating embeddings model=%s", curr_model)
         time_start = time.time()
         if curr_model not in self.model:
-            self._get_model(curr_model)
+            # loading a model that was not preloaded reads it from disk, under a lock
+            await run_in_threadpool(self._get_model, curr_model)
 
         seq_len = self.model[curr_model]["max_seq_length"]
         model = self.model[curr_model]["instance"]

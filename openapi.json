@@ -981,6 +981,7 @@
           "queries": {
             "description": "The searches for its resources",
             "items": {
+              "maxLength": 300,
               "type": "string"
             },
             "maxItems": 2,

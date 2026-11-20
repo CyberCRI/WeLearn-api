@@ -9,6 +9,7 @@ the client can show and place it; a part that is not in the course is dropped.
 
 from src.app.tutor.domain.connections import (
     MAX_IDEAS,
+    MAX_QUERY_CHARS,
     ConfirmedCourse,
     ConnectionIdea,
     ConnectionIdeasResponse,
@@ -103,7 +104,9 @@ def to_ideas(answer: IdeasAnswer, parts: list[str]) -> ConnectionIdeasResponse:
                 ),
                 why=idea.why,  # type: ignore[arg-type]
                 use=idea.use,
-                queries=idea.queries[:MAX_QUERIES],
+                queries=[
+                    query[:MAX_QUERY_CHARS] for query in idea.queries[:MAX_QUERIES]
+                ],
             )
         )
     return ConnectionIdeasResponse(
