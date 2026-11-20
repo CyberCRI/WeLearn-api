@@ -10,7 +10,6 @@ The word-for-word check of each value stays on the client, which gets the text b
 """
 
 import re
-import unicodedata
 
 from src.app.shared.domain.exceptions import (
     LLMUnavailableError,
@@ -26,45 +25,12 @@ from src.app.tutor.domain.course import (
 )
 from src.app.tutor.domain.models import TutorLang
 from src.app.tutor.services.llm import MAX_DATA_CHARS, structured_call
+from src.app.tutor.services.text_match import core, names_each_other, normalise
 
 logger = utils_logger(__name__)
 
 # a focus is a course title picked among courses_found
 MAX_FOCUS_CHARS = 200
-
-
-# ---- comparing texts (port of courseCheck.ts) ----
-
-
-def unify_characters(text: str) -> str:
-    """
-    One way to write each character: lower case, one apostrophe, one quotation mark, one
-    dash, "oe" for "œ". A word cut at the end of a line ("struc-\nture") is one word.
-    Accents, words and spaces are kept.
-    """
-    text = unicodedata.normalize("NFC", text).lower()
-    text = re.sub(r"[’‘`´]", "'", text)
-    text = re.sub(r"[«»“”]", '"', text)
-    text = re.sub(r"[‐-―−]", "-", text)
-    text = text.replace("…", "...").replace("œ", "oe")
-    return re.sub(r"-\s*\n\s*", "", text)
-
-
-def normalise(text: str) -> str:
-    """
-    A text as it reads: case, spaces, line breaks, quote and dash styles aside. Accents
-    and words are kept. Without spaces, word boundaries are gone too: "the rapist" reads
-    as "therapist".
-    """
-    return re.sub(r"\s+", "", unify_characters(text))
-
-
-_LIST_MARKER = re.compile(r"^\s*(?:[-–•o▪◦*]|\d+[.)])\s")
-
-
-def core(text: str) -> str:
-    """normalise, without a list marker or a final punctuation mark."""
-    return re.sub(r"[.;:,!]+$", "", normalise(_LIST_MARKER.sub("", text, count=1)))
 
 
 # ---- the parts of a long document ----
@@ -177,8 +143,7 @@ def merge_duplicate_topics(topics: list[ReadTopic]) -> list[ReadTopic]:
 
 
 def _is_same_topic(topic: ReadTopic, numbered: ReadTopic) -> bool:
-    mine, theirs = core(numbered.title), core(topic.source or topic.title)
-    return bool(mine) and bool(theirs) and (mine in theirs or theirs in mine)
+    return names_each_other(numbered.title, topic.source or topic.title, norm=core)
 
 
 def _is_heading_line(title: str, line_cores: list[str]) -> bool:
@@ -320,7 +285,7 @@ async def read_course(
     every_part = text_parts(text)
     parts = every_part[:MAX_PARTS]
     focus = focus.strip() if focus else None
-    focus_data = {"focus": focus[:MAX_FOCUS_CHARS]} if focus else {}
+    focus_data = {"focus": focus} if focus else {}
     variables = {"has_focus": bool(focus)}
 
     try:

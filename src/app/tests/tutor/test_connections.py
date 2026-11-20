@@ -13,12 +13,12 @@ from src.app.tutor.domain.connections import (
 )
 from src.app.tutor.services import connections
 from src.app.tutor.services.connections import (
-    course_block,
     course_parts,
     find_connection_ideas,
     part_of_course,
     to_ideas,
 )
+from src.app.tutor.services.course_prompt import course_block
 from src.app.tutor.services.llm import render_prompt
 
 COURSE = ConfirmedCourse(

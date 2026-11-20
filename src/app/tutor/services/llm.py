@@ -194,7 +194,6 @@ async def structured_call(
     data: Data,
     variables: Mapping[str, object] | None = None,
     *,
-    max_data_chars: int = MAX_DATA_CHARS,
     is_usable: Callable[[T], bool] | None = None,
 ) -> T:
     """
@@ -208,7 +207,7 @@ async def structured_call(
     included. A timeout or an error of the provider is not asked again: it raises
     LLMUnavailableError (503) at once.
     """
-    messages = build_messages(prompt_name, lang, data, variables, max_data_chars)
+    messages = build_messages(prompt_name, lang, data, variables)
     model = await get_chat_model()
     structured = model.with_structured_output(schema)
     config: RunnableConfig = {

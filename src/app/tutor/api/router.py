@@ -128,8 +128,12 @@ COURSE_READ_RESPONSES: dict[int | str, dict] = {
 }
 
 
-@router.post(
-    "/course/read",
+# syllabus v2: every route below sends the course to the model, under the same limits
+course_router = APIRouter(prefix="/course", dependencies=[Depends(course_llm_request)])
+
+
+@course_router.post(
+    "/read",
     response_model=CourseReadResponse,
     responses={
         **COURSE_READ_RESPONSES,
@@ -137,7 +141,6 @@ COURSE_READ_RESPONSES: dict[int | str, dict] = {
         **COURSE_LIMIT_RESPONSES,
     },
     summary="Read a course document (syllabus v2)",
-    dependencies=[Depends(course_llm_request)],
 )
 async def read_course_document(
     file: Annotated[UploadFile, File()],
@@ -169,12 +172,11 @@ UNUSABLE_LLM_OUTPUT_RESPONSE: dict[int | str, dict] = {
 COURSE_ROUTE_RESPONSES = {**COURSE_LIMIT_RESPONSES, **COURSE_TOO_LARGE_RESPONSE}
 
 
-@router.post(
-    "/course/connection_ideas",
+@course_router.post(
+    "/connection_ideas",
     response_model=ConnectionIdeasResponse,
     responses={**COURSE_ROUTE_RESPONSES, **UNUSABLE_LLM_OUTPUT_RESPONSE},
     summary="Suggest sustainability connections for a course (syllabus v2)",
-    dependencies=[Depends(course_llm_request)],
 )
 async def suggest_connection_ideas(
     body: ConnectionIdeasRequest,
@@ -189,12 +191,11 @@ async def suggest_connection_ideas(
     return await find_connection_ideas(body.course, body.lang)
 
 
-@router.post(
-    "/course/connection_evidence",
+@course_router.post(
+    "/connection_evidence",
     response_model=ConnectionEvidenceResponse,
     responses=COURSE_ROUTE_RESPONSES,
     summary="Find and judge the WeLearn resources of a connection (syllabus v2)",
-    dependencies=[Depends(course_llm_request)],
 )
 async def judge_connection_evidence(
     body: ConnectionEvidenceRequest,
@@ -216,8 +217,8 @@ async def judge_connection_evidence(
     )
 
 
-@router.post(
-    "/course/adaptation",
+@course_router.post(
+    "/adaptation",
     response_model=AdaptationProposal,
     responses={
         **COURSE_ROUTE_RESPONSES,
@@ -225,7 +226,6 @@ async def judge_connection_evidence(
         **GUEST_QUOTA_RESPONSES,
     },
     summary="Propose one checked change to the course for a connection (syllabus v2)",
-    dependencies=[Depends(course_llm_request)],
 )
 async def propose_course_adaptation(
     body: AdaptationRequest,
@@ -243,6 +243,10 @@ async def propose_course_adaptation(
     ensure_course_fits(body.course)
     async with quota.spend():
         return await adapt_course(body.course, body.connection, body.lang)
+
+
+# included here, so the routes keep their place in the API contract
+router.include_router(course_router)
 
 
 @router.post(

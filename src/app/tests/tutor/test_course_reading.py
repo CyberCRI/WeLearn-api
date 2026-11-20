@@ -17,15 +17,14 @@ from src.app.tutor.domain.course import (
 from src.app.tutor.services import course_reading
 from src.app.tutor.services.course_reading import (
     clean_reading,
-    core,
     is_course_title,
     merge_duplicate_topics,
-    normalise,
     numbered_topics,
     prefer_numbered_topics,
     read_course,
     text_parts,
 )
+from src.app.tutor.services.text_match import core, normalise
 
 # ported from the prototype's courseReading.spec.ts (teacher's name made up)
 HRA = (
