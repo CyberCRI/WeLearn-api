@@ -11,6 +11,10 @@ config:
     LANGSMITH_TRACING_ENABLED: "true"
     LANGSMITH_PROJECT: WeLearn_Prod
     LANGSMITH_ENDPOINT: https://eu.api.smith.langchain.com
+    GUEST_RESTRICTIONS_ENABLED: "true"
+    # uvicorn reads X-Forwarded-For only from the Traefik pods
+    FORWARDED_ALLOW_IPS: "10.244.0.0/16"
+    GUEST_SESSIONS_PER_IP_HOURLY: "100"
 allowedHostsRegexes:
   alphaUrls: |-
     https://[a-zA-Z0-9-]*\.alpha-welearn\.lp-i\.org
