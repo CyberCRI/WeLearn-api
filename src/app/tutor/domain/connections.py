@@ -17,6 +17,8 @@ from src.app.tutor.domain.models import TutorLang
 # a small set the teacher can weigh: a few ideas, a few resources each
 MAX_IDEAS = 4
 MAX_RESOURCES = 3
+# a search is a few words: a longer one, sent back by a client, would hold the embedding model
+MAX_QUERY_CHARS = 300
 # the text of one resource the model reads: a search result is one passage, far shorter;
 # a resource the client sends back is cut there, so it can't fill the prompt
 MAX_RESOURCE_CHARS = 10_000
@@ -121,7 +123,7 @@ class ConnectionIdea(BaseModel):
     )
     why: str
     use: str | None
-    queries: list[str] = Field(
+    queries: list[Annotated[str, Field(max_length=MAX_QUERY_CHARS)]] = Field(
         min_length=1, max_length=2, description="The searches for its resources"
     )
 

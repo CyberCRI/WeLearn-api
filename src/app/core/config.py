@@ -46,6 +46,9 @@ class Settings(BaseSettings):
     TUTOR_COURSE_IN_FLIGHT_PER_SESSION: int = 2
     TUTOR_COURSE_REQUESTS_PER_WINDOW: int = 30
     TUTOR_COURSE_WINDOW_SECONDS: int = 600
+    # the same window per client IP too, since a caller picks its session id: room for the
+    # teachers of one campus behind one address
+    TUTOR_COURSE_REQUESTS_PER_IP_WINDOW: int = 120
     ENV: str
     MCP_ENABLED: bool = True
 

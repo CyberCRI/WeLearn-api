@@ -13,6 +13,7 @@ import re
 import unicodedata
 
 from src.app.shared.domain.exceptions import (
+    LLMUnavailableError,
     UnusableLLMOutputError,
     UnusableReadingError,
 )
@@ -24,7 +25,7 @@ from src.app.tutor.domain.course import (
     ReadTopic,
 )
 from src.app.tutor.domain.models import TutorLang
-from src.app.tutor.services.llm import LLM_FAILURES, MAX_DATA_CHARS, structured_call
+from src.app.tutor.services.llm import MAX_DATA_CHARS, structured_call
 
 logger = utils_logger(__name__)
 
@@ -67,6 +68,10 @@ def core(text: str) -> str:
 
 
 # ---- the parts of a long document ----
+
+
+# each part is one LLM call, made in turn: a longer document is read in its first parts only
+MAX_PARTS = 4
 
 
 def text_parts(text: str, size: int = MAX_DATA_CHARS) -> list[str]:
@@ -176,12 +181,12 @@ def _is_same_topic(topic: ReadTopic, numbered: ReadTopic) -> bool:
     return bool(mine) and bool(theirs) and (mine in theirs or theirs in mine)
 
 
-def _is_heading_line(title: str, text: str) -> bool:
-    """A line of its own in the syllabus, not words inside a sentence."""
+def _is_heading_line(title: str, line_cores: list[str]) -> bool:
+    """A line of its own in the syllabus (given by its lines' `core`), not words inside a
+    sentence."""
     wanted = core(title)
     return bool(wanted) and any(
-        wanted in core(line) and len(core(line)) <= len(wanted) + MAX_LABEL
-        for line in text.splitlines()
+        wanted in line and len(line) <= len(wanted) + MAX_LABEL for line in line_cores
     )
 
 
@@ -234,9 +239,11 @@ def _is_under_own_headings(
             for topic in topics
         )
 
-    return all(is_kept(item) for item in numbered) and all(
-        _is_heading_line(topic.title, text) for topic in topics
-    )
+    if not all(is_kept(item) for item in numbered):
+        return False
+    # each line of the syllabus normalised once, not once per topic
+    line_cores = [core(line) for line in text.splitlines()]
+    return all(_is_heading_line(topic.title, line_cores) for topic in topics)
 
 
 def _follows_one_for_one(topics: list[ReadTopic], numbered: list[ReadTopic]) -> bool:
@@ -307,9 +314,11 @@ async def read_course(
     holds (a title from a first reading's `courses_found`).
 
     Raises UnusableReadingError when the first part can't be read. A later part that can't
-    be read for its outline is skipped, and the response says it is partial.
+    be read for its outline is skipped, and the response says it is partial; so are the
+    parts beyond MAX_PARTS, and the rest once the model stops answering.
     """
-    parts = text_parts(text)
+    every_part = text_parts(text)
+    parts = every_part[:MAX_PARTS]
     focus = focus.strip() if focus else None
     focus_data = {"focus": focus[:MAX_FOCUS_CHARS]} if focus else {}
     variables = {"has_focus": bool(focus)}
@@ -318,15 +327,15 @@ async def read_course(
         reading = await structured_call(
             "read", lang, CourseReading, {"course": parts[0], **focus_data}, variables
         )
-    except UnusableLLMOutputError:
-        raise UnusableReadingError()
+    except UnusableLLMOutputError as e:
+        raise UnusableReadingError() from e
     reading = clean_reading(reading)
 
     # the first part was read in full: the outline only reads the rest, unless the
     # reading found no topics
     topics = list(reading.topics)
     summary = reading.summary
-    is_partial = False
+    is_partial = len(every_part) > MAX_PARTS
     for part in parts[1:] if topics else parts:
         try:
             outline = await structured_call(
@@ -336,9 +345,13 @@ async def read_course(
                 {"course_part": part, **focus_data},
                 variables,
             )
-        except LLM_FAILURES:
+        except UnusableLLMOutputError:
             is_partial = True
             continue
+        except LLMUnavailableError:
+            # the next parts would each wait out the same timeout
+            is_partial = True
+            break
         summary = summary or outline.summary
         known = {normalise(topic.title) for topic in topics}
         for topic in outline.topics:
@@ -347,10 +360,10 @@ async def read_course(
                 known.add(normalise(topic.title))
 
     if is_partial:
-        logger.warning("tutor_course_read_partial parts=%s", len(parts))
+        logger.warning("tutor_course_read_partial parts=%s", len(every_part))
     return CourseReadResponse(
         text=text,
-        is_text_truncated=len(parts) > 1,
+        is_text_truncated=len(every_part) > 1,
         is_partial=is_partial,
         reading=reading.model_copy(
             update={

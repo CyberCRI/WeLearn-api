@@ -5,6 +5,7 @@ from typing import List
 
 import httpx
 from bs4 import BeautifulSoup
+from fastapi.concurrency import run_in_threadpool
 from refinedoc.refined_document import RefinedDocument
 
 logger = logging.getLogger(__name__)
@@ -206,6 +207,13 @@ async def extract_txt_from_pdf_with_tika(
              body and the metadata extracted by Tika
     """
     tika_content = await _send_pdf_to_tika(pdf_content, tika_base_url)
+    # parsing and cleaning every word of the document is synchronous: in the threadpool
+    return await run_in_threadpool(_refine_tika_content, tika_content)
+
+
+def _refine_tika_content(tika_content: dict) -> str:
+    """The text of Tika's answer, cleaned (non printable characters, ligatures, hyphens,
+    accents, extra white space)."""
     parsed_pdf_cont = _parse_tika_content(tika_content)
 
     refined_pdf_content = RefinedDocument(content=parsed_pdf_cont)

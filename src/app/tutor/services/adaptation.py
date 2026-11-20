@@ -9,8 +9,9 @@ Syllabus v2: one concrete change to the course for a connection the teacher chos
    and the second one replaces the first only when it could be checked too;
 4. the support is capped by what the check found: never raised, only lowered.
 
-At most 4 LLM calls. The change's text is left as the model wrote it, for the teacher to
-judge; what the code checks shows in `support` and `checks`.
+At most 4 steps; each asks the model again once when its answer can't be used, so 8 LLM
+calls at worst. The change's text is left as the model wrote it, for the teacher to judge;
+what the code checks shows in `support` and `checks`.
 """
 
 import re
@@ -547,7 +548,10 @@ def _log_adaptation(
     is_redone: bool = False,
     is_second_kept: bool = False,
 ) -> None:
-    """One line per adaptation, counts and enums only (never the course or the change)."""
+    """
+    One line per adaptation, counts and enums only (never the course or the change).
+    `calls` counts the steps that asked the model, not an unusable answer asked again.
+    """
     checks = proposal.checks
     logger.info(
         "tutor_adaptation_done calls=%s check=%s first_problems=%s first_serious=%s "

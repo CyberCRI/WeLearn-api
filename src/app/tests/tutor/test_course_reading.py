@@ -376,6 +376,35 @@ class ReadCourseTests(unittest.IsolatedAsyncioTestCase):
 
         self.assertTrue(response.is_partial)
 
+    async def test_reading_stops_at_the_first_part_the_model_does_not_answer(self):
+        with (
+            mock.patch.object(
+                course_reading, "text_parts", return_value=["p1", "p2", "p3"]
+            ),
+            self._call(
+                CourseReading(topics=[topic("Soils")]), LLMUnavailableError()
+            ) as call,
+            self.assertLogs(course_reading.logger, level="WARNING"),
+        ):
+            response = await read_course("p1p2p3", "en")
+
+        self.assertEqual(call.await_count, 2)
+        self.assertTrue(response.is_partial)
+
+    async def test_a_long_document_is_read_in_its_first_parts_only(self):
+        parts = [f"p{n}" for n in range(1, course_reading.MAX_PARTS + 3)]
+        outlines = [CourseOutline(topics=[]) for _ in parts]
+        with (
+            mock.patch.object(course_reading, "text_parts", return_value=parts),
+            self._call(CourseReading(topics=[topic("Soils")]), *outlines) as call,
+            self.assertLogs(course_reading.logger, level="WARNING"),
+        ):
+            response = await read_course("".join(parts), "en")
+
+        self.assertEqual(call.await_count, course_reading.MAX_PARTS)
+        self.assertTrue(response.is_partial)
+        self.assertTrue(response.is_text_truncated)
+
     async def test_a_first_part_the_model_does_not_answer_is_unavailable(self):
         with self._call(LLMUnavailableError()):
             with self.assertRaises(LLMUnavailableError):
