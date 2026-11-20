@@ -49,6 +49,18 @@ config:
     PG_DATABASE: welearn_datastack
     PG_PORT: "5432"
     PG_DRIVER: postgresql+psycopg2
+    # time-limited access for Google and email/password logins (6 months from the first login).
+    # Turn it on in an environment only once its Keycloak client has the identity_provider and
+    # welearn_access_until mappers: without them, every login counts as limited, Renater included
+    LIMITED_ACCESS_ENABLED: "false"
+    # Keycloak IdP aliases that are limited (JSON list); Renater IdPs stay unlimited
+    LIMITED_ACCESS_IDENTITY_PROVIDERS: '["google"]'
+    LIMITED_ACCESS_DAYS: "183"
+    # guest quotas, account-only routes and the limit on new guests per IP.
+    # uvicorn reads X-Forwarded-For only from the Traefik pods (pod range of the Azure clusters)
+    GUEST_RESTRICTIONS_ENABLED: "true"
+    FORWARDED_ALLOW_IPS: "10.244.0.0/16"
+    GUEST_SESSIONS_PER_IP_HOURLY: "100"
 
 shareName: ml-models
 

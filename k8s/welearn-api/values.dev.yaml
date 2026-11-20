@@ -11,10 +11,7 @@ config:
     LANGSMITH_PROJECT: WeLearn_Dev
     LANGSMITH_ENDPOINT: https://eu.api.smith.langchain.com
     ENV: development
-    GUEST_RESTRICTIONS_ENABLED: "true"
-    # uvicorn reads X-Forwarded-For only from the Traefik pods
-    FORWARDED_ALLOW_IPS: "10.244.0.0/16"
-    GUEST_SESSIONS_PER_IP_HOURLY: "100"
+    LIMITED_ACCESS_ENABLED: "true"
 allowedHostsRegexes:
   # The client's `yarn dev` (Vite, port 5173) calls the dev API by default.
   localhost: |-
