@@ -1,8 +1,9 @@
 import re
 import uuid
 from datetime import date, datetime
+from typing import Annotated
 
-from pydantic import BaseModel, ConfigDict, field_validator
+from pydantic import AfterValidator, BaseModel, ConfigDict, Field
 
 # basic shape check; Keycloak validates the address itself
 EMAIL_PATTERN = re.compile(r"^[^@\s]+@[^@\s]+\.[^@\s]+$")
@@ -10,30 +11,44 @@ EMAIL_PATTERN = re.compile(r"^[^@\s]+@[^@\s]+\.[^@\s]+$")
 SIGNUP_LOCALES = ("en", "fr")
 
 
+def normalize_locale(value: str | None) -> str | None:
+    # "fr-FR" -> "fr". an unsupported locale is dropped rather than refused:
+    # Keycloak then uses the realm default, the sign-up itself still works
+    if not value:
+        return None
+    language = re.split(r"[-_]", value.strip().lower())[0]
+    return language if language in SIGNUP_LOCALES else None
+
+
+def normalize_email(value: str) -> str:
+    value = value.strip().lower()
+    if not EMAIL_PATTERN.match(value):
+        raise ValueError("Invalid email address")
+    return value
+
+
+def normalize_optional_email(value: str | None) -> str | None:
+    return normalize_email(value) if value and value.strip() else None
+
+
+def required_single_line(value: str) -> str:
+    # one line, so the text can go in an email subject: no CR/LF, spaces collapsed
+    value = " ".join(value.split())
+    if not value:
+        raise ValueError("Must not be empty")
+    return value
+
+
+Email = Annotated[str, AfterValidator(normalize_email)]
+Locale = Annotated[str | None, AfterValidator(normalize_locale)]
+
+
 class SignUpRequest(BaseModel):
-    email: str
+    email: Email
     first_name: str | None = None
     last_name: str | None = None
     # language of the sign-up page, Keycloak sends its emails in it
-    locale: str | None = None
-
-    @field_validator("locale")
-    @classmethod
-    def normalize_locale(cls, value: str | None) -> str | None:
-        # "fr-FR" -> "fr". an unsupported locale is dropped rather than refused:
-        # Keycloak then uses the realm default, the sign-up itself still works
-        if not value:
-            return None
-        language = re.split(r"[-_]", value.strip().lower())[0]
-        return language if language in SIGNUP_LOCALES else None
-
-    @field_validator("email")
-    @classmethod
-    def normalize_email(cls, value: str) -> str:
-        value = value.strip().lower()
-        if not EMAIL_PATTERN.match(value):
-            raise ValueError("Invalid email address")
-        return value
+    locale: Locale = None
 
 
 class SignUpResponse(BaseModel):
@@ -42,6 +57,22 @@ class SignUpResponse(BaseModel):
     does not reveal which emails are registered.
     """
 
+    message: str
+
+
+class UniversityRequest(BaseModel):
+    """A university missing from the login page, to add as an identity provider."""
+
+    university: Annotated[
+        str, Field(max_length=200), AfterValidator(required_single_line)
+    ]
+    city: Annotated[str, Field(max_length=100), AfterValidator(required_single_line)]
+    # optional, to tell the person once the university is added
+    email: Annotated[str | None, AfterValidator(normalize_optional_email)] = None
+    locale: Locale = None
+
+
+class UniversityRequestResponse(BaseModel):
     message: str
 
 

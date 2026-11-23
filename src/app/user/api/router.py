@@ -1,9 +1,9 @@
-import math
 import uuid
 
 from fastapi import APIRouter, HTTPException, Request, Response, status
 from fastapi.concurrency import run_in_threadpool
 
+from src.app.shared.api.errors import retry_later
 from src.app.shared.domain.constants import SESSION_COOKIE_NAME, SESSION_TTL_SECONDS
 from src.app.shared.domain.responses import ErrorResponse
 from src.app.shared.infra.rate_limit import SlidingWindowRateLimiter, client_ip
@@ -26,6 +26,8 @@ from src.app.user.domain.models import (
     LogoutResponse,
     SignUpRequest,
     SignUpResponse,
+    UniversityRequest,
+    UniversityRequestResponse,
     UserAndSessionResponse,
 )
 from src.app.user.infra.keycloak import (
@@ -63,6 +65,7 @@ from src.app.user.services.session import (
     resolve_user_and_session,
 )
 from src.app.user.services.signup import sign_up_user
+from src.app.user.services.university_request import send_university_request
 
 router = APIRouter()
 logger = logger_utils(__name__)
@@ -88,6 +91,13 @@ signup_email_limiter = SlidingWindowRateLimiter(
     SIGNUP_RATE_LIMIT_PER_EMAIL, SIGNUP_RATE_WINDOW_SECONDS
 )
 
+# requests to add a university: each one emails the WeLearn team
+UNIVERSITY_REQUEST_RATE_LIMIT_PER_IP = 5
+UNIVERSITY_REQUEST_ACCEPTED_MESSAGE = "Your request has been sent to the WeLearn team."
+university_request_ip_limiter = SlidingWindowRateLimiter(
+    UNIVERSITY_REQUEST_RATE_LIMIT_PER_IP, SIGNUP_RATE_WINDOW_SECONDS
+)
+
 
 def enforce_signup_rate_limit(request: Request, email: str) -> None:
     """429 RATE_LIMITED, with Retry-After, past the per-IP or per-email limit."""
@@ -96,13 +106,30 @@ def enforce_signup_rate_limit(request: Request, email: str) -> None:
     )
     if retry_after:
         logger.warning("Sign-up rate limited. retry_after=%.0fs", retry_after)
-        raise HTTPException(
-            status_code=status.HTTP_429_TOO_MANY_REQUESTS,
-            detail={
+        raise retry_later(
+            status.HTTP_429_TOO_MANY_REQUESTS,
+            {
                 "message": "Too many sign-up attempts, try again later",
                 "code": "RATE_LIMITED",
             },
-            headers={"Retry-After": str(math.ceil(retry_after))},
+            retry_after,
+        )
+
+
+def enforce_university_request_rate_limit(request: Request) -> None:
+    """429 RATE_LIMITED, with Retry-After, past the per-IP limit."""
+    retry_after = university_request_ip_limiter.hit(client_ip(request))
+    if retry_after:
+        logger.warning(
+            "University request rate limited. retry_after=%.0fs", retry_after
+        )
+        raise retry_later(
+            status.HTTP_429_TOO_MANY_REQUESTS,
+            {
+                "message": "Too many requests, try again later",
+                "code": "RATE_LIMITED",
+            },
+            retry_after,
         )
 
 
@@ -267,6 +294,36 @@ async def sign_up(request: Request, data: SignUpRequest, referer: str | None = N
         )
 
     return {"message": SIGNUP_ACCEPTED_MESSAGE}
+
+
+@router.post(
+    "/university-request",
+    summary="Ask to add a university to the login page",
+    status_code=status.HTTP_202_ACCEPTED,
+    response_model=UniversityRequestResponse,
+    responses={
+        429: {
+            "model": ErrorResponse,
+            "description": "Too many requests (code RATE_LIMITED), see Retry-After",
+        },
+        500: {
+            "model": ErrorResponse,
+            "description": "Sending emails is not configured (code EMAIL_DISABLED)",
+        },
+        503: {
+            "model": ErrorResponse,
+            "description": "The email could not be sent (code EMAIL_UNAVAILABLE)",
+        },
+    },
+)
+async def request_university(request: Request, data: UniversityRequest):
+    """
+    Email the WeLearn team a university missing from the login page's list of
+    identity providers. No session or account needed.
+    """
+    enforce_university_request_rate_limit(request)
+    await send_university_request(data)
+    return {"message": UNIVERSITY_REQUEST_ACCEPTED_MESSAGE}
 
 
 @router.get(

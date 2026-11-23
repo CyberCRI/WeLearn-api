@@ -3467,6 +3467,62 @@
         "title": "TutorSyllabusRequest",
         "type": "object"
       },
+      "UniversityRequest": {
+        "description": "A university missing from the login page, to add as an identity provider.",
+        "properties": {
+          "city": {
+            "maxLength": 100,
+            "title": "City",
+            "type": "string"
+          },
+          "email": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Email"
+          },
+          "locale": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Locale"
+          },
+          "university": {
+            "maxLength": 200,
+            "title": "University",
+            "type": "string"
+          }
+        },
+        "required": [
+          "university",
+          "city"
+        ],
+        "title": "UniversityRequest",
+        "type": "object"
+      },
+      "UniversityRequestResponse": {
+        "properties": {
+          "message": {
+            "title": "Message",
+            "type": "string"
+          }
+        },
+        "required": [
+          "message"
+        ],
+        "title": "UniversityRequestResponse",
+        "type": "object"
+      },
       "UserAndSessionResponse": {
         "properties": {
           "message": {
@@ -7101,6 +7157,83 @@
           }
         ],
         "summary": "Sign up with Keycloak",
+        "tags": [
+          "user"
+        ]
+      }
+    },
+    "/api/v1/user/university-request": {
+      "post": {
+        "description": "Email the WeLearn team a university missing from the login page's list of\nidentity providers. No session or account needed.",
+        "operationId": "user-request_university",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UniversityRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "202": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UniversityRequestResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Too many requests (code RATE_LIMITED), see Retry-After"
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Sending emails is not configured (code EMAIL_DISABLED)"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "The email could not be sent (code EMAIL_UNAVAILABLE)"
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Error"
+          }
+        },
+        "security": [
+          {
+            "APIKeyHeader": []
+          }
+        ],
+        "summary": "Ask to add a university to the login page",
         "tags": [
           "user"
         ]

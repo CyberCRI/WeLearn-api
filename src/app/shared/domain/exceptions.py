@@ -240,6 +240,22 @@ class EmptyDocumentTextError(WeLearnError):
     default_code = "EMPTY_DOCUMENT_TEXT"
 
 
+class EmailNotConfiguredError(WeLearnError):
+    """Raised when an email must be sent but SMTP_HOST or SMTP_FROM is not set"""
+
+    status_code = status.HTTP_500_INTERNAL_SERVER_ERROR
+    default_message = "Sending emails is not configured"
+    default_code = "EMAIL_DISABLED"
+
+
+class EmailUnavailableError(WeLearnError):
+    """Raised when the SMTP server can't be reached or refuses the message"""
+
+    status_code = status.HTTP_503_SERVICE_UNAVAILABLE
+    default_message = "The email could not be sent, try again later"
+    default_code = "EMAIL_UNAVAILABLE"
+
+
 def handle_error(exc: Exception, response: Response | None = None) -> None:
     """
     Turn a domain error into its HTTPException. A partial result only sets 206
