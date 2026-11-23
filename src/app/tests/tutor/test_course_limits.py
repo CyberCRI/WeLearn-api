@@ -1,4 +1,5 @@
 import unittest
+import uuid
 from unittest.mock import AsyncMock, patch
 
 from fastapi import HTTPException
@@ -36,6 +37,7 @@ class CourseLlmRequestTests(unittest.IsolatedAsyncioTestCase):
         for name, limiter in (
             ("_in_flight", InFlightLimiter(2)),
             ("_requests", SlidingWindowRateLimiter(3, 600)),
+            ("_ip_requests", SlidingWindowRateLimiter(5, 600)),
         ):
             patcher = patch.object(course_limits, name, limiter)
             patcher.start()
@@ -80,6 +82,16 @@ class CourseLlmRequestTests(unittest.IsolatedAsyncioTestCase):
         )
         # the refused request did not keep a place
         self.assertEqual(course_limits._in_flight.running(f"session:{SESSION}"), 0)
+
+    async def test_a_new_session_id_per_request_is_still_counted_by_its_ip(self):
+        for _ in range(5):
+            dependency = await self.enter(request(str(uuid.uuid4())))
+            with self.assertRaises(StopAsyncIteration):
+                await dependency.__anext__()
+
+        with self.assertRaises(HTTPException) as raised:
+            await self.enter(request(str(uuid.uuid4())))
+        self.assertEqual(raised.exception.detail["code"], "RATE_LIMITED")
 
 
 class EnsureCourseFitsTests(unittest.TestCase):

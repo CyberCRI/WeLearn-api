@@ -6,6 +6,7 @@ from pydantic import ValidationError
 from src.app.shared.domain.exceptions import UnusableLLMOutputError
 from src.app.tutor.domain.connections import (
     ConfirmedCourse,
+    ConnectionIdea,
     CourseTopic,
     IdeaAnswer,
     IdeasAnswer,
@@ -166,6 +167,12 @@ class ToIdeasTests(unittest.TestCase):
         self.assertIsNone(second.anchor)
         self.assertIsNone(second.anchor_label)
         self.assertIsNone(second.use)
+
+    def test_a_query_is_cut_to_a_search_and_one_sent_back_longer_is_refused(self):
+        answer = IdeasAnswer(ideas=[IdeaAnswer(**idea(queries=["q" * 400]))])
+        self.assertEqual(to_ideas(answer, PARTS).ideas[0].queries, ["q" * 300])
+        with self.assertRaises(ValidationError):
+            ConnectionIdea(**idea(id="idea-1", use=None, queries=["q" * 301]))
 
     def test_a_long_label_is_dropped(self):
         label = "un libellé bien trop long pour nommer une partie du cours"

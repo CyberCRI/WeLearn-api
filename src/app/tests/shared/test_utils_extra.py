@@ -121,7 +121,7 @@ class GetFilesContentTests(IsolatedAsyncioTestCase):
         with self.assertRaises(HTTPException) as ctx:
             await get_files_content([_upload(b"not a docx", docx)])
         self.assertEqual(ctx.exception.status_code, 400)
-        self.assertEqual(ctx.exception.detail, "Error reading file: bad zip")
+        self.assertEqual(ctx.exception.detail, "Error reading file")
 
     async def test_unsupported_file_propagates_http_error(self):
         with self.assertRaises(HTTPException) as ctx:

@@ -6,7 +6,9 @@ for a request without one), whoever the caller is:
   TOO_MANY_REQUESTS_IN_FLIGHT). Each one sends the course and up to a dozen resources to
   the model, on a per-minute quota of the provider that every user shares;
 - at most TUTOR_COURSE_REQUESTS_PER_WINDOW requests per TUTOR_COURSE_WINDOW_SECONDS
-  (429 RATE_LIMITED, with Retry-After).
+  (429 RATE_LIMITED, with Retry-After);
+- and, since the client picks its session id, at most TUTOR_COURSE_REQUESTS_PER_IP_WINDOW
+  per client IP in the same window (a looser one: a campus shares an address).
 
 Both are kept in the memory of the process (shared/infra/rate_limit.py): they apply per
 pod, which is enough with the one replica of the API. Guests' daily quotas, kept in the
@@ -42,6 +44,11 @@ IN_FLIGHT_RETRY_AFTER_SECONDS = 5
 _in_flight = InFlightLimiter(settings.TUTOR_COURSE_IN_FLIGHT_PER_SESSION)
 _requests = SlidingWindowRateLimiter(
     settings.TUTOR_COURSE_REQUESTS_PER_WINDOW,
+    settings.TUTOR_COURSE_WINDOW_SECONDS,
+    max_keys=100_000,
+)
+_ip_requests = SlidingWindowRateLimiter(
+    settings.TUTOR_COURSE_REQUESTS_PER_IP_WINDOW,
     settings.TUTOR_COURSE_WINDOW_SECONDS,
     max_keys=100_000,
 )
@@ -97,7 +104,11 @@ async def course_llm_request(request: Request) -> AsyncIterator[None]:
             IN_FLIGHT_RETRY_AFTER_SECONDS,
         )
     try:
-        retry_after = _requests.hit(key)
+        ip_key = f"ip:{client_ip(request)}"
+        # a request without a session id is already counted by its IP
+        retry_after = _requests.hit(key) or (
+            _ip_requests.hit(ip_key) if key != ip_key else 0
+        )
         if retry_after:
             logger.warning(
                 "tutor_course_rate_limited retry_after=%ss", math.ceil(retry_after)
