@@ -157,7 +157,9 @@ async def read_course_document(
     file rejected before the reading (size, type, no text) costs nothing.
     """
     await check_upload_limits([file], 1, MAX_COURSE_FILE_SIZE)
-    [text] = await get_files_content([file])
+    # the text goes back to the teacher (checked values, the complete updated syllabus):
+    # its paragraphs, line breaks and accents are kept
+    [text] = await get_files_content([file], keep_layout=True)
     async with quota.spend():
         return await read_course(text, lang, focus)
 

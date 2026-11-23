@@ -6,7 +6,10 @@ from src.app.shared.infra import pdf_extractor
 from src.app.shared.infra.pdf_extractor import (
     _parse_tika_content,
     _send_pdf_to_tika,
+    _tika_page_lines,
+    extract_layout_from_pdf_with_tika,
     extract_txt_from_pdf_with_tika,
+    layout_text,
 )
 
 
@@ -90,4 +93,98 @@ class TestPDFExtractorAsync(unittest.IsolatedAsyncioTestCase):
         mock_send_pdf_to_tika.assert_awaited_once_with(pdf_content, tika_base_url)
         mock_parse_tika_content.assert_called_once_with(
             mock_send_pdf_to_tika.return_value
+        )
+
+
+class LayoutTextTests(unittest.TestCase):
+    def test_joins_the_lines_the_page_width_cut(self):
+        text = layout_text(
+            [
+                [
+                    "This course aims to train ",
+                    "students on human rights. ",
+                    "It also works as a real-",
+                    "situation lab.",
+                ]
+            ]
+        )
+        self.assertEqual(
+            text,
+            "This course aims to train students on human rights.\n"
+            "It also works as a real-situation lab.",
+        )
+
+    def test_keeps_headings_lists_and_blocks(self):
+        text = layout_text(
+            [
+                [
+                    "Objective of the Course ",
+                    " ",
+                    "Theme 1: Treaties",
+                    "Theme 2: Right to life",
+                    "",
+                    "",
+                ]
+            ]
+        )
+        self.assertEqual(
+            text, "Objective of the Course\n\nTheme 1: Treaties\nTheme 2: Right to life"
+        )
+
+    def test_keeps_accents_and_replaces_ligatures(self):
+        self.assertEqual(
+            layout_text([["Eugénie Mérieau, ﬁnal exam"]]), "Eugénie Mérieau, final exam"
+        )
+
+    def test_leaves_out_the_lines_found_on_every_page(self):
+        pages = [["2026", "Summary", "First page."], ["2026", "Second page."]]
+        self.assertEqual(layout_text(pages), "Summary\nFirst page.\n\nSecond page.")
+
+    def test_a_page_break_ends_the_block(self):
+        self.assertEqual(
+            layout_text(
+                [
+                    ["engage in a discussion on their chosen"],
+                    ["methods and strategies."],
+                ]
+            ),
+            "engage in a discussion on their chosen\n\nmethods and strategies.",
+        )
+
+
+class TikaLayoutTests(unittest.IsolatedAsyncioTestCase):
+    TIKA = {
+        "X-TIKA:content": (
+            '<html><body><div class="page"><p>Objective \n \n</p><p>This course aims \n</p>'
+            "<p>to train students. \n</p><p>\n</p><p>Summary \n</p></div></body></html>"
+        )
+    }
+
+    def test_reads_one_line_per_paragraph_of_tika(self):
+        self.assertEqual(
+            _tika_page_lines(self.TIKA),
+            [
+                [
+                    "Objective ",
+                    " ",
+                    "This course aims ",
+                    "to train students. ",
+                    "",
+                    "Summary ",
+                ]
+            ],
+        )
+
+    @patch(
+        "src.app.shared.infra.pdf_extractor._send_pdf_to_tika", new_callable=AsyncMock
+    )
+    async def test_extracts_a_pdf_with_its_layout(self, send):
+        send.return_value = self.TIKA
+
+        text = await extract_layout_from_pdf_with_tika(
+            io.BytesIO(b"%PDF"), "http://tika"
+        )
+
+        self.assertEqual(
+            text, "Objective\n\nThis course aims to train students.\n\nSummary"
         )
