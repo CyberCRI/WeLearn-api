@@ -193,6 +193,82 @@ def _parse_tika_content(tika_content: dict) -> list[list[str]]:
     return res
 
 
+# a line ending one of these closes its sentence: the next line starts another
+SENTENCE_ENDS = tuple('.:;!?…»”"')
+
+
+def _continues(previous: str, line: str) -> bool:
+    """The line carries on the previous one's sentence, cut by the page's width."""
+    return (
+        not previous.endswith(SENTENCE_ENDS) and line[0].islower()
+    ) or previous.endswith("-")
+
+
+def layout_text(pages: list[list[str]]) -> str:
+    """A document's text as it reads: one line per paragraph, a blank line between blocks.
+
+    For a text shown back to the teacher (the course read by syllabus v2), unlike
+    `_refine_tika_content`, which flattens it for a model. Lines cut by the page's
+    width are joined again, accents are kept, and the lines found on every page
+    (running headers and footers) are left out.
+    """
+    cleaned = [
+        [
+            " ".join(replace_ligatures(delete_non_printable_character(line)).split())
+            for line in page
+        ]
+        for page in pages
+    ]
+    on_every_page: set[str] = set()
+    if len(cleaned) > 1:
+        on_every_page = set.intersection(*(set(filter(None, page)) for page in cleaned))
+
+    blocks: list[list[str]] = []
+    block: list[str] = []
+    for page in cleaned:
+        # a page break ends the block: a sentence carried over is rare, a wrong join is worse
+        for line in [*page, ""]:
+            if line in on_every_page:
+                continue
+            if not line:
+                if block:
+                    blocks.append(block)
+                    block = []
+            elif block and _continues(block[-1], line):
+                joiner = "" if block[-1].endswith("-") else " "
+                block[-1] = f"{block[-1]}{joiner}{line}"
+            else:
+                block.append(line)
+    return "\n\n".join("\n".join(lines) for lines in blocks)
+
+
+def _tika_page_lines(tika_content: dict) -> list[list[str]]:
+    """The lines of each page of Tika's answer: one `<p>` per line, an empty one for a gap.
+
+    Each `<p>` ends with a line break: split as a whole, a page would get a blank line
+    after every line.
+    """
+    soup = BeautifulSoup(
+        tika_content.get("X-TIKA:content") or "", features="html.parser"
+    )
+    pages = []
+    for page in soup.find_all("div", {"class": "page"}):
+        lines: list[str] = []
+        for paragraph in page.find_all("p"):
+            parts = paragraph.get_text().split("\n")
+            lines.extend(parts[:-1] if len(parts) > 1 and not parts[-1] else parts)
+        pages.append(lines)
+    return pages
+
+
+async def extract_layout_from_pdf_with_tika(
+    pdf_content: io.BytesIO, tika_base_url: str
+) -> str:
+    """The text of a PDF as it reads (see `layout_text`), extracted by Tika."""
+    tika_content = await _send_pdf_to_tika(pdf_content, tika_base_url)
+    return await run_in_threadpool(lambda: layout_text(_tika_page_lines(tika_content)))
+
+
 async def extract_txt_from_pdf_with_tika(
     pdf_content: io.BytesIO, tika_base_url: str
 ) -> str:

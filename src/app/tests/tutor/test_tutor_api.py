@@ -1194,6 +1194,25 @@ class TestCourseRead(TutorApiTestCase):
         self.assertEqual(body["reading"]["title"], "Ecology")
         self.assertEqual(body["text"], "A course")
 
+    @patch(
+        "src.app.shared.utils.utils.extract_layout_from_pdf_with_tika",
+        new_callable=AsyncMock,
+    )
+    @patch(f"{ROUTER}.read_course", new_callable=AsyncMock)
+    def test_reads_a_pdf_with_its_paragraphs_and_accents(self, mock_read, mock_layout):
+        # the text goes back to the teacher, in the complete updated syllabus
+        mock_layout.return_value = "Objectifs\n\nComprendre l’économie."
+        mock_read.return_value = CourseReadResponse(
+            text="x", is_text_truncated=False, is_partial=False, reading=CourseReading()
+        )
+
+        response = self.post_file(b"%PDF-1.4", content_type="application/pdf")
+
+        self.assertEqual(response.status_code, 200)
+        mock_read.assert_awaited_once_with(
+            "Objectifs\n\nComprendre l’économie.", "en", None
+        )
+
     @patch(f"{ROUTER}.read_course", new_callable=AsyncMock)
     def test_default_language_is_english_without_focus(self, mock_read):
         mock_read.return_value = CourseReadResponse(

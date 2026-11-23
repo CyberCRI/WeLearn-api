@@ -11,7 +11,11 @@ from src.app.shared.domain.exceptions import (
     FileTooLargeError,
     TooManyFilesError,
 )
-from src.app.shared.infra.pdf_extractor import extract_txt_from_pdf_with_tika
+from src.app.shared.infra.pdf_extractor import (
+    extract_layout_from_pdf_with_tika,
+    extract_txt_from_pdf_with_tika,
+    layout_text,
+)
 from src.app.shared.utils.decorators import log_time_and_error
 from src.app.shared.utils.dependencies import get_settings
 from src.app.shared.utils.logger import logger as utils_logger
@@ -115,10 +119,14 @@ async def check_upload_limits(
 
 
 @log_time_and_error
-async def get_files_content(files: list[UploadFile]) -> list[str]:
+async def get_files_content(
+    files: list[UploadFile], keep_layout: bool = False
+) -> list[str]:
     # gather keeps the upload order, so the joined text follows the files as sent
     files_content: list[str] = list(
-        await asyncio.gather(*(get_file_content(file) for file in files))
+        await asyncio.gather(
+            *(get_file_content(file, keep_layout=keep_layout) for file in files)
+        )
     )
 
     if len(files_content) == 0:
@@ -127,11 +135,13 @@ async def get_files_content(files: list[UploadFile]) -> list[str]:
     return files_content
 
 
-async def get_file_content(file: UploadFile) -> str:
+async def get_file_content(file: UploadFile, keep_layout: bool = False) -> str:
     """Extract text content from various file types.
 
     Args:
         file (UploadFile): The uploaded file to process
+        keep_layout (bool): keep a PDF's paragraphs, line breaks and accents, for a
+            text shown back to the user; off, a PDF's text is flattened for a model
 
     Returns:
         str: The extracted text content
@@ -151,7 +161,10 @@ async def get_file_content(file: UploadFile) -> str:
         raise HTTPException(status_code=400, detail="Unsupported file type")
 
     try:
-        content = await content_extractors[content_type](file)
+        if content_type in ("application/pdf", "application/x-pdf"):
+            content = await _extract_pdf_content(file, keep_layout)
+        else:
+            content = await content_extractors[content_type](file)
     except Exception as e:
         # the parser's own message stays in the logs, not in the response
         logger.warning("file_unreadable content_type=%s error=%r", content_type, e)
@@ -166,9 +179,12 @@ async def get_file_content(file: UploadFile) -> str:
 # event loop keeps serving every other request meanwhile
 
 
-def _read_pdf(stream) -> str:
+def _read_pdf(stream, keep_layout: bool = False) -> str:
     reader = PdfReader(stream)
-    return "\n".join(page.extract_text() or "" for page in reader.pages)
+    pages = [page.extract_text() or "" for page in reader.pages]
+    if keep_layout:
+        return layout_text([page.split("\n") for page in pages])
+    return "\n".join(pages)
 
 
 def _read_docx(stream) -> str:
@@ -176,12 +192,17 @@ def _read_docx(stream) -> str:
     return "\n".join(paragraph.text for paragraph in reader.paragraphs)
 
 
-async def _extract_pdf_content(file) -> str:
+async def _extract_pdf_content(file, keep_layout: bool = False) -> str:
+    extract = (
+        extract_layout_from_pdf_with_tika
+        if keep_layout
+        else extract_txt_from_pdf_with_tika
+    )
     try:
-        return await extract_txt_from_pdf_with_tika(file.file, settings.TIKA_URL_BASE)
+        return await extract(file.file, settings.TIKA_URL_BASE)
     except Exception as e:
         logger.warning("tika_failed falling back to pypdf error=%r", e)
-        return await run_in_threadpool(_read_pdf, file.file)
+        return await run_in_threadpool(_read_pdf, file.file, keep_layout)
 
 
 async def _extract_text_content(file) -> str:

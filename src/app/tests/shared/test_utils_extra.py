@@ -91,7 +91,7 @@ class GetFilesContentTests(IsolatedAsyncioTestCase):
     async def test_keeps_upload_order_when_files_finish_out_of_order(self):
         delays = {"first": 0.05, "second": 0.0, "third": 0.02}
 
-        async def slow_content(file):
+        async def slow_content(file, keep_layout=False):
             await asyncio.sleep(delays[file])
             return file
 
@@ -228,3 +228,57 @@ class UploadLimitsTests(IsolatedAsyncioTestCase):
         await check_upload_limits([file], max_files=1, max_file_size=5)
 
         self.assertEqual(await file.read(), b"abc")
+
+
+class KeepLayoutTests(IsolatedAsyncioTestCase):
+    """The course read by syllabus v2 keeps a PDF's paragraphs; other callers don't."""
+
+    async def test_passes_keep_layout_to_each_file(self):
+        calls = []
+
+        async def content(file, keep_layout=False):
+            calls.append(keep_layout)
+            return file
+
+        with patch("src.app.shared.utils.utils.get_file_content", side_effect=content):
+            await get_files_content(["a", "b"], keep_layout=True)
+            await get_files_content(["c"])
+
+        self.assertEqual(calls, [True, True, False])
+
+    @patch(
+        "src.app.shared.utils.utils.extract_layout_from_pdf_with_tika",
+        new_callable=AsyncMock,
+    )
+    @patch(
+        "src.app.shared.utils.utils.extract_txt_from_pdf_with_tika",
+        new_callable=AsyncMock,
+    )
+    async def test_a_pdf_is_read_with_its_layout_only_when_asked(self, flat, layout):
+        flat.return_value = "flat text"
+        layout.return_value = "Title\n\nA paragraph."
+
+        self.assertEqual(
+            await _extract_pdf_content(_upload(b"%PDF", "application/pdf")), "flat text"
+        )
+        self.assertEqual(
+            await _extract_pdf_content(_upload(b"%PDF", "application/pdf"), True),
+            "Title\n\nA paragraph.",
+        )
+
+    @patch("src.app.shared.utils.utils.PdfReader")
+    @patch(
+        "src.app.shared.utils.utils.extract_layout_from_pdf_with_tika",
+        new_callable=AsyncMock,
+    )
+    async def test_the_pypdf_fallback_keeps_the_layout_too(self, layout, reader):
+        layout.side_effect = RuntimeError("tika down")
+        page = MagicMock()
+        page.extract_text.return_value = (
+            "Objective\n\nThis course aims\nto train students."
+        )
+        reader.return_value.pages = [page]
+
+        result = await _extract_pdf_content(_upload(b"%PDF", "application/pdf"), True)
+
+        self.assertEqual(result, "Objective\n\nThis course aims to train students.")
