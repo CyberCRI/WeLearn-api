@@ -50,10 +50,14 @@ class Settings(BaseSettings):
     # teachers of one campus behind one address
     TUTOR_COURSE_REQUESTS_PER_IP_WINDOW: int = 120
     ENV: str
+
+    # exposes get_corpus_list and search_by_document to MCP clients at /mcp
     MCP_ENABLED: bool = True
 
     # LANGSMITH / LANGCHAIN TRACING
     # TBD: migrate Optional/Union annotations to PEP 604 shorthand (X | Y, X | None) in a dedicated refactor.
+
+    # traces of the LangChain calls sent to LangSmith, in LANGSMITH_PROJECT
     LANGSMITH_TRACING_ENABLED: bool = False
     LANGSMITH_PROJECT: Optional[str] = None
     LANGSMITH_ENDPOINT: Optional[str] = None

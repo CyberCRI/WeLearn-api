@@ -1,4 +1,4 @@
-.PHONY: run-dev run-poetry generate-baml generate-baml-poetry lint lint-check lint-check-poetry test test-poetry openapi openapi-poetry ci-poetry eval-tutor install-hooks
+.PHONY: run-dev run-poetry generate-baml generate-baml-poetry lint lint-check lint-check-poetry test test-poetry openapi openapi-poetry ci-poetry eval-tutor install-hooks docs-settings
 
 generate-baml:
 	baml-cli generate --from ./src/app/baml_src
@@ -12,6 +12,11 @@ openapi-poetry: generate-baml-poetry
 
 openapi: generate-baml
 	python -m src.export_openapi
+
+# regenerate docs/settings.md (flags and limits by environment) from config.py and the Helm
+# values; a test fails while it is out of date. standard library only
+docs-settings:
+	python3 src/app/core/settings_doc.py
 
 run-poetry: generate-baml-poetry
 	poetry run uvicorn src.main:app --reload

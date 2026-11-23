@@ -19,6 +19,7 @@ make run-poetry                    # generate BAML + uvicorn src.main:app --relo
 make test-poetry                   # generate BAML + full pytest run with coverage gate (--cov-fail-under=90)
 make lint                          # flake8, isort, black, lint-imports
 make openapi-poetry                # regenerate openapi.json (the API/client contract) — commit it with the code change
+make docs-settings                 # regenerate docs/settings.md (flags and limits by environment) — commit it with the change
 ```
 
 - **Single test:** `poetry run pytest src/app/tests/search/test_search_api.py::SearchTests::test_search_items_no_query -q`. Add `-k pattern` to select by name.
@@ -101,6 +102,7 @@ Code that several features need goes in `shared/`. That includes domain exceptio
 - **Settings:**
   - Values come from `src/app/core/config.py::Settings` (pydantic-settings, reads `.env`).
   - Use `get_settings()` from `shared/utils/dependencies.py` rather than instantiating `Settings`.
+  - `docs/settings.md` lists every `bool`, `int` and `float` setting with a default, as each environment gets it: `k8s/welearn-api/values.<env>.yaml`, else `values.yaml`, else the default. The comment above a field in `config.py` is its description; its first sentence goes in the table. After changing a setting, its default or a Helm value, run `make docs-settings` and commit the page: `src/app/tests/core/test_settings_doc.py` fails while it is out of date. On a version tag, `.github/workflows/release.yml` adds the same tables to the GitHub release notes (a draft release when there is none).
 
 ### Gotchas
 
