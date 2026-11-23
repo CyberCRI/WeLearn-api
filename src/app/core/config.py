@@ -113,6 +113,18 @@ class Settings(BaseSettings):
     KEYCLOAK_ADMIN_CLIENT_SECRET: Optional[str] = None
     # where the sign-up email link sends the user once done (needs KEYCLOAK_CLIENT_ID)
     KEYCLOAK_SIGNUP_REDIRECT_URI: Optional[str] = None
+    # SMTP for the emails the API sends itself (requests to add a university).
+    # Without SMTP_HOST and SMTP_FROM those endpoints answer 500 EMAIL_DISABLED
+    SMTP_HOST: Optional[str] = None
+    # SMTP server port (587 for STARTTLS submission)
+    SMTP_PORT: int = 587
+    SMTP_USER: Optional[str] = None
+    SMTP_PASSWORD: Optional[str] = None
+    # upgrade the SMTP connection with STARTTLS (off only for a local Mailpit)
+    SMTP_STARTTLS: bool = True
+    SMTP_FROM: Optional[str] = None  # e.g. "WeLearn <welearn@mg.lp-i.dev>"
+    # where requests to add a university to the login page are sent
+    UNIVERSITY_REQUEST_TO: str = "welearn@learningplanetinstitute.org"
     # account-only features (bookmarks, bibliography export, syllabus download)
     # answer 401 ACCOUNT_REQUIRED without a bearer token. Turn on with the
     # client's `auth` feature flag, per environment; off, a guest's cookie is enough
