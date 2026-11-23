@@ -151,6 +151,7 @@ def known(values: tuple[str, ...]) -> BeforeValidator:
 class SelectedResource(Answer):
     # every field may be missing: one bad item is left out, not the whole answer
     document: int | None = Field(default=None, description='The "n" of the document')
+    # asked so the model says what the document is about before judging it; not read
     subject: Text = None
     concept_terms: Texts = []
     sustainability_terms: Texts = []
@@ -167,6 +168,7 @@ class SelectionAnswer(Answer):
     """Answer of the `selection` prompt."""
 
     fit: Annotated[Fit | None, known(FITS)] = None
+    # asked so the model reasons before its verdict; not read
     fit_reason: Text = None
     keep: bool
     concept: Text = None

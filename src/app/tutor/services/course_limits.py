@@ -20,6 +20,7 @@ from collections.abc import AsyncIterator
 
 from fastapi import HTTPException, Request, status
 
+from src.app.shared.api.errors import retry_later
 from src.app.shared.domain.exceptions import CourseTooLargeError
 from src.app.shared.domain.responses import ErrorResponse
 from src.app.shared.infra.rate_limit import (
@@ -31,7 +32,7 @@ from src.app.shared.utils.dependencies import get_settings
 from src.app.shared.utils.logger import logger as utils_logger
 from src.app.shared.utils.requests import extract_session_cookie
 from src.app.tutor.domain.connections import ConfirmedCourse
-from src.app.tutor.services.connections import course_block
+from src.app.tutor.services.course_prompt import course_block
 from src.app.tutor.services.llm import MAX_DATA_CHARS
 
 logger = utils_logger(__name__)
@@ -81,12 +82,10 @@ def limit_key(request: Request) -> str:
 
 
 def _too_many(message: str, code: str, retry_after: float) -> HTTPException:
-    seconds = max(math.ceil(retry_after), 1)
-    # in the body too: a browser on another origin cannot read the Retry-After header
-    return HTTPException(
-        status_code=status.HTTP_429_TOO_MANY_REQUESTS,
-        detail={"message": message, "code": code, "retry_after": seconds},
-        headers={"Retry-After": str(seconds)},
+    return retry_later(
+        status.HTTP_429_TOO_MANY_REQUESTS,
+        {"message": message, "code": code},
+        retry_after,
     )
 
 

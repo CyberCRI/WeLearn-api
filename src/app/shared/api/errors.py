@@ -1,4 +1,6 @@
-from fastapi import FastAPI, Request, Response, status
+import math
+
+from fastapi import FastAPI, HTTPException, Request, Response, status
 from fastapi.responses import JSONResponse
 from starlette.types import ASGIApp, Message, Receive, Scope, Send
 
@@ -67,6 +69,25 @@ async def database_error_handler(request: Request, exc: Exception) -> Response:
     )
     detail = DATABASE_UNAVAILABLE_DETAIL if unavailable else DATABASE_ERROR_DETAIL
     return JSONResponse(status_code=status_code, content={"detail": detail})
+
+
+def retry_later(
+    status_code: int,
+    detail: dict,
+    retry_after: float,
+    headers: dict[str, str] | None = None,
+) -> HTTPException:
+    """
+    An error the caller may retry after `retry_after` seconds (at least one): said in the
+    Retry-After header and in the body's `retry_after`, since a browser on another origin
+    cannot read that header.
+    """
+    seconds = max(math.ceil(retry_after), 1)
+    return HTTPException(
+        status_code=status_code,
+        detail={**detail, "retry_after": seconds},
+        headers={"Retry-After": str(seconds), **(headers or {})},
+    )
 
 
 def register_exception_handlers(app: FastAPI) -> None:

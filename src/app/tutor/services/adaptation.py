@@ -20,6 +20,7 @@ from typing import Literal
 
 from langsmith import traceable
 
+from src.app.shared.domain.documents import EnhancedDocumentSlice
 from src.app.shared.infra.tracing import TraceName
 from src.app.shared.utils.logger import logger as utils_logger
 from src.app.tutor.domain.adaptation import (
@@ -31,30 +32,28 @@ from src.app.tutor.domain.adaptation import (
     AdaptationSupport,
     ChosenConnection,
     GreenCompLink,
+    GuidanceAnswer,
     VerificationAnswer,
 )
-from src.app.tutor.domain.connections import (
-    MAX_RESOURCE_CHARS,
-    ConfirmedCourse,
-    EvidencedResource,
-)
+from src.app.tutor.domain.connections import ConfirmedCourse, EvidencedResource
 from src.app.tutor.domain.greencomp import GREENCOMP_IDS, greencomp_for_prompt
 from src.app.tutor.domain.models import TutorLang
-from src.app.tutor.services.connections import (
+from src.app.tutor.services.connections import course_parts, part_of_course
+from src.app.tutor.services.course_prompt import (
+    connection_text,
     course_block,
-    course_parts,
-    part_of_course,
+    nth,
+    resource_block,
 )
-from src.app.tutor.services.course_reading import normalise
-from src.app.tutor.services.evidence import (
+from src.app.tutor.services.llm import LLM_FAILURES, DataBlock, structured_call
+from src.app.tutor.services.resource_checks import (
     clean_quote,
     has_unsupported_figure,
     resource_text,
-    source_of,
     verified_quote,
     words_of,
 )
-from src.app.tutor.services.llm import LLM_FAILURES, DataBlock, structured_call
+from src.app.tutor.services.text_match import names_each_other, normalise
 
 logger = utils_logger(__name__)
 
@@ -81,27 +80,11 @@ def roled_resources(connection: ChosenConnection) -> list[RoledResource]:
 
 
 def connection_block(connection: ChosenConnection) -> str:
-    return "\n".join(
-        [
-            f"Title: {connection.title}",
-            f"Part of the course concerned: {connection.anchor or 'the whole course'}",
-            f"Why: {connection.why}",
-        ]
-    )
+    return connection_text(connection.title, connection.anchor, connection.why)
 
 
 def resource_blocks(resources: list[RoledResource]) -> list[DataBlock]:
-    return [
-        DataBlock(
-            text=(r.resource.document.payload.slice_content or "")[:MAX_RESOURCE_CHARS],
-            attrs={
-                "role": r.role,
-                "title": r.resource.document.payload.document_title,
-                "source": source_of(r.resource.document),
-            },
-        )
-        for r in resources
-    ]
+    return [resource_block(r.resource.document, r.role) for r in resources]
 
 
 def problems_block(problems: list[str]) -> str:
@@ -118,12 +101,6 @@ def tidy_note(text: str) -> str:
         return trimmed
     capitalised = trimmed[0].upper() + trimmed[1:]
     return capitalised if re.search(r"[.!?…]$", capitalised) else f"{capitalised}."
-
-
-def _is_same_place(a: str, b: str) -> bool:
-    """One course part names the other (the same part, worded more or less fully)."""
-    x, y = normalise(a), normalise(b)
-    return bool(x) and bool(y) and (x in y or y in x)
 
 
 def place_of_change(
@@ -143,12 +120,77 @@ def place_of_change(
     linked = part_of_course(anchor, parts)
     if named is None or linked is None:
         return linked or named
-    is_with_link = _is_same_place(named, linked) or any(
+    is_with_link = names_each_other(named, linked) or any(
         topic.title == named
-        and any(_is_same_place(sub, linked) for sub in topic.subtopics)
+        and any(names_each_other(sub, linked) for sub in topic.subtopics)
         for topic in course.topics
     )
     return named if is_with_link else linked
+
+
+def _cited_resources(
+    answer: AdaptationAnswer, resources: list[RoledResource]
+) -> list[AdaptationResource]:
+    """The resources the answer cites, each with its quote when found word for word in it."""
+    quotes: dict[int, str] = {}
+    for item in answer.evidence:
+        given = nth(resources, item.document)
+        if given is None or item.document in quotes:
+            continue
+        quote = verified_quote(clean_quote(item.quote), given.resource.document)
+        if quote:
+            quotes[item.document] = quote  # type: ignore[index]
+
+    cited_numbers = [
+        n
+        for n in dict.fromkeys([*answer.documents, *quotes])
+        if nth(resources, n) is not None
+    ]
+    return [
+        AdaptationResource(
+            **resources[n - 1].resource.model_dump(),
+            role=resources[n - 1].role,
+            quote=quotes.get(n),
+        )
+        for n in cited_numbers
+    ]
+
+
+def _capped_support(
+    claimed: AdaptationSupport | None, cited: list[AdaptationResource]
+) -> AdaptationSupport:
+    """ "strong" needs a quote of a direct resource; a change citing nothing has none."""
+    if not cited:
+        return "none"
+    is_directly_quoted = any(r.role == "direct" and r.quote for r in cited)
+    if claimed == "strong" and not is_directly_quoted:
+        return "partial"
+    return claimed or "none"
+
+
+def _checked_guidance(
+    guidance: GuidanceAnswer, cited_docs: list[EnhancedDocumentSlice]
+) -> AdaptationGuidance:
+    """The optional notes, each dropped when it states a figure the resources lack."""
+
+    def note(text: str | None) -> str | None:
+        if not text or has_unsupported_figure(text, cited_docs):
+            return None
+        return tidy_note(text) or None
+
+    competence = guidance.greencomp
+    how = note(competence.how) if competence else None
+    greencomp = (
+        GreenCompLink(id=competence.id, how=how)  # type: ignore[arg-type]
+        if competence and competence.id in GREENCOMP_IDS and how
+        else None
+    )
+    return AdaptationGuidance(
+        learning=note(guidance.learning),
+        greencomp=greencomp,
+        teaching=note(guidance.teaching),
+        check=note(guidance.check),
+    )
 
 
 def to_proposal(
@@ -172,67 +214,19 @@ def to_proposal(
     if answer.kind == "objective" and original is None:
         return None
 
-    def is_given(n: int | None) -> bool:
-        return n is not None and 1 <= n <= len(resources)
-
-    quotes: dict[int, str] = {}
-    for item in answer.evidence:
-        if not is_given(item.document) or item.document in quotes:
-            continue
-        resource = resources[item.document - 1].resource  # type: ignore[operator]
-        quote = verified_quote(clean_quote(item.quote), resource.document)
-        if quote:
-            quotes[item.document] = quote  # type: ignore[index]
-
-    cited_numbers = [
-        n for n in dict.fromkeys([*answer.documents, *quotes]) if is_given(n)
-    ]
-    cited = [
-        AdaptationResource(
-            **resources[n - 1].resource.model_dump(),
-            role=resources[n - 1].role,
-            quote=quotes.get(n),
-        )
-        for n in cited_numbers
-    ]
+    cited = _cited_resources(answer, resources)
     cited_docs = [resource.document for resource in cited]
     if has_unsupported_figure(f"{answer.suggested} {answer.why}", cited_docs):
         return None
 
-    claimed: AdaptationSupport = answer.support or "none"
-    is_directly_quoted = any(r.role == "direct" and r.quote for r in cited)
-    if not cited:
-        support: AdaptationSupport = "none"
-    elif claimed == "strong" and not is_directly_quoted:
-        support = "partial"
-    else:
-        support = claimed
-
-    def note(text: str | None) -> str | None:
-        if not text or has_unsupported_figure(text, cited_docs):
-            return None
-        return tidy_note(text) or None
-
-    competence = answer.guidance.greencomp
-    how = note(competence.how) if competence else None
-    greencomp = (
-        GreenCompLink(id=competence.id, how=how)  # type: ignore[arg-type]
-        if competence and competence.id in GREENCOMP_IDS and how
-        else None
-    )
     return AdaptationProposal(
         kind=answer.kind,
         original=original,
         suggested=answer.suggested,
         why=answer.why,
-        support=support,
+        support=_capped_support(answer.support, cited),
         resources=cited,
-        guidance=AdaptationGuidance(
-            learning=note(answer.guidance.learning),
-            greencomp=greencomp,
-            teaching=note(answer.guidance.teaching),
-            check=note(answer.guidance.check),
-        ),
+        guidance=_checked_guidance(answer.guidance, cited_docs),
         checks=None,
     )
 
@@ -271,10 +265,7 @@ def to_verification(
     for item in answer.claims:
         if not item.claim or not restates_change(item.claim, change):
             continue
-        n = item.document
-        resource = (
-            resources[n - 1] if n is not None and 1 <= n <= len(resources) else None
-        )
+        resource = nth(resources, item.document)
         is_backed = (
             item.status == "established"
             and resource is not None
@@ -511,7 +502,7 @@ async def adapt_course(
     verification = await check(course, proposal, resources, lang)
     calls += 1
     first_problems = len(verification.problems) if verification else None
-    # would a wrong claim or a forced change alone have asked again? (measurement plan)
+    # would a wrong claim or a forced change alone have asked again? (for the log)
     first_serious = (
         verification.has_incorrect or verification.is_forced if verification else None
     )
