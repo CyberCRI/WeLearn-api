@@ -21,6 +21,7 @@ from src.app.chat.services.thread_access import (
 )
 from src.app.data_collection.services.data_collection import get_data_collection_service
 from src.app.search.services.search import SearchService, get_search_service
+from src.app.shared.api.ai_generated import mark_ai_generated
 from src.app.shared.domain.exceptions import EmptyQueryError, bad_request
 from src.app.shared.domain.responses import ErrorResponse
 from src.app.shared.utils.db_errors import describe_error
@@ -168,6 +169,7 @@ async def delete_chat_thread(
 
 @router.post(
     "/chat/agent_stream",
+    dependencies=[Depends(mark_ai_generated)],
     summary="Agent Response Stream",
     description="This endpoint streams an agent response to the user's message and ends with the full response payload.",
     response_class=StreamingResponse,
@@ -232,6 +234,7 @@ async def agent_stream_response(
 
 @router.post(
     "/chat/agent",
+    dependencies=[Depends(mark_ai_generated)],
     operation_id="chat_agent_response",
     summary="Agent Response",
     description="This endpoint is used to get an agent response to the user's message",

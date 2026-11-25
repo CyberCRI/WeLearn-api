@@ -22,6 +22,7 @@ from src.app.search.domain.models import EnhancedSearchQuery
 from src.app.search.infra.queries import get_collections_info_sync
 from src.app.search.services.search import SearchService, get_search_service
 from src.app.search.services.search_helpers import search_multi_inputs
+from src.app.shared.api.ai_generated import mark_ai_generated
 from src.app.shared.domain.exceptions import NoResultsError
 from src.app.shared.domain.responses import ErrorResponse, MessageResponse
 from src.app.shared.utils.db_errors import describe_error
@@ -129,7 +130,10 @@ COURSE_READ_RESPONSES: dict[int | str, dict] = {
 
 
 # syllabus v2: every route below sends the course to the model, under the same limits
-course_router = APIRouter(prefix="/course", dependencies=[Depends(course_llm_request)])
+course_router = APIRouter(
+    prefix="/course",
+    dependencies=[Depends(course_llm_request), Depends(mark_ai_generated)],
+)
 
 
 @course_router.post(
@@ -252,7 +256,9 @@ router.include_router(course_router)
 
 
 @router.post(
-    "/files/content", responses={**UPLOAD_ERROR_RESPONSES, **GUEST_QUOTA_RESPONSES}
+    "/files/content",
+    responses={**UPLOAD_ERROR_RESPONSES, **GUEST_QUOTA_RESPONSES},
+    dependencies=[Depends(mark_ai_generated)],
 )
 async def extract_files_content(
     files: Annotated[list[UploadFile], File()],
@@ -283,7 +289,7 @@ async def extract_files_content(
 @router.post(
     "/mas_files/content",
     responses={**UPLOAD_ERROR_RESPONSES, **ACCOUNT_REQUIRED_RESPONSES},
-    dependencies=[Depends(require_account)],
+    dependencies=[Depends(require_account), Depends(mark_ai_generated)],
 )
 async def extract_files_content_baml(
     files: Annotated[list[UploadFile], File()],
@@ -395,7 +401,11 @@ async def _tutor_search(
     return resp
 
 
-@router.post("/syllabus", responses=GUEST_QUOTA_RESPONSES)
+@router.post(
+    "/syllabus",
+    responses=GUEST_QUOTA_RESPONSES,
+    dependencies=[Depends(mark_ai_generated)],
+)
 async def create_syllabus(
     request: Request,
     body: TutorSyllabusRequest,
@@ -447,6 +457,7 @@ async def create_syllabus(
 
 @router.post(
     "/syllabus/feedback",
+    dependencies=[Depends(mark_ai_generated)],
     response_model=SyllabusResponse,
     responses=GUEST_QUOTA_RESPONSES,
 )
@@ -514,7 +525,7 @@ async def register_syllabus_user_update(
 @router.post(
     "/syllabus/description",
     responses=ACCOUNT_REQUIRED_RESPONSES,
-    dependencies=[Depends(require_account)],
+    dependencies=[Depends(require_account), Depends(mark_ai_generated)],
 )
 async def baml_test(body: CourseDescriptionRequest) -> types.CourseDescription:
     b_response = await b.GenerateCourseDescription(
@@ -529,7 +540,7 @@ async def baml_test(body: CourseDescriptionRequest) -> types.CourseDescription:
 @router.post(
     "/syllabus/learning_objectives",
     responses=ACCOUNT_REQUIRED_RESPONSES,
-    dependencies=[Depends(require_account)],
+    dependencies=[Depends(require_account), Depends(mark_ai_generated)],
 )
 async def baml_learning_objectives(
     body: LearningObjectivesRequest,
@@ -548,7 +559,7 @@ async def baml_learning_objectives(
 @router.post(
     "/syllabus/sustainability_integration",
     responses=ACCOUNT_REQUIRED_RESPONSES,
-    dependencies=[Depends(require_account)],
+    dependencies=[Depends(require_account), Depends(mark_ai_generated)],
 )
 async def integrate_sustainability(
     body: IntegrateSustainabilityRequest,
@@ -571,7 +582,7 @@ async def integrate_sustainability(
 @router.post(
     "/syllabus/learning_outcomes",
     responses=ACCOUNT_REQUIRED_RESPONSES,
-    dependencies=[Depends(require_account)],
+    dependencies=[Depends(require_account), Depends(mark_ai_generated)],
 )
 async def baml_learning_outcomes(
     body: LearningOutcomesRequest,
@@ -589,7 +600,7 @@ async def baml_learning_outcomes(
 @router.post(
     "/syllabus/competency_map",
     responses=ACCOUNT_REQUIRED_RESPONSES,
-    dependencies=[Depends(require_account)],
+    dependencies=[Depends(require_account), Depends(mark_ai_generated)],
 )
 async def generate_competency_map(
     body: CompetencyMappingRequest,
@@ -617,6 +628,7 @@ async def generate_competency_map(
 
 @router.post(
     "/api/generate",
+    dependencies=[Depends(mark_ai_generated)],
     response_model=SyllabusGenerationResponse,
     responses=GUEST_QUOTA_RESPONSES,
 )

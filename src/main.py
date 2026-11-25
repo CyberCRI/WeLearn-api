@@ -17,6 +17,7 @@ from src.app.core.config import settings
 from src.app.core.lifespan import lifespan
 from src.app.router import api_router, api_tags_metadata
 from src.app.shared.api import health
+from src.app.shared.api.ai_generated import AI_GENERATED_HEADER, AiGeneratedMiddleware
 from src.app.shared.api.errors import (
     UnhandledErrorMiddleware,
     register_exception_handlers,
@@ -112,6 +113,8 @@ async def add_process_time_header(request: Request, call_next):
         raise
 
 
+app.add_middleware(AiGeneratedMiddleware)
+
 # added before CORSMiddleware, so it runs inside it: a 500 the client can read
 app.add_middleware(UnhandledErrorMiddleware)
 
@@ -122,7 +125,7 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
     # read by the client to show the guest quotas left and when to retry
-    expose_headers=["X-Guest-Remaining", "Retry-After"],
+    expose_headers=["X-Guest-Remaining", "Retry-After", AI_GENERATED_HEADER],
 )
 
 app.api_route(path="/", tags=["root"], methods=["GET"])(settings.get_api_version)
