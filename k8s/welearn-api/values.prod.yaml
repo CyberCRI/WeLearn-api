@@ -11,6 +11,10 @@ config:
     LANGSMITH_TRACING_ENABLED: "true"
     LANGSMITH_PROJECT: WeLearn_Prod
     LANGSMITH_ENDPOINT: https://eu.api.smith.langchain.com
+    SMTP_HOST: smtp.eu.mailgun.org
+    SMTP_PORT: "587"
+    SMTP_STARTTLS: "true"
+    SMTP_FROM: welearn@learningplanetinstitute.org
     # uvicorn reads X-Forwarded-For only from the Traefik pods (same CIDR as dev)
     FORWARDED_ALLOW_IPS: "10.244.0.0/16"
 allowedHostsRegexes:

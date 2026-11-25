@@ -14,9 +14,9 @@ of `k8s/welearn-api/values.<env>.yaml`, else `values.yaml`, else its default in
 | `TUTOR_SINGLE_PASS` | `true` | `true` | `true` | `true` | Old tutor: one structured LLM call instead of the 3-agent chain (False = revert) |
 | `MCP_ENABLED` | `true` | `true` | `true` | `true` | Exposes get_corpus_list and search_by_document to MCP clients at /mcp |
 | `LANGSMITH_TRACING_ENABLED` | `true` | `true` | `true` | `false` | Traces of the LangChain calls sent to LangSmith, in LANGSMITH_PROJECT |
-| `SMTP_STARTTLS` | _true_ | _true_ | _true_ | `true` | Upgrade the SMTP connection with STARTTLS (off only for a local Mailpit) |
+| `SMTP_STARTTLS` | _true_ | _true_ | `true` | `true` | Upgrade the SMTP connection with STARTTLS (off only for a local Mailpit) |
 | `GUEST_RESTRICTIONS_ENABLED` | `true` | `true` | `true` | `false` | Account-only features (bookmarks, bibliography export, syllabus download) answer 401 ACCOUNT_REQUIRED without a bearer token. |
-| `LIMITED_ACCESS_ENABLED` | `true` | `false` | `false` | `false` | Time-limited accounts: a login through one of LIMITED_ACCESS_IDENTITY_PROVIDERS (Keycloak IdP aliases), or with an email and password, gets LIMITED_ACCESS_DAYS from its first login, stored in the Keycloak user attribute "welearn_access_until". |
+| `LIMITED_ACCESS_ENABLED` | `true` | `true` | `true` | `false` | Time-limited accounts: a login through one of LIMITED_ACCESS_IDENTITY_PROVIDERS (Keycloak IdP aliases), or with an email and password, gets LIMITED_ACCESS_DAYS from its first login, stored in the Keycloak user attribute "welearn_access_until". |
 
 ### Limits
 
@@ -27,7 +27,7 @@ of `k8s/welearn-api/values.<env>.yaml`, else `values.yaml`, else its default in
 | `TUTOR_COURSE_REQUESTS_PER_WINDOW` | _30_ | _30_ | _30_ | `30` | Per session (or client IP without one), in the memory of each pod: LLM requests running at once, and requests per window |
 | `TUTOR_COURSE_WINDOW_SECONDS` | _600_ | _600_ | _600_ | `600` | Per session (or client IP without one), in the memory of each pod: LLM requests running at once, and requests per window |
 | `TUTOR_COURSE_REQUESTS_PER_IP_WINDOW` | _120_ | _120_ | _120_ | `120` | The same window per client IP too, since a caller picks its session id: room for the teachers of one campus behind one address |
-| `SMTP_PORT` | _587_ | _587_ | _587_ | `587` | SMTP server port (587 for STARTTLS submission) |
+| `SMTP_PORT` | _587_ | _587_ | `587` | `587` | SMTP server port (587 for STARTTLS submission) |
 | `GUEST_CHAT_DAILY_LIMIT` | _5_ | _5_ | _5_ | `5` | Daily guest quotas while GUEST_RESTRICTIONS_ENABLED is on (sliding 24h window per anonymous user, counted in user_related.guest_feature_usage) |
 | `GUEST_SYLLABUS_DAILY_LIMIT` | _1_ | _1_ | _1_ | `1` | Daily guest quotas while GUEST_RESTRICTIONS_ENABLED is on (sliding 24h window per anonymous user, counted in user_related.guest_feature_usage) |
 | `GUEST_FEEDBACK_DAILY_LIMIT` | _2_ | _2_ | _2_ | `2` | Changes asked on a generated syllabus, and LLM summaries of uploaded files |
