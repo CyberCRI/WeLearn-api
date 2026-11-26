@@ -59,6 +59,16 @@ spec:
           {{- include "common.security.containerSecurityContext.restricted" dict | nindent 10 }}
 
         resources: {{ toYaml .Values.resources | nindent 10 }}
+        # the API answers nothing (/health/ included) until the embedding
+        # models are loaded at startup; give it up to 5 min (60 x 5 s) before
+        # the liveness probe starts and can restart the pod
+        startupProbe:
+          httpGet:
+            port: http
+            path: /health/
+          timeoutSeconds: 5
+          failureThreshold: 60
+          periodSeconds: 5
         livenessProbe:
           httpGet:
             port: http
