@@ -24,11 +24,15 @@ class Settings(BaseSettings):
     DATA_COLLECTION_ORIGIN_PREFIX: str
     SESSION_COOKIE_DOMAIN: str
 
+    # the version of the running code, set by CI when it builds the image: the release tag
+    # (v0.8.0) for a tag build, the commit sha otherwise. "dev" when run from the source
+    APP_VERSION: str = "dev"
+
     def get_api_version(self) -> dict:
         return {
             "title": self.PROJECT_NAME,
             "api_version": self.API_V1_STR,
-            "semver": "0.1.0",
+            "semver": self.APP_VERSION,
         }
 
     # MISTRAL ENV VARS

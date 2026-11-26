@@ -83,6 +83,9 @@ jobs:
       registry-name: ${{ vars.DOCKER_PROD_REGISTRY }}
       image-name: welearn-api
       image-tag: ${{ github.sha }}
+      # the version the API reports (GET / and the OpenAPI info): the release tag for a
+      # tag build, the commit sha otherwise
+      build-args: APP_VERSION=${{ github.ref_type == 'tag' && github.ref_name || github.sha }}
       recursive-submodule-checkout: true
       push: ${{ needs.deploy-target.outputs.deploy == 'true' }}
     secrets:

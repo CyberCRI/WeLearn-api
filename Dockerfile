@@ -32,6 +32,11 @@ RUN baml-cli generate --from /app/src/app/ --no-tests
 
 COPY devops-toolbox/scripts/secrets-entrypoint.sh /app/secrets-entrypoint.sh
 
+# set by CI (see .github/workflows/ci.yml) and read by the settings. Declared last: a new
+# value on each build only rebuilds this layer
+ARG APP_VERSION=dev
+ENV APP_VERSION=${APP_VERSION}
+
 ENTRYPOINT [ "/app/secrets-entrypoint.sh" ]
 
 CMD ["uvicorn", "src.main:app", "--host", "0.0.0.0", "--port", "8080"]
