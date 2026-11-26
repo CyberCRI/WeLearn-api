@@ -564,7 +564,6 @@ async def baml_learning_objectives(
 async def integrate_sustainability(
     body: IntegrateSustainabilityRequest,
 ) -> types.SustainabilityIntegration:
-    print(body.course_metadata)
     # session_id = request.headers.get("X-Session-ID")
 
     b_response = await b.IntegrateSustainability(

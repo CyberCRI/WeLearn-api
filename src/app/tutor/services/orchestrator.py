@@ -387,7 +387,6 @@ class SyllabusOrchestrator:
         """
         logger.info("========== PHASE 1: PEDAGOGICAL FRAMING ==========")
 
-        print(self.state)
         # try:
         await self.phase_1_generate_description(context_text)
 
