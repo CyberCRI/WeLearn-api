@@ -3560,7 +3560,7 @@
   "info": {
     "description": "\n    WeLearn API\n    Search\n    **search results are grouped by url**\n    - You can search by term\n    - Filter based on metadata\n    ",
     "title": "WeLearn",
-    "version": "0.1.0"
+    "version": "dev"
   },
   "openapi": "3.1.0",
   "paths": {

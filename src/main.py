@@ -39,6 +39,7 @@ app = FastAPI(
     openapi_tags=api_tags_metadata,
     description=settings.DESCRIPTION,
     title=settings.PROJECT_NAME,
+    version=settings.APP_VERSION,
     openapi_url=f"{settings.API_V1_STR}/openapi.json",
     lifespan=lifespan,
     generate_unique_id_function=generate_operation_id,
