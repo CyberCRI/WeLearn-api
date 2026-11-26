@@ -10,6 +10,8 @@ from src.app.search.domain.models import (
     CorpusRead,
     DocumentSearchQuery,
     EnhancedSearchQuery,
+    SDGClassification,
+    SDGClassifyQuery,
     SDGFilter,
     SearchMethods,
     SearchOutput,
@@ -20,6 +22,7 @@ from src.app.search.infra.queries import (
     get_documents_payload_by_ids_sync,
     get_nb_docs_sync,
 )
+from src.app.search.services.sdg_classifier import classify_sdgs
 from src.app.search.services.search import (
     SearchService,
     get_search_service,
@@ -300,3 +303,17 @@ async def get_documents_payload_by_ids(
         get_documents_payload_by_ids_sync, [str(u) for u in documents_ids]
     )
     return docs
+
+
+@router.post(
+    "/sdg_classify",
+    summary="SDGs of a text",
+    description=(
+        "The SDGs a text is about, from the Aurora SDG classifier (VU Amsterdam), "
+        "called by the API so the classifier does not get the user's IP address or "
+        "browser. 503 SDG_CLASSIFIER_UNAVAILABLE when the classifier fails or is slow."
+    ),
+    response_model=SDGClassification,
+)
+async def sdg_classify(body: SDGClassifyQuery) -> SDGClassification:
+    return SDGClassification(sdgs=await classify_sdgs(body.query))

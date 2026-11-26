@@ -102,6 +102,15 @@ class Settings(BaseSettings):
     # TIKA
     TIKA_URL_BASE: str
 
+    # SDG classifier (Aurora, VU Amsterdam) for the search page's query. The API calls
+    # it so the classifier gets the text but not the user's IP address or browser
+    SDG_CLASSIFIER_URL: str = (
+        "https://aurora-sdg.labs.vu.nl/classifier/classify/aurora-sdg-multi"
+    )
+    # the longest a call to the SDG classifier may take; past it /search/sdg_classify
+    # answers 503 SDG_CLASSIFIER_UNAVAILABLE
+    SDG_CLASSIFIER_TIMEOUT_SECONDS: float = 5
+
     # KEYCLOAK (front-end login; tokens are verified against the realm's JWKS)
     KEYCLOAK_URL: Optional[str] = None  # e.g. https://auth.example.org
     KEYCLOAK_REALM: Optional[str] = None

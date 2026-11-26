@@ -2460,6 +2460,48 @@
         "title": "RowCorpusQtyDocInfo",
         "type": "object"
       },
+      "SDGClassification": {
+        "properties": {
+          "sdgs": {
+            "description": "SDG numbers (1-17) the text is about, most likely first: at most 3, each above the classifier's confidence threshold. Empty when none is.",
+            "examples": [
+              [
+                6,
+                4
+              ]
+            ],
+            "items": {
+              "type": "integer"
+            },
+            "title": "Sdgs",
+            "type": "array"
+          }
+        },
+        "required": [
+          "sdgs"
+        ],
+        "title": "SDGClassification",
+        "type": "object"
+      },
+      "SDGClassifyQuery": {
+        "properties": {
+          "query": {
+            "description": "Text to find the SDGs of, usually the search query.",
+            "examples": [
+              "How can schools reduce water waste?"
+            ],
+            "maxLength": 4096,
+            "minLength": 1,
+            "title": "Query",
+            "type": "string"
+          }
+        },
+        "required": [
+          "query"
+        ],
+        "title": "SDGClassifyQuery",
+        "type": "object"
+      },
       "SDGFilter": {
         "properties": {
           "sdg_filter": {
@@ -5003,6 +5045,53 @@
           }
         ],
         "summary": "Get Nb Docs",
+        "tags": [
+          "search"
+        ]
+      }
+    },
+    "/api/v1/search/sdg_classify": {
+      "post": {
+        "description": "The SDGs a text is about, from the Aurora SDG classifier (VU Amsterdam), called by the API so the classifier does not get the user's IP address or browser. 503 SDG_CLASSIFIER_UNAVAILABLE when the classifier fails or is slow.",
+        "operationId": "search-sdg_classify",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SDGClassifyQuery"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SDGClassification"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Error"
+          }
+        },
+        "security": [
+          {
+            "APIKeyHeader": []
+          }
+        ],
+        "summary": "SDGs of a text",
         "tags": [
           "search"
         ]
