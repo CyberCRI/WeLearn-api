@@ -4,7 +4,7 @@ from typing import TypedDict
 
 from pydantic import BaseModel, ConfigDict, Field
 
-from src.app.search.domain.models import SDGFilter
+from src.app.search.domain.models import MAX_USER_QUERY_CHARS, SDGFilter
 from src.app.shared.domain.documents import EnhancedDocumentSlice
 
 
@@ -17,7 +17,7 @@ class Role(Enum):
 class AgentContext(SDGFilter):
     query: str | None = Field(
         default=None,
-        max_length=4096,
+        max_length=MAX_USER_QUERY_CHARS,
         description="User message for the agent to answer.",
         examples=["How can communities improve clean water access?"],
     )

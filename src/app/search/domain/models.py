@@ -14,6 +14,8 @@ logger = logger_utils(__name__)
 
 # most queries one request may search in parallel (multi-input search)
 MAX_SEARCH_INPUTS = 10
+# longest free text a user may send as one query (a chat message, a text to classify)
+MAX_USER_QUERY_CHARS = 4096
 
 
 class SearchOutput(BaseModel):
@@ -24,6 +26,27 @@ class SearchOutput(BaseModel):
     docs: list[EnhancedDocumentSlice] | list[ScoredPoint] | None = Field(
         default=None,
         description="Search results returned by the endpoint.",
+    )
+
+
+class SDGClassifyQuery(BaseModel):
+    query: str = Field(
+        ...,
+        min_length=1,
+        max_length=MAX_USER_QUERY_CHARS,
+        description="Text to find the SDGs of, usually the search query.",
+        examples=["How can schools reduce water waste?"],
+    )
+
+
+class SDGClassification(BaseModel):
+    sdgs: list[int] = Field(
+        ...,
+        description=(
+            "SDG numbers (1-17) the text is about, most likely first: at most 3, "
+            "each above the classifier's confidence threshold. Empty when none is."
+        ),
+        examples=[[6, 4]],
     )
 
 

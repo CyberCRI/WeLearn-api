@@ -224,6 +224,14 @@ class LLMUnavailableError(WeLearnError):
     default_code = "LLM_UNAVAILABLE"
 
 
+class SDGClassifierUnavailableError(WeLearnError):
+    """Raised when the SDG classifier fails, times out or gives an unusable answer"""
+
+    status_code = status.HTTP_503_SERVICE_UNAVAILABLE
+    default_message = "The SDG classifier is unavailable, try again later"
+    default_code = "SDG_CLASSIFIER_UNAVAILABLE"
+
+
 class CourseTooLargeError(WeLearnError):
     """Raised when a course sent back by the client is larger than a prompt takes"""
 
