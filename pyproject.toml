@@ -21,7 +21,7 @@ qdrant-client = ">=1.16,<1.17"
 requests = "^2.32.4"
 scikit-learn = "^1.5.1"
 sqlalchemy = "^2.0.35"
-transformers="^4.50.0"
+transformers=">=4.50,<6.0"
 torch = [
     {version = "2.9.1+cpu", source = "pytorch_cpu", markers = "sys_platform == 'linux'"},
     {version = "2.9.1", markers = "sys_platform == 'darwin'"},
