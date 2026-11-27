@@ -2155,15 +2155,18 @@ test = ["distributed", "lz4", "memory_profiler", "numpy", "pytest", "pytest-asyn
 
 [[package]]
 name = "json-repair"
-version = "0.55.2"
+version = "0.60.1"
 description = "A package to repair broken json strings"
 optional = false
 python-versions = ">=3.10"
 groups = ["main"]
 files = [
-    {file = "json_repair-0.55.2-py3-none-any.whl", hash = "sha256:08109b093fc9fe99b956b8309f9c1dfd2740637056d93df489cc7b4eb56d4286"},
-    {file = "json_repair-0.55.2.tar.gz", hash = "sha256:aa5c89692126257efb8e3cf1efe6787387634b5c360fb77313d66f146e980de6"},
+    {file = "json_repair-0.60.1-py3-none-any.whl", hash = "sha256:ba6ff974f2a8bef2f7768144a7f03f870a816443f03da27a49cdd0ec31a78049"},
+    {file = "json_repair-0.60.1.tar.gz", hash = "sha256:841661cdd2df507c9a4e189097f38ca6bc372e06d4b4e36d72e590f68176c290"},
 ]
+
+[package.extras]
+schema = ["jsonschema (>=4.21) ; python_full_version < \"3.15.0a0\" or python_full_version >= \"3.15.0\"", "pydantic (>=2) ; python_full_version < \"3.15.0a0\" or python_full_version >= \"3.15.0\""]
 
 [[package]]
 name = "jsonpatch"
@@ -7245,4 +7248,4 @@ cffi = ["cffi (>=1.17,<2.0) ; platform_python_implementation != \"PyPy\" and pyt
 [metadata]
 lock-version = "2.1"
 python-versions = ">=3.12,<3.15"
-content-hash = "e658655ffe41efe11a6baaaecdc1150c43250ce172d1cfad8be47e399c37433c"
+content-hash = "ede57b6676d99e39ad796679ca77d8c04ee6a7c4b84607034d03fd010b5c4e42"
