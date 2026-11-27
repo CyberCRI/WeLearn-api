@@ -1,8 +1,6 @@
 from langchain_mistralai import ChatMistralAI  # type: ignore
-from langsmith import traceable
 from pydantic import BaseModel
 
-from src.app.shared.infra.tracing import TraceName
 from src.app.shared.utils.dependencies import get_settings
 from src.app.shared.utils.logger import logger as utils_logger
 from src.app.tutor.domain.models import ExtractorOutput, ExtractorOutputList, TutorLang
@@ -80,7 +78,6 @@ def build_extractor_messages(documents: str, lang: TutorLang) -> list[tuple[str,
     ]
 
 
-@traceable(name=TraceName.FILES_SUMMARY_EXTRACTOR.value)
 async def extract_files_summaries(
     documents: str, lang: TutorLang
 ) -> ExtractorOutputList:
