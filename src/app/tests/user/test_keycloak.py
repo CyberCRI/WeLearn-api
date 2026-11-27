@@ -376,14 +376,13 @@ class TestGetOrCreateKeycloakUser(unittest.IsolatedAsyncioTestCase):
         decode_mock.return_value = keycloak_user
         user_id = uuid.uuid4()
         anonymous_user_id = uuid.uuid4()
-        get_or_create_mock.return_value = user_id
+        get_or_create_mock.return_value = (user_id, True)
 
-        result_user_id, result_user = await keycloak.get_or_create_keycloak_user(
+        result = await keycloak.get_or_create_keycloak_user(
             "token", anonymous_user_id, "welearn"
         )
 
-        self.assertEqual(result_user_id, user_id)
-        self.assertEqual(result_user, keycloak_user)
+        self.assertEqual(result, (user_id, keycloak_user, True))
         decode_mock.assert_called_once_with("token")
         get_or_create_mock.assert_called_once_with(
             keycloak_user.keycloak_id, anonymous_user_id, "welearn"
@@ -421,7 +420,7 @@ class TestGetOrCreateUserFromKeycloakSync(unittest.TestCase):
 
         result = get_or_create_user_from_keycloak_sync(uuid.uuid4(), uuid.uuid4())
 
-        self.assertEqual(result, user_id)
+        self.assertEqual(result, (user_id, False))
         session.add.assert_not_called()
 
     def test_links_anonymous_user(self, session_maker_mock):
@@ -435,7 +434,7 @@ class TestGetOrCreateUserFromKeycloakSync(unittest.TestCase):
 
         result = get_or_create_user_from_keycloak_sync(keycloak_id, anonymous_user.id)
 
-        self.assertEqual(result, anonymous_user.id)
+        self.assertEqual(result, (anonymous_user.id, True))
         self.assertEqual(anonymous_user.keycloak_id, keycloak_id)
         session.add.assert_called_once_with(anonymous_user)
         session.commit.assert_called_once()
@@ -485,7 +484,7 @@ class TestGetOrCreateUserFromKeycloakSync(unittest.TestCase):
 
         result = get_or_create_user_from_keycloak_sync(uuid.uuid4())
 
-        self.assertEqual(result, existing_id)
+        self.assertEqual(result, (existing_id, False))
         session.rollback.assert_called_once()
 
 

@@ -50,6 +50,11 @@ def is_limited(user: KeycloakUser) -> bool:
     return user.identity_provider in settings.LIMITED_ACCESS_IDENTITY_PROVIDERS
 
 
+def is_time_limited(user: KeycloakUser) -> bool:
+    """Whether the account's access is time-limited on this server."""
+    return settings.LIMITED_ACCESS_ENABLED and is_limited(user)
+
+
 def parse_last_day(access_until: str) -> date | None:
     try:
         return date.fromisoformat(access_until.strip()[:10])
@@ -126,7 +131,7 @@ async def check_limited_access(user: KeycloakUser) -> str | None:
     Returns the end date of a limited account, None when the account is not
     limited or the date could not be stored.
     """
-    if not settings.LIMITED_ACCESS_ENABLED or not is_limited(user):
+    if not is_time_limited(user):
         return None
 
     access_until = user.access_until or await _start_access(user)
@@ -143,7 +148,7 @@ async def check_limited_access(user: KeycloakUser) -> str | None:
 async def get_account_access(user: KeycloakUser) -> AccountAccessResponse:
     """The account's access, for the client to tell the user how long it lasts."""
     access_until = await check_limited_access(user)
-    if not settings.LIMITED_ACCESS_ENABLED or not is_limited(user):
+    if not is_time_limited(user):
         return AccountAccessResponse(limited=False)
 
     last_day = parse_last_day(access_until) if access_until else None

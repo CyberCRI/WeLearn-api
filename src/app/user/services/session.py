@@ -2,6 +2,7 @@ from typing import Callable, Optional
 from uuid import UUID
 
 from fastapi.concurrency import run_in_threadpool
+from welearn_database.data.enumeration import AuthEventType
 
 from src.app.shared.domain.exceptions import SessionNotFoundError
 from src.app.shared.utils.logger import logger as logger_utils
@@ -12,6 +13,7 @@ from src.app.user.infra.queries import (
     get_user_for_session_renewal,
     get_user_from_session_id,
 )
+from src.app.user.services.auth_events import record_auth_event
 from src.app.user.services.limited_access import check_limited_access
 
 logger = logger_utils(__name__)
@@ -75,10 +77,15 @@ async def resolve_keycloak_user_and_session(
     session_uuid: Optional[UUID],
     host: str,
     referer: Optional[str],
+    record_login: bool = False,
 ) -> tuple[UUID, UUID]:
     """
     Resolve the user from a Keycloak token. An anonymous user found through the
     session cookie is linked to the Keycloak account instead of being dropped.
+
+    An account seen for the first time is recorded, and with `record_login`
+    (the /user/user_and_session call the client makes on each page load) the
+    login of the token's Keycloak session, once.
     """
     anonymous_user_id = None
     if session_uuid:
@@ -90,7 +97,7 @@ async def resolve_keycloak_user_and_session(
             logger.info("Session %s not found, ignoring it", session_uuid)
             session_uuid = None
 
-    user_id, keycloak_user = await get_or_create_keycloak_user(
+    user_id, keycloak_user, is_new_account = await get_or_create_keycloak_user(
         token, anonymous_user_id, referer
     )
     await check_limited_access(keycloak_user)
@@ -99,4 +106,13 @@ async def resolve_keycloak_user_and_session(
     session_uuid = await run_in_threadpool(
         get_or_create_session_sync, user_id, session_uuid, host, referer
     )
+
+    if is_new_account:
+        await record_auth_event(
+            AuthEventType.ACCOUNT_CREATED, user_id, keycloak_user, session_uuid
+        )
+    if record_login:
+        await record_auth_event(
+            AuthEventType.LOGIN, user_id, keycloak_user, session_uuid
+        )
     return user_id, session_uuid

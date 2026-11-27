@@ -16,6 +16,11 @@ SIGNUP = "src.app.user.services.signup"
 @patch(f"{SIGNUP}.create_user", new_callable=AsyncMock)
 @patch(f"{SIGNUP}.find_user_id_by_email", new_callable=AsyncMock)
 class TestSignUpUser(unittest.IsolatedAsyncioTestCase):
+    def setUp(self):
+        patcher = patch(f"{SIGNUP}.record_auth_event", new_callable=AsyncMock)
+        self.record_mock = patcher.start()
+        self.addCleanup(patcher.stop)
+
     async def test_email_already_has_account(
         self, find_mock, create_mock, session_mock, get_or_create_mock, email_mock
     ):
@@ -52,7 +57,7 @@ class TestSignUpUser(unittest.IsolatedAsyncioTestCase):
         keycloak_id, user_id = uuid.uuid4(), uuid.uuid4()
         find_mock.return_value = None
         create_mock.return_value = keycloak_id
-        get_or_create_mock.return_value = user_id
+        get_or_create_mock.return_value = (user_id, True)
 
         result = await sign_up_user("jane@example.org", "Jane", "Doe", None, "welearn")
 
@@ -67,7 +72,7 @@ class TestSignUpUser(unittest.IsolatedAsyncioTestCase):
     ):
         find_mock.return_value = None
         create_mock.return_value = uuid.uuid4()
-        get_or_create_mock.return_value = uuid.uuid4()
+        get_or_create_mock.return_value = (uuid.uuid4(), True)
 
         await sign_up_user("jane@example.org", "Jane", "Doe", None, None, locale="fr")
 
@@ -81,7 +86,7 @@ class TestSignUpUser(unittest.IsolatedAsyncioTestCase):
         find_mock.return_value = None
         create_mock.return_value = keycloak_id
         session_mock.return_value = anonymous_user_id
-        get_or_create_mock.return_value = anonymous_user_id
+        get_or_create_mock.return_value = (anonymous_user_id, True)
 
         result = await sign_up_user("jane@example.org", None, None, session_uuid, None)
 
@@ -96,7 +101,7 @@ class TestSignUpUser(unittest.IsolatedAsyncioTestCase):
         find_mock.return_value = None
         create_mock.return_value = keycloak_id
         session_mock.side_effect = SessionNotFoundError("Session not found")
-        get_or_create_mock.return_value = uuid.uuid4()
+        get_or_create_mock.return_value = (uuid.uuid4(), True)
 
         await sign_up_user("jane@example.org", None, None, uuid.uuid4(), None)
 
@@ -108,7 +113,7 @@ class TestSignUpUser(unittest.IsolatedAsyncioTestCase):
         user_id = uuid.uuid4()
         find_mock.return_value = None
         create_mock.return_value = uuid.uuid4()
-        get_or_create_mock.return_value = user_id
+        get_or_create_mock.return_value = (user_id, True)
         email_mock.side_effect = KeycloakUnavailableError("smtp down")
 
         result = await sign_up_user("jane@example.org", None, None, None, None)

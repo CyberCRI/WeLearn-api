@@ -153,7 +153,7 @@ class TestResolveKeycloakUserAndSession(unittest.IsolatedAsyncioTestCase):
         anonymous_user_id = uuid.uuid4()
         session_uuid = uuid.uuid4()
         get_user_mock.return_value = anonymous_user_id
-        get_keycloak_user_mock.return_value = (anonymous_user_id, None)
+        get_keycloak_user_mock.return_value = (anonymous_user_id, None, False)
         get_session_mock.return_value = session_uuid
 
         user_id, result_session = await session.resolve_keycloak_user_and_session(
@@ -179,7 +179,7 @@ class TestResolveKeycloakUserAndSession(unittest.IsolatedAsyncioTestCase):
         keycloak_user_id = uuid.uuid4()
         new_session = uuid.uuid4()
         get_user_mock.side_effect = SessionNotFoundError("Session not found")
-        get_keycloak_user_mock.return_value = (keycloak_user_id, None)
+        get_keycloak_user_mock.return_value = (keycloak_user_id, None, False)
         get_session_mock.return_value = new_session
 
         user_id, result_session = await session.resolve_keycloak_user_and_session(
@@ -200,7 +200,7 @@ class TestResolveKeycloakUserAndSession(unittest.IsolatedAsyncioTestCase):
         self, get_user_mock, get_keycloak_user_mock, get_session_mock
     ):
         """Without session cookie, no anonymous user is looked up"""
-        get_keycloak_user_mock.return_value = (uuid.uuid4(), None)
+        get_keycloak_user_mock.return_value = (uuid.uuid4(), None, False)
 
         await session.resolve_keycloak_user_and_session(
             "token", None, "localhost", None

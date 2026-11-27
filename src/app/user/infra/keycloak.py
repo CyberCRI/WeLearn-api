@@ -63,6 +63,9 @@ class KeycloakUser(BaseModel):
     # end of a time-limited access (ISO date), from the user attribute
     # "welearn_access_until" through a "User Attribute" mapper
     access_until: str | None = None
+    # the Keycloak session ("sid"): the same across token refreshes, a new one
+    # on each login, so it tells a login from a page load
+    keycloak_session_id: str | None = None
 
 
 def _single_claim(value: Any) -> str | None:
@@ -206,6 +209,7 @@ def decode_keycloak_token(token: str) -> KeycloakUser:
             name=claims.get("name"),
             identity_provider=_single_claim(claims.get("identity_provider")),
             access_until=_single_claim(claims.get("welearn_access_until")),
+            keycloak_session_id=claims.get("sid"),
         )
     except ValidationError as e:
         raise KeycloakTokenError(f"Invalid 'sub' claim: {e}") from e
@@ -225,15 +229,16 @@ async def get_or_create_keycloak_user(
     token: str,
     anonymous_user_id: uuid.UUID | None = None,
     referer: str | None = None,
-) -> tuple[uuid.UUID, KeycloakUser]:
+) -> tuple[uuid.UUID, KeycloakUser, bool]:
     """
-    Verify the token and return the WeLearn user id matching its Keycloak id.
-    If none exists, the anonymous user (if any) is linked to it, otherwise a
-    new user is created.
+    Verify the token and return the WeLearn user id matching its Keycloak id,
+    the token's user, and whether WeLearn sees this account for the first
+    time. If none exists, the anonymous user (if any) is linked to it,
+    otherwise a new user is created.
     """
     # JWKS fetch is blocking I/O
     keycloak_user = await run_in_threadpool(decode_keycloak_token, token)
-    user_id = await run_in_threadpool(
+    user_id, is_new_account = await run_in_threadpool(
         get_or_create_user_from_keycloak_sync,
         keycloak_user.keycloak_id,
         anonymous_user_id,
@@ -244,4 +249,4 @@ async def get_or_create_keycloak_user(
         keycloak_user.keycloak_id,
         user_id,
     )
-    return user_id, keycloak_user
+    return user_id, keycloak_user, is_new_account

@@ -3,9 +3,11 @@
 import uuid
 from datetime import datetime, timedelta
 
+from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.sql import select
-from welearn_database.data.models import Bookmark, InferredUser, Session
+from welearn_database.data.enumeration import AuthEventType
+from welearn_database.data.models import AuthEvent, Bookmark, InferredUser, Session
 
 from src.app.shared.domain.exceptions import (
     BookmarkAlreadyExistsError,
@@ -46,13 +48,17 @@ def get_or_create_user_from_keycloak_sync(
     keycloak_id: uuid.UUID,
     anonymous_user_id: uuid.UUID | None = None,
     referer: str | None = None,
-) -> uuid.UUID:
+) -> tuple[uuid.UUID, bool]:
+    """
+    The user of a Keycloak account, and whether this call linked or created it
+    (the first time WeLearn sees the account).
+    """
     with session_maker() as s:
         user = s.execute(
             select(InferredUser.id).where(InferredUser.keycloak_id == keycloak_id)
         ).first()
         if user:
-            return user.id
+            return user.id, False
 
         anonymous_user = None
         if anonymous_user_id:
@@ -79,10 +85,66 @@ def get_or_create_user_from_keycloak_sync(
         except IntegrityError:
             # keycloak_id is unique: a concurrent request created it first
             s.rollback()
-            return s.execute(
+            existing_id = s.execute(
                 select(InferredUser.id).where(InferredUser.keycloak_id == keycloak_id)
             ).scalar_one()
-        return user.id
+            return existing_id, False
+        return user.id, True
+
+
+def get_keycloak_user_and_session_sync(
+    keycloak_id: uuid.UUID, session_id: uuid.UUID | None
+) -> tuple[uuid.UUID | None, uuid.UUID | None]:
+    """
+    The user of a Keycloak account, None if WeLearn does not know it, and the
+    given session if it is this user's (ended or not), else None.
+    """
+    with session_maker() as s:
+        user_id = s.execute(
+            select(InferredUser.id).where(InferredUser.keycloak_id == keycloak_id)
+        ).scalar_one_or_none()
+        if user_id is None or session_id is None:
+            return user_id, None
+        own_session_id = s.execute(
+            select(Session.id).where(
+                (Session.id == session_id) & (Session.inferred_user_id == user_id)
+            )
+        ).scalar_one_or_none()
+    return user_id, own_session_id
+
+
+def add_auth_event_sync(
+    user_id: uuid.UUID,
+    event_type: AuthEventType,
+    session_id: uuid.UUID | None,
+    identity_provider: str | None,
+    is_limited_access: bool,
+    keycloak_session_id: str | None = None,
+) -> bool:
+    """
+    Insert an authentication event. Returns False when nothing is inserted: a
+    login already recorded for this Keycloak session.
+    """
+    statement = (
+        insert(AuthEvent)
+        .values(
+            id=uuid.uuid4(),
+            inferred_user_id=user_id,
+            session_id=session_id,
+            event_type=event_type.value,
+            identity_provider=identity_provider,
+            is_limited_access=is_limited_access,
+            keycloak_session_id=keycloak_session_id,
+        )
+        # the only unique index besides the id is one login per (user, Keycloak
+        # session): a repeated or concurrent login is skipped, not an error
+        .on_conflict_do_nothing()
+        .returning(AuthEvent.id)
+    )
+    with session_maker() as s:
+        inserted = s.execute(statement).scalar_one_or_none()
+        s.commit()
+    return inserted is not None
 
 
 def get_or_create_session_sync(
