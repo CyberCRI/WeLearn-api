@@ -18,10 +18,7 @@ import re
 from dataclasses import dataclass
 from typing import Literal
 
-from langsmith import traceable
-
 from src.app.shared.domain.documents import EnhancedDocumentSlice
-from src.app.shared.infra.tracing import TraceName
 from src.app.shared.utils.logger import logger as utils_logger
 from src.app.tutor.domain.adaptation import (
     AdaptationAnswer,
@@ -476,7 +473,6 @@ async def check(
     return to_verification(answer, resources, change)
 
 
-@traceable(name=TraceName.TUTOR_ADAPTATION.value)
 async def adapt_course(
     course: ConfirmedCourse, connection: ChosenConnection, lang: TutorLang
 ) -> AdaptationProposal:
