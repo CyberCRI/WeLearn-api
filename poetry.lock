@@ -2346,35 +2346,35 @@ xxhash = ">=3.5.0"
 
 [[package]]
 name = "langgraph-checkpoint"
-version = "2.1.2"
+version = "4.3.2"
 description = "Library with base interfaces for LangGraph checkpoint savers."
 optional = false
-python-versions = ">=3.9"
+python-versions = ">=3.10"
 groups = ["main"]
 files = [
-    {file = "langgraph_checkpoint-2.1.2-py3-none-any.whl", hash = "sha256:911ebffb069fd01775d4b5184c04aaafc2962fcdf50cf49d524cd4367c4d0c60"},
-    {file = "langgraph_checkpoint-2.1.2.tar.gz", hash = "sha256:112e9d067a6eff8937caf198421b1ffba8d9207193f14ac6f89930c1260c06f9"},
+    {file = "langgraph_checkpoint-4.3.2-py3-none-any.whl", hash = "sha256:60e02eb2c2eefc4c22fb1549f1c90b85ce9617377604596c5f34fbd6af0bd6e9"},
+    {file = "langgraph_checkpoint-4.3.2.tar.gz", hash = "sha256:fcab8468c7e965d7055e2a35c253d73a145624ef4728b150ca7c361f4afca286"},
 ]
 
 [package.dependencies]
 langchain-core = ">=0.2.38"
-ormsgpack = ">=1.10.0"
+ormsgpack = ">=1.12.0"
 
 [[package]]
 name = "langgraph-checkpoint-postgres"
-version = "2.0.25"
+version = "3.1.3"
 description = "Library with a Postgres implementation of LangGraph checkpoint saver."
 optional = false
-python-versions = ">=3.9"
+python-versions = ">=3.10"
 groups = ["main"]
 files = [
-    {file = "langgraph_checkpoint_postgres-2.0.25-py3-none-any.whl", hash = "sha256:cf1248a58fe828c9cfc36ee57ff118d7799ce214d4b35718e57ec98407130fb5"},
-    {file = "langgraph_checkpoint_postgres-2.0.25.tar.gz", hash = "sha256:916b80f73a641a589301f6c54414974768b6d646d82db7b301ff8d47105c3613"},
+    {file = "langgraph_checkpoint_postgres-3.1.3-py3-none-any.whl", hash = "sha256:050ae583223e24d97747f27b9e06e7345bf13c972f1fb6ed33bb3d1f9c11cee4"},
+    {file = "langgraph_checkpoint_postgres-3.1.3.tar.gz", hash = "sha256:a152a9c0c3d5931bc949b64e01e8c7da20be57a32aa754626446318e90a07650"},
 ]
 
 [package.dependencies]
-langgraph-checkpoint = ">=2.1.2,<3.0.0"
-orjson = ">=3.10.1"
+langgraph-checkpoint = ">=4.3.0,<5.0.0"
+orjson = ">=3.11.5"
 psycopg = ">=3.2.0"
 psycopg-pool = ">=3.2.0"
 
@@ -7245,4 +7245,4 @@ cffi = ["cffi (>=1.17,<2.0) ; platform_python_implementation != \"PyPy\" and pyt
 [metadata]
 lock-version = "2.1"
 python-versions = ">=3.12,<3.15"
-content-hash = "e658655ffe41efe11a6baaaecdc1150c43250ce172d1cfad8be47e399c37433c"
+content-hash = "96073844e0602fdf20c34e212ec8245cacbb82b6b4e7b6040c3efd9099b45783"
