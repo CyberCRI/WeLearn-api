@@ -11,17 +11,24 @@ from welearn_database.data.models import Feature, GuestFeatureUsage
 
 from src.app.core.config import settings
 from src.app.shared.domain.exceptions import SessionNotFoundError, UserNotFoundError
-from src.app.tests.user.guest_usage_db import guest_left, guest_use, use_guest_usage_db
+from src.app.tests.user.guest_usage_db import (
+    guest_left,
+    guest_refusals,
+    guest_use,
+    use_guest_usage_db,
+)
 from src.app.user.infra.guest_usage import (
     add_guest_usage_sync,
     delete_guest_usage_sync,
     get_guest_usage_sync,
+    record_guest_event_sync,
 )
 from src.app.user.infra.keycloak import KeycloakUser
 from src.app.user.services import account, guest_quota
 from src.app.user.services.guest_quota import (
     GUEST_QUOTA_WINDOW,
     GUEST_USAGE_KEYS,
+    QUOTA_EXCEEDED_ACTION,
     GuestQuota,
     resolve_quota_user,
 )
@@ -152,6 +159,15 @@ class GuestUsageQueriesTests(unittest.TestCase):
         with self.assertRaises(LookupError):
             self.add(key=("unknown", "question"))
 
+    def test_an_event_is_recorded_without_limit_nor_counting_as_a_use(self):
+        refused = ("chat", QUOTA_EXCEEDED_ACTION)
+        for _ in range(3):
+            record_guest_event_sync(GUEST, refused, self.now)
+
+        self.assertEqual(get_guest_usage_sync(GUEST, refused, self.since)[0], 3)
+        self.assertEqual(get_guest_usage_sync(GUEST, self.key, self.since), (0, None))
+        self.assertIsNotNone(self.add(limit=1)[0])
+
 
 class RequireLeftTests(unittest.IsolatedAsyncioTestCase):
     def setUp(self):
@@ -254,6 +270,94 @@ class GuestQuotaTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(guest_left("syllabus", GUEST), self.limit)
         self.assertEqual(quota.headers, {})
         self.assertNotIn("X-Guest-Remaining", self.response.headers)
+
+
+class GuestRefusalTests(unittest.IsolatedAsyncioTestCase):
+    """A refusal is recorded for measures, without changing the quotas or the 403."""
+
+    def setUp(self):
+        use_guest_usage_db(self, GUEST)
+        self.limit = settings.GUEST_FEEDBACK_DAILY_LIMIT
+
+    async def refuse(self, quota: GuestQuota) -> HTTPException:
+        with self.assertRaises(HTTPException) as raised:
+            await quota.consume()
+        return raised.exception
+
+    async def test_a_refused_use_is_recorded_once_under_its_feature(self):
+        guest_use("feedback", GUEST, self.limit)
+
+        await self.refuse(GuestQuota("feedback", GUEST))
+
+        self.assertEqual(guest_refusals(GUEST, "syllabus"), 1)
+        self.assertEqual(guest_refusals(GUEST, "chat"), 0)
+
+    async def test_refusals_do_not_count_as_uses(self):
+        guest_use("feedback", GUEST, self.limit)
+        used_before = get_guest_usage_sync(
+            GUEST, GUEST_USAGE_KEYS["feedback"], datetime.now() - GUEST_QUOTA_WINDOW
+        )
+
+        for _ in range(3):
+            await self.refuse(GuestQuota("feedback", GUEST))
+
+        self.assertEqual(guest_refusals(GUEST), 3)
+        self.assertEqual(
+            get_guest_usage_sync(
+                GUEST,
+                GUEST_USAGE_KEYS["feedback"],
+                datetime.now() - GUEST_QUOTA_WINDOW,
+            ),
+            used_before,
+        )
+        # the other quotas of the same feature title are untouched
+        syllabus_limit = settings.GUEST_SYLLABUS_DAILY_LIMIT
+        self.assertEqual(guest_left("syllabus", GUEST), syllabus_limit)
+        for _ in range(syllabus_limit):
+            await GuestQuota("syllabus", GUEST).consume()
+        await self.refuse(GuestQuota("syllabus", GUEST))
+
+    async def test_require_left_records_the_refused_feature(self):
+        guest_use("syllabus", GUEST, settings.GUEST_SYLLABUS_DAILY_LIMIT)
+
+        with self.assertRaises(HTTPException):
+            await GuestQuota("files", GUEST).require_left("syllabus")
+
+        self.assertEqual(guest_refusals(GUEST, "syllabus"), 1)
+        self.assertEqual(guest_left("files", GUEST), settings.GUEST_FILES_DAILY_LIMIT)
+
+    async def test_an_unlimited_caller_records_nothing(self):
+        quota = GuestQuota("feedback", None)
+        for _ in range(self.limit + 2):
+            await quota.consume()
+        await quota.require_left("syllabus")
+
+        self.assertEqual(guest_refusals(GUEST), 0)
+
+    async def test_a_failed_record_keeps_the_403(self):
+        guest_use("feedback", GUEST, self.limit)
+        expected = await self.refuse(GuestQuota("feedback", GUEST))
+
+        with (
+            mock.patch.object(
+                guest_quota,
+                "record_guest_event_sync",
+                side_effect=RuntimeError("secret detail"),
+            ),
+            self.assertLogs(guest_quota.logger, "ERROR") as logs,
+        ):
+            error = await self.refuse(GuestQuota("feedback", GUEST))
+
+        self.assertEqual(error.status_code, 403)
+        # retry_after may tick by a second between the two refusals
+        self.assertEqual(error.detail.keys(), expected.detail.keys())
+        self.assertEqual(error.detail["code"], "GUEST_QUOTA_EXCEEDED")
+        self.assertEqual(error.detail["feature"], "feedback")
+        self.assertEqual(error.headers.keys(), expected.headers.keys())
+        output = "\n".join(logs.output)
+        self.assertIn("RuntimeError", output)
+        self.assertNotIn("secret detail", output)
+        self.assertEqual(guest_refusals(GUEST), 1)
 
 
 @mock.patch(
