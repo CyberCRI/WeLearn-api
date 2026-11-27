@@ -8,6 +8,7 @@ config:
     DATA_COLLECTION_ORIGIN_PREFIX: welearn
     SESSION_COOKIE_DOMAIN: .lp-i.dev
     LANGSMITH_TRACING_ENABLED: "true"
+    LANGSMITH_TRACING_V2: "true"
     LANGSMITH_PROJECT: WeLearn_Dev
     LANGSMITH_ENDPOINT: https://eu.api.smith.langchain.com
     ENV: development

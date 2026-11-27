@@ -13,6 +13,7 @@ config:
     SESSION_COOKIE_DOMAIN: .lp-i.xyz
     ENV: staging
     LANGSMITH_TRACING_ENABLED: "true"
+    LANGSMITH_TRACING_V2: "true"
     LANGSMITH_PROJECT: WeLearn_Staging
     LANGSMITH_ENDPOINT: https://eu.api.smith.langchain.com
     # uvicorn reads X-Forwarded-For only from the Traefik pods (same CIDR as dev)

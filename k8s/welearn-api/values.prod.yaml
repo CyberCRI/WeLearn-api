@@ -9,6 +9,7 @@ config:
     ENV: production
     SESSION_COOKIE_DOMAIN: learningplanetinstitute.org
     LANGSMITH_TRACING_ENABLED: "true"
+    LANGSMITH_TRACING_V2: "true"
     LANGSMITH_PROJECT: WeLearn_Prod
     LANGSMITH_ENDPOINT: https://eu.api.smith.langchain.com
     SMTP_HOST: smtp.eu.mailgun.org
