@@ -15,6 +15,7 @@ from src.app.user.infra.guest_usage import add_guest_usage_sync, get_guest_usage
 from src.app.user.services.guest_quota import (
     GUEST_QUOTA_WINDOW,
     GUEST_USAGE_KEYS,
+    QUOTA_EXCEEDED_ACTION,
     GuestFeature,
     guest_quota_limit,
 )
@@ -43,6 +44,16 @@ def guest_left(feature: GuestFeature, user_id: uuid.UUID) -> int:
         user_id, GUEST_USAGE_KEYS[feature], datetime.now() - GUEST_QUOTA_WINDOW
     )
     return guest_quota_limit(feature) - used
+
+
+def guest_refusals(user_id: uuid.UUID, title: str | None = None) -> int:
+    """How many times the guest was refused today, for the feature `title` or any."""
+    titles = [title] if title else FEATURE_TITLES
+    since = datetime.now() - GUEST_QUOTA_WINDOW
+    return sum(
+        get_guest_usage_sync(user_id, (t, QUOTA_EXCEEDED_ACTION), since)[0]
+        for t in titles
+    )
 
 
 def guest_use(feature: GuestFeature, user_id: uuid.UUID, times: int = 1) -> None:

@@ -16,9 +16,23 @@ from src.app.shared.utils.logger import logger as utils_logger
 logger = utils_logger(__name__)
 
 
+def note_error_code(request: Request, detail: object) -> None:
+    """
+    Keep the `code` of an error detail on the request, for its row in
+    endpoint_request: the monitoring middleware reads it there, not in the body.
+    """
+    if isinstance(detail, dict) and isinstance(detail.get("code"), str):
+        request.state.error_code = detail["code"]
+
+
+def noted_error_code(request: Request) -> str | None:
+    return getattr(request.state, "error_code", None)
+
+
 async def welearn_error_handler(request: Request, exc: Exception) -> Response:
     """Map a domain error to its status code and `{"detail": {"message", "code"}}`."""
     assert isinstance(exc, WeLearnError)
+    note_error_code(request, exc.detail)
 
     log = (
         logger.error
@@ -68,6 +82,7 @@ async def database_error_handler(request: Request, exc: Exception) -> Response:
         describe_traceback(exc),
     )
     detail = DATABASE_UNAVAILABLE_DETAIL if unavailable else DATABASE_ERROR_DETAIL
+    note_error_code(request, detail)
     return JSONResponse(status_code=status_code, content={"detail": detail})
 
 
@@ -160,6 +175,7 @@ class UnhandledErrorMiddleware:
                 scope.get("path"),
                 describe_chain(exc),
             )
+            note_error_code(Request(scope), INTERNAL_ERROR_DETAIL)
             response = JSONResponse(
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
                 content={"detail": INTERNAL_ERROR_DETAIL},

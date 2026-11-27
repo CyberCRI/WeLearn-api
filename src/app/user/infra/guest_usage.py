@@ -40,6 +40,31 @@ def get_guest_usage_sync(
         return used, oldest
 
 
+def _feature_id(s, title: str) -> uuid.UUID:
+    feature_id = s.execute(
+        select(Feature.id).where(Feature.title == title)
+    ).scalar_one_or_none()
+    if feature_id is None:
+        raise LookupError(f"Feature {title!r} is missing from user_related.feature")
+    return feature_id
+
+
+def _insert_usage(s, user_id: uuid.UUID, key: UsageKey, now: datetime) -> uuid.UUID:
+    title, action = key
+    usage_id = uuid.uuid4()
+    s.add(
+        GuestFeatureUsage(
+            id=usage_id,
+            inferred_user_id=user_id,
+            feature_id=_feature_id(s, title),
+            action=action,
+            created_at=now,
+        )
+    )
+    s.commit()
+    return usage_id
+
+
 def add_guest_usage_sync(
     user_id: uuid.UUID, key: UsageKey, limit: int, since: datetime, now: datetime
 ) -> tuple[uuid.UUID | None, int, datetime | None]:
@@ -49,35 +74,26 @@ def add_guest_usage_sync(
     it and the oldest of them. The user's row is locked so that concurrent
     requests of one guest are counted one after the other.
     """
-    title, action = key
     with session_maker() as s:
         user = s.execute(
             select(InferredUser.id).where(InferredUser.id == user_id).with_for_update()
         ).first()
         if not user:
             raise UserNotFoundError(f"User {user_id} does not exist")
-        feature_id = s.execute(
-            select(Feature.id).where(Feature.title == title)
-        ).scalar_one_or_none()
-        if feature_id is None:
-            raise LookupError(f"Feature {title!r} is missing from user_related.feature")
 
         used, oldest = _usage_since(s, user_id, key, since)
         if used >= limit:
             return None, used, oldest
+        return _insert_usage(s, user_id, key, now), used, oldest
 
-        usage_id = uuid.uuid4()
-        s.add(
-            GuestFeatureUsage(
-                id=usage_id,
-                inferred_user_id=user_id,
-                feature_id=feature_id,
-                action=action,
-                created_at=now,
-            )
-        )
-        s.commit()
-        return usage_id, used, oldest
+
+def record_guest_event_sync(user_id: uuid.UUID, key: UsageKey, now: datetime) -> None:
+    """
+    Record one row of `key` without any limit, for an event to count apart
+    from the uses (a quota only counts the rows of its own action).
+    """
+    with session_maker() as s:
+        _insert_usage(s, user_id, key, now)
 
 
 def delete_guest_usage_sync(usage_id: uuid.UUID) -> None:

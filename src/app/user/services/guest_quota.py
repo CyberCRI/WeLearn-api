@@ -10,7 +10,8 @@ browser storage does not reset it. Accounts, and every caller while the flag is
 off, are not limited.
 
 Each use is a row of user_related.guest_feature_usage, so the quotas are shared
-by every pod and survive restarts.
+by every pod and survive restarts. A refusal is also a row there, with the action
+QUOTA_EXCEEDED_ACTION, so that limit hits can be counted; no quota counts it.
 
 New guests are also limited per client IP (GUEST_SESSIONS_PER_IP_HOURLY), since
 a new guest gets fresh quotas: only creations count, not the page loads that
@@ -39,6 +40,7 @@ from src.app.user.infra.guest_usage import (
     add_guest_usage_sync,
     delete_guest_usage_sync,
     get_guest_usage_sync,
+    record_guest_event_sync,
 )
 from src.app.user.infra.queries import get_user_for_session_renewal
 from src.app.user.services.account import (
@@ -55,6 +57,8 @@ GUEST_QUOTA_WINDOW = timedelta(hours=24)
 GUEST_QUOTA_EXCEEDED_CODE = "GUEST_QUOTA_EXCEEDED"
 GUEST_REMAINING_HEADER = "X-Guest-Remaining"
 GUEST_SESSION_WINDOW_SECONDS = 60 * 60
+# the action of the row recorded when a guest is refused
+QUOTA_EXCEEDED_ACTION = "quota_exceeded"
 
 # the (feature title, action) of user_related.guest_feature_usage each quota counts
 GUEST_USAGE_KEYS: dict[GuestFeature, UsageKey] = {
@@ -184,7 +188,7 @@ class GuestQuota:
             now,
         )
         if usage_id is None:
-            raise self._exceeded(self.feature, _seconds_until_free(oldest, now))
+            raise await self._exceeded(self.feature, _seconds_until_free(oldest, now))
         self._usage_id = usage_id
         self._set_remaining(max(limit - used - 1, 0))
 
@@ -198,9 +202,34 @@ class GuestQuota:
             return
         _, remaining, resets_in = await quota_status(feature, self.user_id)
         if not remaining:
-            raise self._exceeded(feature, resets_in)
+            raise await self._exceeded(feature, resets_in)
 
-    def _exceeded(self, feature: GuestFeature, retry_after: float) -> HTTPException:
+    async def _record_refusal(self, feature: GuestFeature) -> None:
+        """
+        Record that the guest hit the quota of `feature`, under the same feature
+        as its uses. Only measures: a failure is logged, and the 403 still sent.
+        """
+        title, _ = GUEST_USAGE_KEYS[feature]
+        try:
+            await run_in_threadpool(
+                record_guest_event_sync,
+                self.user_id,
+                (title, QUOTA_EXCEEDED_ACTION),
+                datetime.now(),
+            )
+        except Exception as e:
+            # the type only: a database message can quote the connection string
+            logger.error(
+                "Guest quota refusal not recorded. feature=%s error=%s",
+                feature,
+                type(e).__name__,
+            )
+
+    async def _exceeded(
+        self, feature: GuestFeature, retry_after: float
+    ) -> HTTPException:
+        """The 403 for `feature`, once the refusal is recorded."""
+        await self._record_refusal(feature)
         seconds = max(math.ceil(retry_after), 1)
         logger.info(
             "Guest quota exceeded. feature=%s user_id=%s retry_after=%ss",
