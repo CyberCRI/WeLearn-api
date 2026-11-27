@@ -20,7 +20,12 @@ from src.app.shared.domain.exceptions import (
     UnusableLLMOutputError,
     UnusableReadingError,
 )
-from src.app.tests.user.guest_usage_db import guest_left, guest_use, use_guest_usage_db
+from src.app.tests.user.guest_usage_db import (
+    guest_left,
+    guest_refusals,
+    guest_use,
+    use_guest_usage_db,
+)
 from src.app.tutor.domain.adaptation import (
     AdaptationChecks,
     AdaptationGuidance,
@@ -1542,6 +1547,7 @@ class TestSyllabusGuestQuota(GuestTutorTestCase):
         self.assertEqual(detail["feature"], "syllabus")
         self.assertIn("Retry-After", response.headers)
         self.assertEqual(mock_manager.await_count, self.LIMIT)
+        self.assertEqual(guest_refusals(self.GUEST, "syllabus"), 1)
 
     @patch(f"{ROUTER}.tutor_manager", new_callable=AsyncMock)
     def test_failed_creation_is_refunded(self, mock_manager):
@@ -1660,6 +1666,7 @@ class TestAdaptationGuestQuota(GuestTutorTestCase):
         self.assertEqual(response.status_code, 403)
         self.assertEqual(response.json()["detail"]["feature"], "adaptation")
         self.assertEqual(mock_adapt.await_count, self.LIMIT)
+        self.assertEqual(guest_refusals(self.GUEST, "syllabus"), 1)
         # the syllabus of the day is untouched
         self.assertEqual(
             guest_left("syllabus", self.GUEST), settings.GUEST_SYLLABUS_DAILY_LIMIT
@@ -1735,6 +1742,7 @@ class TestTutorStepsGuestQuota(GuestTutorTestCase):
         self.assertNotIn("X-Guest-Remaining", response.headers)
         mock_extract.assert_not_awaited()
         self.assertEqual(self.left_of("files"), self.FILES_LIMIT)
+        self.assertEqual(guest_refusals(self.GUEST, "syllabus"), 1)
 
     @patch(f"{ROUTER}.extract_files_summaries", new_callable=AsyncMock)
     def test_failed_summary_is_refunded(self, mock_extract):
@@ -1769,6 +1777,7 @@ class TestTutorStepsGuestQuota(GuestTutorTestCase):
 
         for _ in range(self.FILES_LIMIT + 1):
             self.assertEqual(self.summarize().status_code, 200)
+        self.assertEqual(guest_refusals(self.GUEST), 0)
 
     @patch(f"{ROUTER}.extract_files_summaries", new_callable=AsyncMock)
     def test_restrictions_off_summarize_without_limit(self, mock_extract):
@@ -1778,6 +1787,7 @@ class TestTutorStepsGuestQuota(GuestTutorTestCase):
         ):
             for _ in range(self.FILES_LIMIT + 1):
                 self.assertEqual(self.summarize().status_code, 200)
+        self.assertEqual(guest_refusals(self.GUEST), 0)
 
     # --- /syllabus/feedback ------------------------------------------------
 
@@ -1792,6 +1802,7 @@ class TestTutorStepsGuestQuota(GuestTutorTestCase):
 
         self.assert_exceeded(self.feedback(), "feedback")
         self.assertEqual(mock_feedback.await_count, self.FEEDBACK_LIMIT)
+        self.assertEqual(guest_refusals(self.GUEST, "syllabus"), 1)
         self.assertEqual(self.left_of("syllabus"), self.LIMIT)
 
     @patch(f"{ROUTER}.apply_feedback", new_callable=AsyncMock)

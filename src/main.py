@@ -20,6 +20,7 @@ from src.app.shared.api import health
 from src.app.shared.api.ai_generated import AI_GENERATED_HEADER, AiGeneratedMiddleware
 from src.app.shared.api.errors import (
     UnhandledErrorMiddleware,
+    note_error_code,
     register_exception_handlers,
 )
 from src.app.shared.api.monitor_requests import MonitorRequestsMiddleware
@@ -44,9 +45,6 @@ app = FastAPI(
     lifespan=lifespan,
     generate_unique_id_function=generate_operation_id,
 )
-
-# Middleware global monitoring
-app.add_middleware(MonitorRequestsMiddleware)
 
 register_exception_handlers(app)
 
@@ -87,6 +85,7 @@ async def custom_http_exception_handler(request: Request, exc: StarletteHTTPExce
         exc.status_code,
         exc.detail,
     )
+    note_error_code(request, exc.detail)
     return await http_exception_handler(request, exc)
 
 
@@ -118,6 +117,10 @@ app.add_middleware(AiGeneratedMiddleware)
 
 # added before CORSMiddleware, so it runs inside it: a 500 the client can read
 app.add_middleware(UnhandledErrorMiddleware)
+
+# outside UnhandledErrorMiddleware, so an unhandled error is recorded as the 500
+# it becomes; inside CORSMiddleware, so preflight requests are not recorded
+app.add_middleware(MonitorRequestsMiddleware)
 
 app.add_middleware(
     CORSMiddleware,

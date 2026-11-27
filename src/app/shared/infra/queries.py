@@ -4,10 +4,13 @@ from welearn_database.data.models import EmbeddingModel, EndpointRequest
 from src.app.shared.infra.db import session_maker
 
 
-def register_endpoint(endpoint, session_id, http_code):
+def register_endpoint(endpoint, session_id, http_code, message=None):
     with session_maker() as session:
         endpoint_request = EndpointRequest(
-            endpoint_name=endpoint, session_id=session_id, http_code=http_code
+            endpoint_name=endpoint,
+            session_id=session_id,
+            http_code=http_code,
+            message=message,
         )
         session.add(endpoint_request)
         session.commit()

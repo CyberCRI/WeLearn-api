@@ -10,7 +10,11 @@ from src.app.core.config import settings
 from src.app.data_collection.services.data_collection import get_data_collection_service
 from src.app.search.services.search import get_search_service
 from src.app.shared.domain.exceptions import SessionNotFoundError
-from src.app.tests.user.guest_usage_db import guest_left, use_guest_usage_db
+from src.app.tests.user.guest_usage_db import (
+    guest_left,
+    guest_refusals,
+    use_guest_usage_db,
+)
 from src.app.user.infra.keycloak import KeycloakUser
 from src.app.user.services import account, guest_quota
 from src.main import app
@@ -135,6 +139,9 @@ class ChatGuestQuotaTests(unittest.TestCase):
 
         self.assert_quota_exceeded(response)
         self.assertEqual(self.chat.agent_message.await_count, LIMIT)
+        # the refusal is recorded, and not counted as a use
+        self.assertEqual(guest_refusals(USER_A, "chat"), 1)
+        self.assertEqual(_left(USER_A), 0)
 
     def test_quota_is_per_guest(self):
         for _ in range(LIMIT):
@@ -173,11 +180,13 @@ class ChatGuestQuotaTests(unittest.TestCase):
             self.assertEqual(response.status_code, 200)
             self.assertNotIn("X-Guest-Remaining", response.headers)
         self.assertEqual(_left(USER_A), LIMIT)
+        self.assertEqual(guest_refusals(USER_A), 0)
 
     def test_restrictions_off_is_not_limited(self):
         with mock.patch.object(account.settings, "GUEST_RESTRICTIONS_ENABLED", False):
             for _ in range(LIMIT + 2):
                 self.assertEqual(self._ask(HEADERS_A).status_code, 200)
+        self.assertEqual(guest_refusals(USER_A), 0)
 
     def test_guest_without_session_gets_401(self):
         response = self._ask({"X-API-Key": "test"})
@@ -207,6 +216,7 @@ class ChatGuestQuotaTests(unittest.TestCase):
 
         self.assert_quota_exceeded(response)
         self.chat.agent_message.assert_not_awaited()
+        self.assertEqual(guest_refusals(USER_A, "chat"), 1)
 
     def test_stream_failing_before_any_content_is_refunded(self):
         response = self._stream(HEADERS_A, error=RuntimeError("mistral down"))
