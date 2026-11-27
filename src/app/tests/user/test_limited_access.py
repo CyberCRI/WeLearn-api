@@ -183,7 +183,7 @@ class UserAndSessionApiTests(LimitedAccessTestCase):
             session,
             "get_or_create_keycloak_user",
             new_callable=mock.AsyncMock,
-            return_value=(uuid.uuid4(), keycloak_user),
+            return_value=(uuid.uuid4(), keycloak_user, False),
         )
         return client.post(
             f"{settings.API_V1_STR}/user/user_and_session",

@@ -51,6 +51,7 @@ from src.app.user.services.account import (
     keycloak_errors_as_http,
     verify_account_token,
 )
+from src.app.user.services.auth_events import record_logout
 from src.app.user.services.guest_quota import (
     GUEST_QUOTA_RESPONSES,
     NEW_GUEST_RATE_LIMITED_RESPONSES,
@@ -184,6 +185,7 @@ async def handle_user_and_session(
                 session_uuid=session_uuid,
                 host=host,
                 referer=referer,
+                record_login=True,
             )
         else:
             user_id, session_uuid = await resolve_user_and_session(
@@ -224,6 +226,9 @@ async def logout(request: Request, response: Response):
     without a session.
     """
     session_uuid = extract_session_cookie(request)
+    token = extract_bearer_token(request)
+    if token:
+        await record_logout(token, session_uuid)
     if session_uuid:
         await run_in_threadpool(end_session_sync, session_uuid)
 

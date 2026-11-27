@@ -95,6 +95,7 @@ Code that several features need goes in `shared/`. That includes domain exceptio
   - Anonymous sessions use the `x-session-id` cookie or header.
   - Optional Keycloak bearer tokens are verified in `user/infra/keycloak.py`.
   - `user/services/session.py` resolves a request to `(user_id, session_id)`.
+  - `user/services/auth_events.py` records sign-ups, new accounts, logins (once per Keycloak session, the token's `sid`) and logouts in `user_related.auth_event`, read by Grafana. No email or name is stored, and a failure to record is logged and never breaks authentication.
   - `data_collection` only records when a campaign is active and the `Origin` matches `DATA_COLLECTION_ORIGIN_PREFIX`.
 - **DB access:**
   - Queries are synchronous SQLAlchemy calls (`with session_maker() as s:`) in `*/infra/queries.py`.

@@ -3,10 +3,11 @@ from typing import Optional
 from uuid import UUID
 
 from fastapi.concurrency import run_in_threadpool
+from welearn_database.data.enumeration import AuthEventType
 
 from src.app.shared.domain.exceptions import SessionNotFoundError
 from src.app.shared.utils.logger import logger as logger_utils
-from src.app.user.infra.keycloak import KeycloakUnavailableError
+from src.app.user.infra.keycloak import KeycloakUnavailableError, KeycloakUser
 from src.app.user.infra.keycloak_admin import (
     KeycloakUserExistsError,
     create_user,
@@ -17,6 +18,7 @@ from src.app.user.infra.queries import (
     get_or_create_user_from_keycloak_sync,
     get_user_from_session_id,
 )
+from src.app.user.services.auth_events import record_auth_event
 
 logger = logger_utils(__name__)
 
@@ -73,9 +75,19 @@ async def sign_up_user(
     # The anonymous user is linked only if it has no keycloak_id yet. One that
     # belongs to another account (another email, since this one was free) is
     # left alone and a new user is created instead.
-    user_id = await run_in_threadpool(
+    user_id, is_new_account = await run_in_threadpool(
         get_or_create_user_from_keycloak_sync, keycloak_id, anonymous_user_id, referer
     )
+
+    # the guest's session, when the guest's user is the one that was linked
+    session_id = session_uuid if user_id == anonymous_user_id else None
+    # an email/password account: no identity provider
+    account = KeycloakUser(keycloak_id=keycloak_id)
+    await record_auth_event(AuthEventType.SIGNUP, user_id, account, session_id)
+    if is_new_account:
+        await record_auth_event(
+            AuthEventType.ACCOUNT_CREATED, user_id, account, session_id
+        )
 
     try:
         await send_signup_email(keycloak_id)
