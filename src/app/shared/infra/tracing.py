@@ -7,6 +7,5 @@ class TraceComponent(str, Enum):
 
 class TraceName(str, Enum):
     FILES_SUMMARY_EXTRACTOR = "Files summary extractor"
-    TUTOR_STRUCTURED_CALL = "Tutor structured call"
     TUTOR_ADAPTATION = "Tutor adaptation"
     TUTOR_SYLLABUS_GENERATION = "Tutor syllabus generation"

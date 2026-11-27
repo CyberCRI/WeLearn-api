@@ -24,11 +24,9 @@ from jinja2 import Environment, FileSystemLoader, StrictUndefined, meta
 from langchain_core.exceptions import OutputParserException
 from langchain_core.runnables import RunnableConfig
 from langchain_mistralai import ChatMistralAI  # type: ignore
-from langsmith import traceable
 from pydantic import BaseModel, ValidationError
 
 from src.app.shared.domain.exceptions import LLMUnavailableError, UnusableLLMOutputError
-from src.app.shared.infra.tracing import TraceName
 from src.app.shared.utils.dependencies import get_settings
 from src.app.shared.utils.logger import logger as utils_logger
 from src.app.tutor.domain.models import TutorLang
@@ -186,7 +184,6 @@ def build_messages(
     return [("system", system), ("human", human)]
 
 
-@traceable(name=TraceName.TUTOR_STRUCTURED_CALL.value)
 async def structured_call(
     prompt_name: str,
     lang: TutorLang,
