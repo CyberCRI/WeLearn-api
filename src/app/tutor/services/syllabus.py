@@ -14,8 +14,10 @@ from langchain_core.exceptions import OutputParserException
 from langchain_core.language_models import BaseChatModel
 from langchain_core.prompts import ChatPromptTemplate
 from langchain_core.runnables import RunnableConfig
+from langsmith import traceable
 from pydantic import ValidationError
 
+from src.app.shared.infra.tracing import TraceName
 from src.app.shared.utils.logger import logger as utils_logger
 from src.app.tutor.domain.models import (
     DraftSyllabus,
@@ -390,6 +392,7 @@ def build_user_prompt(
     return "\n\n".join(parts)
 
 
+@traceable(name=TraceName.TUTOR_SYLLABUS_GENERATION.value)
 async def generate_syllabus(
     message: MessageWithResources,
     model: BaseChatModel,
