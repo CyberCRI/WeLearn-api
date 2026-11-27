@@ -1,4 +1,6 @@
+from langchain_core.runnables import RunnableConfig
 from langchain_mistralai import ChatMistralAI  # type: ignore
+from langsmith import traceable
 from pydantic import BaseModel
 
 from src.app.shared.utils.dependencies import get_settings
@@ -78,17 +80,37 @@ def build_extractor_messages(documents: str, lang: TutorLang) -> list[tuple[str,
     ]
 
 
+@traceable(name="tutor.extract_files_summaries")
 async def extract_files_summaries(
     documents: str, lang: TutorLang
 ) -> ExtractorOutputList:
     """Summarize each document and extract its main themes."""
     model = await _get_model()
     structured = model.with_structured_output(_Extracts)
-    result = await structured.ainvoke(build_extractor_messages(documents, lang))
+
+    config: RunnableConfig = {
+        "run_name": "tutor.file_extraction",
+        "metadata": {
+            "operation": "extract_files_summaries",
+            "lang": lang,
+            "schema": _Extracts.__name__,
+            "input_chars": len(documents),
+        },
+    }
+
+    result = await structured.ainvoke(
+        build_extractor_messages(documents, lang),
+        config=config,
+    )
     if not isinstance(result, _Extracts):
         raise ValueError("Extractor returned an unexpected output")
 
-    logger.debug("extract_files_summaries nb_extracts=%s", len(result.extracts))
+    logger.info(
+        "tutor_file_extraction_complete nb_extracts=%s input_chars=%s lang=%s",
+        len(result.extracts),
+        len(documents),
+        lang,
+    )
     return ExtractorOutputList(
         extracts=[
             ExtractorOutput(

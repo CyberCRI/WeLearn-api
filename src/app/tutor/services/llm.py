@@ -24,6 +24,7 @@ from jinja2 import Environment, FileSystemLoader, StrictUndefined, meta
 from langchain_core.exceptions import OutputParserException
 from langchain_core.runnables import RunnableConfig
 from langchain_mistralai import ChatMistralAI  # type: ignore
+from langsmith import traceable
 from pydantic import BaseModel, ValidationError
 
 from src.app.shared.domain.exceptions import LLMUnavailableError, UnusableLLMOutputError
@@ -184,6 +185,7 @@ def build_messages(
     return [("system", system), ("human", human)]
 
 
+@traceable(name="tutor.structured_call")
 async def structured_call(
     prompt_name: str,
     lang: TutorLang,
@@ -213,6 +215,7 @@ async def structured_call(
             "prompt": prompt_name,
             "lang": lang,
             "prompt_version": prompt_version(prompt_name),
+            "schema": schema.__name__,
         },
     }
 
@@ -238,6 +241,12 @@ async def structured_call(
             error = type(e).__name__
         else:
             if is_usable is None or is_usable(answer):
+                logger.info(
+                    "tutor_structured_call_success prompt=%s lang=%s attempts=%s",
+                    prompt_name,
+                    lang,
+                    attempt,
+                )
                 return answer
             error = "NotUsable"
         # no content in the logs: the answer may quote the teacher's course
